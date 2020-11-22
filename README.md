@@ -1,6 +1,8 @@
 # SBC
 
-## Easily calculate SBC plots from prior and posterior samples.
+## Efficient simulation-based calibration for Bayesian models
+
+SBC is an R package that provide tools to easily validate and offer correction on prior, likelihood, and computation algorithm. Tools include SBC rank plot, ECDF, and ECDF_diff plot and their summary statistics. Modelers could, and recommended to, upgrade their model based on multiple test results.
 
 ---
 ### Currently supports:
@@ -17,6 +19,7 @@
 * Refine SBCData for better support
 * **Automate prior and posterior sampling**
 * Inferential Calibration
+* ECDF_diff plot
 
 ---
 ### References:
@@ -24,5 +27,5 @@
 Algorithms with Simulation-Based
 Calibration](https://arxiv.org/pdf/1804.06788.pdf), Sean Talts, Michael Betancourt, et al.
 
-[Rank-Normalization, Folding, and Localization: An Improved Rˆ for Assessing Convergence of MCMC](https://arxiv.org/abs/1903.08008), Aki Vehtari, Andrew Gelman, et al.
+[Rank-Normalization, Folding, and Localization: An Improved $\hat{R}$ for Assessing Convergence of MCMC](https://arxiv.org/abs/1903.08008), Aki Vehtari, Andrew Gelman, et al.
 
