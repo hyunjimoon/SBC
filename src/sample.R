@@ -1,7 +1,9 @@
 library(R6)
+library(posterior)
 
-RSTAN_MODEL_CLASS_NAME <- "stanmodel"  # sucks that R doesn't have 
+RSTAN_MODEL_CLASS_NAME <- "stanmodel"  # r preprocessor macro equivalent someday?
 CMDSTAN_MODEL_CLASS_NAME <- "CmdStanModel"
+
 
 SBCModel <- R6Class("SBCModel", list(
   # @field name: Some string to identify your SBCModel
@@ -27,6 +29,9 @@ SBCModel <- R6Class("SBCModel", list(
     else if(RSTAN_MODEL_CLASS_NAME %in% class(stan_model)){
       self$model_type <- RSTAN_MODEL_CLASS_NAME
     }
+    else{
+      stop(paste("Could not identify stan_model with unknown class type", class(stan_model)))
+    }
     self$stan_model <- stan_model
     self$hyperpriors <- hyperpriors
   },
@@ -50,12 +55,12 @@ SBCModel <- R6Class("SBCModel", list(
     # sample $\tilde{y} ~ p(\tilde{y} | \tilde{\theta})$, or y_tilde ~ P(y_tilde | theta_tilde)
     # The stan model must specify P(y | theta) within the generated quantities block
     #
-    # @param theta_arr: Array of sampled theta_tilde values, which is outputted from self$sample_theta_tilde()
+    # @param theta_arr: Array of sampled theta_tilde values (n_iters, n_pars), which is outputted from self$sample_theta_tilde()
     # @param y_count: number of y_tilde samples being generated within generated quantities
     # @param y_var: y_tilde variable name. Will be retrieved from model as so: y_var[n] (1<=n<=y_count)
     # @param data: data list to pass to the stan model, in most cases is irrelevant since sampling will be done with fixed params
     #
-    # returns: array of length (n_iters, y_count) of sampled y
+    # returns: array of dimension (n_iters, y_count) of sampled y
     stopifnot(length(dim(theta_arr)) == 2)
 
     n_iters = dim(theta_arr)[1]
@@ -87,6 +92,52 @@ SBCModel <- R6Class("SBCModel", list(
     rm(model_fit, sample_summary, samples)  # cleanup
     return(sample_arr)
   },
-  approx_theta_bar_y = function(y_sample_arr){
+  approx_theta_bar_y = function(y_sample_arr, data=list(), pars=list(), fit_iter=200){
+    # sample $\theta ~ p(\theta | \tilde{y})$, or theta ~ P(theta | y_tilde)
+    # The stan model must have \theta defined as parameters
+    #
+    # @param y_sample_arr: array of dimension (n_iters, y_count) of sampled y. Same as output of self$sample_y_tilde()
+    # @param data: list of additional data to pass to the stan model. Note that "y" will be overwritten with draws from y_sample_arr.
+    # @param pars: list of parameters of interest.
+    # @param fit_iter: number of model iterations.
+    #
+    # returns: array of dimension (n_iters, n_pars, fit_iter) of posterior parameter draws
+    stopifnot(length(pars) > 0)
+
+    n_iters = dim(theta_arr)[1]
+    draw_arr <- array(dim=c(n_iters, length(pars), fit_iter))
+    if(typeof(pars) == "list"){
+      pars <- unlist(pars)
+    }
+
+    for(iter_index in 1:n_iters){
+      data[["y"]] <- y_sample_arr[iter_index, ]  # insert "y" with sample slice vector
+
+      if(self$model_type == CMDSTAN_MODEL_CLASS_NAME){
+        model_fit <- self$stan_model$sample(data=data, iter_warmup=fit_iter, iter_sampling=fit_iter, chains=1,
+                                            save_warmup=FALSE, refresh=0, thin=NULL)
+        
+        draw_arr[iter_index, , ] <- aperm(model_fit$draws(variables=pars)[, 1, ])  # arrays are filled row first, so we permutate once
+        # https://github.com/stan-dev/cmdstanr/issues/346
+        # currently throws an error if you try to retrieve only a single numeric variable, just add lp until fix is released
+      }
+
+      else if(self$model_type == RSTAN_MODEL_CLASS_NAME){
+        model_fit <- rstan::sampling(self$stan_model, data=data, pars=pars, chains=1, iter=fit_iter*2, warmup=fit_iter,
+                                     refresh=0)
+        
+        draw_arr[iter_index, , ] <- aperm(posterior::as_draws_array(rstan::extract(model_fit, pars=pars, permuted=FALSE, inc_warmup=FALSE)))
+      }
+    }
+    if(dim(draw_arr)[2] != length(pars)){
+      warning("Couldn't rename array dimnames with corresponding parameters.
+              This probably means a sequential parameter is included, and SBC can't verify the identities of parameter samples.
+              If you would like to use SBC plotting features, you need to manually define dimnames for each parameter in dimension 2")
+    }
+    else{
+      dimnames(draw_arr)[[2]] <- pars  # TODO: handle sequential parameters
+    }
+    rm(model_fit)
+    return(draw_arr)
   }
 ))

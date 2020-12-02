@@ -34,8 +34,7 @@ sbc.rank <- function(SBCData.object, thin){
   # return array dimensions: (n_iter, n_pars)
   prior_dims = dim(SBCData.object@prior)
   posterior_dims = dim(SBCData.object@posterior)
-  print(prior_dims)
-  print(posterior_dims)
+
   if (prior_dims[1] != posterior_dims[1] || prior_dims[2] != posterior_dims[2]){
     stop("Dimension mismatch error!\n dim(SBCData.object@prior)[1] == dim(SBCData.object@posterior)[1] && dim(SBCData.object@prior)[2] == dim(SBCData.object@posterior)[2] must be satisfied")
   }
