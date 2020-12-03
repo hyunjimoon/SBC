@@ -35,17 +35,17 @@ SBCModel <- R6Class("SBCModel", list(
     self$stan_model <- stan_model
     self$hyperpriors <- hyperpriors
   },
-  sample_theta_tilde = function(pars, iters){
+  sample_theta_tilde = function(pars, n_iters){
     # @param pars: List of parameters to draw prior samples.
     # @param iters: Integer specifying number of draws.
     #
     # returns: Array of dimension(n_iters, n_pars) which are sampled prior values.
     stopifnot(typeof(pars) == "list")
 
-    theta_arr <- array(dim=c(iters, length(pars)))
+    theta_arr <- array(dim=c(n_iters, length(pars)))
     colnames(theta_arr) <- pars
     for(par_index in 1:length(pars)){
-      for(iter_index in 1:iters){
+      for(iter_index in 1:n_iters){
         theta_arr[iter_index, pars[[par_index]]] <- self$hyperpriors[[pars[[par_index]]]]()
       }
     }
@@ -92,7 +92,7 @@ SBCModel <- R6Class("SBCModel", list(
     rm(model_fit, sample_summary, samples)  # cleanup
     return(sample_arr)
   },
-  approx_theta_bar_y = function(y_sample_arr, data=list(), pars=list(), fit_iter=200){
+  sample_theta_bar_y = function(y_sample_arr, data=list(), pars=list(), fit_iter=200){
     # sample $\theta ~ p(\theta | \tilde{y})$, or theta ~ P(theta | y_tilde)
     # The stan model must have \theta defined as parameters
     #
@@ -104,7 +104,7 @@ SBCModel <- R6Class("SBCModel", list(
     # returns: array of dimension (n_iters, n_pars, fit_iter) of posterior parameter draws
     stopifnot(length(pars) > 0)
 
-    n_iters = dim(theta_arr)[1]
+    n_iters = dim(y_sample_arr)[1]
     draw_arr <- array(dim=c(n_iters, length(pars), fit_iter))
     if(typeof(pars) == "list"){
       pars <- unlist(pars)
@@ -139,5 +139,20 @@ SBCModel <- R6Class("SBCModel", list(
     }
     rm(model_fit)
     return(draw_arr)
+  },
+  sample_bootstrap_y_tilde = function(y_sample_vector, n_iters=2000){
+    # sample $\tilde{y}^{*} ~ Bootstrap(\tilde{y})$, or y_tilde_star ~ Bootstrap(y_tilde)
+    # given a single vector of data y_tilde, bootstrap sample multiple values of y_tilde_star[i] from bootstrap(y_tilde)
+    #
+    # @param y_sample_vector: vector of y samples.
+    # @param n_iters: number of bootstrap samples to draw
+    #
+    # returns: array of dimension (n_iters, y_count) of bootstrap sampled y
+    sample_cnt = length(y_sample_vector)
+    y_star_arr <- array(dim=c(n_iters, sample_cnt))
+    for(iter_index in 1:n_iters){
+      y_star_arr[iter_index, ] <- sample(y_sample_vector, replace=TRUE)  # sample from y_tilde
+    }
+    return(y_star_arr)
   }
 ))
