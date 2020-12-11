@@ -25,6 +25,7 @@ for(i in 1:n_iter){
 sbc.obj <- new("SBCData", prior=prior_arr, posterior=draw_list, model.name="poisson")
 
 rank <- sbc.rank(sbc.obj, 3)
+sbc.summary(rank, "lambda")
 sbc.plot.hist(rank, "lambda", 3)
 sbc.plot.ecdf(rank, "lambda")
 sbc.plot.ecdf.diff(rank, "lambda")
