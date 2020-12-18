@@ -37,7 +37,7 @@ SBCModel <- R6Class("SBCModel", list(
   },
   sample_theta_tilde = function(pars, n_iters){
     # @param pars: List of parameters to draw prior samples.
-    # @param iters: Integer specifying number of draws.
+    # @param n_iters: Integer specifying number of draws.
     #
     # returns: Array of dimension(n_iters, n_pars) which are sampled prior values.
     stopifnot(typeof(pars) == "list")
@@ -51,6 +51,15 @@ SBCModel <- R6Class("SBCModel", list(
     }
     return(theta_arr)
   },
+  sample_theta_tilde_stan = function(pars_list, n_iters){
+    # Try and use the stan code to sample theta values
+    # We'll set iteration step to 1 and sample from the hyperpriors.
+    #
+    # @param pars_list: list of parameter names to draw
+    # @param n_iters: integer specifying number of individual draws
+    
+    # to be implemented(not sure if necessary)
+  },
   sample_y_tilde = function(theta_arr, y_count, y_var="y_rep", data=list()){
     # sample $\tilde{y} ~ p(\tilde{y} | \tilde{\theta})$, or y_tilde ~ P(y_tilde | theta_tilde)
     # The stan model must specify P(y | theta) within the generated quantities block
@@ -58,7 +67,7 @@ SBCModel <- R6Class("SBCModel", list(
     # @param theta_arr: Array of sampled theta_tilde values (n_iters, n_pars), which is outputted from self$sample_theta_tilde()
     # @param y_count: number of y_tilde samples being generated within generated quantities
     # @param y_var: y_tilde variable name. Will be retrieved from model as so: y_var[n] (1<=n<=y_count)
-    # @param data: data list to pass to the stan model, in most cases is irrelevant since sampling will be done with fixed params
+    # @param data: data list to pass to the stan model, in most cases would be dummy data since data will be drawn with fixed params
     #
     # returns: array of dimension (n_iters, y_count) of sampled y
     stopifnot(length(dim(theta_arr)) == 2)

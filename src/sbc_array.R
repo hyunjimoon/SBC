@@ -116,27 +116,27 @@ sbc.plot.ecdf <- function(ranks, par){
   
 }
 
-sbc.plot.ecdf.diff <- function(ranks, par){
-  # Plot ECDF values centered around given rank array "ranks"
-  # Please refer to A. Vehtari et al.
-  #
-  # ranks: array of dimension(n_iter, n_pars) where n_iter=number of posterior draw iterations, n_pars the number of parameters of interest
-  # par: names of parameter to plot
-  S <- dim(ranks)[1]
-  r.scale <- rank(ranks[, par], ties.method="average")  # rescale ranks
-  q95 <- qbeta(0.95, r.scale+1, S - r.scale + 1)
-  q05 <- qbeta(0.05, r.scale+1, S - r.scale + 1)
-
-  ecdf.plot <- ggplot() + aes(x = r.scale / S) + stat_ecdf(n=S, pad=TRUE)  # dummy plot to extract ecdf values
-  ecdf.data <- data.frame(y=layer_data(ecdf.plot)$y, x=layer_data(ecdf.plot)$x)
-  ecdf.data[1, ] <- 0
-  ecdf.data[length(ecdf.data$y), ] <- 1
-
-  plot.data <- data.frame(x=r.scale/S, q95=q95 - (r.scale/S), q05=q05 - (r.scale/S))
-  
-  ggplot(plot.data) + aes(x=x) + geom_line(data=ecdf.data, aes(x=x, y=y-x), color="black") + #ylim(-1.0, 1.0) + 
-    geom_line(aes(y=q95), color="blue") + geom_line(aes(y=q05), color="blue") + xlab("Fractional Rank") +
-    ylab("ECDF") + ggtitle(paste("Centered ECDF for parameter", par))
-  
-}
+# sbc.plot.ecdf.diff <- function(ranks, par){
+#   # Plot ECDF values centered around given rank array "ranks"
+#   # Please refer to A. Vehtari et al.
+#   #
+#   # ranks: array of dimension(n_iter, n_pars) where n_iter=number of posterior draw iterations, n_pars the number of parameters of interest
+#   # par: names of parameter to plot
+#   S <- dim(ranks)[1]
+#   r.scale <- rank(ranks[, par], ties.method="average")  # rescale ranks
+#   q95 <- qbeta(0.95, r.scale+1, S - r.scale + 1)
+#   q05 <- qbeta(0.05, r.scale+1, S - r.scale + 1)
+# 
+#   ecdf.plot <- ggplot() + aes(x = r.scale / S) + stat_ecdf(n=S, pad=TRUE)  # dummy plot to extract ecdf values
+#   ecdf.data <- data.frame(y=layer_data(ecdf.plot)$y, x=layer_data(ecdf.plot)$x)
+#   ecdf.data[1, ] <- 0
+#   ecdf.data[length(ecdf.data$y), ] <- 1
+# 
+#   plot.data <- data.frame(x=r.scale/S, q95=q95 - (r.scale/S), q05=q05 - (r.scale/S))
+#   
+#   ggplot(plot.data) + aes(x=x) + geom_line(data=ecdf.data, aes(x=x, y=y-x), color="black") + #ylim(-1.0, 1.0) + 
+#     geom_line(aes(y=q95), color="blue") + geom_line(aes(y=q05), color="blue") + xlab("Fractional Rank") +
+#     ylab("ECDF") + ggtitle(paste("Centered ECDF for parameter", par))
+#   
+# }
 
