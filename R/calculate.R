@@ -3,7 +3,7 @@
 #' Given prior and posterior samples, generate rank count for each bin.
 #'
 #' @param prior A named array of dimensions(n_iter, n_pars) where n_iter=number of SBC draws, n_pars the number of parameters. Names should be applied as parameter names.
-#' @param posterior A named array of dimensions(n_iter, n_pars) where n_iter=number of SBC draws, n_pars the number of parameters. Names should be applied as parameter names. Equivalent to posterior.as_draws_array
+#' @param posterior A named array of dimensions(n_iter, n_pars, n_samples) where n_iter=number of SBC draws, n_pars the number of parameters, and n_samples the number of samples per SBC draw. Names should be applied as parameter names. Equivalent to posterior.as_draws_array
 #' @param thin Integer in which thinning samples will be applied
 #' prior array dimensions: (n_iter, n_pars)
 #' posterior array dimensions: (n_iter, n_pars, n_sample)

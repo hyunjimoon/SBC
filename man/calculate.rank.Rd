@@ -9,7 +9,7 @@ calculate.rank(prior, posterior, thin)
 \arguments{
 \item{prior}{A named array of dimensions(n_iter, n_pars) where n_iter=number of SBC draws, n_pars the number of parameters. Names should be applied as parameter names.}
 
-\item{posterior}{A named array of dimensions(n_iter, n_pars) where n_iter=number of SBC draws, n_pars the number of parameters. Names should be applied as parameter names. Equivalent to posterior.as_draws_array}
+\item{posterior}{A named array of dimensions(n_iter, n_pars, n_samples) where n_iter=number of SBC draws, n_pars the number of parameters, and n_samples the number of samples per SBC draw. Names should be applied as parameter names. Equivalent to posterior.as_draws_array}
 
 \item{thin}{Integer in which thinning samples will be applied
 prior array dimensions: (n_iter, n_pars)
