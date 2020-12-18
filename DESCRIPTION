@@ -2,15 +2,29 @@ Package: SBC
 Title: What the Package Does (One Line, Title Case)
 Version: 0.0.0.9000
 Authors@R: 
-    person(given = "First",
-           family = "Last",
+    c(person(given = "Shinyoung",
+           family = "Kim",
+           role = c("aut"),
+           email = "tttllshin@gmail.com",
+           comment = c()),
+    person(given = "Hyunji",
+           family = "Moon",
            role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to
-    pick a license
+           email = "hyunjimoon@gmail.com",
+           comment = c()))
+Description: SBC helps perform Simulation Based Calibration on cmdstanr or rstan models.
+  It contains various classes and functions to extract samples from models, calculate SBC metrics and visualize utility plots.
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
+Imports:
+  R6,
+  posterior,
+  ggplot2,
+  stats
+Suggests: 
+    testthat,
+    cmdstanr,
+    rstan
