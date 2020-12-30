@@ -1,0 +1,73 @@
+---
+title: "SBC basic"
+author: "Vignette Author"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+```{r setup, include = FALSE}
+library(SBC); library(rstan)
+```
+
+```{r setup, include = TRUE}
+stan_code <- "
+data{
+  int n_datasets;
+  int y[n_datasets];
+}
+parameters{
+  real<lower = 0> lambda;
+}
+model{
+  y ~ poisson(lambda);
+}
+
+generated quantities{
+  int y_rep[n_datasets];
+  real log_lik[n_datasets];
+  for (i in 1:n_datasets){
+    y_rep[i] = poisson_rng(lambda); 
+    log_lik[i] = poisson_lpmf(y_rep[i] | lambda);
+  }
+}
+"
+#f <- write_stan_file(stan_code)
+#model <- cmdstan_model(f)
+model <- stan_model(model_code = stan_code)
+
+# set hyperprior and iteration numbers
+n_datasets = 100 # final value should be 1000  # total number of simulated data sets and fits
+n_samples = 50 # final value 99 rec. # number of posterior draws per simulated data set
+thin = 3
+hyperpriors = list("lambda"=function(){rgamma(1, shape=15, rate=5)})
+sbc_obj <- SBCModel$new(name = "poisson", stan_model = model, hyperpriors = hyperpriors)
+data <- list(n_datasets=n_datasets, y=as.vector(1:n_datasets))
+
+# prior sampling
+theta_prior <- sbc_obj$sample_theta_tilde(list("lambda"), n_datasets)
+
+# simulated y data with sampled parameters
+sampled_y <- sbc_obj$sample_y_tilde(theta_prior, y_count = n_datasets, data=data) # dummy data for y) 
+# retrieve parameters by refitting on simulated y data
+theta_post <- sbc_obj$sample_theta_bar_y(sampled_y, data=data, pars=list("lambda"), fit_iter = n_samples * thin)
+rank <- calculate.rank(theta_prior, theta_post, thin = thin)
+plot.hist(rank, "lambda")
+plot.ecdf(rank, "lambda")
+# plot.ecdf.diff? 
+```
+
+For faster computation, bootstrap could be used to decrease the number of refitting. This is an experimental feature.
+
+```{r setup, include = FALSE}
+#rstan_sampled_y <- round(rstan_sampled_y)
+bootstrap_y <- sbc_obj$sample_bootstrap_y_tilde(sampled_y[1, ], 10)
+post <- rstan_sbc_obj$sample_theta_bar_y(rstan_bootstrap_y, pars=list("lambda", "lp__"), data=list(N=25))
+calculate.rank(rstan_theta_arr, rstan_post, thin = 3)
+plot.hist(rank, "lambda")
+plot.ecdf(rank, "lambda")
+```
+
+cmdstanr is also supported and by replacing the above functions with the equivalents introduced [here](https://github.com/hyunjimoon/SBC/blob/master/tests/testthat/test-SBCModel.R).

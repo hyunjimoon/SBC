@@ -7,7 +7,7 @@
 #' @param bins number of histogram bins to plot default is 20
 #' @import ggplot2
 #' @export
-plot.hist <- function(ranks, par, thin, bins=20){
+plot.hist <- function(ranks, par, bins=20){
   CI = stats::qbinom(c(0.05,0.5,0.95), size=dim(ranks)[1], prob = 1/(bins))
   ggplot() + aes(ranks[, par]) + geom_histogram(bins=bins) +
     geom_hline(yintercept = CI, color="black", linetype="dashed") +

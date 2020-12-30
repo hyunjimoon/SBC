@@ -93,7 +93,7 @@ SBCModel <- R6::R6Class("SBCModel",
                                                  parallel_chains=1, save_warmup=FALSE, refresh=0, fixed_param=TRUE)
 
           sample_summary <- model_fit$summary()
-          samples <- lapply(1:y_count, function(x) as.double(sample_summary[sample_summary$variable == paste0(y_var, "[", x, "]"), "mean"]))
+          samples <- lapply(1:y_count, function(x) as.double(sample_summary[sample_summary$variable == paste0(y_var, "[", x, "]"), "50%"]))
           sample_arr[iter_index, ] <- unlist(samples)
         }
         else if(self$model_type == RSTAN_MODEL_CLASS_NAME){
@@ -103,7 +103,7 @@ SBCModel <- R6::R6Class("SBCModel",
                                        init=list(theta_slice), cores=1, show_messages=FALSE, refresh=0)
 
           sample_summary <- rstan::summary(model_fit)$summary
-          samples <- lapply(1:y_count, function(x) sample_summary[paste0(y_var, "[", x, "]"), "mean"])
+          samples <- lapply(1:y_count, function(x) sample_summary[paste0(y_var, "[", x, "]"), "50%"])
           sample_arr[iter_index, ] <- unlist(samples)
         }
       }
@@ -125,10 +125,10 @@ SBCModel <- R6::R6Class("SBCModel",
       stopifnot(length(pars) > 0)
 
       n_iters = dim(y_sample_arr)[1]
-      draw_arr <- array(dim=c(n_iters, length(pars), fit_iter))
       if(typeof(pars) == "list"){
         pars <- unlist(pars)
       }
+      draw_arr <- array(dim=c(n_iters, length(pars), fit_iter), dimnames = list(c(1:n_iters), pars, c(1:fit_iter)))
 
       for(iter_index in 1:n_iters){
         data[["y"]] <- y_sample_arr[iter_index, ]  # insert "y" with sample slice vector
@@ -154,9 +154,9 @@ SBCModel <- R6::R6Class("SBCModel",
                 This probably means a sequential parameter is included, and SBC can't verify the identities of parameter samples.
                 If you would like to use SBC plotting features, you need to manually define dimnames for each parameter in dimension 2")
       }
-      else{
-        dimnames(draw_arr)[[2]] <- pars  # TODO: handle sequential parameters
-      }
+      #else{
+        #dimnames(draw_arr)[[2]] <- pars  #TODO: handle sequential parameters
+      #}
       rm(model_fit)
       return(draw_arr)
     },
