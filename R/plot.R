@@ -3,11 +3,10 @@
 #'
 #' @param ranks array of dimension(n_iter, n_pars) where n_iter=number of posterior draw iterations, n_pars the number of parameters of interest
 #' @param par names of parameter to plot
-#' @param thin integer in which thinning was applied
 #' @param bins number of histogram bins to plot default is 20
 #' @import ggplot2
 #' @export
-plot.hist <- function(ranks, par, bins=20){
+plot_hist <- function(ranks, par, bins=20){
   CI = stats::qbinom(c(0.05,0.5,0.95), size=dim(ranks)[1], prob = 1/(bins))
   ggplot() + aes(ranks[, par]) + geom_histogram(bins=bins) +
     geom_hline(yintercept = CI, color="black", linetype="dashed") +
@@ -21,7 +20,7 @@ plot.hist <- function(ranks, par, bins=20){
 #' @param par names of parameter to plot
 #' @import ggplot2
 #' @export
-plot.ecdf <- function(ranks, par){
+plot_ecdf <- function(ranks, par){
 
   S <- dim(ranks)[1]
   r.scale <- rank(ranks[, par], ties.method="average")

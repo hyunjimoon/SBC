@@ -9,7 +9,7 @@
 #' posterior array dimensions: (n_iter, n_pars, n_sample)
 #' @return array of dimensions(n_iter, n_pars)
 #' @export
-calculate.rank <- function(prior, posterior, thin){
+calculate_rank <- function(prior, posterior, thin){
 
   prior_dims = dim(prior)
   posterior_dims = dim(posterior)

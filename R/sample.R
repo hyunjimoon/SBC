@@ -100,7 +100,7 @@ SBCModel <- R6::R6Class("SBCModel",
           # sample for rstan
           model_fit <- rstan::sampling(self$stan_model, data=data,
                                        pars=as.vector(c(dimnames(theta_arr)[[2]], y_var)), chains=1, algorithm="Fixed_param",
-                                       init=list(theta_slice), cores=1, show_messages=FALSE, refresh=0)
+                                       init=list(theta_slice), iter=2, warmup=1, cores=1, show_messages=FALSE, refresh=0)
 
           sample_summary <- rstan::summary(model_fit)$summary
           samples <- lapply(1:y_count, function(x) sample_summary[paste0(y_var, "[", x, "]"), "50%"])

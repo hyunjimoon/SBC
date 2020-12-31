@@ -53,9 +53,9 @@ theta_prior <- sbc_obj$sample_theta_tilde(list("lambda"), n_datasets)
 sampled_y <- sbc_obj$sample_y_tilde(theta_prior, y_count = n_datasets, data=data) # dummy data for y) 
 # retrieve parameters by refitting on simulated y data
 theta_post <- sbc_obj$sample_theta_bar_y(sampled_y, data=data, pars=list("lambda"), fit_iter = n_samples * thin)
-rank <- calculate.rank(theta_prior, theta_post, thin = thin)
-plot.hist(rank, "lambda")
-plot.ecdf(rank, "lambda")
+rank <- calculate_rank(theta_prior, theta_post, thin = thin)
+plot_hist(rank, "lambda")
+plot_ecdf(rank, "lambda")
 # plot.ecdf.diff? 
 ```
 
@@ -66,8 +66,8 @@ For faster computation, bootstrap could be used to decrease the number of refitt
 bootstrap_y <- sbc_obj$sample_bootstrap_y_tilde(sampled_y[1, ], 10)
 post <- rstan_sbc_obj$sample_theta_bar_y(rstan_bootstrap_y, pars=list("lambda", "lp__"), data=list(N=25))
 calculate.rank(rstan_theta_arr, rstan_post, thin = 3)
-plot.hist(rank, "lambda")
-plot.ecdf(rank, "lambda")
+plot_hist(rank, "lambda")
+plot_ecdf(rank, "lambda")
 ```
 
 cmdstanr is also supported and by replacing the above functions with the equivalents introduced [here](https://github.com/hyunjimoon/SBC/blob/master/tests/testthat/test-SBCModel.R).

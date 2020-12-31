@@ -7,7 +7,7 @@
 #' @param bins number of bins to use for summary
 #' @importFrom stats chisq.test integrate
 #' @export
-print.summary <- function(ranks, par, thin, bins = 20){
+print_summary <- function(ranks, par, thin, bins = 20){
   pval <- function(bin_count){
     return(chisq.test(bin_count)$p.value)
   }
