@@ -59,13 +59,19 @@ SBCModel <- R6::R6Class("SBCModel",
 
     #' @description
     #' Try and use the stan code to sample theta values
-    #' We'll set iteration step to 1 and sample from the hyperpriors.
+    #' Will set iteration step to 1 and sample from the hyperpriors.
     #'
     #' @param pars_list list of parameter names to draw
     #' @param n_iters integer specifying number of individual draws
     #'
     #' to be implemented(not sure if necessary)
     sample_theta_tilde_stan = function(pars_list, n_iters){
+      if(self$model_type == CMDSTAN_MODEL_CLASS_NAME){
+        # explore parameters for cmdstan
+      }
+      else if(self$model_Type == RSTAN_MODEL_CLASS_NAME){
+        # explore parameters for rstan
+      }
     },
 
     #' @description
@@ -138,8 +144,6 @@ SBCModel <- R6::R6Class("SBCModel",
                                               save_warmup=FALSE, refresh=0, thin=NULL)
 
           draw_arr[iter_index, , ] <- aperm(model_fit$draws(variables=pars)[, 1, ])  # arrays are filled row first, so we permutate once
-          # https://github.com/stan-dev/cmdstanr/issues/346
-          # currently throws an error if you try to retrieve only a single numeric variable, just add lp until fix is released
         }
 
         else if(self$model_type == RSTAN_MODEL_CLASS_NAME){
@@ -177,5 +181,69 @@ SBCModel <- R6::R6Class("SBCModel",
       }
       return(y_star_arr)
     }
+  ),
+  private = list(
+    #' @description
+    #' Given list of base parameter names and stan summary matrix, return list of all individual index parameter names
+    #' For example, if the model contained a vector[5] parname as a parameter, you can run infer_sequential_param("parname", ...)
+    #' and it will return a list of strings "parname[1]", "parname[2]", ...
+    #'
+    #' @param par_names list of base parameter names to find indexes
+    #' @param summary_data stansummary matrix that at has row indexes as indexed parameter names, and at least "mean" in its column. It
+    #' must raise a subscript error if a row that doesn't exist is requested
+    #' @param max_dims Maximum dimension to search
+    #'
+    #' @return list of strings, that represent indexed parameter names
+    infer_sequential_params = function(par_names, summary_data, max_dims=2){
+      generate_index_name <- function(name, ...){
+        return(paste0(name, "[", paste0(c(...), collapse=","), "]"))  # receive indexes and return stan param name
+      }
+      return_names <- list()  # list that holds the final par names, returned
+
+      for(parname in par_names){  # iterate through all received parameter base names
+        for(current_dim in max_dims:0){  # start from max dim and descend down to scalar
+          if(current_dim == 0){  #  scalar parameter
+            append(return_names, parname)
+            break
+          }
+          tmp_indexes <- as.integer(rep(1, current_dim))  # initial backtrack attempt index = rep(1, n_dims)
+
+          is_current_dim <- TRUE  # check if value exists for current dimension
+          tryCatch({summary_data[generate_index_name(parname, tmp_indexes), "mean"]}, error=function(err){is_current_dim <<- FALSE})
+          if(isFALSE(is_current_dim)){
+            next
+          }
+
+          return_names <- append(return_names, generate_index_name(parname, tmp_indexes))  # append first index
+
+          final_indexes <- as.integer(rep(0, current_dim))  # upper bound for each component
+          accumulator <- 0  # current component index
+          while (sum(tmp_indexes != 0)) {
+            skip <- FALSE  # boolean check to handle next requests
+            accumulator <- accumulator%% current_dim + 1  # iterate over all components
+            if(isTRUE(tmp_indexes[accumulator] == 0)){next}  # skip 0 accumulators
+            tryCatch(
+              {
+                # attempt higher index
+                print(summary_data[generate_index_name(parname, bitwOr(replace(tmp_indexes, accumulator, tmp_indexes[accumulator]+1), final_indexes)), "mean"])
+              },
+              error = function(err){  # subscript out of bounds, backtrack and end component
+                final_indexes <<- replace(final_indexes, accumulator, tmp_indexes[accumulator])
+                tmp_indexes <<- replace(tmp_indexes, accumulator, 0)
+                skip <<- TRUE
+              }
+            )
+            if(isTRUE(skip)) {
+              next
+            }
+
+            tmp_indexes <- replace(tmp_indexes, accumulator, tmp_indexes[accumulator]+1)  # increment backtrack location
+            return_names <- append(return_names, generate_index_name(parname, bitwOr(tmp_indexes, final_indexes)))  # tmp_indexes | return_name exists, add to return name
+          }
+          break  # exit current parameter after single iteration
+        }
+      }
+      return(return_names)
+    },
   )
 )
