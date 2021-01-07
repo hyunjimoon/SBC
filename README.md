@@ -28,3 +28,4 @@ SBC uses the above principle and evaluates the combination of the prior and like
 Algorithms with Simulation-Based
 Calibration](https://arxiv.org/pdf/1804.06788.pdf), Sean Talts, Michael Betancourt, et al.
 * [Rank-Normalization, Folding, and Localization: An Improved R-hat for Assessing Convergence of MCMC](https://arxiv.org/abs/1903.08008), Aki Vehtari, Andrew Gelman, et al.
+* [ECDF] (https://avehtari.github.io/rhat_ess/rhat_ess.html)
