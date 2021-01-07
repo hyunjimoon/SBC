@@ -31,6 +31,8 @@ Initialize a SBCModel with a existing stan Model}
 \item \href{#method-sample_y_tilde}{\code{SBCModel$sample_y_tilde()}}
 \item \href{#method-sample_theta_bar_y}{\code{SBCModel$sample_theta_bar_y()}}
 \item \href{#method-sample_bootstrap_y_tilde}{\code{SBCModel$sample_bootstrap_y_tilde()}}
+\item \href{#method-sample_all}{\code{SBCModel$sample_all()}}
+\item \href{#method-infer_sequential_params}{\code{SBCModel$infer_sequential_params()}}
 \item \href{#method-clone}{\code{SBCModel$clone()}}
 }
 }
@@ -81,10 +83,11 @@ Array of dimension(n_iters, n_pars) which are sampled prior values.
 \if{html}{\out{<a id="method-sample_theta_tilde_stan"></a>}}
 \if{latex}{\out{\hypertarget{method-sample_theta_tilde_stan}{}}}
 \subsection{Method \code{sample_theta_tilde_stan()}}{
-Try and use the stan code to sample theta values
-We'll set iteration step to 1 and sample from the hyperpriors.
+Try and use the stan code to sample theta values.
+This is useful if you have prior simulation defined in generated quantities.
+Note that this does \emph{not} use the model, since Stan doesn't directly sample from the prior.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_theta_tilde_stan(pars_list, n_iters)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_theta_tilde_stan(pars_list, n_iters, data = list())}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -92,11 +95,16 @@ We'll set iteration step to 1 and sample from the hyperpriors.
 \describe{
 \item{\code{pars_list}}{list of parameter names to draw}
 
-\item{\code{n_iters}}{integer specifying number of individual draws
+\item{\code{n_iters}}{integer specifying number of individual draws}
 
-to be implemented(not sure if necessary)}
+\item{\code{data}}{additional data for the model, if necessary}
+
+\item{\code{suffix}}{additional suffix added to simulated parameter names. default is "_rep"}
 }
 \if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+array of dimension(n_iters, n_pars) which are sampled prior values, and named
 }
 }
 \if{html}{\out{<hr>}}
@@ -179,6 +187,75 @@ given a single vector of data y_tilde, bootstrap sample multiple values of y_til
 }
 \subsection{Returns}{
 array of dimension (n_iters, y_count) of bootstrap sampled y
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-sample_all"></a>}}
+\if{latex}{\out{\hypertarget{method-sample_all}{}}}
+\subsection{Method \code{sample_all()}}{
+High level function that automatically runs all low level sampling functions in order
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_all(
+  priors = list(),
+  pars = list(),
+  n_iters = 20,
+  n_fits = 200,
+  data = list(),
+  y_gq_name = "y_rep",
+  thin = 3
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{priors}}{named list of functions which define how each parameter's prior is sampled. If empty, will be
+sampled from stan with the assumption that it's defined within generated quantities.}
+
+\item{\code{pars}}{list of base parameter names of interest(no indexes)}
+
+\item{\code{n_iters}}{number of SBC iterations to run. default is 20}
+
+\item{\code{n_fits}}{number of iterations to fit theta. default is 200}
+
+\item{\code{data}}{list of additional data necessary for the model to run}
+
+\item{\code{y_gq_name}}{name of posterior predictive variable for y. default is "y_rep"}
+
+\item{\code{thin}}{sample thinning interval. default is 3}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+array of dimension (n_iters, n_pars, fit_iter) of posterior parameter draws
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-infer_sequential_params"></a>}}
+\if{latex}{\out{\hypertarget{method-infer_sequential_params}{}}}
+\subsection{Method \code{infer_sequential_params()}}{
+Given list of base parameter names and stan summary matrix, return list of all individual index parameter names
+For example, if the model contained a vector[5] parname as a parameter, you can run infer_sequential_param("parname", ...)
+and it will return a list of strings "parname[1]", "parname[2]", ...
+This function will also search for multidimensional array types, up to dimension max_dims.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{SBCModel$infer_sequential_params(par_names, summary_data, max_dims = 2)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{par_names}}{list of base parameter names to find indexes}
+
+\item{\code{summary_data}}{stansummary matrix that has row names as indexed parameter names, and at least "mean" in its column. It
+must raise a subscript error if a row that doesn't exist is indexed. Same as output of rstan::summary}
+
+\item{\code{max_dims}}{Maximum dimension to search}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+list of strings, that represent indexed parameter names
 }
 }
 \if{html}{\out{<hr>}}

@@ -56,7 +56,6 @@ theta_post <- sbc_obj$sample_theta_bar_y(sampled_y, data=data, pars=list("lambda
 rank <- calculate_rank(theta_prior, theta_post, thin = thin)
 plot_hist(rank, "lambda")
 plot_ecdf(rank, "lambda")
-# plot.ecdf.diff? 
 ```
 
 For faster computation, bootstrap could be used to decrease the number of refitting. This is an experimental feature.
