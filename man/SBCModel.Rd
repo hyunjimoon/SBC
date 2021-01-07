@@ -193,7 +193,7 @@ array of dimension (n_iters, y_count) of bootstrap sampled y
 \if{html}{\out{<a id="method-sample_all"></a>}}
 \if{latex}{\out{\hypertarget{method-sample_all}{}}}
 \subsection{Method \code{sample_all()}}{
-High level function that automatically runs all low level sampling functions in order
+High level function that automatically runs all low level sampling functions, and returns just posterior parameter draws
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_all(
   priors = list(),

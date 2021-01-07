@@ -214,7 +214,7 @@ SBCModel <- R6::R6Class("SBCModel",
     },
 
     #' @description
-    #' High level function that automatically runs all low level sampling functions in order
+    #' High level function that automatically runs all low level sampling functions, and returns just posterior parameter draws
     #'
     #' @param priors named list of functions which define how each parameter's prior is sampled. If empty, will be
     #' sampled from stan with the assumption that it's defined within generated quantities.
