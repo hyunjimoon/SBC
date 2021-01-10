@@ -15,9 +15,7 @@ R6 Class Representing a collection of functions to extract data from a single mo
 
 \item{\code{stan_model}}{A CmdStanModel or a stanmodel}
 
-\item{\code{model_type}}{A string containing self$stan_model type. can be either RSTAN_MODEL_CLASS_NAME or CMDSTAN_MODEL_CLASS_NAME}
-
-\item{\code{hyperpriors}}{A named list containing prior definitions and sampling functions
+\item{\code{model_type}}{A string containing self$stan_model type. can be either RSTAN_MODEL_CLASS_NAME or CMDSTAN_MODEL_CLASS_NAME
 Initialize a SBCModel with a existing stan Model}
 }
 \if{html}{\out{</div>}}
@@ -41,7 +39,7 @@ Initialize a SBCModel with a existing stan Model}
 \if{latex}{\out{\hypertarget{method-new}{}}}
 \subsection{Method \code{new()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SBCModel$new(name, stan_model = NULL, hyperpriors = list())}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SBCModel$new(name, stan_model = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -50,9 +48,6 @@ Initialize a SBCModel with a existing stan Model}
 \item{\code{name}}{Some string to identify your SBCModel}
 
 \item{\code{stan_model}}{A 'CmdStanModel' or a 'stanmodel' to draw samples}
-
-\item{\code{hyperpriors}}{A named list containing definitions of prior for parameters. Follows the format:
-list(param1=func, param2=func) where func is a function that returns a single value for each parameter}
 }
 \if{html}{\out{</div>}}
 }
@@ -61,9 +56,9 @@ list(param1=func, param2=func) where func is a function that returns a single va
 \if{html}{\out{<a id="method-sample_theta_tilde"></a>}}
 \if{latex}{\out{\hypertarget{method-sample_theta_tilde}{}}}
 \subsection{Method \code{sample_theta_tilde()}}{
-Sample \eqn{\tilde{\theta} ~ P(\theta)} from self$hyperpriors
+Sample \eqn{\tilde{\theta} ~ P(\theta)} (Prior predictive sampling)
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_theta_tilde(pars, n_iters)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_theta_tilde(pars, n_iters, hyperpriors = list())}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -72,6 +67,9 @@ Sample \eqn{\tilde{\theta} ~ P(\theta)} from self$hyperpriors
 \item{\code{pars}}{List of parameters to draw prior samples.}
 
 \item{\code{n_iters}}{Integer specifying number of draws.}
+
+\item{\code{hyperpriors}}{A named list containing prior definitions and sampling functions. Follows the format:
+list(param1=func, param2=func) where func is a function that returns a single value for each parameter}
 }
 \if{html}{\out{</div>}}
 }
@@ -83,11 +81,16 @@ Array of dimension(n_iters, n_pars) which are sampled prior values.
 \if{html}{\out{<a id="method-sample_theta_tilde_stan"></a>}}
 \if{latex}{\out{\hypertarget{method-sample_theta_tilde_stan}{}}}
 \subsection{Method \code{sample_theta_tilde_stan()}}{
-Try and use the stan code to sample theta values.
+Try and use the stan code to sample theta values(prior predictive sampling).
 This is useful if you have prior simulation defined in generated quantities.
 Note that this does \emph{not} use the model, since Stan doesn't directly sample from the prior.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_theta_tilde_stan(pars_list, n_iters, data = list())}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_theta_tilde_stan(
+  pars_list,
+  n_iters,
+  data = list(),
+  suffix = "_"
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -99,22 +102,24 @@ Note that this does \emph{not} use the model, since Stan doesn't directly sample
 
 \item{\code{data}}{additional data for the model, if necessary}
 
-\item{\code{suffix}}{additional suffix added to simulated parameter names. default is "_rep"}
+\item{\code{suffix}}{additional suffix added to simulated parameter names. default is "\emph{". For example,
+if the parameter is called "mu", "mu}" will be sampled as the prior predictive distribution.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-array of dimension(n_iters, n_pars) which are sampled prior values, and named
+named array of dimension(n_iters, n_pars) which are sampled prior values, and named without suffixes
 }
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-sample_y_tilde"></a>}}
 \if{latex}{\out{\hypertarget{method-sample_y_tilde}{}}}
 \subsection{Method \code{sample_y_tilde()}}{
-sample \eqn{\tilde{y} ~ p(\tilde{y} | \tilde{\theta})}, or y_tilde ~ P(y_tilde | theta_tilde)
+sample \eqn{\tilde{y} ~ p(\tilde{y} | \tilde{\theta})}, or y_tilde ~ P(y_tilde | theta_tilde),
+which is the Posterior Predictive Distribution.
 The stan model must specify P(y | theta) within the generated quantities block
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_y_tilde(theta_arr, y_count, y_var = "y_rep", data = list())}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_y_tilde(theta_arr, y_var = "y_", data = list())}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -122,23 +127,21 @@ The stan model must specify P(y | theta) within the generated quantities block
 \describe{
 \item{\code{theta_arr}}{Array of sampled theta_tilde values (n_iters, n_pars), which is outputted from self$sample_theta_tilde()}
 
-\item{\code{y_count}}{number of y_tilde samples being generated within generated quantities}
-
-\item{\code{y_var}}{y_tilde variable name. Will be retrieved from model as so: y_var[n] (1<=n<=y_count)}
+\item{\code{y_var}}{y_tilde variable name. Will be retrieved from model as so: y_[n] (1<=n<=y_count)}
 
 \item{\code{data}}{data list to pass to the stan model, in most cases would be dummy data since data will be drawn with fixed params}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-array of dimension (n_iters, y_count) of sampled y
+array of dimension (n_iters, y_count) of sampled y. Each row is a sample vector for a single parameter vector
 }
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-sample_theta_bar_y"></a>}}
 \if{latex}{\out{\hypertarget{method-sample_theta_bar_y}{}}}
 \subsection{Method \code{sample_theta_bar_y()}}{
-sample \eqn{\theta ~ p(\theta | \tilde{y})}
+Sample \eqn{\theta ~ p(\theta | \tilde{y})}, to retrieve parameters from samples.
 The stan model must have \eqn{\theta} defined as parameters
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_theta_bar_y(
@@ -193,15 +196,17 @@ array of dimension (n_iters, y_count) of bootstrap sampled y
 \if{html}{\out{<a id="method-sample_all"></a>}}
 \if{latex}{\out{\hypertarget{method-sample_all}{}}}
 \subsection{Method \code{sample_all()}}{
-High level function that automatically runs all low level sampling functions, and returns just posterior parameter draws
+High level function that automatically runs all low level sampling functions, and returns just posterior rank statistics.
+Output is same as SBC::calculte_rank()
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_all(
   priors = list(),
   pars = list(),
+  prior_suffix = "_",
   n_iters = 20,
   n_fits = 200,
   data = list(),
-  y_gq_name = "y_rep",
+  y_gq_name = "y_",
   thin = 3
 )}\if{html}{\out{</div>}}
 }
@@ -214,20 +219,22 @@ sampled from stan with the assumption that it's defined within generated quantit
 
 \item{\code{pars}}{list of base parameter names of interest(no indexes)}
 
+\item{\code{prior_suffix}}{additional suffix added to simulated parameter names. default is "_"}
+
 \item{\code{n_iters}}{number of SBC iterations to run. default is 20}
 
 \item{\code{n_fits}}{number of iterations to fit theta. default is 200}
 
 \item{\code{data}}{list of additional data necessary for the model to run}
 
-\item{\code{y_gq_name}}{name of posterior predictive variable for y. default is "y_rep"}
+\item{\code{y_gq_name}}{name of posterior predictive variable for y. default is "y_"}
 
 \item{\code{thin}}{sample thinning interval. default is 3}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-array of dimension (n_iters, n_pars, fit_iter) of posterior parameter draws
+array of dimension (n_iters, n_pars) of posterior rank statistics
 }
 }
 \if{html}{\out{<hr>}}

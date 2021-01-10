@@ -1,26 +1,28 @@
 # SBC
 ## Efficient simulation-based calibration for Bayesian models
-SBC provides tools to easily validate and offer corrections on prior, likelihood, and computation algorithms based on the self-recovering property of Bayesian models. This package contains tools such as SBC rank plots, ECDF, and ECDF\_diff plots and their summary statistics which can be used to assess computational faithfulness. Modelers could, and are recommended to, diagnose their model based on multiple test results.
+SBC provides tools to easily validate and offer corrections on prior, likelihood, and computation algorithms based on the self-recovering property of Bayesian models. This package contains tools such as SBC rank histograms, ECDF plots, and their summary statistics which can be used to assess computational faithfulness. Modelers could, and are recommended to, diagnose their model based on multiple test results.
+
+Please refer to the included vignette for detailed usage.
+
 Some usecases include the following:
 1. Test prior and likelihood on the basis of computational consistency  
     Any canonical Bayesian Model has the *self recovering property*, in which averaging over posterior distributions fitted with samples from the prior predictive distribution will always be equal to the prior distribution.
 SBC uses the above principle and evaluates the combination of the prior and likelihood model under a fixed computation algorithm. Users should choose one computation algorithm in advance, such as full HMC, ADVI, Laplace approximation.
 2. Test approximation algorithms  
-    Approximate Bayesian computation is very promising but one limitation is that it can be hard to diagnose its reliability. For example, full HMC benchmark is needed to measure its error. SBC which evaluates how well an algorithm samples from the posterior distribution, given a model and a prior could be an alternative tool for measuring reliability.
+    Approximation based Bayesian computation is very promising but one limitation is that it can be hard to diagnose its reliability. For example, full HMC benchmark is needed to measure its error. SBC which evaluates how well an algorithm samples from the posterior distribution, given a model and a prior could be an alternative tool for measuring reliability.
 ---
 ### Currently supports:
 * Rank Histogram
 * ECDF plot
-* Centered Histogram plot
-* Partial support for automated predictive sampling of Stan models in canonical form yhat ~ P(y | theta)
+* Uniformity checks
+* ~~Centered Histogram plot~~
+* Support for automated predictive sampling of Stan models in canonical form yhat ~ P(y | theta)
+* Multi-parameter SBC plots
 ---
 ### TODO:
-* **Fully automate prior and posterior sampling**
-* Uniformity checks
 * ECDF\_diff plot
-* Multi-parameter SBC plots 
 * More envelope metrics
-* Add verbose diagnostics(somewhat like get\_hmc\_diagnostics)
+* Add verbose diagnostics, akin to stan's get\_hmc\_diagnostics
 * Inferential Calibration
 ---
 ### References:

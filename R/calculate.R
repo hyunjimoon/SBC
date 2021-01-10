@@ -7,6 +7,7 @@
 #' @param thin Integer in which thinning samples will be applied
 #' prior array dimensions: (n_iter, n_pars)
 #' posterior array dimensions: (n_iter, n_pars, n_sample)
+#'
 #' @return array of dimensions(n_iter, n_pars)
 #' @export
 calculate_rank <- function(prior, posterior, thin){

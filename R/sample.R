@@ -9,21 +9,16 @@ SBCModel <- R6::R6Class("SBCModel",
     #' @field name Some string to identify your SBCModel
     #' @field stan_model A CmdStanModel or a stanmodel
     #' @field model_type A string containing self$stan_model type. can be either RSTAN_MODEL_CLASS_NAME or CMDSTAN_MODEL_CLASS_NAME
-    #' @field hyperpriors A named list containing prior definitions and sampling functions
     name = NULL,
     stan_model = NULL,
     model_type = NULL,
-    hyperpriors = NULL,
 
     #' Initialize a SBCModel with a existing stan Model
     #' @param name Some string to identify your SBCModel
     #' @param stan_model A 'CmdStanModel' or a 'stanmodel' to draw samples
-    #' @param hyperpriors A named list containing definitions of prior for parameters. Follows the format:
-    #' list(param1=func, param2=func) where func is a function that returns a single value for each parameter
-    initialize = function(name, stan_model = NULL, hyperpriors = list()){
+    initialize = function(name, stan_model = NULL){
       stopifnot(is.character(name))
       stopifnot(CMDSTAN_MODEL_CLASS_NAME %in% class(stan_model) || RSTAN_MODEL_CLASS_NAME %in% class(stan_model))
-      stopifnot(length(hyperpriors) > 0)
 
       if(CMDSTAN_MODEL_CLASS_NAME%in% class(stan_model)){
         self$model_type <- CMDSTAN_MODEL_CLASS_NAME
@@ -35,41 +30,46 @@ SBCModel <- R6::R6Class("SBCModel",
         stop(paste("Could not identify stan_model with unknown class type", class(stan_model)))
       }
       self$stan_model <- stan_model
-      self$hyperpriors <- hyperpriors
     },
 
     #' @description
-    #' Sample \eqn{\tilde{\theta} ~ P(\theta)} from self$hyperpriors
+    #' Sample \eqn{\tilde{\theta} ~ P(\theta)} (Prior predictive sampling)
     #' @param pars List of parameters to draw prior samples.
     #' @param n_iters Integer specifying number of draws.
+    #' @param hyperpriors A named list containing prior definitions and sampling functions. Follows the format:
+    #' list(param1=func, param2=func) where func is a function that returns a single value for each parameter
     #'
     #' @return Array of dimension(n_iters, n_pars) which are sampled prior values.
-    sample_theta_tilde = function(pars, n_iters){
+    sample_theta_tilde = function(pars, n_iters, hyperpriors=list()){
       stopifnot(typeof(pars) == "list")
+      stopifnot(length(hyperpriors) > 0)
 
       theta_arr <- array(dim=c(n_iters, length(pars)))
       colnames(theta_arr) <- pars
       for(par_index in 1:length(pars)){
         for(iter_index in 1:n_iters){
-          theta_arr[iter_index, pars[[par_index]]] <- self$hyperpriors[[pars[[par_index]]]]()
+          theta_arr[iter_index, pars[[par_index]]] <- hyperpriors[[pars[[par_index]]]]()
         }
       }
       return(theta_arr)
     },
 
     #' @description
-    #' Try and use the stan code to sample theta values.
+    #' Try and use the stan code to sample theta values(prior predictive sampling).
     #' This is useful if you have prior simulation defined in generated quantities.
     #' Note that this does *not* use the model, since Stan doesn't directly sample from the prior.
     #'
     #' @param pars_list list of parameter names to draw
-    #' @param suffix additional suffix added to simulated parameter names. default is "_rep"
+    #' @param suffix additional suffix added to simulated parameter names. default is "_". For example,
+    #' if the parameter is called "mu", "mu_" will be sampled as the prior predictive distribution.
     #' @param n_iters integer specifying number of individual draws
     #' @param data additional data for the model, if necessary
     #'
-    #' @return array of dimension(n_iters, n_pars) which are sampled prior values, and named
-    sample_theta_tilde_stan = function(pars_list, n_iters, data=list()){
-      return_dframe <- NULL
+    #' @return named array of dimension(n_iters, n_pars) which are sampled prior values, and named without suffixes
+    sample_theta_tilde_stan = function(pars_list, n_iters, data=list(), suffix="_"){
+      stopifnot(length(pars_list) > 0)
+      suffixed_pars_list = lapply(pars_list, function(x){paste0(x, suffix)})  # actual parameter names
+      return_arr <- NULL
       for(iter_count in 1:n_iters){
         if(self$model_type == CMDSTAN_MODEL_CLASS_NAME){
           # explore parameters for cmdstan
@@ -78,7 +78,7 @@ SBCModel <- R6::R6Class("SBCModel",
 
           sample_summary <- as.data.frame(model_fit$summary())  # tibble to data.frame
           row.names(sample_summary) <- sample_summary[, "variable"]  # set "variable" column as row names
-          indexed_param_names <- self$infer_sequential_params(pars_list, sample_summary)
+
         }
         else if(self$model_Type == RSTAN_MODEL_CLASS_NAME){
           # explore parameters for rstan
@@ -87,51 +87,61 @@ SBCModel <- R6::R6Class("SBCModel",
                                        iter=2, warmup=1, cores=1, show_messages=FALSE, refresh=0)
 
           sample_summary <- rstan::summary(model_fit)$summary
-          indexed_param_names <- self$infer_sequential_params(pars_list, sample_summary)
         }
-        if(is.null(return_dframe)){  # initialize dataframe
-          return_dframe <- data.frame(matrix(nrow=n_iters, ncol=length(indexed_param_names)))
-          colnames(return_dframe) <- indexed_param_names
-          lapply(indexed_param_names, function(col_name){  # need to run assignment
-            return_dframe[iter_count, col_name] <<- sample_summary[col_name, "mean"]  # retrieve mean
+
+        suffix_indexed_param_names <- self$infer_sequential_params(suffixed_pars_list, sample_summary)
+        indexed_param_names <- lapply(suffix_indexed_param_names, function(n){stringi::stri_replace_last_fixed(n, suffix, "")})
+        if(is.null(return_arr)){  # initialize array
+          return_arr <- array(dim=c(n_iters, length(suffix_indexed_param_names)))
+          colnames(return_arr) <- indexed_param_names
+          lapply(suffix_indexed_param_names, function(col_name){  # need to run assignment
+            return_arr[iter_count, stringi::stri_replace_last_fixed(col_name, suffix, "")] <<- sample_summary[col_name, "mean"]  # retrieve mean
           })
         }
         else{  # fill values within column
-          lapply(indexed_param_names, function(col_name){
-            return_dframe[iter_count, col_name] <<- sample_summary[col_name, "mean"]  # retrieve mean
+          lapply(suffix_indexed_param_names, function(col_name){
+            return_arr[iter_count, stringi::stri_replace_last_fixed(col_name, suffix, "")] <<- sample_summary[col_name, "mean"]  # retrieve mean
           })
         }
       }
-      return(return_dframe)
+      if(!all(!is.na(return_arr))){
+        warning("Some samples contain NA as values. This means something went terribly wrong during sampling, or SBC is
+                failing to identify one of your prior parameters' names. Please check you have parameters with suffixes defined within
+                your model.")
+      }
+      return(return_arr)
     },
 
     #' @description
-    #' sample \eqn{\tilde{y} ~ p(\tilde{y} | \tilde{\theta})}, or y_tilde ~ P(y_tilde | theta_tilde)
+    #' sample \eqn{\tilde{y} ~ p(\tilde{y} | \tilde{\theta})}, or y_tilde ~ P(y_tilde | theta_tilde),
+    #' which is the Posterior Predictive Distribution.
     #' The stan model must specify P(y | theta) within the generated quantities block
     #'
     #' @param theta_arr Array of sampled theta_tilde values (n_iters, n_pars), which is outputted from self$sample_theta_tilde()
-    #' @param y_count number of y_tilde samples being generated within generated quantities
-    #' @param y_var y_tilde variable name. Will be retrieved from model as so: y_var\[n\] (1<=n<=y_count)
+    #' @param y_var y_tilde variable name. Will be retrieved from model as so: y_\[n\] (1<=n<=y_count)
     #' @param data data list to pass to the stan model, in most cases would be dummy data since data will be drawn with fixed params
     #'
-    #' @return array of dimension (n_iters, y_count) of sampled y
-    sample_y_tilde = function(theta_arr, y_count, y_var="y_rep", data=list()){
+    #' @return array of dimension (n_iters, y_count) of sampled y. Each row is a sample vector for a single parameter vector
+    sample_y_tilde = function(theta_arr, y_var="y_", data=list()){
       stopifnot(length(dim(theta_arr)) == 2)
 
       n_iters = dim(theta_arr)[1]
-      sample_arr <- array(dim=c(n_iters, y_count))
       for(iter_index in 1:n_iters){
         theta_slice <- as.list(theta_arr[iter_index, ])
-
         if(self$model_type == CMDSTAN_MODEL_CLASS_NAME){
           # sample for cmdstanr
           model_fit <- self$stan_model$sample(data=data,
                                                  init=list(theta_slice), iter_warmup=1, iter_sampling=1, chains=1,
                                                  parallel_chains=1, save_warmup=FALSE, refresh=0, fixed_param=TRUE)
 
-          sample_summary <- model_fit$summary()
-          samples <- lapply(1:y_count, function(x) as.double(sample_summary[sample_summary$variable == paste0(y_var, "[", x, "]"), "50%"]))
-          sample_arr[iter_index, ] <- unlist(samples)
+          sample_summary <- as.data.frame(model_fit$summary())  # tibble to data.frame
+          row.names(sample_summary) <- sample_summary[, "variable"]  # set "variable" column as row names
+          y_indexes = self$infer_sequential_params(list(y_var), sample_summary)
+          if(iter_index == 1){
+            sample_arr <<- array(dim=c(n_iters, length(y_indexes)))
+          }
+          samples <- unlist(lapply(y_indexes, function(x) {sample_summary[x, "mean"]}))
+          sample_arr[iter_index, ] <- samples
         }
         else if(self$model_type == RSTAN_MODEL_CLASS_NAME){
           # sample for rstan
@@ -140,8 +150,12 @@ SBCModel <- R6::R6Class("SBCModel",
                                        init=list(theta_slice), iter=2, warmup=1, cores=1, show_messages=FALSE, refresh=0)
 
           sample_summary <- rstan::summary(model_fit)$summary
-          samples <- lapply(1:y_count, function(x) sample_summary[paste0(y_var, "[", x, "]"), "50%"])
-          sample_arr[iter_index, ] <- unlist(samples)
+          y_indexes = self$infer_sequential_params(list(y_var), sample_summary)
+          if(iter_index == 1){
+            sample_arr <<- array(dim=c(n_iters, length(y_indexes)))
+          }
+          samples <- unlist(lapply(y_indexes, function(x) {as.double(sample_summary[x, "mean"])}))
+          sample_arr[iter_index, ] <- samples
         }
       }
       rm(model_fit, sample_summary, samples)  # cleanup
@@ -149,7 +163,7 @@ SBCModel <- R6::R6Class("SBCModel",
     },
 
     #' @description
-    #' sample \eqn{\theta ~ p(\theta | \tilde{y})}
+    #' Sample \eqn{\theta ~ p(\theta | \tilde{y})}, to retrieve parameters from samples.
     #' The stan model must have \eqn{\theta} defined as parameters
     #'
     #' @param y_sample_arr array of dimension (n_iters, y_count) of sampled y. Same as output of self$sample_y_tilde()
@@ -214,31 +228,33 @@ SBCModel <- R6::R6Class("SBCModel",
     },
 
     #' @description
-    #' High level function that automatically runs all low level sampling functions, and returns just posterior parameter draws
+    #' High level function that automatically runs all low level sampling functions, and returns just posterior rank statistics.
+    #' Output is same as SBC::calculte_rank()
     #'
     #' @param priors named list of functions which define how each parameter's prior is sampled. If empty, will be
     #' sampled from stan with the assumption that it's defined within generated quantities.
     #' @param pars list of base parameter names of interest(no indexes)
+    #' @param prior_suffix additional suffix added to simulated parameter names. default is "_"
     #' @param n_iters number of SBC iterations to run. default is 20
     #' @param n_fits number of iterations to fit theta. default is 200
     #' @param data list of additional data necessary for the model to run
-    #' @param y_gq_name name of posterior predictive variable for y. default is "y_rep"
+    #' @param y_gq_name name of posterior predictive variable for y. default is "y_"
     #' @param thin sample thinning interval. default is 3
     #'
-    #' @return array of dimension (n_iters, n_pars, fit_iter) of posterior parameter draws
-    sample_all = function(priors=list(), pars=list(), n_iters=20, n_fits=200, data=list(), y_gq_name="y_rep", thin=3){
+    #' @return array of dimension (n_iters, n_pars) of posterior rank statistics
+    sample_all = function(priors=list(), pars=list(), prior_suffix="_", n_iters=20, n_fits=200, data=list(), y_gq_name="y_", thin=3){
       stopifnot(length(pars) > 0)
 
       if(length(priors) == 0){
-        theta_sample <- self$sample_theta_tilde_stan(pars, n_iters, data)
+        theta_sample <- self$sample_theta_tilde_stan(pars, n_iters, data, prior_suffix)
       }
       else{
         theta_sample <- self$sample_theta_tilde(pars, n_iters)
       }
 
-      sampled_y <- self$sample_y_tilde(theta_sample, y_count=n_iters, data=data, y_var=y_gq_name)
+      sampled_y <- self$sample_y_tilde(theta_sample, data=data, y_var=y_gq_name)
       theta_post <- self$sample_theta_bar_y(sampled_y, data=data, pars=pars, fit_iter=n_fits * thin)
-      return(theta_post)
+      return(SBC::calculate_rank(theta_sample, theta_post, thin))
     },
 
     #' @description
@@ -262,7 +278,7 @@ SBCModel <- R6::R6Class("SBCModel",
       for(parname in par_names){  # iterate through all received parameter base names
         for(current_dim in max_dims:0){  # start from max dim and descend down to scalar
           if(current_dim == 0){  #  scalar parameter
-            append(return_names, parname)
+            return_names <- append(return_names, parname)
             break
           }
           tmp_indexes <- as.integer(rep(1, current_dim))  # initial backtrack attempt index = rep(1, n_dims)
@@ -277,7 +293,6 @@ SBCModel <- R6::R6Class("SBCModel",
           if(isFALSE(is_current_dim)){
             next
           }
-
           return_names <- append(return_names, generate_index_name(parname, tmp_indexes))  # append first index
 
           final_indexes <- as.integer(rep(0, current_dim))  # upper bound for each component
