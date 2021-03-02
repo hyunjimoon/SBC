@@ -74,7 +74,7 @@ list(param1=func, param2=func) where func is a function that returns a single va
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-Array of dimension(n_iters, n_pars) which are sampled prior values.
+List of length(pars) where each element is an array of dimension(n_iters, length(par[i])) containing sampled prior values.
 }
 }
 \if{html}{\out{<hr>}}
@@ -108,7 +108,7 @@ if the parameter is called "mu", "mu}" will be sampled as the prior predictive d
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-named array of dimension(n_iters, n_pars) which are sampled prior values, and named without suffixes
+List of length(pars) where each element is an array of dimension(n_iters, length(par[i])) containing sampled prior values.
 }
 }
 \if{html}{\out{<hr>}}
@@ -119,13 +119,13 @@ sample \eqn{\tilde{y} ~ p(\tilde{y} | \tilde{\theta})}, or y_tilde ~ P(y_tilde |
 which is the Posterior Predictive Distribution.
 The stan model must specify P(y | theta) within the generated quantities block
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_y_tilde(theta_arr, y_var = "y_", data = list())}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_y_tilde(theta_list, y_var = "y_", data = list())}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{theta_arr}}{Array of sampled theta_tilde values (n_iters, n_pars), which is outputted from self$sample_theta_tilde()}
+\item{\code{theta_list}}{List of sampled prior theta values, which is outputted from self$sample_theta_tilde()}
 
 \item{\code{y_var}}{y_tilde variable name. Will be retrieved from model as so: y_[n] (1<=n<=y_count)}
 
@@ -134,7 +134,7 @@ The stan model must specify P(y | theta) within the generated quantities block
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-array of dimension (n_iters, y_count) of sampled y. Each row is a sample vector for a single parameter vector
+array of dimension (n_iters, y_dim, ...) of sampled y. Each row is a sample vector for a single parameter vector
 }
 }
 \if{html}{\out{<hr>}}
@@ -155,18 +155,18 @@ The stan model must have \eqn{\theta} defined as parameters
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{y_sample_arr}}{array of dimension (n_iters, y_count) of sampled y. Same as output of self$sample_y_tilde()}
+\item{\code{y_sample_arr}}{array of dimension (n_iters, y_dim, ...) of sampled y. Same as output of self$sample_y_tilde()}
 
 \item{\code{data}}{list of additional data to pass to the stan model. Note that "y" will be overwritten with draws from y_sample_arr.}
 
 \item{\code{pars}}{list of parameters of interest.}
 
-\item{\code{fit_iter}}{number of model iterations.}
+\item{\code{fit_iter}}{number of model iterations, which equates to the number of posterior draws per sample set.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-: array of dimension (n_iters, n_pars, fit_iter) of posterior parameter draws
+: array of dimension (fit_iter, n_pars, n_iters) of posterior parameter draws
 }
 }
 \if{html}{\out{<hr>}}
@@ -244,9 +244,14 @@ array of dimension (n_iters, n_pars) of posterior rank statistics
 Given list of base parameter names and stan summary matrix, return list of all individual index parameter names
 For example, if the model contained a vector[5] parname as a parameter, you can run infer_sequential_param("parname", ...)
 and it will return a list of strings "parname[1]", "parname[2]", ...
-This function will also search for multidimensional array types, up to dimension max_dims.
+This function will also search for multidimensional array types, up to dimension (max_dims).
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SBCModel$infer_sequential_params(par_names, summary_data, max_dims = 2)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SBCModel$infer_sequential_params(
+  par_names,
+  summary_data,
+  max_dims = 3,
+  return_dim_info = FALSE
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -258,11 +263,13 @@ This function will also search for multidimensional array types, up to dimension
 must raise a subscript error if a row that doesn't exist is indexed. Same as output of rstan::summary}
 
 \item{\code{max_dims}}{Maximum dimension to search}
+
+\item{\code{return_dim_info}}{Boolean indicating whether to additionally return dimension info. Default is FALSE}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-list of strings, that represent indexed parameter names
+list of strings, that represent indexed parameter names, or a list containing string and dimensions for each parameter if return_dim_info is TRUE
 }
 }
 \if{html}{\out{<hr>}}
