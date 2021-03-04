@@ -36,7 +36,7 @@ calculate_rank <- function(prior, posterior, thin){
   dimnames(ranks)[2] <- list(par_names)
   for(i in 1:n_iter){
     for(j in 1:n_pars){
-      ranks[i, par_names[j]] <- sum(prior[i, par_names[j]] < posterior[, par_names[j], i][thinner])
+      ranks[i, par_names[j]] <- sum(posterior[, par_names[j], i][thinner] < prior[i, par_names[j]])
     }
   }
   return(ranks)
