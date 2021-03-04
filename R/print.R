@@ -9,7 +9,6 @@
 #' @export
 print_summary <- function(ranks, par, thin, bins = 20){
   pval <- function(bin_count){
-    print(bin_count)
     return(chisq.test(bin_count)$p.value)
   }
   max_diff <- function(bin_count){
