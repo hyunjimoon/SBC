@@ -119,13 +119,13 @@ sample \eqn{\tilde{y} ~ p(\tilde{y} | \tilde{\theta})}, or y_tilde ~ P(y_tilde |
 which is the Posterior Predictive Distribution.
 The stan model must specify P(y | theta) within the generated quantities block
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_y_tilde(theta_list, y_var = "y_", data = list())}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SBCModel$sample_y_tilde(theta_arr, y_var = "y_", data = list())}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{theta_list}}{List of sampled prior theta values, which is outputted from self$sample_theta_tilde()}
+\item{\code{theta_arr}}{Array of sampled prior theta values, which is outputted from self$sample_theta_tilde_stan()}
 
 \item{\code{y_var}}{y_tilde variable name. Will be retrieved from model as so: y_[n] (1<=n<=y_count)}
 

@@ -1,10 +1,10 @@
 ---
-title: "SBC basic"
+title: "SBC Basic"
 author: "Hyunji Moon, Shinyoung Kim"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{SBC Basic}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
