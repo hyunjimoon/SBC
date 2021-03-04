@@ -9,6 +9,7 @@
 #' @export
 print_summary <- function(ranks, par, thin, bins = 20){
   pval <- function(bin_count){
+    print(bin_count)
     return(chisq.test(bin_count)$p.value)
   }
   max_diff <- function(bin_count){
@@ -32,5 +33,5 @@ print_summary <- function(ranks, par, thin, bins = 20){
     bin <- ceiling(ranks[s, par] / bins)
     bin_count[bin] <- bin_count[bin] + 1
   }
-  print(paste0("pval: ", round(pval(bin_count),3), " max_diff: ", round(max_diff(bin_count),3), " wasserstein: ", round(wasserstein(bin_count),3)))
+  print(paste0("pval: ", round(pval(bin_count),10), " max_diff: ", round(max_diff(bin_count),3), " wasserstein: ", round(wasserstein(bin_count),3)))
 }

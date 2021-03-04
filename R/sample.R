@@ -130,17 +130,18 @@ SBCModel <- R6::R6Class("SBCModel",
     #' which is the Posterior Predictive Distribution.
     #' The stan model must specify P(y | theta) within the generated quantities block
     #'
-    #' @param theta_list List of sampled prior theta values, which is outputted from self$sample_theta_tilde()
+    #' @param theta_arr Array of sampled prior theta values, which is outputted from self$sample_theta_tilde_stan()
     #' @param y_var y_tilde variable name. Will be retrieved from model as so: y_\[n\] (1<=n<=y_count)
     #' @param data data list to pass to the stan model, in most cases would be dummy data since data will be drawn with fixed params
     #'
     #' @return array of dimension (n_iters, y_dim, ...) of sampled y. Each row is a sample vector for a single parameter vector
-    sample_y_tilde = function(theta_list, y_var="y_", data=list()){
+    sample_y_tilde = function(theta_arr, y_var="y_", data=list()){
 
-      n_iters = dim_t(theta_list[[names(theta_list)[1]]])[1]
+      #n_iters = dim_t(theta_list[[names(theta_list)[1]]])[1]
+      n_iters = dim(theta_arr)[[1]]
       for(iter_index in 1:n_iters){
-        #theta_slice <- as.list(theta_arr[iter_index, ])
-        theta_slice <- lapply(theta_list, function(x){x[iter_index, ]})
+        theta_slice <- as.list(theta_arr[iter_index, ])
+        #theta_slice <- lapply(theta_list, function(x){x[iter_index, ]})
         if(self$model_type == CMDSTAN_MODEL_CLASS_NAME){
           # sample for cmdstanr
           model_fit <- self$stan_model$sample(data=data,
@@ -222,7 +223,6 @@ SBCModel <- R6::R6Class("SBCModel",
           model_fit <- self$stan_model$sample(data=data, iter_warmup=fit_iter, iter_sampling=fit_iter, chains=1,
                                               save_warmup=FALSE, refresh=0, thin=NULL)
 
-          print(array(model_fit$draws(variables=pars), dim=c(fit_iter, num_indexed_pars))[1, ])
           draw_arr[, , iter_index] <- array(model_fit$draws(variables=pars), dim=c(fit_iter, num_indexed_pars))
         }
 

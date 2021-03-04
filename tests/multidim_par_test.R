@@ -124,16 +124,17 @@ positive_cauchy <- function(...){
   return(if(draw >= 0) draw else positive_cauchy(...))
 }
 
-hyperpriors <- list(theta_trans=function(){rnorm(J, 0, 1)}, mu=function(){rnorm(1, 0, 5)}, tau=function(){positive_cauchy(1, 0, 5)})
+#hyperpriors <- list(theta_trans=function(){rnorm(J, 0, 1)}, mu=function(){rnorm(1, 0, 5)}, tau=function(){positive_cauchy(1, 0, 5)})
 
-theta_prior <- sbc_obj$sample_theta_tilde(list("theta_trans", "mu", "tau"), 100, hyperpriors)
+theta_prior <- sbc_obj$sample_theta_tilde_stan(list("theta_trans", "mu", "tau"), 100, data=data)
 
 sampled_y <- sbc_obj$sample_y_tilde(theta_prior, data=data)
 
 sampled_theta <- sbc_obj$sample_theta_bar_y(sampled_y, data=data, pars=list("theta_trans", "tau", "theta"))
 
+ranks <- calculate_rank(theta_prior, sampled_theta, 3)
 
-res <- model$sample(data=data, iter_warmup=10, iter_sampling=10, chains=1,save_warmup=FALSE, refresh=0, thin=NULL)
+plot_ecdf(ranks, "theta_trans[8]")
 
 #res$draws(variables = list("theta_trans", "tau"))
 #extracted <- array(res$draws(variables = list("mu", "tau")), dim = c(10, 2))

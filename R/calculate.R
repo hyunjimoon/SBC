@@ -15,25 +15,28 @@ calculate_rank <- function(prior, posterior, thin){
   prior_dims = dim(prior)
   posterior_dims = dim(posterior)
 
-  if (prior_dims[1] != posterior_dims[1] || prior_dims[2] != posterior_dims[2]){
+  if (prior_dims[1] != posterior_dims[3]){
     stop(paste("Dimension mismatch error!",
-               "dim(prior)[1] == dim(posterior)[1] && dim(prior)[2] == dim(posterior)[2] must be satisfied",
+               "dim(prior)[1] == dim(posterior)[3] must be satisfied",
                paste("prior dimensions:", prior_dims[1], prior_dims[2]),
-               paste("posterior dimensions:", posterior_dims[1], posterior_dims[2]),
+               paste("posterior dimensions:", posterior_dims[1], posterior_dims[2], posterior_dims[3]),
                "", sep="\n"))
   }
-  n_iter <- posterior_dims[1]
-  n_pars <- posterior_dims[2]
-  n_sample <- posterior_dims[3]
+  n_sample <- posterior_dims[1]
+  n_iter <- posterior_dims[3]
 
-  par_names <- unlist(dimnames(prior)[2])
+  par_names <- intersect(unlist(dimnames(prior)[2]), unlist(dimnames(posterior)[2]))
+  n_pars <- length(par_names)
+  if(n_pars == 0){
+    stop("There isn't a parameter name both present in the prior and posterior column names. SBC cannot continue. length(intersect(prior, posterior)) == 0")
+  }
 
   thinner <- seq(from=1, to=n_sample, by=thin)
   ranks <- array(rep(0, n_iter * n_pars), dim=c(n_iter, n_pars))
   dimnames(ranks)[2] <- list(par_names)
   for(i in 1:n_iter){
     for(j in 1:n_pars){
-      ranks[i, par_names[j]] <- sum(prior[i, par_names[j]] < posterior[i, par_names[j], ][thinner])
+      ranks[i, par_names[j]] <- sum(prior[i, par_names[j]] < posterior[, par_names[j], i][thinner])
     }
   }
   return(ranks)
