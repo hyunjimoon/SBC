@@ -28,6 +28,8 @@ SBC uses the above principle and evaluates the combination of the prior and like
 ### References:
 * [Validating Bayesian Inference
 Algorithms with Simulation-Based
-Calibration](https://arxiv.org/pdf/1804.06788.pdf), Sean Talts, Michael Betancourt, et al.
-* [Rank-Normalization, Folding, and Localization: An Improved R-hat for Assessing Convergence of MCMC](https://arxiv.org/abs/1903.08008), Aki Vehtari, Andrew Gelman, et al.
-* [ECDF](https://avehtari.github.io/rhat_ess/rhat_ess.html)
+Calibration](https://arxiv.org/pdf/1804.06788.pdf) Talts, Betancourt, Simpson, Vehtari, Gelman, 2018
+* [Rank-Normalization, Folding, and Localization: An Improved R-hat for Assessing Convergence of MCMC](https://arxiv.org/abs/1903.08008) Vehtari, Gelman, Simpson, Carpenter, Bürkner, 2021
+* [Graphical Test for Discrete Uniformity and its Applications in Goodness of Fit Evaluation and Multiple Sample Comparison](https://arxiv.org/abs/2103.10522)  Säilynoja, Bürkner, Vehtari, 2021
+* [Bayes factor workflow](https://arxiv.org/pdf/2103.08744.pdf) Schad, Nicenboim, Bürkner, Betancourt, Vasishth, 2021
+* [ECDF with codes](https://avehtari.github.io/rhat_ess/rhat_ess.html)
