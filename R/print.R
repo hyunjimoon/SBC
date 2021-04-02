@@ -32,5 +32,5 @@ print_summary <- function(ranks, par, thin, bins = 20){
     bin <- ceiling(ranks[s, par] / bins)
     bin_count[bin] <- bin_count[bin] + 1
   }
-  print(paste0("pval: ", round(pval(bin_count),10), " max_diff: ", round(max_diff(bin_count),3), " wasserstein: ", round(wasserstein(bin_count),3)))
+  print(paste0("pval: ", round(pval(bin_count),3), " max_diff: ", round(max_diff(bin_count),3), " wasserstein: ", round(wasserstein(bin_count),3)))
 }
