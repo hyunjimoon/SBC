@@ -39,19 +39,29 @@ SBCModel <- R6::R6Class("SBCModel",
     #' @param hyperpriors A named list containing prior definitions and sampling functions. Follows the format:
     #' list(param1=func, param2=func) where func is a function that returns a single value for each parameter
     #'
-    #' @return Array of dimension(n_iters, n_pars) which are sampled prior values.
+    #' @return List of length(pars) where each element is an array of dimension(n_iters, length(par\[i\])) containing sampled prior values.
     sample_theta_tilde = function(pars, n_iters, hyperpriors=list()){
       stopifnot(typeof(pars) == "list")
       stopifnot(length(hyperpriors) > 0)
 
-      theta_arr <- array(dim=c(n_iters, length(pars)))
-      colnames(theta_arr) <- pars
+      theta_list <- list()
+      # First iteration: determine the dimension of each parameter and initialize arrays
       for(par_index in 1:length(pars)){
-        for(iter_index in 1:n_iters){
-          theta_arr[iter_index, pars[[par_index]]] <- hyperpriors[[pars[[par_index]]]]()
+        sampled_par <- hyperpriors[[pars[[par_index]]]]()
+        par_dims <- length(sampled_par)
+        theta_list[[pars[[par_index]]]] <- array(dim=c(n_iters, par_dims))
+        theta_list[[pars[[par_index]]]][1, ] <- sampled_par
+      }
+
+      # Second iteration and onwards: fill up the array with samples
+      if (n_iters > 1){
+        for(par_index in 1:length(pars)){
+          for(iter_index in 2:n_iters){
+            theta_list[[pars[[par_index]]]][iter_index, ] <- hyperpriors[[pars[[par_index]]]]()
+          }
         }
       }
-      return(theta_arr)
+      return(theta_list)
     },
 
     #' @description
@@ -65,9 +75,11 @@ SBCModel <- R6::R6Class("SBCModel",
     #' @param n_iters integer specifying number of individual draws
     #' @param data additional data for the model, if necessary
     #'
-    #' @return named array of dimension(n_iters, n_pars) which are sampled prior values, and named without suffixes
+    #' @return List of length(pars) where each element is an array of dimension(n_iters, length(par\[i\])) containing sampled prior values.
     sample_theta_tilde_stan = function(pars_list, n_iters, data=list(), suffix="_"){
+      ## TODO: Rewrite to match return type of sample_theta_tilde (list instead of array)
       stopifnot(length(pars_list) > 0)
+
       suffixed_pars_list = lapply(pars_list, function(x){paste0(x, suffix)})  # actual parameter names
       return_arr <- NULL
       for(iter_count in 1:n_iters){
@@ -104,6 +116,7 @@ SBCModel <- R6::R6Class("SBCModel",
           })
         }
       }
+      # any(unlist(lapply(theta_list, function(n){any(is.na(n))})))
       if(!all(!is.na(return_arr))){
         warning("Some samples contain NA as values. This means something went terribly wrong during sampling, or SBC is
                 failing to identify one of your prior parameters' names. Please check you have parameters with suffixes defined within
@@ -117,17 +130,18 @@ SBCModel <- R6::R6Class("SBCModel",
     #' which is the Posterior Predictive Distribution.
     #' The stan model must specify P(y | theta) within the generated quantities block
     #'
-    #' @param theta_arr Array of sampled theta_tilde values (n_iters, n_pars), which is outputted from self$sample_theta_tilde()
+    #' @param theta_arr Array of sampled prior theta values, which is outputted from self$sample_theta_tilde_stan()
     #' @param y_var y_tilde variable name. Will be retrieved from model as so: y_\[n\] (1<=n<=y_count)
     #' @param data data list to pass to the stan model, in most cases would be dummy data since data will be drawn with fixed params
     #'
-    #' @return array of dimension (n_iters, y_count) of sampled y. Each row is a sample vector for a single parameter vector
+    #' @return array of dimension (n_iters, y_dim, ...) of sampled y. Each row is a sample vector for a single parameter vector
     sample_y_tilde = function(theta_arr, y_var="y_", data=list()){
-      stopifnot(length(dim(theta_arr)) == 2)
 
-      n_iters = dim(theta_arr)[1]
+      #n_iters = dim_t(theta_list[[names(theta_list)[1]]])[1]
+      n_iters = dim(theta_arr)[[1]]
       for(iter_index in 1:n_iters){
         theta_slice <- as.list(theta_arr[iter_index, ])
+        #theta_slice <- lapply(theta_list, function(x){x[iter_index, ]})
         if(self$model_type == CMDSTAN_MODEL_CLASS_NAME){
           # sample for cmdstanr
           model_fit <- self$stan_model$sample(data=data,
@@ -136,25 +150,25 @@ SBCModel <- R6::R6Class("SBCModel",
 
           sample_summary <- as.data.frame(model_fit$summary())  # tibble to data.frame
           row.names(sample_summary) <- sample_summary[, "variable"]  # set "variable" column as row names
-          y_indexes = self$infer_sequential_params(list(y_var), sample_summary)
+          y_indexes = self$infer_sequential_params(list(y_var), sample_summary, return_dim_info = TRUE)
           if(iter_index == 1){
-            sample_arr <<- array(dim=c(n_iters, length(y_indexes)))
+            sample_arr <<- array(dim=c(n_iters, y_indexes[["dims"]][[y_var]]))
           }
-          samples <- unlist(lapply(y_indexes, function(x) {sample_summary[x, "mean"]}))
+          samples <- unlist(lapply(y_indexes[["names"]], function(x) {sample_summary[x, "mean"]}))
           sample_arr[iter_index, ] <- samples
         }
         else if(self$model_type == RSTAN_MODEL_CLASS_NAME){
           # sample for rstan
           model_fit <- rstan::sampling(self$stan_model, data=data,
-                                       pars=as.vector(c(dimnames(theta_arr)[[2]], y_var)), chains=1, algorithm="Fixed_param",
+                                       pars=as.vector(c(names(theta_list), y_var)), chains=1, algorithm="Fixed_param",
                                        init=list(theta_slice), iter=2, warmup=1, cores=1, show_messages=FALSE, refresh=0)
 
           sample_summary <- rstan::summary(model_fit)$summary
-          y_indexes = self$infer_sequential_params(list(y_var), sample_summary)
+          y_indexes = self$infer_sequential_params(list(y_var), sample_summary, return_dim_info = TRUE)
           if(iter_index == 1){
-            sample_arr <<- array(dim=c(n_iters, length(y_indexes)))
+            sample_arr <<- array(dim=c(n_iters, y_indexes[["dims"]][[y_var]]))
           }
-          samples <- unlist(lapply(y_indexes, function(x) {as.double(sample_summary[x, "mean"])}))
+          samples <- unlist(lapply(y_indexes["names"], function(x) {as.double(sample_summary[x, "mean"])}))
           sample_arr[iter_index, ] <- samples
         }
       }
@@ -166,12 +180,12 @@ SBCModel <- R6::R6Class("SBCModel",
     #' Sample \eqn{\theta ~ p(\theta | \tilde{y})}, to retrieve parameters from samples.
     #' The stan model must have \eqn{\theta} defined as parameters
     #'
-    #' @param y_sample_arr array of dimension (n_iters, y_count) of sampled y. Same as output of self$sample_y_tilde()
+    #' @param y_sample_arr array of dimension (n_iters, y_dim, ...) of sampled y. Same as output of self$sample_y_tilde()
     #' @param data list of additional data to pass to the stan model. Note that "y" will be overwritten with draws from y_sample_arr.
     #' @param pars list of parameters of interest.
-    #' @param fit_iter number of model iterations.
+    #' @param fit_iter number of model iterations, which equates to the number of posterior draws per sample set.
     #'
-    #' @return: array of dimension (n_iters, n_pars, fit_iter) of posterior parameter draws
+    #' @return: array of dimension (fit_iter, n_pars, n_iters) of posterior parameter draws
     sample_theta_bar_y = function(y_sample_arr, data=list(), pars=list(), fit_iter=200){
       stopifnot(length(pars) > 0)
 
@@ -179,26 +193,48 @@ SBCModel <- R6::R6Class("SBCModel",
       if(typeof(pars) == "list"){
         pars <- unlist(pars)
       }
-      draw_arr <- array(dim=c(n_iters, length(pars), fit_iter), dimnames = list(c(1:n_iters), pars, c(1:fit_iter)))
 
-      for(iter_index in 1:n_iters){
+      draw_arr <- NULL
+      num_indexed_pars <- NULL
+
+      # first iteration - determine length of parameter vector and dimnames
+      data[["y"]] <- y_sample_arr[1, ]  # insert "y" with sample slice vector
+
+      if(self$model_type == CMDSTAN_MODEL_CLASS_NAME){
+        model_fit <- self$stan_model$sample(data=data, iter_warmup=fit_iter, iter_sampling=fit_iter, chains=1,
+                                            save_warmup=FALSE, refresh=0, thin=NULL)
+
+        par_arr <- model_fit$draws(variables=pars)
+        num_indexed_pars <- dim(par_arr)[3]
+        draw_arr <- array(dim=c(fit_iter, num_indexed_pars, n_iters), dimnames = list(c(1:fit_iter), dimnames(par_arr)[["variable"]], c(1:n_iters)))
+        draw_arr[, , 1] <- array(par_arr, dim=c(fit_iter, num_indexed_pars))
+      }
+
+      else{
+        # rstan
+        # TODO: UPDATE AND TEST FOR RSTAN
+      }
+
+      # onwards: fill up the array
+      for(iter_index in 2:n_iters){
         data[["y"]] <- y_sample_arr[iter_index, ]  # insert "y" with sample slice vector
 
         if(self$model_type == CMDSTAN_MODEL_CLASS_NAME){
           model_fit <- self$stan_model$sample(data=data, iter_warmup=fit_iter, iter_sampling=fit_iter, chains=1,
                                               save_warmup=FALSE, refresh=0, thin=NULL)
 
-          draw_arr[iter_index, , ] <- aperm(model_fit$draws(variables=pars)[, 1, ])  # arrays are filled row first, so we permutate once
+          draw_arr[, , iter_index] <- array(model_fit$draws(variables=pars), dim=c(fit_iter, num_indexed_pars))
         }
 
         else if(self$model_type == RSTAN_MODEL_CLASS_NAME){
+          # TODO: UPDATE AND TEST FOR RSTAN
           model_fit <- rstan::sampling(self$stan_model, data=data, pars=pars, chains=1, iter=fit_iter*2, warmup=fit_iter,
                                        refresh=0)
 
-          draw_arr[iter_index, , ] <- aperm(posterior::as_draws_array(rstan::extract(model_fit, pars=pars, permuted=FALSE, inc_warmup=FALSE)))
+          draw_arr[, , iter_index] <- posterior::as_draws_array(rstan::extract(model_fit, pars=pars, permuted=FALSE, inc_warmup=FALSE))
         }
       }
-      if(dim(draw_arr)[2] != length(pars)){
+      if(dim(draw_arr)[2] != num_indexed_pars){
         warning("Couldn't rename array dimnames with corresponding parameters.
                 This probably means a sequential parameter is included, and SBC can't verify the identities of parameter samples.
                 If you would like to use SBC plotting features, you need to manually define dimnames for each parameter in dimension 2")
@@ -261,22 +297,24 @@ SBCModel <- R6::R6Class("SBCModel",
     #' Given list of base parameter names and stan summary matrix, return list of all individual index parameter names
     #' For example, if the model contained a vector\[5\] parname as a parameter, you can run infer_sequential_param("parname", ...)
     #' and it will return a list of strings "parname\[1\]", "parname\[2\]", ...
-    #' This function will also search for multidimensional array types, up to dimension max_dims.
+    #' This function will also search for multidimensional array types, up to dimension (max_dims).
     #'
     #' @param par_names list of base parameter names to find indexes
     #' @param summary_data stansummary matrix that has row names as indexed parameter names, and at least "mean" in its column. It
     #' must raise a subscript error if a row that doesn't exist is indexed. Same as output of rstan::summary
     #' @param max_dims Maximum dimension to search
+    #' @param return_dim_info Boolean indicating whether to additionally return dimension info. Default is FALSE
     #'
-    #' @return list of strings, that represent indexed parameter names
-    infer_sequential_params = function(par_names, summary_data, max_dims=2){
+    #' @return list of strings, that represent indexed parameter names, or a list containing string and dimensions for each parameter if return_dim_info is TRUE
+    infer_sequential_params = function(par_names, summary_data, max_dims=3, return_dim_info=FALSE){
       generate_index_name <- function(name, ...){
         return(paste0(name, "[", paste0(c(...), collapse=","), "]"))  # receive indexes and return stan param name
       }
+      return_dims <- list()  # list that holds the dimensions for each parameter
       return_names <- list()  # list that holds the final par names, returned
 
       for(parname in par_names){  # iterate through all received parameter base names
-        for(current_dim in max_dims:0){  # start from max dim and descend down to scalar
+        for(current_dim in max_dims:0){  # start from max_dims and descend down to scalar
           if(current_dim == 0){  #  scalar parameter
             return_names <- append(return_names, parname)
             break
@@ -299,7 +337,7 @@ SBCModel <- R6::R6Class("SBCModel",
           accumulator <- 0  # current component index
           while (sum(tmp_indexes != 0)) {
             skip <- FALSE  # boolean check to handle next requests
-            accumulator <- accumulator%% current_dim + 1  # iterate over all components
+            accumulator <- accumulator %% current_dim + 1  # iterate over all components
             if(isTRUE(tmp_indexes[accumulator] == 0)){next}  # skip 0 accumulators
             tryCatch(
               {
@@ -320,10 +358,37 @@ SBCModel <- R6::R6Class("SBCModel",
             tmp_indexes <- replace(tmp_indexes, accumulator, tmp_indexes[accumulator]+1)  # increment backtrack location
             return_names <- append(return_names, generate_index_name(parname, bitwOr(tmp_indexes, final_indexes)))  # tmp_indexes | return_name exists, add to return name
           }
+          return_dims[[parname]] <- final_indexes
           break  # exit current parameter after single iteration
         }
       }
-      return(return_names)
+      if(return_dim_info){
+        return(list(names=return_names, dims=return_dims))
+      }
+      else{
+        return(return_names)
+      }
     }
   )
 )
+
+
+##########################
+# some helper functions
+
+dim_t <- function(data_t){
+  # "templated" dim() function
+  if(is.array(data_t) | is.matrix(data_t) | is.data.frame(data_t)){
+    return(dim(data_t))
+  }
+  else if(is.vector(data_t)){
+    return(length(data_t))
+  }
+  else if(is.list(data_t)){
+    return(lengths(data_t))
+  }
+  else if(is.atomic(data_t)){
+    return(1)
+  }
+}
+

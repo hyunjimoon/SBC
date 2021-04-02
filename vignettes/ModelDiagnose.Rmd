@@ -1,10 +1,10 @@
 ---
-title: "SBC basic"
+title: "SBC Basic"
 author: "Hyunji Moon, Shinyoung Kim"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{SBC Basic}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -79,7 +79,7 @@ sbc_obj <- SBCModel$new(name = "poisson", stan_model = model)
 ### Example model - prior predictive sampling
 Once we have the model compiled and `SBCModel` ready, we'll sample from the prior predictive distribution.
 
-If the prior predictive distributions aren't defined within the stan model, you'll need to create a named list containing functions which specify them:
+If the prior predictive distributions aren't defined within the stan model, you'll need to create a named list containing functions which specify them. Each function should return the number of samples equal to each parameter's dimensions:
 ```{r}
 hyperpriors <- list("lambda"=function(){rgamma(1, shape=15, scale=0.2)})
 ```
@@ -88,8 +88,9 @@ Once that's done, you'll be able to sample from the prior predictive distributio
 We'll be sampling a total of `n_datasets` individual samples of the parameter `lambda`:
 ```{r, results=FALSE}
 theta_prior <- sbc_obj$sample_theta_tilde_stan(list("lambda"), n_datasets, data = data)
+
 # or alternatively, use the hyperpriors list:
-# theta_prior <- sbc_obj$sample_theta_tilde_stan(list("lambda), n_datasets, hyperpriors)
+# theta_prior <- sbc_obj$sample_theta_tilde(list("lambda), n_datasets, hyperpriors)
 ```
 
 ### Example model - posterior predictive sampling
@@ -99,7 +100,7 @@ identify the number of samples you draw and extract them into an array:
 ```{r, results=FALSE}
 sampled_y <- sbc_obj$sample_y_tilde(theta_prior , data=data)
 ```
-Note that data passed into the model has no effect on the results.
+Note that data passed into the model has no effect on the sampled results.
 
 ### Example model - refit theta with posterior predictive samples
 Once we have posterior predictive samples of y, we can retrieve parameters by refitting on the simulated y data. We'll run 200 iterations, therefore `200 * thin` samples for each parameter. This time, the simulated y data will be substituted as `y` into the data list:
