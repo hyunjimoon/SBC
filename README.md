@@ -24,8 +24,9 @@ SBC uses the above principle and evaluates the combination of the prior and like
 * More envelope metrics
 * Add verbose diagnostics, akin to stan's get\_hmc\_diagnostics
 * Inferential Calibration
----
+* Decision Calibration
 ### References:
+Theoretical support
 * [Validating Bayesian Inference
 Algorithms with Simulation-Based
 Calibration](https://arxiv.org/pdf/1804.06788.pdf) Talts, Betancourt, Simpson, Vehtari, Gelman, 2018
@@ -33,3 +34,8 @@ Calibration](https://arxiv.org/pdf/1804.06788.pdf) Talts, Betancourt, Simpson, V
 * [Graphical Test for Discrete Uniformity and its Applications in Goodness of Fit Evaluation and Multiple Sample Comparison](https://arxiv.org/abs/2103.10522)  Säilynoja, Bürkner, Vehtari, 2021
 * [Bayes factor workflow](https://arxiv.org/pdf/2103.08744.pdf) Schad, Nicenboim, Bürkner, Betancourt, Vasishth, 2021
 * [ECDF with codes](https://avehtari.github.io/rhat_ess/rhat_ess.html)
+
+Application support
+* [Cognitive science, response time fitting](https://link.springer.com/content/pdf/10.3758/s13428-019-01318-x.pdf)
+* [Bioinformatics, effect of mutation prediction](https://www.biorxiv.org/content/10.1101/2020.10.27.356758v1.full.pdf)
+* [Earth science, earthquake prediction](https://gmd.copernicus.org/articles/11/4383/2018/gmd-11-4383-2018.pdf )
