@@ -17,7 +17,9 @@ R6 Class Representing a collection of functions to extract data from a single mo
 
 \item{\code{model_type}}{A string containing self$stan_model type. can be either RSTAN_MODEL_CLASS_NAME or CMDSTAN_MODEL_CLASS_NAME}
 
-\item{\code{parameter_dims}}{A list containing dimension info for parameters
+\item{\code{parameter_dims}}{A list containing dimension info for parameters. Parameter names are original, unsuffixed names.}
+
+\item{\code{sim_suffix}}{Characters representing the suffix added to simulated parameters
 Initialize a SBCModel with a existing stan Model}
 }
 \if{html}{\out{</div>}}
@@ -280,6 +282,7 @@ list of strings, that represent indexed parameter names, or a list containing st
 \if{latex}{\out{\hypertarget{method-par_list_to_structure}{}}}
 \subsection{Method \code{par_list_to_structure()}}{
 Given a named list, where indexes are parameter names with bracketed indexes(in the form of mu[1], mu[2]),
+convert indexed parameters into actual R vectors and matrices.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{SBCModel$par_list_to_structure(named_list)}\if{html}{\out{</div>}}
 }

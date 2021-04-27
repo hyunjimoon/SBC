@@ -10,7 +10,7 @@ SBCModel <- R6::R6Class("SBCModel",
     #' @field stan_model A CmdStanModel or a stanmodel
     #' @field model_type A string containing self$stan_model type. can be either RSTAN_MODEL_CLASS_NAME or CMDSTAN_MODEL_CLASS_NAME
     #' @field parameter_dims A list containing dimension info for parameters. Parameter names are original, unsuffixed names.
-    #' @field sum_suffix Characters representing the suffix added to simulated parameters
+    #' @field sim_suffix Characters representing the suffix added to simulated parameters
     name = NULL,
     stan_model = NULL,
     model_type = NULL,
