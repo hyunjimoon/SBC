@@ -15,7 +15,9 @@ R6 Class Representing a collection of functions to extract data from a single mo
 
 \item{\code{stan_model}}{A CmdStanModel or a stanmodel}
 
-\item{\code{model_type}}{A string containing self$stan_model type. can be either RSTAN_MODEL_CLASS_NAME or CMDSTAN_MODEL_CLASS_NAME
+\item{\code{model_type}}{A string containing self$stan_model type. can be either RSTAN_MODEL_CLASS_NAME or CMDSTAN_MODEL_CLASS_NAME}
+
+\item{\code{parameter_dims}}{A list containing dimension info for parameters
 Initialize a SBCModel with a existing stan Model}
 }
 \if{html}{\out{</div>}}
@@ -31,6 +33,7 @@ Initialize a SBCModel with a existing stan Model}
 \item \href{#method-sample_bootstrap_y_tilde}{\code{SBCModel$sample_bootstrap_y_tilde()}}
 \item \href{#method-sample_all}{\code{SBCModel$sample_all()}}
 \item \href{#method-infer_sequential_params}{\code{SBCModel$infer_sequential_params()}}
+\item \href{#method-par_list_to_structure}{\code{SBCModel$par_list_to_structure()}}
 \item \href{#method-clone}{\code{SBCModel$clone()}}
 }
 }
@@ -270,6 +273,26 @@ must raise a subscript error if a row that doesn't exist is indexed. Same as out
 }
 \subsection{Returns}{
 list of strings, that represent indexed parameter names, or a list containing string and dimensions for each parameter if return_dim_info is TRUE
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-par_list_to_structure"></a>}}
+\if{latex}{\out{\hypertarget{method-par_list_to_structure}{}}}
+\subsection{Method \code{par_list_to_structure()}}{
+Given a named list, where indexes are parameter names with bracketed indexes(in the form of mu[1], mu[2]),
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{SBCModel$par_list_to_structure(named_list)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{named_list}}{A named list containing bracketed indexed parameter names as indexes.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A list with bracketed names removed, and with adequate vector/matrix structures.
 }
 }
 \if{html}{\out{<hr>}}

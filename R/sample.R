@@ -9,9 +9,14 @@ SBCModel <- R6::R6Class("SBCModel",
     #' @field name Some string to identify your SBCModel
     #' @field stan_model A CmdStanModel or a stanmodel
     #' @field model_type A string containing self$stan_model type. can be either RSTAN_MODEL_CLASS_NAME or CMDSTAN_MODEL_CLASS_NAME
+    #' @field parameter_dims A list containing dimension info for parameters. Parameter names are original, unsuffixed names.
+    #' @field sum_suffix Characters representing the suffix added to simulated parameters
     name = NULL,
     stan_model = NULL,
     model_type = NULL,
+    parameter_dims = NULL,
+    sim_suffix = NULL,
+
 
     #' Initialize a SBCModel with a existing stan Model
     #' @param name Some string to identify your SBCModel
@@ -79,7 +84,7 @@ SBCModel <- R6::R6Class("SBCModel",
     sample_theta_tilde_stan = function(pars_list, n_iters, data=list(), suffix="_"){
       ## TODO: Rewrite to match return type of sample_theta_tilde (list instead of array)
       stopifnot(length(pars_list) > 0)
-
+      self$sim_suffix <- suffix
       suffixed_pars_list = lapply(pars_list, function(x){paste0(x, suffix)})  # actual parameter names
       return_arr <- NULL
       for(iter_count in 1:n_iters){
@@ -101,7 +106,12 @@ SBCModel <- R6::R6Class("SBCModel",
           sample_summary <- rstan::summary(model_fit)$summary
         }
 
-        suffix_indexed_param_names <- self$infer_sequential_params(suffixed_pars_list, sample_summary)
+        suffix_indexed_param_names <- self$infer_sequential_params(suffixed_pars_list, sample_summary, return_dim_info = TRUE)
+
+        self$parameter_dims <- suffix_indexed_param_names[["dims"]]
+        names(self$parameter_dims) <- lapply(names(self$parameter_dims), function(n){stringi::stri_replace_last_fixed(n, suffix, "")})
+
+        suffix_indexed_param_names <- suffix_indexed_param_names[["names"]]
         indexed_param_names <- lapply(suffix_indexed_param_names, function(n){stringi::stri_replace_last_fixed(n, suffix, "")})
         if(is.null(return_arr)){  # initialize array
           return_arr <- array(dim=c(n_iters, length(suffix_indexed_param_names)))
@@ -173,6 +183,11 @@ SBCModel <- R6::R6Class("SBCModel",
         }
       }
       rm(model_fit, sample_summary, samples)  # cleanup
+      if(!all(!is.na(sample_arr))){
+        warning(paste0("NA values are present within extracted samples. This means something went terribly wrong during sampling, or SBC is
+                failing to find the simulated data variable. Please check that you have the generated data variable, which is set to be defined as (", y_var, ")."))
+      }
+      self$par_list_to_structure(theta_slice)
       return(sample_arr)
     },
 
@@ -317,6 +332,7 @@ SBCModel <- R6::R6Class("SBCModel",
         for(current_dim in max_dims:0){  # start from max_dims and descend down to scalar
           if(current_dim == 0){  #  scalar parameter
             return_names <- append(return_names, parname)
+            return_dims[[parname]] <- c(1)
             break
           }
           tmp_indexes <- as.integer(rep(1, current_dim))  # initial backtrack attempt index = rep(1, n_dims)
@@ -335,18 +351,27 @@ SBCModel <- R6::R6Class("SBCModel",
 
           final_indexes <- as.integer(rep(0, current_dim))  # upper bound for each component
           accumulator <- 0  # current component index
-          while (sum(tmp_indexes != 0)) {
+
+          while(sum(tmp_indexes) != 0) {
             skip <- FALSE  # boolean check to handle next requests
             accumulator <- accumulator %% current_dim + 1  # iterate over all components
             if(isTRUE(tmp_indexes[accumulator] == 0)){next}  # skip 0 accumulators
             tryCatch(
               {
                 # attempt higher index
-                mean_ <- summary_data[generate_index_name(parname, bitwOr(replace(tmp_indexes, accumulator, tmp_indexes[accumulator]+1), final_indexes)), "mean"]
+                print(paste("Attempting", generate_index_name(parname, bitwOr(replace(tmp_indexes, accumulator, tmp_indexes[accumulator]), final_indexes))))
+                #mean_ <- summary_data[generate_index_name(parname, bitwOr(replace(tmp_indexes, accumulator, tmp_indexes[accumulator]+1), final_indexes)), "mean"]
+                mean_ <- summary_data[generate_index_name(parname, bitwOr(replace(tmp_indexes, accumulator, tmp_indexes[accumulator]), final_indexes)), "mean"]
                 stopifnot(!is.na(mean_))  # handle data.frames, which do not raise index errors, but returns NA
               },
               error = function(err){  # subscript out of bounds, backtrack and end component
-                final_indexes <<- replace(final_indexes, accumulator, tmp_indexes[accumulator])
+                print(paste("Failed", generate_index_name(parname, bitwOr(replace(tmp_indexes, accumulator, tmp_indexes[accumulator]), final_indexes))))
+                if(current_dim == 1){
+                  final_indexes <<- replace(final_indexes, accumulator, tmp_indexes[accumulator] - 1)
+                }
+                else{
+                  final_indexes <<- replace(final_indexes, accumulator, tmp_indexes[accumulator])
+                }
                 tmp_indexes <<- replace(tmp_indexes, accumulator, 0)
                 skip <<- TRUE
               }
@@ -356,9 +381,14 @@ SBCModel <- R6::R6Class("SBCModel",
             }
 
             tmp_indexes <- replace(tmp_indexes, accumulator, tmp_indexes[accumulator]+1)  # increment backtrack location
-            return_names <- append(return_names, generate_index_name(parname, bitwOr(tmp_indexes, final_indexes)))  # tmp_indexes | return_name exists, add to return name
+            #return_names <- append(return_names, generate_index_name(parname, bitwOr(tmp_indexes, final_indexes)))  # tmp_indexes | return_name exists, add to return name
           }
+
+          final_indexes <- rev(final_indexes)
           return_dims[[parname]] <- final_indexes
+          for(i in 2:prod(final_indexes)){
+            return_names <- append(return_names, generate_index_name(parname, arrayInd(i, final_indexes)))
+          }
           break  # exit current parameter after single iteration
         }
       }
@@ -368,6 +398,67 @@ SBCModel <- R6::R6Class("SBCModel",
       else{
         return(return_names)
       }
+    },
+
+    #' @description
+    #' Given a named list, where indexes are parameter names with bracketed indexes(in the form of mu\[1\], mu\[2\]),
+    #' convert indexed parameters into actual R vectors and matrices.
+    #'
+    #' @param named_list A named list containing bracketed indexed parameter names as indexes.
+    #'
+    #' @return A list with bracketed names removed, and with adequate vector/matrix structures.
+    par_list_to_structure = function(named_list){
+      unique_par_names <- unlist(unique(lapply(names(named_list), function(n){if(grepl("\\[", n)) sub("\\[.*", "", n) else n})))  # extract base parameter names(A[1, 2] -> A)
+      generate_index_name <- function(name, ...){
+        return(paste0(name, "[", paste0(c(...), collapse=","), "]"))  # receive indexes and return stan param name
+      }
+      return_list = list()
+      for(i in 1:length(unique_par_names)){
+        suffixed <- FALSE
+        print("-------------------------")
+        suffixed_parname <- unique_par_names[[i]]
+        base_parname <- suffixed_parname
+        if(stringi::stri_sub(base_parname, -length(self$sim_suffix), -1) == self$sim_suffix){
+          # If suffixed, remove suffix from base_parname
+          suffixed <- TRUE
+          base_parname <- stringi::stri_replace_last_fixed(base_parname, self$sim_suffix, "")
+        }
+
+        dim_length <- length(self$parameter_dims[[base_parname]])
+        par_dims <- self$parameter_dims[[base_parname]]
+        print(paste("base_parname", base_parname))
+        print(paste("dim_length", dim_length))
+        print(paste("par_dims", par_dims))
+
+
+        if(dim_length == 1){
+          if(par_dims == 1){  # scalar parameter
+            return_list[[if(suffixed) suffixed_parname else base_parname]] <-named_list[[base_parname]]
+          }
+          else{  # vector or 1d array
+            return_list[[if(suffixed) suffixed_parname else base_parname]] <- rep(0, self$parameter_dims[[i]])
+            for(comp_index in 1:(self$parameter_dims[[i]])){
+              return_list[[if(suffixed) suffixed_parname else base_parname]][[comp_index]] <- named_list[[generate_index_name(base_parname, c(comp_index))]]
+            }
+          }
+        }
+        else if(dim_length > 1){
+          print("entry")
+          n_components <- prod(par_dims)
+          print(paste("n_components", n_components))
+          linear_array <- rep(NA, n_components)
+          for(i in 1:n_components){
+            arr_ind <- arrayInd(i, par_dims)[1, ]
+            print(paste("arr_ind", arr_ind))
+            print(paste("index:", generate_index_name(base_parname, arr_ind), "actual_value:", as.numeric(named_list[[generate_index_name(base_parname, arr_ind)]])))
+            linear_array[[i]] <- as.numeric(named_list[[generate_index_name(base_parname, arr_ind)]])
+          }
+          return_list[[if(suffixed) suffixed_parname else base_parname]] <- array(as.numeric(unlist(linear_array)), dim=par_dims)
+        }
+        print(return_list[[if(suffixed) suffixed_parname else base_parname]])
+      }
+      print("all done!")
+      return(return_list)
     }
   )
 )
