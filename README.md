@@ -10,6 +10,46 @@ Some usecases include the following:
 SBC uses the above principle and evaluates the combination of the prior and likelihood model under a fixed computation algorithm. Users should choose one computation algorithm in advance, such as full HMC, ADVI, Laplace approximation.
 2. Test approximation algorithms  
     Approximation based Bayesian computation is very promising but one limitation is that it can be hard to diagnose its reliability. For example, full HMC benchmark is needed to measure its error. SBC which evaluates how well an algorithm samples from the posterior distribution, given a model and a prior could be an alternative tool for measuring reliability.
+
+## Installation
+```
+devtools::install_github("hyunjimoon/SBC")
+```
+## Stan file manual
+One stan file includes three blocks:
+
+1. pri_sim: `sample_theta_tilde_stan`
+simulate N parameter values from given prior distribution.
+```{stan}
+generated quantities {
+  real beta_;
+  real alpha_;
+  beta_ = normal_rng(0, 10);
+  alpha_ = normal_rng(0, 10);
+  ...
+}
+```
+2. data_sim: `sample_y_tilde`
+simulate y from each simulated parameter values in 1.
+```{stan}
+generated quantities {
+  ...
+  vector[N] y_;
+  for (n in 1:N){
+    y_[n] = normal_rng(X[n] * beta + alpha, 1.2);
+  }
+  }
+```
+3. post_sim: `sample_theta_bar_y`
+return parameter samples that best explain the simulated y in 2.
+```{stan}
+model {
+  beta ~ normal(0,10);
+  alpha ~ normal(0,10);
+  y ~ normal(X * beta + alpha, 1.2);
+}
+```
+Further examples are in [tests](https://github.com/hyunjimoon/SBC/tree/master/tests) folder.
 ---
 ### Currently supports:
 * Rank Histogram
@@ -25,6 +65,7 @@ SBC uses the above principle and evaluates the combination of the prior and like
 * Add verbose diagnostics, akin to stan's get\_hmc\_diagnostics
 * Inferential Calibration
 * Decision Calibration
+
 ### References:
 Theoretical support
 * [Validating Bayesian Inference
