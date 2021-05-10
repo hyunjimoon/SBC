@@ -1,0 +1,122 @@
+---
+title: "Discovering bad parametrization with SBC"
+output: html_notebook
+---
+
+```{r setup, include = FALSE}
+library(SBC); library(cmdstanr)
+```
+
+
+Premise: we mistakenly assume that Stan does parametrize the normal distribution
+via mean and precision (like JAGS or INLA do). Since we want to put prior on the 
+standard deviation (as is suggested on the prior choice wiki), we take standard deviation as the parameter and transform to precision $\tau = \frac{1}{\sigma^2}$.
+
+```{r}
+stan_code_prec <- "
+data {
+  int N;
+  vector[N] y;
+}
+
+parameters {
+  real mu;
+  real<lower = 0> sigma;
+}
+
+model {
+  y ~ normal(mu, 1 / square(sigma));
+  mu ~ normal(0, 5);
+  sigma ~ normal(0, 2);
+}
+"
+
+model_prec <- cmdstan_model(write_stan_file(stan_code_prec))
+
+
+
+sbc_obj_prec <- SBCModel$new(name = "prec", stan_model = model_prec)
+
+
+```
+
+```{r}
+n_datasets <- 10
+thin <- 4
+hyperpriors <- list("mu" = function(){rnorm(1, mean = 0, sd = 5)},
+                    "sigma" = function() { abs(rnorm(1, mean = 0, sd = 2))})
+
+theta_prior <- sbc_obj_prec$sample_theta_tilde(list("mu", "sigma"), n_datasets, hyperpriors)
+
+N <- 30
+sampled_y <- array(NA_real_, dim = c(n_datasets, N))
+for(n in 1:n_datasets) {
+  sampled_y[n, ] <- rnorm(N, theta_prior$mu[n], theta_prior$sigma[n]) 
+}
+```
+
+```{r}
+data <- list(N=N)
+
+theta_post <- sbc_obj_prec$sample_theta_bar_y(sampled_y, data=data, pars=list("mu", "sigma"), fit_iter = 200)
+```
+10 simulations are enough to see something is wrong with the model. We even see the issue is primarily with the `sigma` parameter!
+
+```{r}
+xx <- matrix(nrow = n_datasets, ncol = 2)
+xx[,1] = theta_prior$mu
+xx[,2] = theta_prior$sigma
+colnames(xx) <- c("mu", "sigma")
+rank <- calculate_rank(xx, theta_post, thin = thin)  # thinning factor of 3
+plot_hist(rank, "mu")
+plot_hist(rank, "sigma")
+plot_ecdf(rank, "mu")
+plot_ecdf(rank, "sigma")
+```
+
+We realize our mistake and fix the model
+
+```{r}
+stan_code_sd <- "
+data {
+  int N;
+  vector[N] y;
+}
+
+parameters {
+  real mu;
+  real<lower = 0> sigma;
+}
+
+model {
+  y ~ normal(mu, sigma);
+  mu ~ normal(0, 5);
+  sigma ~ normal(0, 2);
+}
+"
+
+model_sd <- cmdstan_model(write_stan_file(stan_code_sd))
+sbc_obj_sd <- SBCModel$new(name = "sd", stan_model = model_sd)
+
+```
+
+
+```{r}
+theta_post_sd <- sbc_obj_sd$sample_theta_bar_y(sampled_y, data=data, pars=list("mu", "sigma"), fit_iter = 200)
+```
+
+No obvious problems here, but obviously if we wanted to be sure, we should have ran a lot more simulations.
+
+```{r}
+xx <- matrix(nrow = n_datasets, ncol = 2)
+xx[,1] = theta_prior$mu
+xx[,2] = theta_prior$sigma
+colnames(xx) <- c("mu", "sigma")
+rank <- calculate_rank(xx, theta_post_sd, thin = thin)  
+plot_hist(rank, "mu")
+plot_hist(rank, "sigma")
+plot_ecdf(rank, "mu")
+plot_ecdf(rank, "sigma")
+```
+```
+
