@@ -108,36 +108,45 @@ K <- 2
 x <- matrix(rnorm(N * K), nrow = N, ncol = K)
 
 thin <- 4
-hyperpriors <- list("alpha" = function(){rnorm(1, mean = 0, sd = 5)},
-                    "beta" = function(){rnorm(K, mean = 0, sd = 1)},
-                    "sigma" = function() { abs(rnorm(1, mean = 0, sd = 2))})
+# hyperpriors <- list("alpha" = function(){rnorm(1, mean = 0, sd = 5)},
+#                     "beta" = function(){rnorm(K, mean = 0, sd = 1)},
+#                     "sigma" = function() { abs(rnorm(1, mean = 0, sd = 2))})
+# 
+# theta_prior <- sbc_obj_1$sample_theta_tilde(list("alpha", "beta", "sigma"), n_datasets, hyperpriors)
+theta_prior <- matrix(nrow = n_datasets, ncol = K + 2)
+colnames(theta_prior) <- c("alpha", paste0("beta[", 1:K, "]"), "sigma")
+theta_prior[,"alpha"] <- rnorm(n_datasets, mean = 0, sd = 5)
+for(k in 1:K) {
+  theta_prior[, paste0("beta[", k, "]")] <- rnorm(n_datasets, mean = 0, sd = 1)
+}
+theta_prior[,"sigma"] <- abs(rnorm(n_datasets, mean = 0, sd = 2))
 
-theta_prior <- sbc_obj_1$sample_theta_tilde(list("alpha", "beta", "sigma"), n_datasets, hyperpriors)
+
 
 sampled_y <- array(NA_real_, dim = c(n_datasets, N))
-for(n in 1:n_datasets) {
-  sampled_y[n, ] <- rnorm(N, theta_prior$alpha[n] + x %*% theta_prior$beta[n,], theta_prior$sigma[n]) 
+for(d in 1:n_datasets) {
+  for(n in 1:N) {
+    mu <- theta_prior[d, "alpha"]
+    for(k in 1:K) {
+      mu <- mu + x[n,k] * theta_prior[d, paste0("beta[", k, "]")]
+    }
+    sampled_y[d, n] <- rnorm(1, mu, theta_prior[d, "sigma"]) 
+  }
 }
 ```
 
 ```{r}
 data <- list(N=N, K = K, x = x)
 
-theta_post_1 <- sbc_obj_1$sample_theta_bar_y(sampled_y, data=data, pars=list("alpha", "beta", "sigma"), fit_iter = 400)
+theta_post_1 <- sbc_obj_1$sample_theta_bar_y(sampled_y, data=data, pars=colnames(theta_prior), fit_iter = 400)
 
-theta_post_2 <- sbc_obj_2$sample_theta_bar_y(sampled_y, data=data, pars=list("alpha", "beta", "sigma"), fit_iter = 400)
+theta_post_2 <- sbc_obj_2$sample_theta_bar_y(sampled_y, data=data, pars=colnames(theta_prior), fit_iter = 400)
 
-theta_post_3 <- sbc_obj_3$sample_theta_bar_y(sampled_y, data=data, pars=list("alpha", "beta", "sigma"), fit_iter = 400)
+theta_post_3 <- sbc_obj_3$sample_theta_bar_y(sampled_y, data=data, pars=colnames(theta_prior), fit_iter = 400)
 ```
 
 ```{r}
-xx <- matrix(nrow = n_datasets, ncol = 4)
-xx[,1] = theta_prior$alpha
-xx[,2] = theta_prior$beta[,1]
-xx[,3] = theta_prior$beta[,2]
-xx[,4] = theta_prior$sigma
-colnames(xx) <- c("alpha", "beta[1]", "beta[2]", "sigma")
-rank_1 <- calculate_rank(xx, theta_post_1, thin = thin)  
+rank_1 <- calculate_rank(theta_prior, theta_post_1, thin = thin)  
 plot_hist(rank_1, "alpha")
 plot_hist(rank_1, "beta[1]")
 plot_hist(rank_1, "beta[2]")
@@ -155,13 +164,7 @@ but we tested the model for you and it is OK (although the implementation is not
 
 
 ```{r}
-xx <- matrix(nrow = n_datasets, ncol = 4)
-xx[,1] = theta_prior$alpha
-xx[,2] = theta_prior$beta[,1]
-xx[,3] = theta_prior$beta[,2]
-xx[,4] = theta_prior$sigma
-colnames(xx) <- c("alpha", "beta[1]", "beta[2]", "sigma")
-rank_2 <- calculate_rank(xx, theta_post_2, thin = thin)  
+rank_2 <- calculate_rank(theta_prior, theta_post_2, thin = thin)  
 plot_hist(rank_2, "alpha")
 plot_hist(rank_2, "beta[1]")
 plot_hist(rank_2, "beta[2]")
@@ -180,13 +183,7 @@ propagates most strongly to the `sigma` parameter (reusing the same `x` element 
 
 
 ```{r}
-xx <- matrix(nrow = n_datasets, ncol = 4)
-xx[,1] = theta_prior$alpha
-xx[,2] = theta_prior$beta[,1]
-xx[,3] = theta_prior$beta[,2]
-xx[,4] = theta_prior$sigma
-colnames(xx) <- c("alpha", "beta[1]", "beta[2]", "sigma")
-rank_3 <- calculate_rank(xx, theta_post_3, thin = thin)  
+rank_3 <- calculate_rank(theta_prior, theta_post_3, thin = thin)  
 plot_hist(rank_3, "alpha")
 plot_hist(rank_3, "beta[1]")
 plot_hist(rank_3, "beta[2]")
