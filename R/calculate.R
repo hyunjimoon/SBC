@@ -66,7 +66,10 @@ calculate_rank <- function(prior, posterior, thin){
   dimnames(ranks)[2] <- list(par_names)
   for(i in 1:n_iter){
     for(j in 1:n_pars){
-      ranks[i, par_names[j]] <- sum(posterior[, par_names[j], i][thinner] < prior[i, par_names[j]])
+      post_samples <- posterior[, par_names[j], i][thinner]
+      prior_samples <- prior[i, par_names[j]]
+      ranks[i, par_names[j]] <- sum(post_samples < prior_samples) +
+        purrr::rdunif(1, a = 0, b = sum(post_samples == prior_samples))
     }
   }
   return(ranks)

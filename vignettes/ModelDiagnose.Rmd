@@ -90,7 +90,7 @@ We'll be sampling a total of `n_datasets` individual samples of the parameter `l
 theta_prior <- sbc_obj$sample_theta_tilde_stan(list("lambda"), n_datasets, data = data)
 
 # or alternatively, use the hyperpriors list:
-# theta_prior <- sbc_obj$sample_theta_tilde(list("lambda), n_datasets, hyperpriors)
+theta_prior <- sbc_obj$sample_theta_tilde(list("lambda"), n_datasets, hyperpriors)
 ```
 
 ### Example model - posterior predictive sampling
