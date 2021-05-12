@@ -12,6 +12,36 @@
 #' @export
 calculate_rank <- function(prior, posterior, thin){
 
+  # Just a hacky conversion from the list representation to make code work right now
+  if(is.list(prior)) {
+    total_vars <- 0
+    for(i in 1:length(prior)) {
+      if(length(dim(prior[[i]])) != 2) {
+        stop("Multidimensional not supported")
+      }
+      total_vars <- total_vars + dim(prior[[i]])[2]
+    }
+    prior_matrix <- matrix(nrow = dim(prior[[1]])[1], ncol = total_vars)
+    var_names <- array(NA_character_, total_vars)
+    next_index <- 1
+    for(i in 1:length(prior)) {
+      n_elems <- (dim(prior[[i]])[2])
+      if(n_elems == 1) {
+        prior_matrix[, next_index] <- prior[[i]][,1]
+        var_names[next_index] <- names(prior)[i]
+        next_index <- next_index + 1
+      } else {
+        for(k in 1:n_elems) {
+          prior_matrix[, next_index] <- prior[[i]][, k]
+          var_names[next_index] <- paste0(names(prior)[i], "[",k,"]")
+          next_index <- next_index + 1
+        }
+      }
+    }
+    colnames(prior_matrix) <- var_names
+    prior <- prior_matrix
+  }
+
   prior_dims = dim(prior)
   posterior_dims = dim(posterior)
 
