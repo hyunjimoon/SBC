@@ -1,21 +1,34 @@
 # workflow test code
 
 generator <- function(){
-  function(N){
-    mu = 5
-    sigma = 1
+  function(J){
+    mu <- rnorm(1, 0, 5)
+    tau <- rcauchy(1, 0, 5)
+    theta_trans <- rnorm(J, 0, 1)
+    theta <-theta_trans * tau + mu
     list(
-      generated = rnorm(N, mu, sigma),
+      generated = rnorm(J, mu, sigma),
       parameters = list(
-        mu = 5,
-        sigma=1,
-        tau <- c(1,2,3,4,5)
+        mu = mu,
+        theta_trans=theta_trans,
+        tau = tau,
+        theta = theta
       )
     )
   }
 }
 
-test_stan_model <- 1
-workflow <- SBC::SBCWorkflow$new(test_stan_model, generator())
 
-prior <- workflow$simulate(100, 100)
+J <- 8
+y <- c(28, 8, -3, 7, -1, 1, 18, 12)
+sigma <- c(15, 10, 16, 11, 9, 11, 10, 18)
+
+data = list("J"=J, "y"=y, "sigma"=sigma)
+ncp_model = cmdstanr::cmdstan_model("tests/eightschools_ncp.stan")
+
+
+workflow <- SBC::SBCWorkflow$new(ncp_model, generator())
+
+workflow$simulate(100, J)
+
+d <- workflow$fit_model(4000, 4000, data)

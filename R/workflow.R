@@ -4,12 +4,21 @@
 SBCWorkflow <- R6::R6Class("SBCWorkflow",
   public = list(
     #' @field name Some string that identifies this workflow (for your convenience)
+    #' @field stan_model A CmdStanModel object to use for fitting data
+    #' @field sim_function A simulator function, which should return simulated prior and data samples for SBC. Please refer \code{SBCWorkflow$initialize()} for details.
+    #' @field calculated_ranks A named list of vectors which contained calculated ranks, or NULL if not calculated.
+    #' @field prior_samples A list of named lists which containes simulated prior samples.
+    #' @field simulated_y An array with dim(n_iter, n_samples) which contains simulated data.
+    #' @field posterior_dimensions A named list containing dimensions of posterior variables. This is used for internal purposes.
+    #' @field posterior_samples A list of named lists of posterior samples. names are indexed names, which means multidimensional parameters are decomposed element-wise.
     name = NULL,
     stan_model = NULL,
     sim_function = NULL,
     calculated_ranks = NULL,
-    prior_samples = NULL,  # type is list of named lists
-    simulated_y = NULL,  # type is array
+    prior_samples = NULL,  # type is list of named lists. written on simulate
+    simulated_y = NULL,  # type is array with dim(n_iter, n_samples). written on simulate
+    posterior_dimensions = NULL, # named list containing dimensions of posterior variables. written on fit_model
+    posterior_samples = NULL,  # type is list of named lists. written on fit_model
 
     initialize = function(stan_model, sim_function, ...){
       self$stan_model <- stan_model
@@ -31,36 +40,37 @@ SBCWorkflow <- R6::R6Class("SBCWorkflow",
       }
       self$prior_samples <- prior_list
       self$simulated_y <- sim_y
-
     },
 
-    fit_model = function(prior_samples, sample_iterations, warmup, data=list()){
-      fit_cmdstan_model(self$stan_model, data, sample_iterations, warmup, 1)
-    },
-
-    sample_data = function(priors, ...){
-      sim_y <- array()
-      for(i in 1:length(priors)){
-        sim_row <- do.call(self$data_sim_function, list(priors[[i]], list(...)))
-        if(i == 1){
-          sim_y <<- array(rep(NA, length(priors) * length(sim_row)), c(length(priors), length(sim_row)))
-        }
-        sim_y[i, ] <<- unlist(sim_row)
+    fit_model = function(sample_iterations, warmup_iterations, data=list()){
+      if(is.null(self$simulated_y)){
+        stop("There are no simulated data available. Please run SBCWorkflow$simulate() first ")
       }
-      return(sim_y)
-    }
+      posterior <- list()  # a list of named lists of posterior draws as r datatypes(vector, array)
+      iterations <- dim(self$simulated_y)[1]
+      for(n in 1:iterations){
+        data[["y"]] <= self$simulated_y[n, ]
+        model_fit <- fit_cmdstan_model(self$stan_model, data, sample_iterations, warmup_iterations, 1)
+        if(n == 1){
+          par_names <- names(self$prior_samples[[1]])
+          sample_summary <- as.data.frame(model_fit$summary())
+          row.names(sample_summary) <- sample_summary[, "variable"]  # set "variable" column as row names
+          par_indexes <- infer_sequential_params(par_names, sample_summary, return_dim_info = TRUE)
+          self$posterior_dimensions <- par_indexes[["dims"]]
 
-  ))
+        }
+        par_names <- names(self$prior_samples[[1]])
+        drawset <- model_fit$draws(variables=par_names)
+        num_indexed_pars <- dim(drawset)[3] # total number of indexed param names
+        #print(length(posterior::as_draws_list(drawset)[1]))
+        posterior <- append(posterior, posterior::as_draws_list(drawset)[1])
+      }
+      self$posterior_samples <- posterior
+      return(posterior)
+    },
+  )
+)
 
 fit_cmdstan_model <- function(cmdstan_model, data, sampling_iters, warmup_iters, n_chains){
   cmdstan_model$sample(data=data, refresh=0, chains=1, iter_warmup=warmup_iters, iter_sampling=sampling_iters)
-}
-
-
-convert_cmdstanfit <- function(cmdstan_fit){
-  sample_summary <- as.data.frame(cmdstan_fit$summary())
-}
-
-multidim_index_to_contiguous <- function(index, dims){
-  arrayInd(index, dim)
 }
