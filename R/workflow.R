@@ -3,7 +3,6 @@
 #' @export
 SBCWorkflow <- R6::R6Class("SBCWorkflow",
   public = list(
-    #' @field name Some string that identifies this workflow (for your convenience)
     #' @field stan_model A CmdStanModel object to use for fitting data
     #' @field sim_function A simulator function, which should return simulated prior and data samples for SBC. Please refer \code{SBCWorkflow$initialize()} for details.
     #' @field calculated_ranks A named list of vectors which contained calculated ranks, or NULL if not calculated.
@@ -11,7 +10,6 @@ SBCWorkflow <- R6::R6Class("SBCWorkflow",
     #' @field simulated_y An array with dim(n_iter, n_samples) which contains simulated data.
     #' @field posterior_dimensions A named list containing dimensions of posterior variables. This is used for internal purposes.
     #' @field posterior_samples A list of named lists of posterior samples. names are indexed names, which means multidimensional parameters are decomposed element-wise.
-    name = NULL,
     stan_model = NULL,
     sim_function = NULL,
     calculated_ranks = NULL,
@@ -20,11 +18,24 @@ SBCWorkflow <- R6::R6Class("SBCWorkflow",
     posterior_dimensions = NULL, # named list containing dimensions of posterior variables. written on fit_model
     posterior_samples = NULL,  # type is list of named lists. written on fit_model
 
-    initialize = function(stan_model, sim_function, ...){
+    #' R6 Initializer for SBCWorkflow
+    #'
+    #' @param stan_model A CmdStanModel object to use for fitting data.
+    #' @param sim_function A simulator function. The function must return a
+    #'   named list with elements \code{parameters} and \code{generated}.
+    #'   Parameters should be a named list containing prior samplers for
+    #'   parameters. Generated must be a 1 dimensional vector containing
+    #'   simulated y data generated from the \code{parameters} samples.
+    #'
+    initialize = function(stan_model, sim_function){
       self$stan_model <- stan_model
       self$sim_function <- sim_function
     },
 
+    #' Sample \eqn{\tilde{\theta} \sim P(\theta)} and \eqn{\tilde{y} \sim P(\tilde{y}) | \tilde{\theta} using \code{sim_function}
+    #'
+    #' @param n Number of prior samples to generate. Equates to number of SBC iterations
+    #' @param ... Additional arguments to be passed to \code{sim_function}
     simulate = function(n, ...){  # number of simulation draws should be at least 1000
       prior_list <- list()
       sim_y <- NA
@@ -42,6 +53,11 @@ SBCWorkflow <- R6::R6Class("SBCWorkflow",
       self$simulated_y <- sim_y
     },
 
+    #' Sample \eqn{\widehat{\theta} \sim P(\widehat{\theta} | \tilde{y})} using the stan model.
+    #'
+    #' @param sample_iterations Number of sampling iterations. Equates to number of posterior samples
+    #' @param warmup_iterations Number of warmup iteratioins.
+    #' @param data List specifying data to be passed to the model. Note that \code{y} will be replaced with simulated \code{y} samples.
     fit_model = function(sample_iterations, warmup_iterations, data=list()){
       if(is.null(self$simulated_y)){
         stop("There are no simulated data available. Please run SBCWorkflow$simulate() first ")
@@ -67,7 +83,7 @@ SBCWorkflow <- R6::R6Class("SBCWorkflow",
       }
       self$posterior_samples <- posterior
       return(posterior)
-    },
+    }
   )
 )
 
