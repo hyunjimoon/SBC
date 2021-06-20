@@ -104,7 +104,6 @@ SBCWorkflow <- R6::R6Class("SBCWorkflow",
       }
 
       n_iters <- length(self$prior_samples)
-      print(n_iters)
       n_params <- length(param)
       decomposed_prior <- decompose_structure_to_par_list(self$prior_samples[[1]])
       base_param_names <- unlist(lapply(param, function(n){if(grepl("\\[", n)) sub("\\[.*", "", n) else n}))  # extract base parameter names(A[1, 2] -> A)
