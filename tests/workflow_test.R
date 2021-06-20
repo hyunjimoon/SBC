@@ -29,6 +29,6 @@ ncp_model = cmdstanr::cmdstan_model("tests/eightschools_ncp.stan")
 
 workflow <- SBC::SBCWorkflow$new(ncp_model, generator())
 
-workflow$simulate(100, J)
-
+workflow$simulate(10, J)
 d <- workflow$fit_model(4000, 4000, data)
+ranks <- workflow$calculate_rank()

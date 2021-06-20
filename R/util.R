@@ -142,7 +142,7 @@ par_list_to_structure = function(named_list, parameter_dims){
 #'
 #' @param named_list A named list containing r elements
 #'
-#' @return A named list with indexed elemnet values
+#' @return A named list with indexed element values
 decompose_structure_to_par_list <- function(named_list){
   generate_index_name <- function(name, ...){
     return(paste0(name, "[", paste0(c(...), collapse=","), "]"))
@@ -155,17 +155,29 @@ decompose_structure_to_par_list <- function(named_list){
     if(is.array(current_val)){
       linear_array <- as.vector(current_val)
       for(m in 1:prod(dim(current_val))){
-        return_list[arrayInd(m, dim(current_val))] <- linear_array[m]
+        return_list[paste0(list_names[[n]], "[", paste(arrayInd(m, dim(current_val)), collapse=","), "]")] <- linear_array[m]
       }
     }
-    else if(is.vector(current_val)){
+    else if(length(current_val) > 1){
       for(m in 1:length(current_val)){
-        return_list[paste0(list_names[[m]], "[", m, "]")] <- current_val[m]
+        return_list[paste0(list_names[[n]], "[", m, "]")] <- current_val[m]
       }
     }
     else{
-      return_list[list_names[[m]]] <- current_val
+      return_list[list_names[[n]]] <- current_val
     }
   }
   return(return_list)
+}
+
+access_element_by_index <- function(data, index_list){
+  if(length(index_list) == 0){
+    return(data)
+  }
+  else if(length(index_list) == 1){
+    return(data[[index_list[[1]]]])
+  }
+  else{
+    return(cbind(unlist(index_list)))
+  }
 }
