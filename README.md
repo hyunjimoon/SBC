@@ -3,7 +3,7 @@
 SBC provides tools to easily validate and offer corrections on prior, likelihood, and computation algorithms based on the self-recovering property of Bayesian models. This package contains tools such as SBC rank histograms, ECDF plots, and their summary statistics which can be used to assess computational faithfulness. Please refer to the included vignette for detailed usage.
 
 ## Varieties of calibrations: scope of this package
-Calibration is a model development bootstrap and its method and target varies. Target is chosen as modeler's quantity of interest and directly affects the calibrated result as reward in reinforcement learning. Method depends on how much you marginalized or conditioned the full joint space to test coverage. Scope of this package is checked below.
+Calibration (i.e. reliability) is not a sufficient condition for a good forecast but a minimal property that any forecast should satisfy (FV1998). It serves as a bootstrap for model development and its method and target varies. Target is chosen as modeler's quantity of interest and directly affects the calibrated result as reward in reinforcement learning. Method depends on how much you marginalized or conditioned the full joint space to test coverage. Scope of this package is checked below.
 
 ## Target
 - [x] a. Prediction, p(y.new): Predictive checks which compares the distribution of replicated y and real y.
@@ -12,15 +12,15 @@ Calibration is a model development bootstrap and its method and target varies. T
 
 - [x] c. Posterior computations: This quantifies how faithfully our computational tools represent the model that they’re fitting. One usecase would be testing approximation algorithms. Approximation based Bayesian computation is very promising but one limitation is that it can be hard to diagnose its reliability. For example, full HMC benchmark is needed to measure its error. SBC which evaluates how well an algorithm samples from the posterior distribution, given a model and a prior could be an alternative tool for measuring reliability.
 
-Note. calibration matters but so does precision.
+Note. Calibration matters but so does sharpness; ideal conditions are unbiasedness and high precision for each.
 
 ## Method
-Examples are for calibrating forecast probability and p.hat is E(y.new|y) i.e. posterior expectation.
-- [x] a. Unconditional coverage: E(y.new) = E(p.hat) is both a Bayesian and frequentist property. For both modes of inference, unconditional coverage will occur if all the assumptions are true. 
+With the quantities of interest (QI) determined from the target above, different modes of QI calibration exist based on the space where coverage is test. The space is derived by marginalizing or conditioning the full joint space; a. is fully marginalized while b and c is conditional on data and parameter. When QI is forecast probability, `y.new` serves as QI which is compared with `p.hat = E(y.new|y)` on different spaces. `E[QI|y]` or `E(y.new|y)` could be thought as ground truth for simulation.
 
-- [x] b. Coverage conditional on data: E(y.new|p.hat) = p.hat for any p.hat is Bayesian. 
+- [x] a. Unconditional coverage `E[QI] = E[E[QI|y]]`: both a Bayesian and frequentist property and unconditional coverage will occur if all the assumptions are true for both. e.g. `E(y.new) = E(p.hat)`
 
-- [ ] c. Coverage conditional on theta: E(y.new|theta) = E(p.hat|theta) is frequentist.
+- [x] b. Coverage conditional on data `E[QI|E[QI|y]] = E[QI|y]` for all values of `E[QI|y]`: Bayesian calibration. It tests how well the recovered posteriors are centered around the ground truth theta value (`E[QI|y]`). e.g. `E(y.new|p.hat) = p.hat for any p.hat`
+- [ ] c. Coverage conditional on theta `E[QI|theta] = E[E[QI|y]|theta]`: frequentist calbiration. e.g.  `E[y.new|theta] = E[p.hat|theta]`
 
 See Andrew Gelman's [writing](https://statmodeling.stat.columbia.edu/2012/12/06/yes-checking-calibration-of-probability-forecasts-is-part-of-bayesian-statistics/) for further detail.
 
@@ -81,14 +81,12 @@ Further examples are in [tests](https://github.com/hyunjimoon/SBC/tree/master/te
 
 ### References:
 Theoretical support
-* [Validating Bayesian Inference
-Algorithms with Simulation-Based
-Calibration](https://arxiv.org/pdf/1804.06788.pdf) Talts, Betancourt, Simpson, Vehtari, Gelman, 2018
+* [Validating Bayesian Inference Algorithms with Simulation-Based Calibration](https://arxiv.org/pdf/1804.06788.pdf) Talts, Betancourt, Simpson, Vehtari, Gelman, 2018
 * [Rank-Normalization, Folding, and Localization: An Improved R-hat for Assessing Convergence of MCMC](https://arxiv.org/abs/1903.08008) Vehtari, Gelman, Simpson, Carpenter, Bürkner, 2021
 * [Graphical Test for Discrete Uniformity and its Applications in Goodness of Fit Evaluation and Multiple Sample Comparison](https://arxiv.org/abs/2103.10522)  Säilynoja, Bürkner, Vehtari, 2021
 * [Bayes factor workflow](https://arxiv.org/pdf/2103.08744.pdf) Schad, Nicenboim, Bürkner, Betancourt, Vasishth, 2021
 * [ECDF with codes](https://avehtari.github.io/rhat_ess/rhat_ess.html)
-
+* [Asymptotic Calibration](https://www.jstor.org/stable/2337364) Foster and Vohra, 1998
 Application support
 * [Cognitive science, response time fitting](https://link.springer.com/content/pdf/10.3758/s13428-019-01318-x.pdf)
 * [Bioinformatics, effect of mutation prediction](https://www.biorxiv.org/content/10.1101/2020.10.27.356758v1.full.pdf)
