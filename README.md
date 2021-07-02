@@ -90,6 +90,7 @@ Application support
 * [Cognitive science, response time fitting](https://link.springer.com/content/pdf/10.3758/s13428-019-01318-x.pdf)
 * [Bioinformatics, effect of mutation prediction](https://www.biorxiv.org/content/10.1101/2020.10.27.356758v1.full.pdf)
 * [Earth science, earthquake prediction](https://gmd.copernicus.org/articles/11/4383/2018/gmd-11-4383-2018.pdf )
+* [Sequential Neural Likelihood](http://proceedings.mlr.press/v89/papamakarios19a/papamakarios19a.pdf) 
 
 Vignette
 * [ECDF with codes](https://avehtari.github.io/rhat_ess/rhat_ess.html) (new implementation by Teemu Säilynoja will be available in `bayesplot` and `SBC` package soon)
