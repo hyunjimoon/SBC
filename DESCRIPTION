@@ -24,11 +24,13 @@ Imports:
   posterior,
   ggplot2,
   stats,
-  stringi
+  stringi,
+  abind
 Suggests: 
     testthat,
     cmdstanr,
     rstan,
     knitr,
-    rmarkdown
+    rmarkdown,
+    brms
 VignetteBuilder: knitr
