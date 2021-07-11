@@ -1,4 +1,122 @@
 
+
+#' @description
+#' Given a generator function, run the generator n times, and created draws_rvar for prior(parameters) and simulated data(generated)
+#' Within each draws_rvar, n_chains is used as "n", which is the number of SBC iterations. For example, if we run SBC 10 times for 5 parameters,
+#' the resulting draws_rvar will have dim = (1, 10, 5), with 10 chains and 5 parameters. For simulated data, if we run SBC 10 times and each
+#' iteration yields 1000 posterior samples, the resulting draws_Rvar will have dim = (1000, 10, 1) with 1000 iterations and 10 chains.
+#' Returned type is a named list of draws_rvars, for each parameters and generated
+#'
+#' @param generator The generator function
+#' @param n_sbc_iterations the number of SBC iterations
+#' @param ... Additional arguments to be passed to the generator function
+#'
+#' @return A named list with names = ("parameters", "generated"), which each contain draws_rvars corresponding to prior and simulated data
+generator_to_draws_rvars <- function(generator, n_sbc_iterations, ...){
+  merged_parameter_array <- NULL # a 3d array with dimensions(1, n_sbc_iterations, n_variables)
+  merged_generated_array <- NULL # a 3d array with dim(n_generated_samples, n_sbc_iterations, 1)
+  # we extend the array along the 2nd dimension, which is along chains
+
+  # If there's an easier way to merge rvars along chains, then the double conversion wouldn't be needed
+  for(iter in 1:n_sbc_iterations){
+    generator_output <- do.call(generator, list(...))
+    parameter_array <- posterior::as_draws_array(posterior::as_draws_rvars(generator_output[["parameters"]]))  # No clean way to directly transform generator output to draws_array
+    generated_array <- posterior::as_draws_array(posterior::as_draws_rvars(list(y=posterior::rvar(generator_output[["generated"]]))))
+    dimnames(parameter_array)[[2]] <- iter
+    dimnames(generated_array)[[2]] <- iter
+    if(iter == 1){
+      merged_parameter_array <- parameter_array
+      merged_generated_array <- generated_array
+    }
+    else{
+      merged_parameter_array <- abind::abind(merged_parameter_array, parameter_array, along=2)
+      merged_generated_array <- abind::abind(merged_generated_array, generated_array, along=2)
+    }
+  }
+  list(parameters=posterior::as_draws_rvars(merged_parameter_array), generated=posterior::as_draws_rvars(merged_generated_array))
+}
+
+
+#' @description
+#' Given a cmdstan model, a default data list, and a posterior::draws_rvars of simulated y samples, fit the model
+#' n_sbc_iterations times each with data from simulated_y_draws_rvars, and return the merged posterior as a posterior::draws_rvars
+#' object.
+#'
+#' @param cmdstan_model A CmdStanModel object
+#' @param n_sbc_iterations Integer representing the number of iterations. Should equate to # of chains in sumulated_y_draws_rvars
+#' @param data_list A list containing default data for the model. Note that "y" will be replaced with samples from simulate_y_draws_rvars
+#' @param simulated_y_draws_rvars A posterior::draws_rvars containing simulated data. Should be of dim(n, n_sbc_iterations, 1)
+#' @param ... Additional arguments to be passed to cmdstan_model$sample
+#'
+#' @return A posterior::draws_rvars object of dimension(n_fit_samples, n_sbc_iterations, n_variables) containing posterior samples
+cmdstan_fits_to_draws_rvars <- function(cmdstan_model, n_sbc_iterations, data_list, simulated_y_draws_rvars, ...){
+  if(n_sbc_iterations != posterior::nchains(simulated_y_draws_rvars)){
+    stop("Number of chains in simulated_y_draws_rvars does not match n_sbc_iterations")
+  }
+  merged_fits_array <-NULL # a 3d array with dimensions(n_posterior_samples, n_sbc_iterations, n_variables)
+
+  for(iter in 1:n_sbc_iterations){
+    data_list[["y"]] <- as.vector(posterior::draws_of(posterior::subset_draws(simulated_y_draws_rvars, chain=iter)$y))
+    model_fit <-do.call(cmdstan_model$sample, list(data=data_list, ...))
+    fit_array <- posterior::as_draws_array(posterior::as_draws_rvars(model_fit$draws()))
+    dimnames(fit_array)[[2]] <- iter
+
+    if(iter == 1){
+      merged_fits_array <- fit_array
+    }
+    else{
+      merged_fits_array <- abind::abind(merged_fits_array, fit_array, along=2)
+    }
+  }
+  posterior::as_draws_rvars(merged_fits_array)
+}
+
+#' @description
+#' Given a posterior::draws_rvars types for both prior and posterior samples(refer to SBCWorkflow for specifications), create a
+#' posterior::draws_rvars object which contains rank statistics (posterior < prior) for all parameters.
+#'
+#' @param prior_draws_rvars A posterior::draws_rvars type containing prior samples. Refer to SBCWorkflow for exact specifications
+#' @param posteror_draws_rvars A posterior::draws_rvars type containing posterior samples. Refer to SBCWorkflow for exact specifications
+#'
+#' @return a Posterior::darws_rvars type containing rank statistcs. Dimensions are (1, n_sbc_iterations, n_variables)
+calculate_rank_draws_rvars <- function(prior_draws_rvars, posterior_draws_rvars){
+  n_vars <- posterior::nvariables(prior)
+  sbc_iters <- posterior::nchains(prior)
+  merged_rank_array <- NULL
+  for(n_iter in 1:sbc_iters){
+    rank_list <- list()
+    for(n_var in 1:n_vars){
+      var <- posterior::variables(prior)[[n_var]]
+
+      prior_slice <- as.array(posterior::draws_of(posterior::subset_draws(prior, variable=var, chain=n_iter)[[var]]))
+      iter_comp <- apply(posterior::draws_of(posterior::subset_draws(post, variable = var, chain=n_iter)[[var]]), 1, function(x){x < prior_slice})
+      if(is.vector(iter_comp)){
+        rank_list[[var]] <- sum(iter_comp, na.rm=TRUE)
+      }
+      else{
+        rank_slice <- apply(iter_comp, c(1:(max(1,length(dim(iter_comp))-1))), function(x){sum(x, na.rm=TRUE)})
+        # Need to test for scalar and matrices
+        rank_list[[var]] <- rank_slice
+      }
+
+    }
+    rank_array <- posterior::as_draws_array(posterior::as_draws_rvars(rank_list))
+    dimnames(rank_array)[[2]] <- n_iter
+    if(n_iter == 1){
+      merged_rank_array <- rank_array
+    }
+    else{
+      merged_rank_array <- abind::abind(merged_rank_array, rank_array, along=2)
+    }
+  }
+  posterior::as_draws_rvars(merged_rank_array)
+}
+
+
+
+#############################################
+#Legacy functions
+
 #' @description
 #' Given list of base parameter names and stan summary matrix, return list of all individual index parameter names
 #' For example, if the model contained a vector\[5\] parname as a parameter, you can run infer_sequential_param("parname", ...)

@@ -20,17 +20,17 @@ model {
   tau ~ cauchy(0, 5);
 }
 
-generated quantities {
-  vector[J] y_;
-  vector[J] theta_trans_;
-  vector[J] theta_;
-  real mu_;
-  real tau_;
-  mu_ = normal_rng(0, 5);
-  tau_ = fabs(cauchy_rng(0, 5));
-  for(j in 1:J){
-    y_[j] = normal_rng(theta[j], sigma[j]);
-    theta_trans_[j] = normal_rng(0, 1);
-    theta_[j] = theta_trans_[j] * tau_ + mu_;
-  }
-}
+// generated quantities {
+//   vector[J] y_;
+//   vector[J] theta_trans_;
+//   vector[J] theta_;
+//   real mu_;
+//   real tau_;
+//   mu_ = normal_rng(0, 5);
+//   tau_ = fabs(cauchy_rng(0, 5));
+//   for(j in 1:J){
+//     y_[j] = normal_rng(theta[j], sigma[j]);
+//     theta_trans_[j] = normal_rng(0, 1);
+//     theta_[j] = theta_trans_[j] * tau_ + mu_;
+//   }
+// }

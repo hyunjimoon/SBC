@@ -1,13 +1,13 @@
 # workflow test code
-
+library(SBC)
 generator <- function(){
-  function(J){
+  function(){
     mu <- rnorm(1, 0, 5)
     tau <- rcauchy(1, 0, 5)
-    theta_trans <- rnorm(J, 0, 1)
+    theta_trans <- rnorm(8, 0, 1)
     theta <-theta_trans * tau + mu
     list(
-      generated = rnorm(J, mu, sigma),
+      generated = rnorm(8, mu, sigma),
       parameters = list(
         mu = mu,
         theta_trans=theta_trans,
@@ -29,6 +29,8 @@ ncp_model = cmdstanr::cmdstan_model("tests/eightschools_ncp.stan")
 
 workflow <- SBC::SBCWorkflow$new(ncp_model, generator())
 
-workflow$simulate(10, J)
-d <- workflow$fit_model(4000, 4000, data)
+workflow$simulate(10)
+d <- workflow$fit_model(20, 20, data)
+prior <- workflow$prior_samples
+post <- workflow$posterior_samples
 ranks <- workflow$calculate_rank()
