@@ -5,7 +5,7 @@
 \title{Plot ECDF given rank array "ranks"
 \href{https://arxiv.org/abs/1903.08008}{arxiv::1903.08008} by A. Vehtari et al.}
 \usage{
-plot_ecdf(ranks, par)
+plot_ecdf(ranks, par, rank.max = max(ranks))
 }
 \arguments{
 \item{ranks}{array of dimension(n_iter, n_pars) where n_iter=number of posterior draw iterations, n_pars the number of parameters of interest}
