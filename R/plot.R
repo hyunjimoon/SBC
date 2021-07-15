@@ -20,12 +20,12 @@ plot_hist <- function(ranks, par, bins=20){
 #' @param par names of parameter to plot
 #' @import ggplot2
 #' @export
-plot_ecdf <- function(ranks, par, rank.max = max(ranks)){
+plot_ecdf <- function(ranks, par){
 
   S <- dim(ranks)[1]
   r.scale <- rank(ranks[, par], ties.method="average")
-  q95 <- stats::qbinom(0.975, r.scale+1, S - r.scale + 1)
-  q05 <- stats::qbeta(0.025, r.scale+1, S - r.scale + 1)
+  q95 <- stats::qbeta(0.95, r.scale+1, S - r.scale + 1)
+  q05 <- stats::qbeta(0.05, r.scale+1, S - r.scale + 1)
   ggplot() + aes(r.scale / S) + stat_ecdf() +
     geom_line(aes(y=q95), color="blue") + geom_line(aes(y=q05), color="blue") +
     xlab("Fractional Rank") + ylab("ECDF") + ggtitle(paste("ECDF for parameter", par))
