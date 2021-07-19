@@ -189,5 +189,5 @@ u_scale <- function(x) {
 # for each value in 'y', compute the fractional ranks (empirical pit values)
 # with respect to 'yrep'.
 empirical_pit <- function(y, yrep) {
-  apply(outer(yrep, y, "<="), 3, sum) / length(yrep)
+  (1 +  apply(outer(yrep, y, "<="), 3, sum)) / (1 +length(yrep))
 }
