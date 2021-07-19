@@ -13,24 +13,24 @@ plot_hist <- function(ranks, par, bins=20){
     xlab("rank") + ylab("count") + ggtitle(paste("Rank Histogram for parameter", par))
 }
 
-#' Plot ECDF given rank array "ranks"
-#' \href{https://arxiv.org/abs/1903.08008}{arxiv::1903.08008} by A. Vehtari et al.
-#'
-#' @param ranks array of dimension(n_iter, n_pars) where n_iter=number of posterior draw iterations, n_pars the number of parameters of interest
-#' @param par names of parameter to plot
-#' @import ggplot2
-#' @export
-plot_ecdf <- function(ranks, par){
-
-  S <- dim(ranks)[1]
-  r.scale <- rank(ranks[, par], ties.method="average")
-  q95 <- stats::qbeta(0.95, r.scale+1, S - r.scale + 1)
-  q05 <- stats::qbeta(0.05, r.scale+1, S - r.scale + 1)
-  ggplot() + aes(r.scale / S) + stat_ecdf() +
-    geom_line(aes(y=q95), color="blue") + geom_line(aes(y=q05), color="blue") +
-    xlab("Fractional Rank") + ylab("ECDF") + ggtitle(paste("ECDF for parameter", par))
-
-}
+# #' Plot ECDF given rank array "ranks"
+# #' \href{https://arxiv.org/abs/1903.08008}{arxiv::1903.08008} by A. Vehtari et al.
+# #'
+# #' @param ranks array of dimension(n_iter, n_pars) where n_iter=number of posterior draw iterations, n_pars the number of parameters of interest
+# #' @param par names of parameter to plot
+# #' @import ggplot2
+# #' @export
+# plot_ecdf <- function(ranks, par){
+#
+#   S <- dim(ranks)[1]
+#   r.scale <- rank(ranks[, par], ties.method="average")
+#   q95 <- stats::qbeta(0.95, r.scale+1, S - r.scale + 1)
+#   q05 <- stats::qbeta(0.05, r.scale+1, S - r.scale + 1)
+#   ggplot() + aes(r.scale / S) + stat_ecdf() +
+#     geom_line(aes(y=q95), color="blue") + geom_line(aes(y=q05), color="blue") +
+#     xlab("Fractional Rank") + ylab("ECDF") + ggtitle(paste("ECDF for parameter", par))
+#
+# }
 
 # plot.ecdf.diff <- function(ranks, par){
 #   # Plot ECDF values centered around given rank array "ranks"
@@ -67,7 +67,7 @@ plot_ecdf <- function(ranks, par){
 #'   of the simultaneous confidence bands. Defaults to 'length(y)',
 #'   'K = ncol(yrep)', or lastly to 'K = ncol(pit)' depending on which one is
 #'   provided.
-ecdf_intervals <- function(
+plot_ecdf <- function(
   pit,
   gamma,
   K,
@@ -140,7 +140,7 @@ ecdf_intervals <- function(
 
 #' @export
 #' @rdname ECDF-plots
-ecdf_intervals_difference <- function(
+plot_ecdf_diff <- function(
   pit,
   gamma,
   K,
