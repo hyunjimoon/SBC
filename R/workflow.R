@@ -61,7 +61,6 @@ SBCWorkflow <- R6::R6Class("SBCWorkflow",
         #prior_sampler <- update(self$model_obj, sample_prior="only", chains=1, iter=n * 2, warmup = n)
       }
       else if(!is.null(self$cmdstan_model)){
-        draws_rvars_list <- do.call(generator_to_draws_rvars, list(self$sim_function, n_sbc_iterations, ...))
         self$prior_samples <- draws_rvars_list[["parameters"]]
         self$simulated_y <- draws_rvars_list[["generated"]]
       }
@@ -69,6 +68,8 @@ SBCWorkflow <- R6::R6Class("SBCWorkflow",
         stop("No valid model specified for the workflow. Please check that your model is a valid brmsfit or a CmdStanModel object.")
       }
     },
+   simulate = function(n_sbc_iterations, param = TRUE,  ...){  # number of simulation draws should be at least 1000
+       draws_rvars_list <- do.call(generator_to_draws_rvars, list(self$sim_function, n_sbc_iterations, param = param, ...))
 
     #' Sample \eqn{\widehat{\theta} \sim P(\widehat{\theta} | \tilde{y})} using the stan model.
     #'

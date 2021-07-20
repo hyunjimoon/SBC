@@ -12,14 +12,15 @@
 #' @param ... Additional arguments to be passed to the generator function
 #'
 #' @return A named list with names = ("parameters", "generated"), which each contain draws_rvars corresponding to prior and simulated data
-generator_to_draws_rvars <- function(generator, n_sbc_iterations, ...){
+generator_to_draws_rvars <- function(generator, n_sbc_iterations, param, ...){
   merged_parameter_array <- NULL # a 3d array with dimensions(1, n_sbc_iterations, n_variables)
   merged_generated_array <- NULL # a 3d array with dim(n_generated_samples, n_sbc_iterations, 1)
   # we extend the array along the 2nd dimension, which is along chains
 
   # If there's an easier way to merge rvars along chains, then the double conversion wouldn't be needed
-  for(iter in 1:n_sbc_iterations){
-    generator_output <- do.call(generator, list(...))
+    for(iter in 1:n_sbc_iterations){
+      if(param){generator_output <- do.call(generator, list(...))
+      }else{generator_output <- do.call(generator, list(...[iter]))}
     parameter_array <- posterior::as_draws_array(posterior::as_draws_rvars(generator_output[["parameters"]]))  # No clean way to directly transform generator output to draws_array
     generated_array <- posterior::as_draws_array(posterior::as_draws_rvars(list(y=posterior::rvar(generator_output[["generated"]]))))
     dimnames(parameter_array)[[2]] <- iter
