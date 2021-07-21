@@ -111,7 +111,7 @@ SBCWorkflow <- R6::R6Class("SBCWorkflow",
      if(is.null(param)){
        param <- posterior::variables(prior)
      }
-     calculate_rank_draws_rvars(self$prior_samples, self$posterior_samples)
+     calculate_rank_rvars(self$prior_samples, self$posterior_samples, param = param)
 
      # ranks <- array(rep(0, n_iters * n_params), dim=c(n_iters, n_params))
      # dimnames(ranks)[2] <- list(names(decomposed_prior))

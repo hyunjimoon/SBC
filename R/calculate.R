@@ -10,22 +10,23 @@
 #'
 #' @return array of dimensions(n_iter, n_pars)
 #' @export
-calculate_rank <- function(prior, posterior, thin){
-
+calculate_rank_rvars <- function(prior, posterior, param){
+  prior <- as_draws_matrix(prior)
+  posterior <- as_draws_matrix(posterior)
   prior_dims = dim(prior)
-  posterior_dims = dim(posterior)
+  posterior_dims = dim(array(as_draws_array(post), c(prior_dims[1], dim(posterior)[1]/prior_dims[1], dim(posterior)[2])))
 
-  if (prior_dims[1] != posterior_dims[3]){
-    stop(paste("Dimension mismatch error!",
-               "dim(prior)[1] == dim(posterior)[3] must be satisfied",
-               paste("prior dimensions:", prior_dims[1], prior_dims[2]),
-               paste("posterior dimensions:", posterior_dims[1], posterior_dims[2], posterior_dims[3]),
-               "", sep="\n"))
-  }
+  # if (prior_dims[1] != posterior_dims[1]){
+  #   stop(paste("Dimension mismatch error!",
+  #              "dim(prior)[1] == dim(posterior)[3] must be satisfied",
+  #              paste("prior dimensions:", prior_dims[1], prior_dims[2]),
+  #              paste("posterior dimensions:", posterior_dims[1], posterior_dims[2], posterior_dims[3]),
+  #              "", sep="\n"))
+  # }
   n_sample <- posterior_dims[1]
-  n_iter <- posterior_dims[3]
+  n_iter <- posterior_dims[1]
 
-  par_names <- intersect(unlist(dimnames(prior)[2]), unlist(dimnames(posterior)[2]))
+  par_names <- param #intersect(unlist(dimnames(prior)[2]), unlist(dimnames(posterior)[2]))
   n_pars <- length(par_names)
   if(n_pars == 0){
     stop("There isn't a parameter name both present in the prior and posterior column names. SBC cannot continue. length(intersect(prior, posterior)) == 0")
@@ -36,7 +37,7 @@ calculate_rank <- function(prior, posterior, thin){
   dimnames(ranks)[2] <- list(par_names)
   for(i in 1:n_iter){
     for(j in 1:n_pars){
-      ranks[i, par_names[j]] <- sum(posterior[, par_names[j], i][thinner] < prior[i, par_names[j]])
+      ranks[i, par_names[j]] <- sum(subset_draws(posterior, variable = par_names[j]) < subset_draws(prior,  variable = par_names[j])[i])
     }
   }
   return(ranks)

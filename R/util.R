@@ -80,7 +80,7 @@ cmdstan_fits_to_draws_rvars <- function(cmdstan_model, n_sbc_iterations, data_li
 #' @param posteror_draws_rvars A posterior::draws_rvars type containing posterior samples. Refer to SBCWorkflow for exact specifications
 #'
 #' @return a Posterior::darws_rvars type containing rank statistcs. Dimensions are (1, n_sbc_iterations, n_variables)
-calculate_rank_draws_rvars <- function(prior_draws_rvars, posterior_draws_rvars){
+calculate_rank_draws_rvars <- function(prior_draws_rvars, posterior_draws_rvars, param){
   n_vars <- posterior::nvariables(prior)
   sbc_iters <- posterior::nchains(prior)
   merged_rank_array <- NULL
