@@ -68,7 +68,7 @@ plot_hist <- function(ranks, par, bins=20){
 #'   'K = ncol(yrep)', or lastly to 'K = ncol(pit)' depending on which one is
 #'   provided.
 plot_ecdf <- function(
-  pit,
+  sbc_workflow_obj,
   gamma,
   K,
   var,
@@ -77,6 +77,19 @@ plot_ecdf <- function(
   size = 1,
   alpha = 0.33
 ) {
+
+  if(is.null(sbc_workflow_obj$calculated_ranks)){
+    stop("No rank data is available. Please run SBCWorkflow$calculate_rank first.")
+  }
+  if(missing(var)){
+    stop("Please specify the parameter name to plot as argument var")
+  }
+
+  if(posterior::nvariables(posterior::as_draws_array(posterior::subset_draws(sbc_workflow_obj$prior_samples, variable)))){
+
+  }
+
+  pit <- ranks_to_empirical_pit(sbc_workflow_obj$calculated_ranks, posterior::niterations(sbc_workflow_obj$posterior_samples))
   N <- nrow(pit)
   if (missing(K)) {
     K <- N
@@ -141,7 +154,7 @@ plot_ecdf <- function(
 #' @export
 #' @rdname ECDF-plots
 plot_ecdf_diff <- function(
-  pit,
+  sbc_workflow_obj,
   gamma,
   K,
   var,
@@ -149,6 +162,10 @@ plot_ecdf_diff <- function(
   size = 1,
   alpha = 0.33
 ) {
+  if(is.null(sbc_workflow_obj$calculated_ranks)){
+    stop("No rank data is available. Please run SBCWorkflow$calculate_rank first.")
+  }
+  pit <- ranks_to_empirical_pit(sbc_workflow_obj$calculated_ranks, posterior::niterations(sbc_workflow_obj$posterior_samples))
   N <- nrow(pit)
   if (missing(K)) {
     K <- N

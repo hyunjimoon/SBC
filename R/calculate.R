@@ -4,40 +4,31 @@
 #'
 #' @param prior A named array of dimensions(n_iter, n_pars) where n_iter=number of SBC draws, n_pars the number of parameters. Names should be applied as parameter names.
 #' @param posterior A named array of dimensions(n_samples, n_pars, n_iter) where n_iter=number of SBC draws, n_pars the number of parameters, and n_samples the number of samples per SBC draw. Names should be applied as parameter names. Equivalent to posterior.as_draws_array
-#' @param thin Integer in which thinning samples will be applied
-#' prior array dimensions: (n_iter, n_pars)
-#' posterior array dimensions: (n_sample, n_pars, n_iter)
-#'
+#' @param param list of parameter names to calculate. If not given, calculate for all available parameters.
 #' @return array of dimensions(n_iter, n_pars)
 #' @export
 calculate_rank_rvars <- function(prior, posterior, param){
-  prior <- as_draws_matrix(prior)
-  posterior <- as_draws_matrix(posterior)
-  prior_dims = dim(prior)
-  posterior_dims = dim(array(as_draws_array(post), c(prior_dims[1], dim(posterior)[1]/prior_dims[1], dim(posterior)[2])))
+  prior <- posterior::as_draws_array(posterior::subset_draws(prior, variable=param))
+  posterior <- posterior::as_draws_array(posterior::subset_draws(posterior, variable=param))
+  #posterior_dims = dim(array(posterior::as_draws_array(post), c(prior_dims[1], dim(posterior)[1]/prior_dims[1], dim(posterior)[2])))
 
-  # if (prior_dims[1] != posterior_dims[1]){
-  #   stop(paste("Dimension mismatch error!",
-  #              "dim(prior)[1] == dim(posterior)[3] must be satisfied",
-  #              paste("prior dimensions:", prior_dims[1], prior_dims[2]),
-  #              paste("posterior dimensions:", posterior_dims[1], posterior_dims[2], posterior_dims[3]),
-  #              "", sep="\n"))
-  # }
-  n_sample <- posterior_dims[1]
-  n_iter <- posterior_dims[1]
+  if(posterior::nchains(prior) != posterior::nchains(posterior)){
+    stop("The number of SBC iterations for prior simulation and posterior simulation do not match. Please verify you're running data generation and fitting the model
+         same number of times in SBCWorkflow.")
+  }
 
-  par_names <- param #intersect(unlist(dimnames(prior)[2]), unlist(dimnames(posterior)[2]))
+  n_sample <- posterior::niterations(posterior)
+  n_iter <- posterior::nchains(posterior)
+  par_names <- posterior::variables(posterior)
   n_pars <- length(par_names)
   if(n_pars == 0){
     stop("There isn't a parameter name both present in the prior and posterior column names. SBC cannot continue. length(intersect(prior, posterior)) == 0")
   }
-
-  thinner <- seq(from=1, to=n_sample, by=thin)
   ranks <- array(rep(0, n_iter * n_pars), dim=c(n_iter, n_pars))
   dimnames(ranks)[2] <- list(par_names)
   for(i in 1:n_iter){
     for(j in 1:n_pars){
-      ranks[i, par_names[j]] <- sum(subset_draws(posterior, variable = par_names[j]) < subset_draws(prior,  variable = par_names[j])[i])
+      ranks[i, par_names[j]] <- sum(posterior::subset_draws(posterior, variable = par_names[[j]], chain = i) < posterior::subset_draws(prior,  variable = par_names[[j]], chain = i, iteration = 1)[1])
     }
   }
   return(ranks)
@@ -191,4 +182,9 @@ u_scale <- function(x) {
 # with respect to 'yrep'.
 empirical_pit <- function(y, yrep) {
   (1 +  apply(outer(yrep, y, "<="), 3, sum)) / (1 +length(yrep))
+}
+
+
+ranks_to_empirical_pit <- function(ranks, n_posterior_samples){
+  (1 + ranks) / (1 + n_posterior_samples)
 }

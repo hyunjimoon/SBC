@@ -24,13 +24,17 @@ y <- c(28, 8, -3, 7, -1, 1, 18, 12)
 sigma <- c(15, 10, 16, 11, 9, 11, 10, 18)
 
 data = list("J"=J, "y"=y, "sigma"=sigma)
-ncp_model = cmdstanr::cmdstan_model("tests/eightschools_ncp.stan")
+ncp_model = cmdstanr::cmdstan_model("tests/workflow/eightschools_ncp.stan")
 
 
 workflow <- SBC::SBCWorkflow$new(ncp_model, generator())
 
-workflow$simulate(10)
-d <- workflow$fit_model(20, 20, data)
+workflow$simulate(100)
+d <- workflow$fit_model(200, 200, data, thin_factor = 1)
 prior <- workflow$prior_samples
 post <- workflow$posterior_samples
 ranks <- workflow$calculate_rank()
+
+
+plot_ecdf(workflow, var="mu")
+plot_ecdf_diff(workflow, var="theta")
