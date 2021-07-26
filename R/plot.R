@@ -85,7 +85,7 @@ plot_ecdf <- function(
     stop("Please specify the parameter name to plot as argument var")
   }
 
-  if(posterior::nvariables(posterior::as_draws_array(posterior::subset_draws(sbc_workflow_obj$prior_samples, variable)))){
+  if(posterior::nvariables(posterior::as_draws_array(posterior::subset_draws(sbc_workflow_obj$prior_samples, var)))){
 
   }
 
