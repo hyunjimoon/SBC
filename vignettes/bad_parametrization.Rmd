@@ -1,0 +1,124 @@
+---
+title: "Discovering bad parametrization with SBC"
+output: html_notebook
+---
+
+```{r setup, include = FALSE}
+library(SBC); library(cmdstanr)
+```
+
+
+Premise: we mistakenly assume that Stan does parametrize the normal distribution
+via mean and precision (like JAGS or INLA do). Since we want to put prior on the 
+standard deviation (as is suggested on the prior choice wiki), we take standard deviation as the parameter and transform to precision $\tau = \frac{1}{\sigma^2}$.
+
+
+TODO maybe start with prior predictive check to tune priors?
+
+```{r}
+stan_code_1 <- "
+data {
+  int N;
+  vector<lower=0>[N] y;
+}
+
+parameters {
+  real<lower = 0> shape;
+  real<lower = 0> scale;  
+}
+
+model {
+  y ~ gamma(shape, scale);
+  shape ~ lognormal(0, 1);
+  scale ~ lognormal(0, 1.5);
+}
+"
+
+model_1 <- cmdstan_model(write_stan_file(stan_code_1))
+
+
+
+sbc_obj_1 <- SBCModel$new(name = "scale", stan_model = model_1)
+
+
+```
+
+```{r}
+set.seed(2258334)
+n_datasets <- 10
+thin <- 4
+hyperpriors <- list("shape" = function(){rlnorm(1, meanlog =  0, sdlog = 1)},
+                    "scale" = function() { rlnorm(1, meanlog = 0, sdlog = 1.5)})
+
+theta_prior <- sbc_obj_1$sample_theta_tilde(list("shape", "scale"), n_datasets, hyperpriors)
+
+N <- 40
+sampled_y <- array(NA_real_, dim = c(n_datasets, N))
+for(n in 1:n_datasets) {
+  sampled_y[n, ] <- rgamma(N, shape = theta_prior[n, "shape"], scale = theta_prior[n, "scale"]) 
+}
+
+if(any(sampled_y == 0)) {
+  warning("Generated zero, replacing with small values")
+  sampled_y[sampled_y == 0] <- .Machine$double.eps
+}
+```
+
+```{r}
+data <- list(N=N)
+
+theta_post <- sbc_obj_1$sample_theta_bar_y(sampled_y, data=data, pars=list("shape", "scale"), fit_iter = 200)
+```
+10 simulations are enough to see something is wrong with the model. We even see the issue is primarily with the `sigma` parameter!
+
+```{r}
+rank <- calculate_rank(theta_prior, theta_post, thin = thin)  # thinning factor of 3
+plot_hist(rank, "shape")
+plot_hist(rank, "scale")
+plot_ecdf(rank, "shape")
+plot_ecdf(rank, "scale")
+```
+
+So we see that the simulation does not match the model. In practice, the problem may lie with the simulation, with the model or both. Here, we'll assume that the simulation is correct - we really wanted to work with scale and fix the model to match. I.e. we still represent scale in our model, but invert it to get rate before using Stan's `gamma` distribution:
+
+
+```{r}
+stan_code_2 <- "
+data {
+  int N;
+  vector<lower=0>[N] y;
+}
+
+parameters {
+  real<lower = 0> shape;
+  real<lower = 0> scale;  
+}
+
+model {
+  y ~ gamma(shape, inv(scale));
+  shape ~ lognormal(0, 1);
+  scale ~ lognormal(0, 1.5);
+}
+"
+
+model_2 <- cmdstan_model(write_stan_file(stan_code_2))
+sbc_obj_2 <- SBCModel$new(name = "sd", stan_model = model_2)
+
+```
+
+
+```{r}
+theta_post_2 <- sbc_obj_2$sample_theta_bar_y(sampled_y, data=data, pars=list("shape", "scale"), fit_iter = 200)
+```
+
+No obvious problems here, but obviously if we wanted to be sure, we should have ran a lot more simulations.
+
+```{r}
+rank <- calculate_rank(theta_prior, theta_post_2, thin = thin)  
+plot_hist(rank, "shape")
+plot_hist(rank, "scale")
+plot_ecdf(rank, "shape")
+plot_ecdf(rank, "scale")
+```
+```
+

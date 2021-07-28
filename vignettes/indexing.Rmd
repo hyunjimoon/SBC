@@ -1,0 +1,200 @@
+---
+title: "Discovering indexing errors with SBC"
+output: html_notebook
+---
+
+```{r setup, include = FALSE}
+library(SBC); library(cmdstanr)
+```
+
+Below are three different Stan codes for implementing a simple linear regression. Not all of them are correct - can you see which one is wrong?
+
+```{r}
+stan_code_1 <- "
+data {
+  int<lower=0> N;   // number of data items
+  int<lower=0> K;   // number of predictors
+  matrix[N, K] x;   // predictor matrix
+  vector[N] y;      // outcome vector
+}
+parameters {
+  real alpha;           // intercept
+  vector[K] beta;       // coefficients for predictors
+  real<lower=0> sigma;  // error scale
+}
+model {
+  vector[N] mu = rep_vector(alpha, N);
+  for(i in 1:K) {
+    for(j in 1:N) {
+      mu[j] += beta[i] * x[j, i];
+    }
+  }
+  y ~ normal(mu, sigma);  // likelihood
+  alpha ~ normal(0, 5);
+  beta ~ normal(0, 1);
+  sigma ~ normal(0, 2);
+}
+"
+
+stan_code_2 <- "
+data {
+  int<lower=0> N;   // number of data items
+  int<lower=0> K;   // number of predictors
+  matrix[N, K] x;   // predictor matrix
+  vector[N] y;      // outcome vector
+}
+parameters {
+  real alpha;           // intercept
+  vector[K] beta;       // coefficients for predictors
+  real<lower=0> sigma;  // error scale
+}
+model {
+  vector[N] mu;
+  for(i in 1:N) {
+    mu[i] = alpha;
+    for(j in 1:K) {
+      mu[i] += beta[j] * x[j, j];
+    }
+  }
+  y ~ normal(mu, sigma);  // likelihood
+  alpha ~ normal(0, 5);
+  beta ~ normal(0, 1);
+  sigma ~ normal(0, 2);
+}
+"
+
+stan_code_3 <- "
+data {
+  int<lower=0> N;   // number of data items
+  int<lower=0> K;   // number of predictors
+  matrix[N, K] x;   // predictor matrix
+  vector[N] y;      // outcome vector
+}
+parameters {
+  real alpha;           // intercept
+  vector[K] beta;       // coefficients for predictors
+  real<lower=0> sigma;  // error scale
+}
+model {
+  y ~ normal(transpose(beta) * transpose(x) + alpha, sigma);  // likelihood
+  alpha ~ normal(0, 5);
+  beta ~ normal(0, 1);
+  sigma ~ normal(0, 2);
+}
+"
+
+
+stan_model_1 <- cmdstan_model(write_stan_file(stan_code_1))
+stan_model_2 <- cmdstan_model(write_stan_file(stan_code_2))
+stan_model_3 <- cmdstan_model(write_stan_file(stan_code_3))
+
+
+
+sbc_obj_1 <- SBCModel$new(name = "linreg_1", stan_model = stan_model_1)
+sbc_obj_2 <- SBCModel$new(name = "linreg_2", stan_model = stan_model_2)
+sbc_obj_3 <- SBCModel$new(name = "linreg_3", stan_model = stan_model_3)
+
+
+```
+If you can, good for you! If not, don't worry, SBC can help you spot coding problems, so let's simulate
+data and test all three models against simulated data.
+
+```{r}
+set.seed(5666024)
+n_datasets <- 10
+N <- 100
+K <- 2
+
+x <- matrix(rnorm(N * K), nrow = N, ncol = K)
+
+thin <- 4
+# hyperpriors <- list("alpha" = function(){rnorm(1, mean = 0, sd = 5)},
+#                     "beta" = function(){rnorm(K, mean = 0, sd = 1)},
+#                     "sigma" = function() { abs(rnorm(1, mean = 0, sd = 2))})
+# 
+# theta_prior <- sbc_obj_1$sample_theta_tilde(list("alpha", "beta", "sigma"), n_datasets, hyperpriors)
+theta_prior <- matrix(nrow = n_datasets, ncol = K + 2)
+colnames(theta_prior) <- c("alpha", paste0("beta[", 1:K, "]"), "sigma")
+theta_prior[,"alpha"] <- rnorm(n_datasets, mean = 0, sd = 5)
+for(k in 1:K) {
+  theta_prior[, paste0("beta[", k, "]")] <- rnorm(n_datasets, mean = 0, sd = 1)
+}
+theta_prior[,"sigma"] <- abs(rnorm(n_datasets, mean = 0, sd = 2))
+
+
+
+sampled_y <- array(NA_real_, dim = c(n_datasets, N))
+for(d in 1:n_datasets) {
+  for(n in 1:N) {
+    mu <- theta_prior[d, "alpha"]
+    for(k in 1:K) {
+      mu <- mu + x[n,k] * theta_prior[d, paste0("beta[", k, "]")]
+    }
+    sampled_y[d, n] <- rnorm(1, mu, theta_prior[d, "sigma"]) 
+  }
+}
+```
+
+```{r}
+data <- list(N=N, K = K, x = x)
+
+theta_post_1 <- sbc_obj_1$sample_theta_bar_y(sampled_y, data=data, pars=colnames(theta_prior), fit_iter = 400)
+
+theta_post_2 <- sbc_obj_2$sample_theta_bar_y(sampled_y, data=data, pars=colnames(theta_prior), fit_iter = 400)
+
+theta_post_3 <- sbc_obj_3$sample_theta_bar_y(sampled_y, data=data, pars=colnames(theta_prior), fit_iter = 400)
+```
+
+```{r}
+rank_1 <- calculate_rank(theta_prior, theta_post_1, thin = thin)  
+plot_hist(rank_1, "alpha")
+plot_hist(rank_1, "beta[1]")
+plot_hist(rank_1, "beta[2]")
+plot_hist(rank_1, "sigma")
+
+plot_ecdf(rank_1, "alpha")
+plot_ecdf(rank_1, "beta[1]")
+plot_ecdf(rank_1, "beta[2]")
+plot_ecdf(rank_1, "sigma")
+
+```
+
+As far as a quick SBC can see the first code is OK. You could verify further with more iterations
+but we tested the model for you and it is OK (although the implementation is not the best one).
+
+
+```{r}
+rank_2 <- calculate_rank(theta_prior, theta_post_2, thin = thin)  
+plot_hist(rank_2, "alpha")
+plot_hist(rank_2, "beta[1]")
+plot_hist(rank_2, "beta[2]")
+plot_hist(rank_2, "sigma")
+
+plot_ecdf(rank_2, "alpha")
+plot_ecdf(rank_2, "beta[1]")
+plot_ecdf(rank_2, "beta[2]")
+plot_ecdf(rank_2, "sigma")
+
+```
+
+But the second model is actually not looking good.     In fact the problem is the line
+`mu[i] += beta[j] * x[j, j];` which should have `x[i, j]` instead. We see that this 
+propagates most strongly to the `sigma` parameter (reusing the same `x` element leads to more similar predictions for each row, so `sigma` needs to be inflated to accommodate this)
+
+
+```{r}
+rank_3 <- calculate_rank(theta_prior, theta_post_3, thin = thin)  
+plot_hist(rank_3, "alpha")
+plot_hist(rank_3, "beta[1]")
+plot_hist(rank_3, "beta[2]")
+plot_hist(rank_3, "sigma")
+
+plot_ecdf(rank_3, "alpha")
+plot_ecdf(rank_3, "beta[1]")
+plot_ecdf(rank_3, "beta[2]")
+plot_ecdf(rank_3, "sigma")
+
+```
+
+
+And the third 
