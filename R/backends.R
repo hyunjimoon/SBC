@@ -12,8 +12,19 @@ cmdstan_sample_SBC_backend <- function(model, ...) {
 
 draws_rvars_to_standata <- function(x) {
   stopifnot(posterior::ndraws(x) == 1)
-  x
+  lapply(x, FUN = function(x_rvar) {
+    res <- draws_of(x_rvar, with_chains = FALSE)
+    #TODO figure out how to distinguish between scalar and array of size 1
+    if(identical(dim(x_rvar), 1L)) {
+      as.numeric(res[1,])
+    } else {
+      dim(res) <- dim(res)[2:length(dim(res))]
+      res
+    }
+  })
 }
+
+#TODO add SBC_diagnostics generic to extract divergences etc.
 
 SBC_fit.cmdstan_sample_SBC_backend <- function(backend, generated, cores) {
   backend$model$sample(c(backend$args),
@@ -27,7 +38,6 @@ SBC_fit_to_draws_rvars <- function(fit) {
   UseMethod("SBC_fit_to_draws_rvars")
 }
 
-SBC_fit_to_draws_rvars.CmdStanMCMC(fit) {
+SBC_fit_to_draws_rvars.CmdStanMCMC <- function(fit) {
   fit$draws(format = "draws_rvars")
 }
-
