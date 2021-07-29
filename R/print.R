@@ -41,7 +41,6 @@ rank_summary <- function(ranks, par, thin, bins = 20){
 #' @param post A posterior::draws_Rvars of dimension(n_iterations=n_posterior_samples, n_chains=n_sbc_iterations, n_variables=n_variables), which stores fitted posterior samples
 #' @param par names of parameter to summarize
 #' @param bins number of bins for prior and post density
-#' @importFrom HistogramTools
 #' @export
 dist_summary <- function(prior, post, par, bins = 20){
   breaks <- seq(min(prior[p], post[p]), max(prior[p], post[p]), length.out = bins)

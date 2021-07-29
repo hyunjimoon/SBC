@@ -72,7 +72,7 @@ Sample \eqn{\tilde{\theta} \sim P(\theta)} and \eqn{\tilde{y} \sim P(\tilde{y}) 
 \if{latex}{\out{\hypertarget{method-simulate}{}}}
 \subsection{Method \code{simulate()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SBCWorkflow$simulate(n_sbc_iterations, ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SBCWorkflow$simulate(n_sbc_iterations, param = TRUE, ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
