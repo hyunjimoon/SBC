@@ -153,7 +153,17 @@ plot_ecdf <- function(
 
 #' @export
 #' @rdname ECDF-plots
-plot_ecdf_diff <- function(
+plot_ecdf_diff <- function(x,
+                           var,
+                           prob = 0.95,
+                           size = 1,
+                           alpha = 0.33,
+                           ...) {
+  UseMethod("plot_ecdf_diff")
+}
+
+#' @export
+plot_ecdf_diff.SBCWorkflow <- function(
   sbc_workflow_obj,
   gamma,
   K,
@@ -165,7 +175,40 @@ plot_ecdf_diff <- function(
   if(is.null(sbc_workflow_obj$calculated_ranks)){
     stop("No rank data is available. Please run SBCWorkflow$calculate_rank first.")
   }
-  pit <- ranks_to_empirical_pit(sbc_workflow_obj$calculated_ranks, posterior::niterations(sbc_workflow_obj$posterior_samples))
+
+  plot_ecdf_diff_internal(sbc_workflow_obj$calculated_ranks, posterior::niterations(sbc_workflow_obj$posterior_samples),
+                          gamma = gamma, K = K, var = var, prob = prob,
+                          size = size,
+                          alpha = alpha)
+
+
+}
+
+#' @export
+plot_ecdf_diff.SBC_results <- function(
+  results,
+  var,
+  prob = 0.95,
+  size = 1,
+  alpha = 0.33
+) {
+  plot_ecdf_diff_internal(results$ranks, attr(results$ranks, "max_rank"),
+                          var = var, prob = prob,
+                          size = size,
+                          alpha = alpha)
+}
+
+plot_ecdf_diff_internal <- function(
+  ranks,
+  max_rank,
+  gamma,
+  K,
+  var,
+  prob = 0.95,
+  size = 1,
+  alpha = 0.33
+) {
+  pit <- ranks_to_empirical_pit(ranks, max_rank)
   N <- nrow(pit)
   if (missing(K)) {
     K <- N

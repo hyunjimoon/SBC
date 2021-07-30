@@ -38,7 +38,8 @@ model_1 <- cmdstan_model(write_stan_file(stan_code_1))
 
 
 
-sbc_obj_1 <- SBCModel$new(name = "scale", stan_model = model_1)
+sbc_backend_1 <- cmdstan_sample_SBC_backend(model_1, 
+                                            iter_warmup = 500, iter_sampling = 200, chains = 1)
 
 
 ```
@@ -47,36 +48,46 @@ sbc_obj_1 <- SBCModel$new(name = "scale", stan_model = model_1)
 set.seed(2258334)
 n_datasets <- 10
 thin <- 4
-hyperpriors <- list("shape" = function(){rlnorm(1, meanlog =  0, sdlog = 1)},
-                    "scale" = function() { rlnorm(1, meanlog = 0, sdlog = 1.5)})
 
-theta_prior <- sbc_obj_1$sample_theta_tilde(list("shape", "scale"), n_datasets, hyperpriors)
+generator_func <- function(N) {
+  shape <- rlnorm(1, meanlog =  0, sdlog = 1)
+  scale <- rlnorm(1, meanlog = 0, sdlog = 1.5)
+  
+  y <- rgamma(N, shape = shape, scale = scale)
+  if(any(y == 0)) {
+    warning("Generated zero, replacing with small values")
+    y[y == 0] <- .Machine$double.eps
+  }
+  
+  list(
+    parameters = list(
+      shape = shape,
+      scale = scale),
+    generated = list(
+      N = N,
+      y = y)
+  )
+}
+
 
 N <- 40
-sampled_y <- array(NA_real_, dim = c(n_datasets, N))
-for(n in 1:n_datasets) {
-  sampled_y[n, ] <- rgamma(N, shape = theta_prior[n, "shape"], scale = theta_prior[n, "scale"]) 
-}
+datasets <- generate_datasets(
+  list_function_SBC_generator(generator_func, N = N), 
+  n_datasets)
 
-if(any(sampled_y == 0)) {
-  warning("Generated zero, replacing with small values")
-  sampled_y[sampled_y == 0] <- .Machine$double.eps
-}
 ```
 
 ```{r}
-data <- list(N=N)
-
-theta_post <- sbc_obj_1$sample_theta_bar_y(sampled_y, data=data, pars=list("shape", "scale"), fit_iter = 200)
+results1 <- compute_results(datasets, sbc_backend_1)
 ```
+
 10 simulations are enough to see something is wrong with the model. We even see the issue is primarily with the `sigma` parameter!
 
 ```{r}
-rank <- calculate_rank(theta_prior, theta_post, thin = thin)  # thinning factor of 3
-plot_hist(rank, "shape")
-plot_hist(rank, "scale")
-plot_ecdf(rank, "shape")
-plot_ecdf(rank, "scale")
+plot_hist(results1$ranks, par = "shape")
+plot_ecdf_diff(results1, var = "shape")
+plot_hist(results1$ranks, par = "scale")
+plot_ecdf_diff(results1, var = "scale")
 ```
 
 So we see that the simulation does not match the model. In practice, the problem may lie with the simulation, with the model or both. Here, we'll assume that the simulation is correct - we really wanted to work with scale and fix the model to match. I.e. we still represent scale in our model, but invert it to get rate before using Stan's `gamma` distribution:
@@ -102,23 +113,25 @@ model {
 "
 
 model_2 <- cmdstan_model(write_stan_file(stan_code_2))
-sbc_obj_2 <- SBCModel$new(name = "sd", stan_model = model_2)
+
+sbc_backend_2 <- cmdstan_sample_SBC_backend(model_2, 
+                                            iter_warmup = 500, iter_sampling = 200, chains = 1)
+
 
 ```
 
 
 ```{r}
-theta_post_2 <- sbc_obj_2$sample_theta_bar_y(sampled_y, data=data, pars=list("shape", "scale"), fit_iter = 200)
+results2 <- compute_results(datasets, sbc_backend_2)
 ```
 
 No obvious problems here, but obviously if we wanted to be sure, we should have ran a lot more simulations.
 
 ```{r}
-rank <- calculate_rank(theta_prior, theta_post_2, thin = thin)  
-plot_hist(rank, "shape")
-plot_hist(rank, "scale")
-plot_ecdf(rank, "shape")
-plot_ecdf(rank, "scale")
+plot_hist(results2$ranks, par = "shape")
+plot_ecdf_diff(results2, var = "shape")
+plot_hist(results2$ranks, par = "scale")
+plot_ecdf_diff(results2, var = "scale")
 ```
-```
+
 

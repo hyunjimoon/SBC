@@ -10,19 +10,22 @@ new_SBC_datasets <- function(parameters, generated) {
 validate_SBC_datasets <- function(x) {
   stopifnot(is.list(x))
   stopifnot(inherits(x, "SBC_datasets"))
-  if(!posterior::is_draws_rvars(x$parameters) || !posterior::is_draws_rvars(x$generated)) {
-    stop("SBC_datasets object has to have a 'parameters' and 'generated' fields, both of type draws_rvars")
+  if(!posterior::is_draws_rvars(x$parameters)) {
+    stop("SBC_datasets object has to have a 'parameters' field of type draws_rvars")
   }
 
-  if(posterior::nchains(x$parameters) != 1 || posterior::nchains(x$generated) != 1) {
+  if(!is.list(x$generated)) {
+    stop("SBC_datasets object has to have a 'generated' field of type list")
+  }
+
+  if(posterior::nchains(x$parameters) != 1) {
     stop("Needs one chain")
   }
 
-  if(posterior::ndraws(x$parameters) != posterior::ndraws(x$generated)) {
-    stop("Needs equal no. of draws for parameters and generated")
+  if(posterior::ndraws(x$parameters) != length(x$generated)) {
+    stop("Needs equal no. of draws for parameters and length of generated")
   }
 
-  #TODO: no overlap in names
   x
 }
 
@@ -66,16 +69,15 @@ list_function_SBC_generator <- function(f, ...) {
 #'@export
 generate_datasets.list_function_SBC_generator <- function(generator, n_datasets) {
   parameters_list <- list()
-  generated_list <- list()
+  generated <- list()
   for(iter in 1:n_datasets){
     generator_output <- do.call(generator$f, generator$args)
     #TODO check valid output
     parameters_list[[iter]] <- posterior::as_draws_rvars(generator_output$parameters)
-    generated_list[[iter]] <- posterior::as_draws_rvars(generator_output$generated)
+    generated[[iter]] <- generator_output$generated
   }
 
   parameters <- do.call(posterior::bind_draws, args = c(parameters_list, list(along = "draw")))
-  generated <- do.call(posterior::bind_draws, args = c(generated_list, list(along = "draw")))
 
   SBC_datasets(parameters, generated)
 }

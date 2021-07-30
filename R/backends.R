@@ -27,10 +27,12 @@ draws_rvars_to_standata <- function(x) {
 #TODO add SBC_diagnostics generic to extract divergences etc.
 
 SBC_fit.cmdstan_sample_SBC_backend <- function(backend, generated, cores) {
-  backend$model$sample(c(backend$args),
-                   list(
-                     data = draws_rvars_to_standata(generated),
-                     cores = cores))
+  do.call(backend$model$sample,
+          c(list(refresh = 0),
+            backend$args,
+            list(
+              data = generated,
+              parallel_chains = cores)))
 }
 
 #' @export
@@ -39,5 +41,5 @@ SBC_fit_to_draws_rvars <- function(fit) {
 }
 
 SBC_fit_to_draws_rvars.CmdStanMCMC <- function(fit) {
-  fit$draws(format = "draws_rvars")
+  posterior::as_draws_rvars(fit$draws())
 }
