@@ -1,0 +1,42 @@
+---
+title: "SBC for brms models"
+output: html_notebook
+---
+
+```{r}
+library(SBC)
+library(brms)
+options(brms.backend = "cmdstanr")
+```
+
+```{r}
+data = data.frame(y = rep(0, 15), x = rnorm(15))
+priors <- prior(normal(0,1), class = "b") +
+  prior(normal(0,1), class = "Intercept") +
+  prior(normal(0,1), class = "sigma")
+generator <- brms_SBC_generator(y ~ x, data = data, prior = priors)
+#brms::get_prior(y ~ x, data = data, priors = prior(normal(0,1), class = "b"))                                
+```
+```{r}
+datasets <- generate_datasets(generator, 20)
+```
+```{r}
+# Reuse the compiled model and other info from the generator
+backend <- brms_SBC_backend_from_generator(generator, warmup = 500, iter = 1000, chains = 1,
+                            init = 0.1)
+
+# More verbose alternative:
+#backend <- brms_SBC_backend(y ~ x, data = data, prior = priors, warmup = 500, iter = 1000, chains = 1,
+#                            init = 0.1)
+```
+
+```{r}
+results <- compute_results(datasets, backend, thin_ranks = 10)
+```
+
+```{r}
+for(p in colnames(results$ranks)) {
+  print(plot_ecdf_diff(results, p) + ggtitle(p))
+}
+```
+
