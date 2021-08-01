@@ -13,14 +13,14 @@ compute_results <- function(datasets, backend, cores = getOption("mc.cores", 1),
   for(i in 1:length(datasets)) {
     fits[[i]] <- SBC_fit(backend, datasets$generated[[i]], cores = cores)
     # TODO consider just using as_draws and not insist on a specific format until needed
-    fit_rvars <- SBC_fit_to_draws_rvars(fits[[i]])
-    missing_vars <- setdiff(posterior::variables(datasets$parameters), posterior::variables(fit_rvars))
+    fit_matrix <- SBC_fit_to_draws_matrix(fits[[i]])
+    missing_vars <- setdiff(posterior::variables(datasets$parameters), posterior::variables(fit_matrix))
     if(length(missing_vars) > 0 && !warned_vars) {
       warning("Some variables missing in the fit: ", missing_vars)
     }
 
     shared_vars <- intersect(posterior::variables(datasets$parameters),
-                             posterior::variables(fit_rvars))
+                             posterior::variables(fit_matrix))
 
     if(i == 1) {
       z_scores <- sds <- matrix(NA_real_, nrow = length(datasets), ncol = length(shared_vars))
@@ -30,14 +30,13 @@ compute_results <- function(datasets, backend, cores = getOption("mc.cores", 1),
     }
 
 
-    fit_rvars <- posterior::subset_draws(fit_rvars, variable = shared_vars)
+    fit_matrix <- posterior::subset_draws(fit_matrix, variable = shared_vars)
 
-    fit_matrix <- posterior::as_draws_matrix(fit_rvars)
     fit_thinned <- posterior::thin_draws(fit_matrix, thin_ranks)
 
-    params <- posterior::as_draws_matrix(posterior::subset_draws(datasets$parameters,
-                                                                 draw = i,
-                                                                 variable = shared_vars))
+    params <- posterior::subset_draws(datasets$parameters,
+                                      draw = i,
+                                      variable = shared_vars)
 
     last_ranks <- calculate_ranks_draws_matrix(params, fit_thinned)
     if(i == 1) {

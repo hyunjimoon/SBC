@@ -8,7 +8,7 @@ test_that("draws_rvars_to_standata converts properly", {
                      vector_var = vector_var,
                      matrix_var = matrix_var)
 
-    rvar_val <- draws_rvars(scalar_var = posterior::rvar(scalar_var),
+    rvar_val <- posterior::draws_rvars(scalar_var = posterior::rvar(scalar_var),
                             vector_var = posterior::rvar(array(vector_var, dim = c(1, dim(vector_var))), dim = dim(vector_var)),
                             matrix_var = posterior::rvar(array(matrix_var, dim = c(1, dim(matrix_var))), dim = dim(matrix_var)))
 

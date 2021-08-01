@@ -17,9 +17,7 @@ test_that("Generating datasets via functions", {
   expect_identical(posterior::variables(res$parameters), c("mu", "sigma"))
   expect_identical(names(res$generated[[1]]), c("y1", "y2"))
 
-  expect_equal(length(res$parameters$mu), 1)
-  expect_equal(length(res$parameters$sigma), 1)
-  expect_equal(length(res$generated) , 7)
+  expect_equal(posterior::ndraws(res$parameters), 7)
 
 })
 

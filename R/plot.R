@@ -242,7 +242,7 @@ plot_ecdf_diff_internal <- function(
       size = size) +
     geom_step(
       data = data,
-      aes_(x = z, y = data[[var]], color = "sample ECDF")
+      aes_(x = z, y = data[[make.names(var)]], color = "sample ECDF")
     ) +
     scale_color_manual(
       name = "",

@@ -22,12 +22,21 @@ SBC_fit.cmdstan_sample_SBC_backend <- function(backend, generated, cores) {
 }
 
 #' @export
-SBC_fit_to_draws_rvars <- function(fit) {
-  UseMethod("SBC_fit_to_draws_rvars")
+SBC_fit_to_draws_matrix <- function(fit) {
+  UseMethod("SBC_fit_to_draws_matrix")
 }
 
-SBC_fit_to_draws_rvars.default <- function(fit) {
-  posterior::as_draws_rvars(fit)
+SBC_fit_to_draws_matrix.default <- function(fit) {
+  posterior::as_draws_matrix(fit)
+}
+
+SBC_fit_to_draws_matrix.CmdStanMCMC <- function(fit) {
+  fit$draws(format = "draws_matrix")
+}
+
+
+SBC_fit_to_draws_matrix.brmsfit <- function(fit) {
+  posterior::as_draws_matrix(fit$fit)
 }
 
 new_brms_SBC_backend <- function(compiled_model,
@@ -79,9 +88,6 @@ SBC_fit.brms_SBC_backend <- function(backend, generated, cores) {
   stanfit <- SBC_fit(backend$stan_backend, standata, cores)
 
 
-  # This is convoluted because I need to rename parameters
-  # but the only way to rename parameters to match brms is
-  # to construct a whole brmsfit object
   brmsfit <- brmsfit_from_stanfit(stanfit, args_with_data)
-  brmsfit$fit
+  brmsfit
 }
