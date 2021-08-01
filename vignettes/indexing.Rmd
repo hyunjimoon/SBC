@@ -89,10 +89,9 @@ stan_model_2 <- cmdstan_model(write_stan_file(stan_code_2))
 stan_model_3 <- cmdstan_model(write_stan_file(stan_code_3))
 
 
-
-sbc_obj_1 <- SBCModel$new(name = "linreg_1", stan_model = stan_model_1)
-sbc_obj_2 <- SBCModel$new(name = "linreg_2", stan_model = stan_model_2)
-sbc_obj_3 <- SBCModel$new(name = "linreg_3", stan_model = stan_model_3)
+backend_1 <- cmdstan_sample_SBC_backend(stan_model_1, iter_warmup = 200, iter_sampling = 200)
+backend_2 <- cmdstan_sample_SBC_backend(stan_model_2, iter_warmup = 200, iter_sampling = 200)
+backend_3 <- cmdstan_sample_SBC_backend(stan_model_3, iter_warmup = 200, iter_sampling = 200)
 
 
 ```
