@@ -5,7 +5,7 @@ output: html_notebook
 
 ```{r setup, include = FALSE}
 library(SBC); 
-use_cmdstanr <- TRUE # Set to false to use rstan instead
+use_cmdstanr <- FALSE # Set to false to use rstan instead
 
 if(use_cmdstanr) {
   library(cmdstanr)

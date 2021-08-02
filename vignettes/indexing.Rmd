@@ -4,10 +4,20 @@ output: html_notebook
 ---
 
 ```{r setup, include = FALSE}
-library(SBC); library(cmdstanr)
+library(SBC); 
+library(ggplot2)
+
+use_cmdstanr <- TRUE # Set to false to use rstan instead
+
+if(use_cmdstanr) {
+  library(cmdstanr)
+} else {
+  library(rstan)
+}
+
 ```
 
-Below are three different Stan codes for implementing a simple linear regression. Not all of them are correct - can you see which one is wrong?
+Below are three different Stan codes for implementing a simple linear regression. Not all of them are correct - can you see which are wrong?
 
 ```{r}
 stan_code_1 <- "
@@ -84,77 +94,77 @@ model {
 "
 
 
-stan_model_1 <- cmdstan_model(write_stan_file(stan_code_1))
-stan_model_2 <- cmdstan_model(write_stan_file(stan_code_2))
-stan_model_3 <- cmdstan_model(write_stan_file(stan_code_3))
 
 
-backend_1 <- cmdstan_sample_SBC_backend(stan_model_1, iter_warmup = 200, iter_sampling = 200)
-backend_2 <- cmdstan_sample_SBC_backend(stan_model_2, iter_warmup = 200, iter_sampling = 200)
-backend_3 <- cmdstan_sample_SBC_backend(stan_model_3, iter_warmup = 200, iter_sampling = 200)
+if(use_cmdstanr) {
+  stan_model_1 <- cmdstan_model(write_stan_file(stan_code_1))
+  stan_model_2 <- cmdstan_model(write_stan_file(stan_code_2))
+  stan_model_3 <- cmdstan_model(write_stan_file(stan_code_3))
 
+  backend_1 <- cmdstan_sample_SBC_backend(stan_model_1, iter_warmup = 200, iter_sampling = 200)
+  backend_2 <- cmdstan_sample_SBC_backend(stan_model_2, iter_warmup = 200, iter_sampling = 200)
+  backend_3 <- cmdstan_sample_SBC_backend(stan_model_3, iter_warmup = 200, iter_sampling = 200)
+} else {
+  stan_model_1 <- stan_model(model_code = stan_code_1)
+  stan_model_2 <- stan_model(model_code = stan_code_2)
+  stan_model_3 <- stan_model(model_code = stan_code_3)
+
+  
+  backend_1 <- rstan_sample_SBC_backend(stan_model_1, iter = 400, warmup = 200)
+  backend_2 <- rstan_sample_SBC_backend(stan_model_2, iter = 400, warmup = 200)
+  backend_3 <- rstan_sample_SBC_backend(stan_model_3, iter = 400, warmup = 200)
+}
 
 ```
+
 If you can, good for you! If not, don't worry, SBC can help you spot coding problems, so let's simulate
 data and test all three models against simulated data.
 
 ```{r}
 set.seed(5666024)
-n_datasets <- 10
-N <- 100
-K <- 2
 
-x <- matrix(rnorm(N * K), nrow = N, ncol = K)
-
-thin <- 4
-# hyperpriors <- list("alpha" = function(){rnorm(1, mean = 0, sd = 5)},
-#                     "beta" = function(){rnorm(K, mean = 0, sd = 1)},
-#                     "sigma" = function() { abs(rnorm(1, mean = 0, sd = 2))})
-# 
-# theta_prior <- sbc_obj_1$sample_theta_tilde(list("alpha", "beta", "sigma"), n_datasets, hyperpriors)
-theta_prior <- matrix(nrow = n_datasets, ncol = K + 2)
-colnames(theta_prior) <- c("alpha", paste0("beta[", 1:K, "]"), "sigma")
-theta_prior[,"alpha"] <- rnorm(n_datasets, mean = 0, sd = 5)
-for(k in 1:K) {
-  theta_prior[, paste0("beta[", k, "]")] <- rnorm(n_datasets, mean = 0, sd = 1)
-}
-theta_prior[,"sigma"] <- abs(rnorm(n_datasets, mean = 0, sd = 2))
-
-
-
-sampled_y <- array(NA_real_, dim = c(n_datasets, N))
-for(d in 1:n_datasets) {
+generator_func <- function(N, K) {
+  x <- matrix(rnorm(N * K), nrow = N, ncol = K)
+  alpha <- rnorm(1, mean = 0, sd = 1)
+  beta <- rnorm(K, mean = 0, sd = 1)
+  sigma <- abs(rnorm(1, mean = 0, sd = 2))
+  
+  y <- array(NA_real_, N)
   for(n in 1:N) {
-    mu <- theta_prior[d, "alpha"]
+    mu <- alpha
     for(k in 1:K) {
-      mu <- mu + x[n,k] * theta_prior[d, paste0("beta[", k, "]")]
+      mu <- mu + x[n,k] * beta[k]
     }
-    sampled_y[d, n] <- rnorm(1, mu, theta_prior[d, "sigma"]) 
+    y[n] <- rnorm(1, mu, sigma) 
   }
+  
+  list(
+    parameters = list(
+      alpha = alpha,
+      beta = beta,
+      sigma = sigma),
+    generated = list(
+      N = N, K = K,
+      x = x, y = y
+    )
+  )
+  
 }
+
+datasets <- generate_datasets(function_SBC_generator(generator_func, N = 100, K = 2), 10)
+
 ```
 
 ```{r}
-data <- list(N=N, K = K, x = x)
-
-theta_post_1 <- sbc_obj_1$sample_theta_bar_y(sampled_y, data=data, pars=colnames(theta_prior), fit_iter = 400)
-
-theta_post_2 <- sbc_obj_2$sample_theta_bar_y(sampled_y, data=data, pars=colnames(theta_prior), fit_iter = 400)
-
-theta_post_3 <- sbc_obj_3$sample_theta_bar_y(sampled_y, data=data, pars=colnames(theta_prior), fit_iter = 400)
+results_1 <- compute_results(datasets, backend_1)
+results_2 <- compute_results(datasets, backend_2)
+results_3 <- compute_results(datasets, backend_3)
 ```
 
 ```{r}
-rank_1 <- calculate_rank(theta_prior, theta_post_1, thin = thin)  
-plot_hist(rank_1, "alpha")
-plot_hist(rank_1, "beta[1]")
-plot_hist(rank_1, "beta[2]")
-plot_hist(rank_1, "sigma")
-
-plot_ecdf(rank_1, "alpha")
-plot_ecdf(rank_1, "beta[1]")
-plot_ecdf(rank_1, "beta[2]")
-plot_ecdf(rank_1, "sigma")
+for(p in colnames(results_1$ranks)) {
+  print(plot_ecdf_diff(results_1, p) + ggtitle(paste0("Model 1: ", p)))
+}
 
 ```
 
@@ -163,16 +173,9 @@ but we tested the model for you and it is OK (although the implementation is not
 
 
 ```{r}
-rank_2 <- calculate_rank(theta_prior, theta_post_2, thin = thin)  
-plot_hist(rank_2, "alpha")
-plot_hist(rank_2, "beta[1]")
-plot_hist(rank_2, "beta[2]")
-plot_hist(rank_2, "sigma")
-
-plot_ecdf(rank_2, "alpha")
-plot_ecdf(rank_2, "beta[1]")
-plot_ecdf(rank_2, "beta[2]")
-plot_ecdf(rank_2, "sigma")
+for(p in colnames(results_2$ranks)) {
+  print(plot_ecdf_diff(results_2, p) + ggtitle(paste0("Model 2: ", p)))
+}
 
 ```
 
@@ -182,18 +185,12 @@ propagates most strongly to the `sigma` parameter (reusing the same `x` element 
 
 
 ```{r}
-rank_3 <- calculate_rank(theta_prior, theta_post_3, thin = thin)  
-plot_hist(rank_3, "alpha")
-plot_hist(rank_3, "beta[1]")
-plot_hist(rank_3, "beta[2]")
-plot_hist(rank_3, "sigma")
+for(p in colnames(results_3$ranks)) {
+  print(plot_ecdf_diff(results_3, p) + ggtitle(paste0("Model 3: ", p)))
+}
 
-plot_ecdf(rank_3, "alpha")
-plot_ecdf(rank_3, "beta[1]")
-plot_ecdf(rank_3, "beta[2]")
-plot_ecdf(rank_3, "sigma")
 
 ```
 
 
-And the third 
+And the third model looks OK once again - and in fact we are pretty sure it is also completely correct.
