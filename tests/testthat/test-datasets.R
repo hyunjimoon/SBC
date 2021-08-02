@@ -19,6 +19,19 @@ test_that("Generating datasets via functions", {
 
   expect_equal(posterior::ndraws(res$parameters), 7)
 
+  direct_func <- function(n_datasets, base_indices = 1:length(res)) {
+      res[base_indices[rep(1:length(base_indices), length.out = n_datasets)]]
+    }
+
+  res_direct1 <- generate_datasets(function_SBC_generator(direct_func),  n_datasets = 7)
+
+  expect_equal(res, res_direct1, check.attributes = FALSE)
+
+  res_direct2 <- generate_datasets(function_SBC_generator(direct_func, base_indices = 1:3),
+  n_datasets = 5)
+
+  expect_identical(res[c(1,2,3,1,2)], res_direct2)
+
 })
 
 test_that("subsetting datasets", {
