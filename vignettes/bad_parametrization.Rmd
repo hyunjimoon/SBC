@@ -4,7 +4,15 @@ output: html_notebook
 ---
 
 ```{r setup, include = FALSE}
-library(SBC); library(cmdstanr)
+library(SBC); 
+use_cmdstanr <- TRUE # Set to false to use rstan instead
+
+if(use_cmdstanr) {
+  library(cmdstanr)
+} else {
+  library(rstan)
+}
+
 ```
 
 
@@ -33,14 +41,20 @@ model {
   scale ~ lognormal(0, 1.5);
 }
 "
+iter_warmup <- 500
+iter_sampling <- 500
 
-model_1 <- cmdstan_model(write_stan_file(stan_code_1))
+if(use_cmdstanr) {
+  model_1 <- cmdstan_model(write_stan_file(stan_code_1))
 
+  sbc_backend_1 <- cmdstan_sample_SBC_backend(
+    model_1, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 2)
+} else {
+  model_1 <- stan_model(model_code = stan_code_1)
 
-
-sbc_backend_1 <- cmdstan_sample_SBC_backend(model_1, 
-                                            iter_warmup = 500, iter_sampling = 200, chains = 1)
-
+  sbc_backend_1 <- rstan_sample_SBC_backend(
+    model_1, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 2)
+}
 
 ```
 
@@ -72,7 +86,7 @@ generator_func <- function(N) {
 
 N <- 40
 datasets <- generate_datasets(
-  list_function_SBC_generator(generator_func, N = N), 
+  function_SBC_generator(generator_func, N = N), 
   n_datasets)
 
 ```
@@ -113,10 +127,17 @@ model {
 }
 "
 
-model_2 <- cmdstan_model(write_stan_file(stan_code_2))
+if(use_cmdstanr) {
+  model_2 <- cmdstan_model(write_stan_file(stan_code_2))
 
-sbc_backend_2 <- cmdstan_sample_SBC_backend(model_2, 
-                                            iter_warmup = 500, iter_sampling = 200, chains = 1)
+  sbc_backend_2 <- cmdstan_sample_SBC_backend(
+    model_2, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 2)
+} else {
+  model_2 <- stan_model(model_code = stan_code_2)
+
+  sbc_backend_2 <- rstan_sample_SBC_backend(
+    model_2, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 2)
+}
 
 
 ```
@@ -126,7 +147,7 @@ sbc_backend_2 <- cmdstan_sample_SBC_backend(model_2,
 results2 <- compute_results(datasets, sbc_backend_2)
 ```
 
-No obvious problems here, but obviously if we wanted to be sure, we should have ran a lot more simulations.
+No obvious problems here, but if we wanted to be sure, we should have ran a lot more simulations.
 
 ```{r}
 plot_hist(results2$ranks, par = "shape")

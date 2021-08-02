@@ -3,11 +3,12 @@ title: "SBC for brms models"
 output: html_notebook
 ---
 
-```{r}
+```{r setup}
 library(SBC)
 library(brms)
 library(ggplot2)
 options(brms.backend = "cmdstanr")
+#options(brms.backend = "rstan") # Uncomment to use rstan
 ```
 
 ```{r}
@@ -29,7 +30,7 @@ backend <- brms_SBC_backend_from_generator(generator, warmup = 500, iter = 1000,
                             init = 0.1)
 
 # More verbose alternative:
-#backend <- brms_SBC_backend(y ~ x, data = data, prior = priors, warmup = 500, iter = 1000, chains = 1,
+#backend <- brms_SBC_backend(y ~ x, template_dataset = data, prior = priors, warmup = 500, iter = 1000, chains = 1,
 #                            init = 0.1)
 ```
 
@@ -43,41 +44,111 @@ for(p in colnames(results$ranks)) {
 }
 ```
 
-## A failing model
+## Using custom simulation code
+
+
+Also allows to have different covariate values for each dataset, potentially improving sensitivity.
+
+Let's take a Gaussian model with a single varying intercept.
 
 ```{r}
-data_fail = data.frame(y = rep(0, 15), x = rnorm(15), id = 1:15, id2 = 1:15)
-priors_fail <- prior(normal(0,1), class = "b") +
-  prior(normal(0,10), class = "Intercept") +
-  prior(normal(0,10), class = "sigma") +
-  prior(normal(0,10), class = "sd")
+generate_single_dataset <- function(N, K) {
+  stopifnot(K <= N)
+  x <- rnorm(N) + 10
+  
+  group <- sample(1:K, size = K, replace = TRUE)
+  # Ensure all groups are actually present
+  if(length(unique(group)) < K) {
+    group[1:K] <- 1:K
+  }
+  
+  b_Intercept <- rnorm(1, 5, 1)   
+  b_x <- rnorm(1, 0, 1)
+  
+  sd_group__Intercept <- abs(rnorm(1, 0, 0.75))
+  r_group <- matrix(rnorm(K, 0, sd_group__Intercept), 
+                 nrow = K, ncol = 1,
+                 dimnames = list(1:K, "Intercept"))
+  
+  sigma <- abs(rnorm(1, 0, 3))
+  
+  predictor <- b_Intercept + x * b_x + r_group[group]
+  y <- rnorm(N, predictor, sigma)
+  
+  list(
+    parameters = list(
+      b_Intercept = b_Intercept,
+      b_x = b_x,
+      sd_group__Intercept = sd_group__Intercept,
+      r_group = r_group,
+      sigma = sigma
+    ),
+    generated = data.frame(y = y, x = x, group = group)
+  )
+}
+
+generator_func <- function_SBC_generator(generate_single_dataset, N = 12, K = 3)
+```
 
 
-generator_fail <- brms_SBC_generator(y ~ x + (1 | id)  + (1 | id2), data = data_fail, prior = priors_fail)
+```{r}
+set.seed(12239755)
+datasets_func <- generate_datasets(generator_func, 100)
 ```
 
 ```{r}
-datasets_fail <- generate_datasets(generator_fail, 40)
+priors_func <- prior(normal(0,1), class = "b") +
+  prior(normal(5,1), class = "Intercept") +
+  prior(normal(0,5), class = "sigma") +
+  prior(normal(0,0.75), class = "sd")
+
+
+backend_func <- brms_SBC_backend(y ~ x + (1 | group),  
+                            prior = priors_func, chains = 1,
+                            template_dataset = datasets$generated[[1]],
+                            generator = generator_func)
+
 ```
 
 ```{r}
-# Reuse the compiled model and other info from the generator
-backend_fail <- brms_SBC_backend_from_generator(generator_fail, warmup = 500, iter = 1000, chains = 1,
-                            init = 0.1)
-
-# More verbose alternative:
-#backend <- brms_SBC_backend(y ~ x, data = data, prior = priors, warmup = 500, iter = 1000, chains = 1,
-#                            init = 0.1)
+results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10)
 ```
 
 ```{r}
-results_fail <- compute_results(datasets_fail, backend_fail, thin_ranks = 5)
-```
-
-We see a problem with `sigma`. Notably the problem is also visible when looking at `lp__` (which we would expect to often manifest problems if at least one of the parameters has problems)
-
-```{r}
-for(p in c("sigma", "lp__")) {
-  print(plot_ecdf_diff(results_fail, p) + ggtitle(p))
+for(p in colnames(results_func$ranks)) {
+  print(plot_ecdf_diff(results_func, p) + ggtitle(p))
 }
 ```
+
+What happened is that `brms` by default centers all the predictors, which changes the
+numerical values of the intercept (but not other terms) using `0 + Intercept` syntax avoids this. 
+
+
+```{r}
+priors_func2 <- prior(normal(0,1), class = "b") +
+  prior(normal(5,1), class = "b", coef = "Intercept") +
+  prior(normal(0,5), class = "sigma") +
+  prior(normal(0,0.75), class = "sd")
+
+
+backend_func2 <- brms_SBC_backend(y ~ 0 + Intercept + x + (1 | group),  
+                            prior = priors_func2, warmup = 500, iter = 1000, chains = 1,
+                            template_dataset = datasets_func$generated[[1]],
+                            generator = generator_func)
+
+
+```
+
+```{r}
+results_func2 <- compute_results(datasets_func, backend_func2, thin_ranks = 10)
+```
+
+We see that this results in non-problematic univariate checks.
+
+```{r}
+for(p in colnames(results_func2$ranks)) {
+  print(plot_ecdf_diff(results_func2, p) + ggtitle(p))
+}
+```
+
+

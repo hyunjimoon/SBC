@@ -12,7 +12,6 @@ compute_results <- function(datasets, backend, cores = getOption("mc.cores", 1),
   warned_vars <- FALSE
   for(i in 1:length(datasets)) {
     fits[[i]] <- SBC_fit(backend, datasets$generated[[i]], cores = cores)
-    # TODO consider just using as_draws and not insist on a specific format until needed
     fit_matrix <- SBC_fit_to_draws_matrix(fits[[i]])
     missing_vars <- setdiff(posterior::variables(datasets$parameters), posterior::variables(fit_matrix))
     if(length(missing_vars) > 0 && !warned_vars) {

@@ -61,13 +61,13 @@ generate_datasets <- function(generator, n_datasets) {
 }
 
 #'@export
-list_function_SBC_generator <- function(f, ...) {
+function_SBC_generator <- function(f, ...) {
   stopifnot(is.function(f))
-  structure(list(f = f, args = list(...)), class = "list_function_SBC_generator")
+  structure(list(f = f, args = list(...)), class = "function_SBC_generator")
 }
 
 #'@export
-generate_datasets.list_function_SBC_generator <- function(generator, n_datasets) {
+generate_datasets.function_SBC_generator <- function(generator, n_datasets) {
   parameters_list <- list()
   generated <- list()
   for(iter in 1:n_datasets){
@@ -85,15 +85,15 @@ generate_datasets.list_function_SBC_generator <- function(generator, n_datasets)
 }
 
 #'@export
-function_SBC_generator <- function(f, ...) {
+custom_SBC_generator <- function(f, ...) {
   stopifnot(is.function(f))
-  structure(list(f = f, args = list(...)), class = "function_SBC_generator")
+  structure(list(f = f, args = list(...)), class = "custom_SBC_generator")
 }
 
 #'@export
-generate_datasets.function_SBC_generator <- function(generator, n_datasets) {
+generate_datasets.custom_SBC_generator <- function(generator, n_datasets) {
   # TODO: check correct output
-  do.call(generator$f, c(list(n_datasets = n_datasets), generator$args))
+  do.call(generator$f, combine_args(generator$args, list(n_datasets = n_datasets)))
 }
 
 #' Create a brms generator.
@@ -130,10 +130,66 @@ brms_SBC_generator <- function(..., generate_lp = TRUE) {
 
 #' @export
 generate_datasets.brms_SBC_generator <- function(generator, n_datasets) {
-  #TODO pass args for chains, .... to sampling
-  prior_fit <- generator$compiled_model$sample(data = generator$model_data,
-                        iter_warmup = 1000, iter_sampling = n_datasets,
-                        chains = 1)
+  #TODO pass args for control, warmup, .... to sampling
+  if(inherits(generator$compiled_model, "CmdStanModel")) {
+      args_for_fitting <- translate_rstan_args_to_cmdstan(generator$args, include_unrecognized = FALSE)
+      args_for_fitting$data <- generator$model_data
+
+      if(is.null(args_for_fitting$chains)) {
+        args_for_fitting$chains <- 1
+      }
+      if(is.null(args_for_fitting$thin)) {
+        args_for_fitting$thin <- 1
+      }
+
+
+      args_for_fitting$iter_sampling <- ceiling(n_datasets / args_for_fitting$chains) * args_for_fitting$thin
+
+      args_for_fitting
+      prior_fit <- do.call(generator$compiled_model$sample,
+                           args_for_fitting)
+
+
+      # Change once https://github.com/stan-dev/cmdstanr/issues/205
+      # is resolved
+      summ <- prior_fit$summary() # Can trigger warnings for treedepth/divergent ...
+      max_rhat <- max(summ$rhat)
+      if(max_rhat > 1.01) {
+        message("Warning: Some rhats are > 1.01 indicating the prior was not explored well.\n",
+                "The highest rhat is ", round(max_rhat, 2)," for ", summ$variable[which.max(summ$rhat)],
+                "\nConsider adding warmup iterations (via 'warmup' argument).")
+      }
+      min_ess <- min(summ$ess_bulk)
+      if(min_ess < n_datasets / 2) {
+        message("Warning: Bulk effective sample size for some parameters is less than half the number of datasets.\n",
+                "The lowest ESS_bulk/n_datasets is ", round(min_ess / n_datasets, 2)," for ", summ$variable[which.min(summ$ess_bulk)],
+                "\nConsider increased thinning  (via 'thin' argument) .")
+      }
+
+  } else if (inherits(generator$compiled_model, "stanmodel")) {
+    args_to_pass <- c("thin", "warmup", "control", "refresh")
+    args_for_fitting <- c(
+      list(object = generator$compiled_model,
+           data = generator$model_data,
+           chains = 1
+      ),
+      generator$args[intersect(args_to_pass, names(generator$args))]
+    )
+
+    if(is.null(args_for_fitting$warmup)) {
+      args_for_fitting$warmup <- 1000
+    }
+    if(is.null(args_for_fitting$chains)) {
+      args_for_fitting$chains <- 1
+    }
+
+    args_for_fitting$iter <- ceiling(n_datasets / args_for_fitting$chains) * args_for_fitting$thin
+
+    prior_fit <- do.call(rstan::sampling, args_for_fitting)
+
+  } else {
+    stop("Invalid generator$compiled_model")
+  }
 
   prior_fit_brms <- brmsfit_from_stanfit(prior_fit, generator$args)
 

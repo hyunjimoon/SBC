@@ -4,10 +4,12 @@
 \alias{brms_SBC_backend}
 \title{Build a brms backend.}
 \usage{
-brms_SBC_backend(...)
+brms_SBC_backend(..., template_dataset)
 }
 \arguments{
 \item{...}{arguments passed to \code{brm}.}
+
+\item{template_dataset}{a representative dataset that can be used to generate code.}
 }
 \description{
 Build a brms backend.
