@@ -5,13 +5,22 @@ output: html_notebook
 
 ```{r setup, include = FALSE}
 library(SBC); 
-use_cmdstanr <- FALSE # Set to false to use rstan instead
+use_cmdstanr <- TRUE # Set to false to use rstan instead
 
 if(use_cmdstanr) {
   library(cmdstanr)
 } else {
   library(rstan)
 }
+
+options(mc.cores = parallel::detectCores())
+
+# Uncomment below to have the fits evaluated in parallel
+# However, as this example evaluates just a few fits, it
+# is usually not worth the overhead.
+
+# library(future)
+# plan(multisession)
 
 ```
 
@@ -96,13 +105,11 @@ datasets <- generate_datasets(
 results1 <- compute_results(datasets, sbc_backend_1)
 ```
 
+
 10 simulations are enough to see something is wrong with the model. We even see the issue is primarily with the `sigma` parameter!
 
 ```{r}
-plot_hist(results1$ranks, par = "shape")
-plot_ecdf_diff(results1, var = "shape")
-plot_hist(results1$ranks, par = "scale")
-plot_ecdf_diff(results1, var = "scale")
+plot_ecdf_diff(results1)
 ```
 
 So we see that the simulation does not match the model. In practice, the problem may lie with the simulation, with the model or both. Here, we'll assume that the simulation is correct - we really wanted to work with scale and fix the model to match. I.e. we still represent scale in our model, but invert it to get rate before using Stan's `gamma` distribution:
@@ -150,10 +157,7 @@ results2 <- compute_results(datasets, sbc_backend_2)
 No obvious problems here, but if we wanted to be sure, we should have ran a lot more simulations.
 
 ```{r}
-plot_hist(results2$ranks, par = "shape")
-plot_ecdf_diff(results2, var = "shape")
-plot_hist(results2$ranks, par = "scale")
-plot_ecdf_diff(results2, var = "scale")
+plot_ecdf_diff(results2)
 ```
 
 

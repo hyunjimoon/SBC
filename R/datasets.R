@@ -182,8 +182,11 @@ generate_datasets.brms_SBC_generator <- function(generator, n_datasets) {
     if(is.null(args_for_fitting$chains)) {
       args_for_fitting$chains <- 1
     }
+    if(is.null(args_for_fitting$thin)) {
+      args_for_fitting$thin <- 1
+    }
 
-    args_for_fitting$iter <- ceiling(n_datasets / args_for_fitting$chains) * args_for_fitting$thin
+    args_for_fitting$iter <- args_for_fitting$warmup + ceiling(n_datasets / args_for_fitting$chains) * args_for_fitting$thin
 
     prior_fit <- do.call(rstan::sampling, args_for_fitting)
 

@@ -36,5 +36,5 @@ post <- workflow$posterior_samples
 ranks <- workflow$calculate_rank()
 
 
-plot_ecdf(workflow, var="mu")
-plot_ecdf_diff(workflow, var="theta")
+plot_ecdf(workflow)
+plot_ecdf_diff(workflow)

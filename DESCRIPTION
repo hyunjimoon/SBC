@@ -25,7 +25,10 @@ Imports:
     ggplot2,
     stats,
     stringi,
-    abind
+    abind,
+    future,
+    dplyr,
+    tidyr
 Suggests: 
     testthat,
     cmdstanr,

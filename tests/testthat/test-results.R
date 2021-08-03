@@ -37,3 +37,35 @@ test_that("calculate_ranks_draws_matrix works", {
     expect_equal(names(last_ranks), posterior::variables(dm))
 })
 
+test_that("calculate_sds_draws_matrix", {
+    dm <- matrix(NA_real_, nrow = 10, ncol = 3)
+    colnames(dm) <- c("a","b","c")
+
+    dm[, "a"] <- sample(1:10)
+    dm[, "b"] <- sample(-4:5)
+    dm[, "c"] <- sample(11:20)
+    dm <- posterior::as_draws_matrix(dm)
+
+    expected_res <- c(a = sd(1:10), b = sd(-4:5), c = sd(11:20))
+
+    expect_identical(calculate_sds_draws_matrix(dm), expected_res)
+})
+
+test_that("statistics_from_single_fit", {
+    params <- posterior::as_draws_matrix(
+        posterior::as_draws_rvars(list(
+            mu = 4,
+            tau = 4,
+            theta = seq(3.5, 6.5, length.out = 8))))
+
+    # Can't really check correctness, only
+    # testing that no error is thrown and structure is OK
+    res <- statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
+                               parameters = params, thin_ranks = 1)
+
+    expect_equal(length(unique(res$max_rank)), 1)
+    expect_true(all(res$rank >= 0 & res$rank < res$max_rank))
+    expect_equal(res$simulated_value, as.numeric(params))
+    expect_identical(res$mean > res$simulated_value, sign(res$z_score) < 0)
+
+})

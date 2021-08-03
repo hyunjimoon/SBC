@@ -67,65 +67,40 @@ plot_hist <- function(ranks, par, bins=20){
 #'   of the simultaneous confidence bands. Defaults to 'length(y)',
 #'   'K = ncol(yrep)', or lastly to 'K = ncol(pit)' depending on which one is
 #'   provided.
-plot_ecdf <- function(
-  sbc_workflow_obj,
-  gamma,
-  K,
-  var,
-  ...,
-  prob = 0.95,
-  size = 1,
-  alpha = 0.33
-) {
+plot_ecdf <- function(x,
+                      variables = NULL,
+                      K = NULL,
+                      gamma = NULL,
+                      prob = 0.95,
+                      size = 1,
+                      alpha = 0.33) {
 
-  if(is.null(sbc_workflow_obj$calculated_ranks)){
-    stop("No rank data is available. Please run SBCWorkflow$calculate_rank first.")
-  }
-  if(missing(var)){
-    stop("Please specify the parameter name to plot as argument var")
-  }
+  ecdf_data <-
+    data_for_ecdf_plots(x, variables = variables,
+                        prob = prob, K = K, gamma = gamma)
 
-  if(posterior::nvariables(posterior::as_draws_array(posterior::subset_draws(sbc_workflow_obj$prior_samples, var)))){
+  N <- ecdf_data$N
+  K <- ecdf_data$K
+  z <- ecdf_data$z
 
-  }
+  ecdf_df <- dplyr::mutate(ecdf_data$ecdf_df, type = "sample ECDF")
+  limits_df <- ecdf_data$limits_df
+  limits_df_trans <- data.frame(
+    x = c(0, rep(z[2:(K + 1)], each = 2)),
+    ymax = limits_df$upper / N,
+    ymin = limits_df$lower / N,
+    type = "theoretical CDF"
+  )
 
-  pit <- ranks_to_empirical_pit(sbc_workflow_obj$calculated_ranks, posterior::niterations(sbc_workflow_obj$posterior_samples))
-  N <- nrow(pit)
-  if (missing(K)) {
-    K <- N
-  }
-  if (missing(gamma)) {
-    gamma <- adjust_gamma(
-      N = N,
-      L = 1,
-      K = K,
-      conf_level = prob
-    )
-  }
-  limits <- ecdf_intervals(
-    N = N,
-    L = 1,
-    K = K,
-    gamma = gamma)
-  z <- seq(0,1, length.out = K + 1)
-  data = data.frame(apply(pit, 2, function(col) ecdf(col)(z) ))
   # construct figure
-  ggplot(data) +
+  ggplot(ecdf_df) +
     geom_ribbon(
-      data = data.frame(limits),
-      aes_(
-        x = c(0, rep(z[2:(K + 1)], each = 2)),
-        ymax = ~ upper / N,
-        ymin = ~ lower / N,
-        color = "theoretical CDF",
-        fill = "theoretical CDF"
-      ),
+      data = limits_df_trans,
+      aes(x = x, ymax = ymax, ymin = ymin, color = type, fill = type),
       alpha = alpha,
       size = size) +
     geom_step(
-      data = data,
-      aes_(x = z, y = data[[var]], color = "sample ECDF"),
-      size = size
+      aes(x = z, y = ecdf, color = type)
     ) +
     scale_y_continuous(breaks = c(0, 0.5, 1)) +
     scale_color_manual(
@@ -148,101 +123,43 @@ plot_ecdf <- function(
       )
     ) +
     xlab(NULL) +
-    ylab(NULL)
+    ylab(NULL) +
+    facet_wrap(~ variable)
 }
 
 #' @export
 #' @rdname ECDF-plots
 plot_ecdf_diff <- function(x,
-                           var,
+                           variables = NULL,
+                           K = NULL,
+                           gamma = NULL,
                            prob = 0.95,
                            size = 1,
-                           alpha = 0.33,
-                           ...) {
-  UseMethod("plot_ecdf_diff")
-}
+                           alpha = 0.33) {
+  ecdf_data <-
+    data_for_ecdf_plots(x, variables = variables,
+                        prob = prob, K = K, gamma = gamma)
 
-#' @export
-plot_ecdf_diff.SBCWorkflow <- function(
-  sbc_workflow_obj,
-  gamma,
-  K,
-  var,
-  prob = 0.95,
-  size = 1,
-  alpha = 0.33
-) {
-  if(is.null(sbc_workflow_obj$calculated_ranks)){
-    stop("No rank data is available. Please run SBCWorkflow$calculate_rank first.")
-  }
+  N <- ecdf_data$N
+  K <- ecdf_data$K
+  z <- ecdf_data$z
 
-  plot_ecdf_diff_internal(sbc_workflow_obj$calculated_ranks, posterior::niterations(sbc_workflow_obj$posterior_samples),
-                          gamma = gamma, K = K, var = var, prob = prob,
-                          size = size,
-                          alpha = alpha)
-
-
-}
-
-#' @export
-plot_ecdf_diff.SBC_results <- function(
-  results,
-  var,
-  prob = 0.95,
-  size = 1,
-  alpha = 0.33
-) {
-  plot_ecdf_diff_internal(results$ranks, attr(results$ranks, "max_rank"),
-                          var = var, prob = prob,
-                          size = size,
-                          alpha = alpha)
-}
-
-plot_ecdf_diff_internal <- function(
-  ranks,
-  max_rank,
-  gamma,
-  K,
-  var,
-  prob = 0.95,
-  size = 1,
-  alpha = 0.33
-) {
-  pit <- ranks_to_empirical_pit(ranks, max_rank)
-  N <- nrow(pit)
-  if (missing(K)) {
-    K <- N
-  }
-  if (missing(gamma)) {
-    gamma <- adjust_gamma(
-      N = N,
-      L = 1,
-      K = K,
-      conf_level = prob
-    )
-  }
-  limits <- ecdf_intervals(
-    N = N,
-    L = 1,
-    K = K,
-    gamma = gamma)
-  z <- seq(0,1, length.out = K + 1)
-  data = data.frame(apply(pit, 2, function(col) ecdf(col)(z) - z))
-  ggplot(data) +
+  ecdf_df <- dplyr::mutate(ecdf_data$ecdf_df, z_diff = ecdf - z, type = "sample ECDF")
+  limits_df <- ecdf_data$limits_df
+  limits_df_trans <- data.frame(
+    x = c(0, rep(z[2:(K + 1)], each = 2)),
+    ymax = limits_df$upper / N - c(rep(z[1:K], each = 2), 1),
+    ymin = limits_df$lower / N - c(rep(z[1:K], each = 2), 1),
+    type = "theoretical CDF"
+  )
+  ggplot(ecdf_df) +
     geom_ribbon(
-      data = data.frame(limits),
-      aes_(
-        x = c(0, rep(z[2:(K + 1)], each = 2)),
-        ymax = ~ upper / N - c(rep(z[1:K], each = 2), 1),
-        ymin = ~ lower / N - c(rep(z[1:K], each = 2), 1),
-        color = "theoretical CDF",
-        fill = "theoretical CDF"
-      ),
+      data = limits_df_trans,
+      aes(x = x, ymax = ymax, ymin = ymin, color = type, fill = type),
       alpha = alpha,
       size = size) +
     geom_step(
-      data = data,
-      aes_(x = z, y = data[[make.names(var)]], color = "sample ECDF")
+      aes(x = z, y = z_diff, color = type)
     ) +
     scale_color_manual(
       name = "",
@@ -264,5 +181,108 @@ plot_ecdf_diff_internal <- function(
       )
     ) +
     xlab(NULL) +
-    ylab(NULL)
+    ylab(NULL) +
+    facet_wrap(~ variable)
+}
+
+
+
+#' Maybe not export in the end? Useful for debugging
+#' @export
+data_for_ecdf_plots <- function(x, ...,
+                                        prob = 0.95,
+                                        gamma = NULL,
+                                        K = NULL
+                                ) {
+  UseMethod("data_for_ecdf_plots")
+}
+
+
+data_for_ecdf_plots.SBC_results <- function(x, variables = NULL,
+                                                    prob = 0.95,
+                                                    gamma = NULL,
+                                                    K = NULL) {
+  stats <- x$stats
+  if(!is.null(variables)) {
+    stats <- dplyr::filter(stats, variable %in% variables)
+  }
+
+  if(length(unique(stats$max_rank)) > 1) {
+    stop("Not all variables have the same max_rank")
+  }
+
+  summ <- dplyr::summarise(dplyr::group_by(stats, variable), count = dplyr::n(), .groups = "drop")
+  if(length(unique(summ$count)) > 1) {
+    stop("Not all varaibles have the same number of ranks")
+  }
+
+  rank <- dplyr::select(stats, run_id, variable, rank)
+  rank_matrix <- tidyr::pivot_wider(rank, names_from = "variable",
+                                              values_from = "rank")
+  rank_matrix <- as.matrix(dplyr::select(rank_matrix, -run_id))
+
+
+  data_for_ecdf_plots(rank_matrix, max_rank = stats$max_rank[1], prob = prob,
+                              gamma = gamma, K = K)
+}
+
+
+data_for_ecdf_plots.SBCWorkflow <- function(
+  x, variables = NULL,
+  prob = 0.95,
+  gamma = NULL,
+  K = NULL
+) {
+  sbc_workflow_obj <- x
+  if(is.null(sbc_workflow_obj$calculated_ranks)){
+    stop("No rank data is available. Please run SBCWorkflow$calculate_rank first.")
+  }
+
+  data_for_ecdf_plots(sbc_workflow_obj$calculated_ranks,
+                      max_rank = posterior::niterations(sbc_workflow_obj$posterior_samples),
+                          gamma = gamma, K = K, prob = prob)
+
+
+}
+
+data_for_ecdf_plots.matrix <- function(x,
+                                               max_rank,
+                                                 prob = 0.95,
+                                                 gamma = NULL,
+                                                 K = NULL,
+                                                 size = 1,
+                                                 alpha = 0.33) {
+  ranks_matrix <- x
+  if(any(!is.finite(ranks_matrix))) {
+    stop("Ranks may only contain finite values")
+  }
+  pit <- ranks_to_empirical_pit(ranks_matrix, max_rank)
+  N <- nrow(pit)
+  if (is.null(K)) {
+    K <- N
+  }
+  if (is.null(gamma)) {
+    gamma <- adjust_gamma(
+      N = N,
+      L = 1,
+      K = K,
+      conf_level = prob
+    )
+  }
+  limits_df <- as.data.frame(ecdf_intervals(
+    N = N,
+    L = 1,
+    K = K,
+    gamma = gamma))
+  z <- seq(0,1, length.out = K + 1)
+
+  ecdf_vals <- apply(pit, 2, function(col) ecdf(col)(z))
+
+  ecdf_df <- as.data.frame(ecdf_vals)
+  ecdf_df$..z <- z
+  ecdf_df <- tidyr::pivot_longer(ecdf_df, -..z, names_to = "variable", values_to = "ecdf")
+  ecdf_df <- dplyr::rename(ecdf_df, z = ..z)
+
+  structure(list(limits_df = limits_df, ecdf_df = ecdf_df, K = K, N = N, z = z),
+            class = "SBC_ecdf_data")
 }

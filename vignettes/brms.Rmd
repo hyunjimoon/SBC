@@ -9,6 +9,18 @@ library(brms)
 library(ggplot2)
 options(brms.backend = "cmdstanr")
 #options(brms.backend = "rstan") # Uncomment to use rstan
+
+options(mc.cores = parallel::detectCores())
+
+
+# Uncomment below to have the fits evaluated in parallel
+# However, the fits in this example are very quick to fit
+# so the overhead of transferring data between sessions 
+# likely outweights the gains on most machines
+
+# library(future)
+# plan(multisession)
+
 ```
 
 ```{r}
@@ -34,14 +46,15 @@ backend <- brms_SBC_backend_from_generator(generator, warmup = 500, iter = 1000,
 #                            init = 0.1)
 ```
 
+
+
 ```{r}
 results <- compute_results(datasets, backend, thin_ranks = 10)
+which(!vapply(results$fits, is.brmsfit , FUN.VALUE = TRUE))
 ```
 
 ```{r}
-for(p in colnames(results$ranks)) {
-  print(plot_ecdf_diff(results, p) + ggtitle(p))
-}
+plot_ecdf_diff(results)
 ```
 
 ## Using custom simulation code
@@ -105,7 +118,7 @@ priors_func <- prior(normal(0,1), class = "b") +
 
 backend_func <- brms_SBC_backend(y ~ x + (1 | group),  
                             prior = priors_func, chains = 1,
-                            template_dataset = datasets$generated[[1]],
+                            template_dataset = datasets_func$generated[[1]],
                             generator = generator_func)
 
 ```
@@ -114,10 +127,9 @@ backend_func <- brms_SBC_backend(y ~ x + (1 | group),
 results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10)
 ```
 
+
 ```{r}
-for(p in colnames(results_func$ranks)) {
-  print(plot_ecdf_diff(results_func, p) + ggtitle(p))
-}
+plot_ecdf(results_func)
 ```
 
 What happened is that `brms` by default centers all the predictors, which changes the
@@ -146,9 +158,9 @@ results_func2 <- compute_results(datasets_func, backend_func2, thin_ranks = 10)
 We see that this results in non-problematic univariate checks.
 
 ```{r}
-for(p in colnames(results_func2$ranks)) {
-  print(plot_ecdf_diff(results_func2, p) + ggtitle(p))
-}
+plot_ecdf_diff(results_func2)
 ```
+
+
 
 

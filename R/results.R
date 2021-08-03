@@ -1,59 +1,134 @@
 #' @export
-SBC_results <- function(ranks, z_scores, sds, fits) {
+SBC_results <- function(stats, fits) {
   #TODO argument validation
-  structure(list(ranks = ranks, z_scores = z_scores, sds = sds, fits = fits), class = "SBC_results")
+  structure(list(stats = stats, fits = fits), class = "SBC_results")
 }
 
 #' @export
-compute_results <- function(datasets, backend, cores = getOption("mc.cores", 1), thin_ranks = 1) {
+compute_results <- function(datasets, backend, cores_per_fit = default_cores_per_fit(length(datasets)),
+                            keep_fits = TRUE, thin_ranks = 1) {
+  stopifnot(length(datasets) > 0)
   #TODO use future for multiprocessing
   #TODO allow discarding fits after summarising to save memory
-  fits <- list()
-  warned_vars <- FALSE
+  single_results_futures <- list()
+
+  # Create futures for computation
   for(i in 1:length(datasets)) {
-    fits[[i]] <- SBC_fit(backend, datasets$generated[[i]], cores = cores)
-    fit_matrix <- SBC_fit_to_draws_matrix(fits[[i]])
-    missing_vars <- setdiff(posterior::variables(datasets$parameters), posterior::variables(fit_matrix))
-    if(length(missing_vars) > 0 && !warned_vars) {
-      warning("Some variables missing in the fit: ", missing_vars)
-    }
 
-    shared_vars <- intersect(posterior::variables(datasets$parameters),
-                             posterior::variables(fit_matrix))
+    parameters <- posterior::subset_draws(datasets$parameters,
+                                      draw = i)
 
-    if(i == 1) {
-      z_scores <- sds <- matrix(NA_real_, nrow = length(datasets), ncol = length(shared_vars))
-      ranks <- matrix(NA_integer_, nrow = length(datasets), ncol = length(shared_vars))
-    } else if(length(shared_vars) != ncol(ranks)) {
-      stop("Differing number of variables across fits")
-    }
+    generated <- datasets$generated[[i]]
 
-
-    fit_matrix <- posterior::subset_draws(fit_matrix, variable = shared_vars)
-
-    fit_thinned <- posterior::thin_draws(fit_matrix, thin_ranks)
-
-    params <- posterior::subset_draws(datasets$parameters,
-                                      draw = i,
-                                      variable = shared_vars)
-
-    last_ranks <- calculate_ranks_draws_matrix(params, fit_thinned)
-    if(i == 1) {
-      max_rank <- attr(last_ranks, "max_rank")
-    } else {
-      if(max_rank != attr(last_ranks, "max_rank")) {
-        stop("Differening max_rank across fits")
-      }
-    }
-
-    ranks[i, ] <- last_ranks
-    #TODO: z-scores, sds
+    single_results_futures[[i]] <-
+      single_results_futures[[i]] <- future::future(
+        SBC:::process_single_dataset(backend = backend, parameters = parameters,
+                             generated = generated, cores = cores_per_fit,
+                             keep_fit = keep_fits, thin_ranks = thin_ranks)
+     ,seed = TRUE)
   }
 
-  attr(ranks, "max_rank") <- max_rank
-  colnames(ranks) <- shared_vars
+  # Combine, check and summarise
+  fits <- list()
+  stats_list <- list()
+  n_errors <- 0
+  max_errors_to_show <- 5
+  for(i in 1:length(datasets)) {
+    success <- tryCatch( {
+      single_result <- future::value(single_results_futures[[i]])
+      fits[[i]] <- single_result$fit
+      stats_list[[i]] <- single_result$stats
+      stats_list[[i]]$run_id <- i
+      TRUE
+    }, error = identity)
+    if(!isTRUE(success)) {
+      if(n_errors < max_errors_to_show) {
+        warning("Dataset ", i, " resulted in error when fitting.\n")
+        message(success, "\n")
+      } else if(n_errors == max_errors_to_show) {
+        warning("Too many datasets produced errors. Further error messages not shown.\n")
+      }
+      n_errors <- n_errors + 1
+      fits[[i]] <- success
+    }
+  }
 
-  SBC_results(ranks = ranks, z_scores = z_scores, sds = sds, fits = fits)
+  if(n_errors == length(datasets)) {
+    stop("All datasets produced error when fitting")
+  } else if(n_errors > 0) {
+    warning("Total of ", n_errors, " datasets produced errors.")
+  }
+
+  stats <- do.call(rbind, stats_list)
+
+  if(length(unique(stats$max_rank)) != 1) {
+    warning("Differening max_rank across fits")
+  }
+  all_vars <- dplyr::summarise(
+    dplyr::group_by(stats, run_id),
+    all_vars = paste0(variable, collapse = ","), .groups = "drop")
+  if(length(unique(all_vars$all_vars)) != 1) {
+    warning("Not all fits share the same variables")
+  }
+
+  SBC_results(stats = stats, fits = fits)
+}
+
+#' @export
+default_cores_per_fit <- function(n_fits, total_cores = future::availableCores()) {
+  if(inherits(future::plan(), "sequential")) {
+    total_cores
+  } else if(2 * n_fits <= total_cores) {
+    floor(total_cores / n_fits)
+  } else {
+    1
+  }
+}
+
+process_single_dataset <- function(backend, parameters, generated, cores,
+                                   keep_fit, thin_ranks) {
+  fit <- SBC_fit(backend, generated, cores = cores)
+  stats <- statistics_from_single_fit(fit, parameters = parameters, thin_ranks = thin_ranks)
+  if(!keep_fit) {
+    fit <- NULL
+  }
+  c(list(fit = fit, stats = stats))
+}
+
+#' @export
+statistics_from_single_fit <- function(fit, parameters, thin_ranks) {
+  fit_matrix <- SBC_fit_to_draws_matrix(fit)
+
+  missing_vars <- setdiff(posterior::variables(parameters), posterior::variables(fit_matrix))
+  if(length(missing_vars) > 0 && !warned_vars) {
+    warning("Some variables missing in the fit: ", missing_vars)
+  }
+
+  shared_vars <- intersect(posterior::variables(parameters),
+                           posterior::variables(fit_matrix))
+
+
+  # Make sure the order of variables matches
+  parameters <- posterior::subset_draws(parameters, variable = shared_vars)
+
+
+  fit_matrix <- posterior::subset_draws(fit_matrix, variable = shared_vars)
+
+  fit_thinned <- posterior::thin_draws(fit_matrix, thin_ranks)
+
+
+  stats <- posterior::summarise_draws(fit_matrix)
+  stats$simulated_value <- as.numeric(parameters)
+
+  ranks <- calculate_ranks_draws_matrix(parameters, fit_thinned)
+  if(!identical(stats$variable, names(ranks))) {
+    stop("A naming conflict")
+  }
+  stats$rank <- ranks
+  stats$max_rank <- attr(ranks, "max_rank")
+  stats$z_score <- (stats$simulated_value - stats$mean) / stats$sd
+
+  stats
 }
 
 #' Discrete uniform distribution allowing for varying lower and upper bounds.
@@ -83,3 +158,10 @@ calculate_ranks_draws_matrix <- function(params, dm) {
   attr(ranks, "max_rank") <- max_rank
   ranks
 }
+
+#' @export
+calculate_sds_draws_matrix <- function(dm) {
+  #TODO: validate input
+  apply(dm, MARGIN = 2, FUN = sd)
+}
+

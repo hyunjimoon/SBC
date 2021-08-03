@@ -162,10 +162,7 @@ results_3 <- compute_results(datasets, backend_3)
 ```
 
 ```{r}
-for(p in colnames(results_1$ranks)) {
-  print(plot_ecdf_diff(results_1, p) + ggtitle(paste0("Model 1: ", p)))
-}
-
+plot_ecdf_diff(results_1)
 ```
 
 As far as a quick SBC can see the first code is OK. You could verify further with more iterations
@@ -173,9 +170,8 @@ but we tested the model for you and it is OK (although the implementation is not
 
 
 ```{r}
-for(p in colnames(results_2$ranks)) {
-  print(plot_ecdf_diff(results_2, p) + ggtitle(paste0("Model 2: ", p)))
-}
+plot_ecdf_diff(results_2)
+
 
 ```
 
@@ -185,9 +181,7 @@ propagates most strongly to the `sigma` parameter (reusing the same `x` element 
 
 
 ```{r}
-for(p in colnames(results_3$ranks)) {
-  print(plot_ecdf_diff(results_3, p) + ggtitle(paste0("Model 3: ", p)))
-}
+plot_ecdf_diff(results_3)
 
 
 ```
