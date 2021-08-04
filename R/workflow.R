@@ -56,12 +56,12 @@ SBCWorkflow <- R6::R6Class("SBCWorkflow",
    #'
    #' @param n_sbc_iterations Number of prior sample sets to generate. Equates to number of SBC iterations
    #' @param ... Additional arguments to be passed to \code{sim_function}
-   simulate = function(n_sbc_iterations, param = TRUE,  ...){  # number of simulation draws should be at least 1000
+   simulate = function(n_sbc_iterations, ...){  # number of simulation draws should be at least 1000
      if(!is.null(self$brms_model_fit)){
        #prior_sampler <- update(self$model_obj, sample_prior="only", chains=1, iter=n * 2, warmup = n)
      }
      else if(!is.null(self$cmdstan_model)){
-       draws_rvars_list <- do.call(generator_to_draws_rvars, list(self$sim_function, n_sbc_iterations, param = param, ...))
+       draws_rvars_list <- do.call(generator_to_draws_rvars, list(self$sim_function, n_sbc_iterations, ...))
        self$prior_samples <- draws_rvars_list[["parameters"]]
        self$simulated_y <- draws_rvars_list[["generated"]]
      }
