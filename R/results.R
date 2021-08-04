@@ -1,55 +1,56 @@
 #' @export
-SBC_results <- function(stats, fits) {
+SBC_results <- function(stats, fits, errors = rep(list(NULL), length(fits))) {
   #TODO argument validation
-  structure(list(stats = stats, fits = fits), class = "SBC_results")
+  structure(list(stats = stats, fits = fits, errors = errors), class = "SBC_results")
 }
 
 #' @export
-compute_results <- function(datasets, backend, cores_per_fit = default_cores_per_fit(length(datasets)),
-                            keep_fits = TRUE, thin_ranks = 1) {
+compute_results <- function(datasets, backend,
+                            cores_per_fit = default_cores_per_fit(length(datasets)),
+                            keep_fits = TRUE,
+                            thin_ranks = 1,
+                            chunk_size = default_chunk_size(length(datasets)) ) {
   stopifnot(length(datasets) > 0)
-  #TODO use future for multiprocessing
-  #TODO allow discarding fits after summarising to save memory
-  single_results_futures <- list()
 
-  # Create futures for computation
+  # Create combined data for computation
+  params_and_generated_list <- list()
   for(i in 1:length(datasets)) {
-
-    parameters <- posterior::subset_draws(datasets$parameters,
-                                      draw = i)
-
-    generated <- datasets$generated[[i]]
-
-    single_results_futures[[i]] <-
-      single_results_futures[[i]] <- future::future(
-        SBC:::process_single_dataset(backend = backend, parameters = parameters,
-                             generated = generated, cores = cores_per_fit,
-                             keep_fit = keep_fits, thin_ranks = thin_ranks)
-     ,seed = TRUE)
+    params_and_generated_list[[i]] <- list(
+      parameters = posterior::subset_draws(datasets$parameters,
+                                      draw = i),
+      generated = datasets$generated[[i]]
+    )
   }
 
+  results_raw <- future.apply::future_lapply(
+    params_and_generated_list, SBC:::compute_results_single,
+    backend = backend, cores = cores_per_fit,
+    keep_fit = keep_fits, thin_ranks = thin_ranks,
+    future.seed = TRUE,
+    future.chunk.size = chunk_size)
+
+
   # Combine, check and summarise
-  fits <- list()
+  fits <- rep(list(NULL), length(datasets))
+  errors <- rep(list(NULL), length(datasets))
   stats_list <- list()
   n_errors <- 0
   max_errors_to_show <- 5
   for(i in 1:length(datasets)) {
-    success <- tryCatch( {
-      single_result <- future::value(single_results_futures[[i]])
-      fits[[i]] <- single_result$fit
-      stats_list[[i]] <- single_result$stats
+    if(is.null(results_raw[[i]]$error)) {
+      fits[[i]] <- results_raw[[i]]$fit
+      stats_list[[i]] <- results_raw[[i]]$stats
       stats_list[[i]]$run_id <- i
-      TRUE
-    }, error = identity)
-    if(!isTRUE(success)) {
+    }
+    else {
       if(n_errors < max_errors_to_show) {
         warning("Dataset ", i, " resulted in error when fitting.\n")
-        message(success, "\n")
+        message(results_raw[[i]]$error, "\n")
       } else if(n_errors == max_errors_to_show) {
         warning("Too many datasets produced errors. Further error messages not shown.\n")
       }
       n_errors <- n_errors + 1
-      fits[[i]] <- success
+      errors[[i]] <- results_raw[[i]]$error
     }
   }
 
@@ -71,7 +72,7 @@ compute_results <- function(datasets, backend, cores_per_fit = default_cores_per
     warning("Not all fits share the same variables")
   }
 
-  SBC_results(stats = stats, fits = fits)
+  SBC_results(stats = stats, fits = fits, errors = errors)
 }
 
 #' @export
@@ -85,14 +86,29 @@ default_cores_per_fit <- function(n_fits, total_cores = future::availableCores()
   }
 }
 
-process_single_dataset <- function(backend, parameters, generated, cores,
-                                   keep_fit, thin_ranks) {
-  fit <- SBC_fit(backend, generated, cores = cores)
-  stats <- statistics_from_single_fit(fit, parameters = parameters, thin_ranks = thin_ranks)
-  if(!keep_fit) {
-    fit <- NULL
+#' @export
+default_chunk_size <- function(n_fits, n_workers = future::nbrOfWorkers()) {
+  if(is.infinite(n_workers)) {
+    1
+  } else {
+    n_fits / n_workers
   }
-  c(list(fit = fit, stats = stats))
+}
+
+
+
+compute_results_single <- function(params_and_generated, backend, cores,
+                                   keep_fit, thin_ranks) {
+  tryCatch({
+    parameters <- params_and_generated$parameters
+    generated <- params_and_generated$generated
+    fit <- SBC_fit(backend, generated, cores = cores)
+    stats <- statistics_from_single_fit(fit, parameters = parameters, thin_ranks = thin_ranks)
+    if(!keep_fit) {
+      fit <- NULL
+    }
+    c(list(fit = fit, stats = stats, error = NULL))
+  }, error = function(e) { list(fit = NULL, stats = NULL, error = e) })
 }
 
 #' @export

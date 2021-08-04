@@ -7,19 +7,12 @@ output: html_notebook
 library(SBC)
 library(brms)
 library(ggplot2)
-options(brms.backend = "cmdstanr")
-#options(brms.backend = "rstan") # Uncomment to use rstan
+options(brms.backend = "rstan") 
+# options(brms.backend = "cmdstanr") # Uncomment to use cmdstanr instead
 
-options(mc.cores = parallel::detectCores())
-
-
-# Uncomment below to have the fits evaluated in parallel
-# However, the fits in this example are very quick to fit
-# so the overhead of transferring data between sessions 
-# likely outweights the gains on most machines
-
-# library(future)
-# plan(multisession)
+# Using parallel processing
+library(future)
+plan(multisession)
 
 ```
 
@@ -48,9 +41,12 @@ backend <- brms_SBC_backend_from_generator(generator, warmup = 500, iter = 1000,
 
 
 
+The fits are very fast and we fit just a few, so we force a minimum chunk size to reduce overhead of
+paralellization and decrease computation time.
+
 ```{r}
-results <- compute_results(datasets, backend, thin_ranks = 10)
-which(!vapply(results$fits, is.brmsfit , FUN.VALUE = TRUE))
+chunk_size <- max(5, default_chunk_size(length(datasets)))
+results <- compute_results(datasets, backend, thin_ranks = 10, chunk_size = chunk_size)
 ```
 
 ```{r}
