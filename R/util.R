@@ -19,7 +19,7 @@ generator_to_draws_rvars <- function(generator, n_sbc_iterations, param, ...){
 
   # If there's an easier way to merge rvars along chains, then the double conversion wouldn't be needed
     for(iter in 1:n_sbc_iterations){
-      do.call(generator, list(iter, ...))
+      generator_output <- do.call(generator, list(iter, ...))
       parameter_array <- posterior::as_draws_array(posterior::as_draws_rvars(generator_output[["parameters"]]))  # No clean way to directly transform generator output to draws_array
       generated_array <- posterior::as_draws_array(posterior::as_draws_rvars(list(y=posterior::rvar(generator_output[["generated"]]))))
       dimnames(parameter_array)[[2]] <- iter
