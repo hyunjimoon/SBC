@@ -19,19 +19,18 @@ generator_to_draws_rvars <- function(generator, n_sbc_iterations, param, ...){
 
   # If there's an easier way to merge rvars along chains, then the double conversion wouldn't be needed
     for(iter in 1:n_sbc_iterations){
-      if(param){generator_output <- do.call(generator, list(...))
-      }else{generator_output <- do.call(generator, list(...[iter]))}
-    parameter_array <- posterior::as_draws_array(posterior::as_draws_rvars(generator_output[["parameters"]]))  # No clean way to directly transform generator output to draws_array
-    generated_array <- posterior::as_draws_array(posterior::as_draws_rvars(list(y=posterior::rvar(generator_output[["generated"]]))))
-    dimnames(parameter_array)[[2]] <- iter
-    dimnames(generated_array)[[2]] <- iter
-    if(iter == 1){
-      merged_parameter_array <- parameter_array
-      merged_generated_array <- generated_array
-    }
-    else{
-      merged_parameter_array <- abind::abind(merged_parameter_array, parameter_array, along=2)
-      merged_generated_array <- abind::abind(merged_generated_array, generated_array, along=2)
+      do.call(generator, list(iter, ...))
+      parameter_array <- posterior::as_draws_array(posterior::as_draws_rvars(generator_output[["parameters"]]))  # No clean way to directly transform generator output to draws_array
+      generated_array <- posterior::as_draws_array(posterior::as_draws_rvars(list(y=posterior::rvar(generator_output[["generated"]]))))
+      dimnames(parameter_array)[[2]] <- iter
+      dimnames(generated_array)[[2]] <- iter
+      if(iter == 1){
+        merged_parameter_array <- parameter_array
+        merged_generated_array <- generated_array
+      }
+      else{
+        merged_parameter_array <- abind::abind(merged_parameter_array, parameter_array, along=2)
+        merged_generated_array <- abind::abind(merged_generated_array, generated_array, along=2)
     }
   }
   list(parameters=posterior::as_draws_rvars(merged_parameter_array), generated=posterior::as_draws_rvars(merged_generated_array))
