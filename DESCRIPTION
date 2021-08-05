@@ -28,7 +28,9 @@ Imports:
     abind,
     future.apply,
     dplyr,
-    tidyr
+    tidyr,
+    tidyselect,
+    purrr
 Suggests: 
     testthat,
     cmdstanr,

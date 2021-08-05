@@ -1,7 +1,63 @@
 #' @export
 SBC_results <- function(stats, fits, errors = rep(list(NULL), length(fits))) {
-  #TODO argument validation
-  structure(list(stats = stats, fits = fits, errors = errors), class = "SBC_results")
+  validate_SBC_results(
+    structure(list(stats = stats, fits = fits, errors = errors), class = "SBC_results")
+  )
+}
+
+#' @export
+validate_SBC_results <- function(x) {
+  stopifnot(is.list(x))
+  stopifnot(inherits(x, "SBC_results"))
+  if(!is.data.frame(x$stats)) {
+    stop("SBC_datasets object has to have a 'stats' field of type data.frame")
+  }
+
+  if(!is.list(x$fits)) {
+    stop("SBC_datasets object has to have a 'fits' field of type list")
+  }
+
+  if(!is.list(x$errors)) {
+    stop("SBC_datasets object has to have an 'errors' field of type list")
+  }
+
+  if(!is.numeric(x$stats$run_id) || min(x$stats$run_id) <= 0) {
+    stop("The run_id column of stats needs to be number > 0")
+  }
+
+  if(length(unique(x$stats$run_id)) != length(x$fits)) {
+    stop("Needs equal no. of stats and fits")
+  }
+
+  if(length(x$fits) != length(x$errors)) {
+    stop("Needs equal no. of fits and errors")
+  }
+
+  #TODO check identical par names
+  x
+}
+
+
+#' @export
+bind_results <- function(...) {
+  args <- list(...)
+
+  purrr::walk(args, validate_SBC_results)
+
+
+  stats_list <- purrr::map(args, function(x) x$stats)
+  fits_list <- purrr::map(args, function(x) x$fits)
+  errors_list <- purrr::map(args, function(x) x$errors)
+
+  # Ensure unique run_ids
+  max_ids <- as.numeric(purrr::map(stats_list, function(x) max(x$run_id)))
+  shifts <- c(0, max_ids[1:(length(max_ids)) - 1])
+
+  stats_list <- purrr::map2(stats_list, shifts, function(x, shift) dplyr::mutate(x, run_id = run_id + shift))
+
+  SBC_results(do.call(rbind, stats_list),
+                   do.call(c, fits_list),
+              do.call(c, errors_list))
 }
 
 #' @export
@@ -72,15 +128,22 @@ compute_results <- function(datasets, backend,
     warning("Not all fits share the same variables")
   }
 
+  missing_vars <- setdiff(posterior::variables(datasets$parameters), stats$variable)
+  if(length(missing_vars) > 0) {
+    warning("Some variables missing in fits: ", paste0(missing_vars, collapse = ", "))
+
+  }
+
   SBC_results(stats = stats, fits = fits, errors = errors)
 }
 
 #' @export
-default_cores_per_fit <- function(n_fits, total_cores = future::availableCores()) {
+default_cores_per_fit <- function(n_fits, total_cores = future::availableCores(),
+                                  chunk_size = default_chunk_size(n_fits)) {
   if(inherits(future::plan(), "sequential")) {
     total_cores
-  } else if(2 * n_fits <= total_cores) {
-    floor(total_cores / n_fits)
+  } else if(2 * (n_fits / chunk_size) <= total_cores) {
+    floor(total_cores / (n_fits / chunk_size))
   } else {
     1
   }
@@ -88,11 +151,12 @@ default_cores_per_fit <- function(n_fits, total_cores = future::availableCores()
 
 #' @export
 default_chunk_size <- function(n_fits, n_workers = future::nbrOfWorkers()) {
-  if(is.infinite(n_workers)) {
+  guess <- if(is.infinite(n_workers)) {
     1
   } else {
     n_fits / n_workers
   }
+  max(guess, getOption("SBC.min_chunk_size", 1))
 }
 
 
@@ -114,11 +178,6 @@ compute_results_single <- function(params_and_generated, backend, cores,
 #' @export
 statistics_from_single_fit <- function(fit, parameters, thin_ranks) {
   fit_matrix <- SBC_fit_to_draws_matrix(fit)
-
-  missing_vars <- setdiff(posterior::variables(parameters), posterior::variables(fit_matrix))
-  if(length(missing_vars) > 0 && !warned_vars) {
-    warning("Some variables missing in the fit: ", missing_vars)
-  }
 
   shared_vars <- intersect(posterior::variables(parameters),
                            posterior::variables(fit_matrix))
@@ -143,6 +202,9 @@ statistics_from_single_fit <- function(fit, parameters, thin_ranks) {
   stats$rank <- ranks
   stats$max_rank <- attr(ranks, "max_rank")
   stats$z_score <- (stats$simulated_value - stats$mean) / stats$sd
+
+  stats <- dplyr::select(
+    stats, simulated_value, rank, z_score, tidyselect::everything())
 
   stats
 }

@@ -50,6 +50,18 @@ length.SBC_datasets <- function(x) {
                    x$generated[indices])
 }
 
+bind_datasets <- function(...) {
+  args <- list(...)
+
+  purrr::walk(args, validate_SBC_datasets)
+  #TODO check identical par names
+
+  parameters_list <- purrr::map(args, function(x) x$parameters)
+  generated_list <- purrr::map(args, function(x) x$generated)
+
+  new_SBC_datasets(do.call(posterior::bind_draws, parameters_list),
+                   do.call(c, generated_list))
+}
 
 #' Generate datasets.
 #'
