@@ -72,13 +72,20 @@ generate_datasets <- function(generator, n_datasets) {
   UseMethod("generate_datasets")
 }
 
+#' Generate datasets via a function that creates a single dataset.
+#'
+#' @param f function returning a list with elements `parameters`
+#' (prior draws, a list or anything that can be converted to `draws_rvars`) and
+#' `generated` (observed dataset, ready to be passed to backend)
+#' @param ... Additional arguments passed to `f`
 #'@export
 function_SBC_generator <- function(f, ...) {
   stopifnot(is.function(f))
   structure(list(f = f, args = list(...)), class = "function_SBC_generator")
 }
 
-#'@export
+
+#' @export
 generate_datasets.function_SBC_generator <- function(generator, n_datasets) {
   parameters_list <- list()
   generated <- list()
@@ -96,7 +103,12 @@ generate_datasets.function_SBC_generator <- function(generator, n_datasets) {
   SBC_datasets(parameters, generated)
 }
 
-#'@export
+#' Wrap a function the creates a complete dataset.
+#'
+#' @param f function accepting at least an `n_datasets` argument and returning
+#' and `SBC_datasets` object
+#' @param ... Additional arguments passed to `f`
+#' @export
 custom_SBC_generator <- function(f, ...) {
   stopifnot(is.function(f))
   structure(list(f = f, args = list(...)), class = "custom_SBC_generator")

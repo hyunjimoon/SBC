@@ -93,32 +93,38 @@ model {
 }
 "
 
+```
+
+If you can, good for you! If not, don't worry, SBC can help you spot coding problems, so let's simulate
+data and test all three models against simulated data.
 
 
+First we'll build backends using the individual models. 
 
+```{r}
 if(use_cmdstanr) {
   stan_model_1 <- cmdstan_model(write_stan_file(stan_code_1))
   stan_model_2 <- cmdstan_model(write_stan_file(stan_code_2))
   stan_model_3 <- cmdstan_model(write_stan_file(stan_code_3))
 
-  backend_1 <- cmdstan_sample_SBC_backend(stan_model_1, iter_warmup = 200, iter_sampling = 200)
-  backend_2 <- cmdstan_sample_SBC_backend(stan_model_2, iter_warmup = 200, iter_sampling = 200)
-  backend_3 <- cmdstan_sample_SBC_backend(stan_model_3, iter_warmup = 200, iter_sampling = 200)
+  backend_1 <- cmdstan_sample_SBC_backend(stan_model_1, iter_warmup = 200, iter_sampling = 250)
+  backend_2 <- cmdstan_sample_SBC_backend(stan_model_2, iter_warmup = 200, iter_sampling = 250)
+  backend_3 <- cmdstan_sample_SBC_backend(stan_model_3, iter_warmup = 200, iter_sampling = 250)
 } else {
   stan_model_1 <- stan_model(model_code = stan_code_1)
   stan_model_2 <- stan_model(model_code = stan_code_2)
   stan_model_3 <- stan_model(model_code = stan_code_3)
 
   
-  backend_1 <- rstan_sample_SBC_backend(stan_model_1, iter = 400, warmup = 200)
-  backend_2 <- rstan_sample_SBC_backend(stan_model_2, iter = 400, warmup = 200)
-  backend_3 <- rstan_sample_SBC_backend(stan_model_3, iter = 400, warmup = 200)
+  backend_1 <- rstan_sample_SBC_backend(stan_model_1, iter = 450, warmup = 200)
+  backend_2 <- rstan_sample_SBC_backend(stan_model_2, iter = 450, warmup = 200)
+  backend_3 <- rstan_sample_SBC_backend(stan_model_3, iter = 450, warmup = 200)
 }
 
 ```
-
-If you can, good for you! If not, don't worry, SBC can help you spot coding problems, so let's simulate
-data and test all three models against simulated data.
+Then we'll write a function that generates data. We write it in the most simple
+way to reduce the possibility that we make an error. We also don't really need to
+worry about performance here.
 
 ```{r}
 set.seed(5666024)
@@ -150,10 +156,18 @@ generator_func <- function(N, K) {
   )
   
 }
+```
 
+We'll start with just 10 datasets to get a quick computation - this will still
+let us see big problems (but not subtle issues)
+
+```{r}
 datasets <- generate_datasets(function_SBC_generator(generator_func, N = 100, K = 2), 10)
 
 ```
+
+
+Now we can use all of the backends to fit the generated datasets.
 
 ```{r}
 results_1 <- compute_results(datasets, backend_1)
@@ -175,7 +189,7 @@ plot_ecdf_diff(results_2)
 
 ```
 
-But the second model is actually not looking good.     In fact the problem is the line
+But the second model is actually not looking good.  In fact there is an indexing bug. The problem is the line
 `mu[i] += beta[j] * x[j, j];` which should have `x[i, j]` instead. We see that this 
 propagates most strongly to the `sigma` parameter (reusing the same `x` element leads to more similar predictions for each row, so `sigma` needs to be inflated to accommodate this)
 

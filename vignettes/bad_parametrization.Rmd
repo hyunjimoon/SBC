@@ -67,10 +67,11 @@ if(use_cmdstanr) {
 
 ```
 
+Build a generator to create simulated datasets.
+
 ```{r}
-set.seed(2258334)
+set.seed(21448857)
 n_datasets <- 10
-thin <- 4
 
 generator_func <- function(N) {
   shape <- rlnorm(1, meanlog =  0, sdlog = 1)
@@ -93,20 +94,21 @@ generator_func <- function(N) {
 }
 
 
-N <- 40
+generator <- function_SBC_generator(generator_func, N = 40)
 datasets <- generate_datasets(
-  function_SBC_generator(generator_func, N = N), 
+  generator, 
   n_datasets)
 
 ```
 
 
 ```{r}
-results1 <- compute_results(datasets, sbc_backend_1)
+thin <- 4
+results1 <- compute_results(datasets, sbc_backend_1, thin_ranks = thin)
 ```
 
 
-10 simulations are enough to see something is wrong with the model. We even see the issue is primarily with the `sigma` parameter!
+10 simulations are enough to see something is wrong with the model. We even see the issue is primarily with the `scale` parameter!
 
 ```{r}
 plot_ecdf_diff(results1)
@@ -151,7 +153,7 @@ if(use_cmdstanr) {
 
 
 ```{r}
-results2 <- compute_results(datasets, sbc_backend_2)
+results2 <- compute_results(datasets, sbc_backend_2, thin_ranks = thin)
 ```
 
 No obvious problems here, but if we wanted to be sure, we should have ran a lot more simulations.
