@@ -78,7 +78,7 @@ Let's take a Gaussian model with a single varying intercept.
 The data can be generated using the following code:
 
 ```{r}
-generate_single_dataset <- function(N, K) {
+one_dataset_generator <- function(N, K) {
   # N - number of datapoints, K number of groups for the varying intercept
   stopifnot(K <= N)
   x <- rnorm(N) + 10
@@ -114,13 +114,13 @@ generate_single_dataset <- function(N, K) {
   )
 }
 
-generator_func <- function_SBC_generator(generate_single_dataset, N = 12, K = 3)
+n_dataset_generator <- function_SBC_generator(one_dataset_generator, N = 12, K = 3)
 ```
 
 
 ```{r}
 set.seed(12239755)
-datasets_func <- generate_datasets(generator_func, 100)
+datasets <- generate_datasets(n_dataset_generator, 100)
 ```
 
 ```{r}
@@ -132,14 +132,14 @@ priors_func <- prior(normal(0,1), class = "b") +
 
 backend_func <- brms_SBC_backend(y ~ x + (1 | group),  
                             prior = priors_func, chains = 1,
-                            template_dataset = datasets_func$generated[[1]],
-                            generator = generator_func)
+                            template_dataset = datasets$generated[[1]],
+                            generator = n_dataset_generator)
 
 ```
 
 
 ```{r}
-results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10)
+results_func <- compute_results(datasets, backend_func, thin_ranks = 10)
 ```
 
 
@@ -166,7 +166,7 @@ priors_func2 <- prior(normal(0,1), class = "b") +
 
 backend_func2 <- brms_SBC_backend(y ~ 0 + Intercept + x + (1 | group),  
                             prior = priors_func2, warmup = 500, iter = 1000, chains = 1,
-                            template_dataset = datasets_func$generated[[1]],
+                            template_dataset = datasets$generated[[1]],
                             generator = generator_func)
 
 
@@ -174,7 +174,7 @@ backend_func2 <- brms_SBC_backend(y ~ 0 + Intercept + x + (1 | group),
 Let's fit the same datasets with the new backend.
 
 ```{r}
-results_func2 <- compute_results(datasets_func, backend_func2, thin_ranks = 10)
+results_func2 <- compute_results(datasets, backend_func2, thin_ranks = 10)
 ```
 
 We see that this results in non-problematic univariate checks.
