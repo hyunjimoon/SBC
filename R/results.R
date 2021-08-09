@@ -21,12 +21,15 @@ validate_SBC_results <- function(x) {
     stop("SBC_datasets object has to have an 'errors' field of type list")
   }
 
-  if(!is.numeric(x$stats$run_id) || min(x$stats$run_id) <= 0) {
-    stop("The run_id column of stats needs to be number > 0")
-  }
+  if(nrow(x$stats) > 0) {
+    if(!is.numeric(x$stats$run_id)) {
+      stop("The run_id column of stats needs to be a number.")
+    }
 
-  if(length(unique(x$stats$run_id)) != length(x$fits)) {
-    stop("Needs equal no. of stats and fits")
+
+    if(min(x$stats$run_id) < 1 || max(x$stats$run_id > length(x$fits))) {
+      stop("stats$run_id values must be between 1 and number of fits")
+    }
   }
 
   if(length(x$fits) != length(x$errors)) {
@@ -64,7 +67,7 @@ bind_results <- function(...) {
 compute_results <- function(datasets, backend,
                             cores_per_fit = default_cores_per_fit(length(datasets)),
                             keep_fits = TRUE,
-                            thin_ranks = 1,
+                            thin_ranks = 10,
                             chunk_size = default_chunk_size(length(datasets)) ) {
   stopifnot(length(datasets) > 0)
 

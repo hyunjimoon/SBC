@@ -13,6 +13,14 @@ SBC_fit_to_draws_matrix.default <- function(fit) {
   posterior::as_draws_matrix(fit)
 }
 
+SBC_fit_to_diagnostics <- function(fit) {
+  UseMethod("SBC_fit_to_diagnostics")
+}
+
+SBC_fit_to_diagnostics.default <- function(fit) {
+  NULL
+}
+
 #' @export
 rstan_sample_SBC_backend <- function(model, ...) {
   stopifnot(inherits(model, "stanmodel"))
@@ -38,6 +46,10 @@ SBC_fit.rstan_sample_SBC_backend <- function(backend, generated, cores) {
                  cores = cores),
             backend$args
             ))
+}
+
+SBC_fit_to_diagnostics.stanfit <- function(fit) {
+  stop("TODO")
 }
 
 #' @export
