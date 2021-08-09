@@ -7,7 +7,7 @@ output: html_notebook
 library(SBC)
 library(brms)
 library(ggplot2)
-options(brms.backend = "cmdstanr") 
+options(brms.backend = "cmdstanr")
 # options(brms.backend = "rstan") # Uncomment to use rstan instead
 
 # Using parallel processing
@@ -32,20 +32,21 @@ template_data = data.frame(y = rep(0, 15), x = rnorm(15))
 priors <- prior(normal(0,1), class = "b") +
   prior(normal(0,1), class = "Intercept") +
   prior(normal(0,1), class = "sigma")
-generator <- brms_SBC_generator(y ~ x, data = template_data, prior = priors, thin = 50 )
+generator <- brms_SBC_generator(y ~ x, data = template_data, prior = priors, thin = 50, warmup = 10000 )
 ```
 
 ```{r}
+set.seed(22133548)
 datasets <- generate_datasets(generator, 100)
 ```
 
 ```{r}
 # Reuse the compiled model and other info from the generator
-backend <- brms_SBC_backend_from_generator(generator, warmup = 500, iter = 1000, chains = 1,
+backend <- brms_SBC_backend_from_generator(generator, warmup = 500, iter = 1000, chains = 1, thin = 1,
                             init = 0.1)
 
 # More verbose alternative that results in exactly the same backend:
-# backend <- brms_SBC_backend(y ~ x, template_dataset = template_data, prior = priors, warmup = 500, iter = 1000, chains = 1,
+# backend <- brms_SBC_backend(y ~ x, template_dataset = template_data, prior = priors, warmup = 500, iter = 1000, chains = 1, thin = 1
 #                            init = 0.1)
 ```
 
@@ -132,8 +133,7 @@ priors_func <- prior(normal(0,1), class = "b") +
 
 backend_func <- brms_SBC_backend(y ~ x + (1 | group),  
                             prior = priors_func, chains = 1,
-                            template_dataset = datasets$generated[[1]],
-                            generator = n_dataset_generator)
+                            template_dataset = datasets$generated[[1]])
 
 ```
 
@@ -166,8 +166,7 @@ priors_func2 <- prior(normal(0,1), class = "b") +
 
 backend_func2 <- brms_SBC_backend(y ~ 0 + Intercept + x + (1 | group),  
                             prior = priors_func2, warmup = 500, iter = 1000, chains = 1,
-                            template_dataset = datasets$generated[[1]],
-                            generator = generator_func)
+                            template_dataset = datasets$generated[[1]])
 
 
 ```

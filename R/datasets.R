@@ -91,10 +91,22 @@ generate_datasets.function_SBC_generator <- function(generator, n_datasets) {
   generated <- list()
   for(iter in 1:n_datasets){
     generator_output <- do.call(generator$f, generator$args)
-    #TODO check valid output
+    if(!is.list(generator_output) ||
+       is.null(generator_output$parameters) ||
+       is.null(generator_output$generated)) {
+      stop("The generating function has to return a list with elements `parameters`
+      (that can be converted to `draws_rvars`) `generated`")
+    }
+    # TODO add a validate_input generic that would let backends impose additional checks
+    # on generated data.
+
     # Directly converting to draws_matrix does not preserve arrays
     parameters_list[[iter]] <- posterior::as_draws_matrix(
       posterior::as_draws_rvars(generator_output$parameters))
+    if(posterior::ndraws(parameters_list[[iter]]) != 1) {
+      stop("The `parameters` element of the generated data must contain only
+      a single draw")
+    }
     generated[[iter]] <- generator_output$generated
   }
 
@@ -104,6 +116,30 @@ generate_datasets.function_SBC_generator <- function(generator, n_datasets) {
 }
 
 #' Wrap a function the creates a complete dataset.
+#'
+#' This creates a very thin wrapper around the function and can store additional
+#' arguments, but does not do anything more..
+#'
+#' Running:
+#'
+#' ```r
+#' gen <- custom_SBC_generator(f, <<some other args>>)
+#' datasets <- generate_datasets(gen, n_datasets = my_n_datasets)
+#' ```
+#'
+#' is equivalent to just running
+#'
+#' ```r
+#' datasets <- f(<<some other args>>, n_datasets = my_n_datasets)
+#' ```
+#'
+#' So whenever you control the code calling `generate_datasets`,
+#' it usually makes more sense to just create an `SBC_datasets`
+#' object directly and avoid using `custom_SBC_generator` and `generate_datasets` at all.
+#' `custom_SBC_generator` can however be useful, when a code you
+#' do not control calls `generate_datasets` for you and the
+#' built-in generators do not provide you with enough flexibility.
+#'
 #'
 #' @param f function accepting at least an `n_datasets` argument and returning
 #' and `SBC_datasets` object
@@ -116,8 +152,9 @@ custom_SBC_generator <- function(f, ...) {
 
 #'@export
 generate_datasets.custom_SBC_generator <- function(generator, n_datasets) {
-  # TODO: check correct output
-  do.call(generator$f, combine_args(generator$args, list(n_datasets = n_datasets)))
+  res <- do.call(generator$f, combine_args(generator$args, list(n_datasets = n_datasets)))
+  res <- validate_SBC_datasets(res)
+  res
 }
 
 #' Create a brms generator.

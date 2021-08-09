@@ -121,9 +121,20 @@ compute_results <- function(datasets, backend,
 
   stats <- do.call(rbind, stats_list)
 
-  if(length(unique(stats$max_rank)) != 1) {
+  unique_max_ranks <- unique(stats$max_rank)
+  if(length(unique_max_ranks) != 1) {
     warning("Differening max_rank across fits")
   }
+
+  if(min(unique_max_ranks) < 50) {
+    warning("Ranks were computed from fewer than 50 samples, the SBC diagnostics will have low ",
+            "precision.\nYou may need to increase the number of samples from the backend and make sure that ",
+            "the combination of thinning in the backend and `thin_ranks` is sensible.\n",
+            "Currently thin_ranks = ", thin_ranks, ".")
+
+  }
+
+
   all_vars <- dplyr::summarise(
     dplyr::group_by(stats, run_id),
     all_vars = paste0(variable, collapse = ","), .groups = "drop")
