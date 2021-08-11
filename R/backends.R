@@ -13,10 +13,12 @@ SBC_fit_to_draws_matrix.default <- function(fit) {
   posterior::as_draws_matrix(fit)
 }
 
+#' @export
 SBC_fit_to_diagnostics <- function(fit) {
   UseMethod("SBC_fit_to_diagnostics")
 }
 
+#' @export
 SBC_fit_to_diagnostics.default <- function(fit) {
   NULL
 }
@@ -48,8 +50,68 @@ SBC_fit.rstan_sample_SBC_backend <- function(backend, generated, cores) {
             ))
 }
 
+#' @export
 SBC_fit_to_diagnostics.stanfit <- function(fit) {
-  stop("TODO")
+  res <- data.frame(
+    max_chain_time = max(rowSums(rstan::get_elapsed_time(fit))),
+    n_divergent = rstan::get_num_divergent(fit),
+    n_max_treedepth = rstan::get_num_max_treedepth(fit),
+    min_bfmi = min(rstan::get_bfmi(fit))
+  )
+
+  class(res) <- c("SBC_nuts_diagnostics", class(res))
+  res
+}
+
+#' @export
+summary.SBC_nuts_diagnostics <- function(diagnostics) {
+  summ <- list(
+    n_fits = nrow(diagnostics),
+    max_chain_time = max(diagnostics$max_chain_time),
+    has_divergent = sum(diagnostics$n_divergent > 0),
+    has_treedepth = sum(diagnostics$n_max_treedepth > 0)
+  )
+
+  if(!is.null(diagnostics$min_bfmi)) {
+    summ$has_low_bfmi = sum(diagnostics$min_bfmi < 0.2)
+  }
+
+  if(!is.null(diagnostics$n_failed_chains)) {
+    summ$has_failed_chains = sum(diagnostics$n_failed_chains > 0)
+  }
+
+  structure(summ, class = "SBC_nuts_diagnostics_summary")
+}
+
+#' @export
+print.SBC_nuts_diagnostics_summary <- function(x) {
+  if(!is.null(x$has_failed_chains)) {
+    if(x$has_failed_chains > 0) {
+      cat(" - ", x$has_failed_chains, " (", round(100 * x$has_failed_chains / x$n_fits), "%) fits had some failed chains.\n", sep = "")
+    } else {
+      cat(" - No fits had failed chains.\n")
+    }
+  }
+
+  if(x$has_divergent > 0) {
+    cat(" - ", x$has_divergent, " (", round(100 * x$has_divergent / x$n_fits), "%) fits had divergent transitions.\n", sep = "")
+  } else {
+    cat(" - No fits had divergent transitions.\n")
+  }
+  if(x$has_treedepth > 0) {
+    cat(" - ", x$has_treedepth, " (", round(100 * x$has_treedepth / x$n_fits), "%) fits had iterations that saturated max treedepth.\n", sep = "")
+  } else {
+    cat(" - No fits had iterations that saturated max treedepth.\n")
+  }
+
+  if(!is.null(x$has_low_bfmi)) {
+    if(x$has_low_bfmi > 0) {
+      cat(" - ", x$has_low_bfmi, " (", round(100 * x$has_low_bfmi / x$n_fits), "%) fits had low BFMI.\n", sep = "")
+    } else {
+      cat(" - No fits had low BFMI.\n")
+    }
+  }
+  invisible(x)
 }
 
 #' @export
@@ -71,8 +133,6 @@ cmdstan_sample_SBC_backend <- function(model, ...) {
   structure(list(model = model, args = args), class = "cmdstan_sample_SBC_backend")
 }
 
-#TODO add SBC_diagnostics generic to extract divergences etc.
-
 #' @export
 SBC_fit.cmdstan_sample_SBC_backend <- function(backend, generated, cores) {
   do.call(backend$model$sample,
@@ -87,6 +147,20 @@ SBC_fit.cmdstan_sample_SBC_backend <- function(backend, generated, cores) {
 #' @export
 SBC_fit_to_draws_matrix.CmdStanMCMC <- function(fit) {
   fit$draws(format = "draws_matrix")
+}
+
+
+#' @export
+SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit) {
+  res <- data.frame(
+    max_chain_time = max(fit$time()$chains[,"total"]),
+    n_failed_chains = fit$num_chains() - sum(fit$return_codes() == 0),
+    n_divergent = sum(fit$sampler_diagnostics()[, , "divergent__"]),
+    n_max_treedepth =  sum(fit$sampler_diagnostics()[, , "treedepth__"] == fit$metadata()$max_treedepth)
+    #
+  ) # TODO: add min_bfmi once https://github.com/stan-dev/cmdstanr/pull/500/ is merged
+  class(res) <- c("SBC_nuts_diagnostics", class(res))
+  res
 }
 
 

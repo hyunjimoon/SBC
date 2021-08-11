@@ -13,11 +13,11 @@ and \code{SBC_datasets} object}
 \item{...}{Additional arguments passed to \code{f}}
 }
 \description{
-This creates a very thin wrapper around the function.
-Running:
+This creates a very thin wrapper around the function and can store additional
+arguments, but does not do anything more..
 }
 \details{
-\if{html}{\out{<div class="r">}}\preformatted{gen <- custom_SBC_generator(f, <<some other args>>)
+Running:\if{html}{\out{<div class="r">}}\preformatted{gen <- custom_SBC_generator(f, <<some other args>>)
 datasets <- generate_datasets(gen, n_datasets = my_n_datasets)
 }\if{html}{\out{</div>}}
 
@@ -28,6 +28,6 @@ So whenever you control the code calling \code{generate_datasets},
 it usually makes more sense to just create an \code{SBC_datasets}
 object directly and avoid using \code{custom_SBC_generator} and \code{generate_datasets} at all.
 \code{custom_SBC_generator} can however be useful, when a code you
-do not control calls \code{generate_datasets} for you and any of the
-buil-in generators does not provide you with enough flexibility.
+do not control calls \code{generate_datasets} for you and the
+built-in generators do not provide you with enough flexibility.
 }
