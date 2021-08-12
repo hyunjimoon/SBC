@@ -281,10 +281,23 @@ generate_datasets.brms_SBC_generator <- function(generator, n_datasets) {
 
     ## Compute the likelihoods (observation model)
     if(generator$generate_lp) {
-      ll <- log_lik(prior_fit_brms, newdata = new_dataset, subset = i)
+      ll <- log_lik(prior_fit_brms, newdata = new_dataset, subset = i, cores = 1)
       log_likelihoods[i] <- sum(ll)
     }
   }
+
+  # # Alternative code - compute LP in parallel. Seems not worth the overhead
+  # # for the models I tested so far
+  # if(generator$generate_lp) {
+  #   log_likelihoods <- future.apply::future_mapply(
+  #     FUN = function(new_dataset, i) {
+  #       ll <- brms::log_lik(prior_fit_brms, newdata = new_dataset, subset = i, cores = 1)
+  #       sum(ll)
+  #       },
+  #     generated, 1:n_datasets,
+  #     future.chunk.size = default_chunk_size(n_datasets))
+  # }
+
 
   # Add the observation likelihoods to the lp__ of the prior to
   # (hopefully) get total likelihood
