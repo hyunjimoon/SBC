@@ -4,6 +4,7 @@ output: html_document
 ---
 
 ```{r setup}
+devtools::install_github("hyunjimoon/SBC",ref="api-variant")
 library(SBC)
 
 # use_cmdstanr <- TRUE # Set to false to use rstan instead
@@ -48,7 +49,7 @@ generator_func_1_1 <- function(N) {
   )
 }
 generator_func_1_1 <- function_SBC_generator(generator_func_1_1, N = 50)
-dataset_1_1 <- generate_datasets(generator_func_1_1, n_datasets = 10)
+dataset_1_1 <- generate_datasets(generator_func_1_1, n_datasets = 100)
 ```
 
 ```{r }
@@ -68,7 +69,7 @@ generator_func_1_2 <- function(N) {
   )
 }
 generator_func_1_2 <- function_SBC_generator(generator_func_1_2, N = 50)
-dataset_1_2 <- generate_datasets(generator_func_1_2, 10)
+dataset_1_2 <- generate_datasets(generator_func_1_2, n_datasets = 100)
 ```
 
 ```{r }
@@ -88,7 +89,7 @@ generator_func_2_1 <- function(N) {
   )
 }
 generator_func_2_1 <- function_SBC_generator(generator_func_2_1, N = 50)
-dataset_2_1 <- generate_datasets(generator_func_2_1, 10)
+dataset_2_1 <- generate_datasets(generator_func_2_1, 100)
 ```
 
 ```{r }
@@ -109,13 +110,87 @@ results_2_1_1_2 <- compute_results(dataset_2_1, backend_1_2)
 ```
 
 ```{R}
+rank_summary(results_1_1_1_1, par = c("mu", "sigma"))
+rank_summary(results_1_1_1_2, par = c("mu", "sigma"))
+rank_summary(results_1_1_2_1, par = c("mu", "sigma"))
+
+rank_summary(results_1_2_1_2, par = c("mu", "sigma"))
+rank_summary(results_1_2_1_1, par = c("mu", "sigma"))
+rank_summary(results_1_2_2_1, par = c("mu", "sigma"))
+
+rank_summary(results_2_1_2_1, par = c("mu", "sigma"))
+rank_summary(results_2_1_1_1, par = c("mu", "sigma"))
+rank_summary(results_2_1_1_2, par = c("mu", "sigma"))
+```
+
+> rank_summary(results_1_1_1_1, par = c("mu", "sigma"))
+[1] " max_diff: 1.6 wasserstein: 0.315"
+[1] " max_diff: 0.6 wasserstein: 0.241"
+
+> rank_summary(results_1_1_1_2, par = c("mu", "sigma"))
+[1] " max_diff: 1.4 wasserstein: 0.318"
+[1] " max_diff: 1 wasserstein: 0.291"
+
+> rank_summary(results_1_1_2_1, par = c("mu", "sigma"))
+[1] " max_diff: 19 wasserstein: 0.95"
+[1] " max_diff: 3.179 wasserstein: 0.411"
+
+> rank_summary(results_1_2_1_2, par = c("mu", "sigma"))
+[1] " max_diff: 1 wasserstein: 0.249"
+[1] " max_diff: 0.8 wasserstein: 0.291"
+
+> rank_summary(results_1_2_1_1, par = c("mu", "sigma"))
+[1] " max_diff: 0.6 wasserstein: 0.255"
+[1] " max_diff: 0.8 wasserstein: 0.265"
+
+> rank_summary(results_1_2_2_1, par = c("mu", "sigma"))
+[1] " max_diff: 19 wasserstein: 0.95"
+[1] " max_diff: 4.581 wasserstein: 0.851"
+
+> 
+> rank_summary(results_2_1_2_1, par = c("mu", "sigma"))
+[1] " max_diff: 1 wasserstein: 0.298"
+[1] " max_diff: 1 wasserstein: 0.402"
+
+> rank_summary(results_2_1_1_1, par = c("mu", "sigma"))
+[1] " max_diff: 0.8 wasserstein: 0.375"
+[1] " max_diff: 0.8 wasserstein: 0.356"
+
+> rank_summary(results_2_1_1_2, par = c("mu", "sigma"))
+[1] " max_diff: 1 wasserstein: 0.406"
+[1] " max_diff: 0.8 wasserstein: 0.374"
+
+Graphical comparison.
+```{R}
+
 plot_ecdf_diff(results_1_1_1_1)
 plot_ecdf_diff(results_1_1_1_2)
-plot_ecdf_diff(results_1_1_1_1)
+plot_ecdf_diff(results_1_1_2_1) # mu is fixed to 0 and therefore have a therefore highly under-dispersed.
+
 plot_ecdf_diff(results_1_2_1_2)
 plot_ecdf_diff(results_1_2_1_1)
 plot_ecdf_diff(results_1_2_2_1)
+
 plot_ecdf_diff(results_2_1_2_1)
 plot_ecdf_diff(results_2_1_1_1)
 plot_ecdf_diff(results_2_1_1_2)
 ```
+
+As can be seen from by comparing (`results_1_1_2_1` , `results_2_1_1_1` ) (`results_1_2_2_1`, `results_2_1_1_2`) rank scores are not symmetric. Compared to the `generator` model, `backend` model seem to have a greater effect on the outcome. 
+
+The next question is, how would this metric affect the final goal, finding the model with high elpd within the model network? What common trait would model that are close would have? If we calculate rank summaries with `lp__`, what implication would this have? For this let's experiment with bram
+
+```
+template_data = data.frame(y = rep(0, 15), x = rnorm(15))
+priors <- prior(normal(0,1), class = "b") +
+  prior(normal(0,1), class = "Intercept") +
+  prior(normal(0,1), class = "sigma")
+generator <- brms_SBC_generator(y ~ x, data = template_data, prior = priors, 
+                                thin = 50, warmup = 10000, refresh = 2000,
+                                # Will generate the log density - this is useful, 
+                                #but a bit computationally expensive
+                                generate_lp = TRUE 
+                                )
+```
+
+then this would mean for This is a 1d summary of two models;  At first, it is recommended to explore diverse models; heterogenity is 
