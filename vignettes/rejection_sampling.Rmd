@@ -20,6 +20,10 @@ options(SBC.min_chunk_size = 10)
 
 ```
 
+How does rejectio sampling affect the validity of SBC?
+
+We'll use a very simple model throughout this vignette:
+
 ```{r}
 stan_code <- "
 data {
@@ -40,6 +44,8 @@ model {
 
 backend <- cmdstan_sample_SBC_backend(cmdstan_model(write_stan_file(stan_code)), iter_warmup = 200, iter_sampling = 200)
 ```
+And use a matching generator.
+
 ```{r}
 N <- 30
 generator <- function_SBC_generator(function() {
@@ -50,6 +56,8 @@ generator <- function_SBC_generator(function() {
    )
 })
 ```
+
+So we expect the SBC to pass even with a large number of fits.
 
 ```{r}
 set.seed(2323455)
@@ -64,7 +72,9 @@ results <- compute_results(datasets, backend)
 plot_ecdf_diff(results)
 ```
 
+Indeed, all looks good.
 
+Now let us modify the generator to reject based on parameter values. This should fail.
 
 ```{r}
 generator_reject_param <- function_SBC_generator(function() {
@@ -93,7 +103,11 @@ results_reject_param <- compute_results(datasets_reject_param, backend)
 ```{r}
 plot_ecdf_diff(results_reject_param)
 ```
+Indeed, we see a clear failure.
 
+But what if we reject based on the values of data? This should in theory result in just
+a constant change in posterior density and not affect SBC. (SBC will however then check only the 
+non-rejected parts of the data space). We will do a relatively aggressive rejection scheme (reject more than 50% of datasets).
 
 ```{r}
 generator_reject_y <- function_SBC_generator(function() {
@@ -124,3 +138,4 @@ results_reject_y <- compute_results(datasets_reject_y, backend)
 plot_ecdf_diff(results_reject_y)
 ```
 
+We see that even with quite heavy rejection based on y, SBC to a high resolution.
