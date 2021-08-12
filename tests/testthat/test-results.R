@@ -1,3 +1,17 @@
+test_that("capture_all_outputs", {
+    expect_identical(
+        capture_all_outputs({
+            cat("Test")
+            warning("W")
+            message("M")
+            14
+            }),
+        list(result = 14,
+             messages = data.frame(type = c("warning", "message"),
+                                   message = c("W", "M\n")),
+             output = "Test"))
+})
+
 test_that("calculate_ranks_draws_matrix works", {
 
     dm <- matrix(NA_real_, nrow = 10, ncol = 4)

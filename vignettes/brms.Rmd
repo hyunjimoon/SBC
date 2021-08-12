@@ -32,7 +32,8 @@ template_data = data.frame(y = rep(0, 15), x = rnorm(15))
 priors <- prior(normal(0,1), class = "b") +
   prior(normal(0,1), class = "Intercept") +
   prior(normal(0,1), class = "sigma")
-generator <- brms_SBC_generator(y ~ x, data = template_data, prior = priors, thin = 50, warmup = 10000 )
+generator <- brms_SBC_generator(y ~ x, data = template_data, prior = priors, thin = 50, warmup = 10000,
+                                refresh = 2000)
 ```
 
 ```{r}

@@ -50,6 +50,9 @@ length.SBC_datasets <- function(x) {
                    x$generated[indices])
 }
 
+#' Combine multiple datasets together.
+#' @param ... datasets to bind
+#' @export
 bind_datasets <- function(...) {
   args <- list(...)
 

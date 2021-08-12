@@ -105,7 +105,6 @@ datasets <- generate_datasets(
 ```{r}
 thin <- 4
 results1 <- compute_results(datasets, sbc_backend_1, thin_ranks = thin)
-summary(results1)
 ```
 
 
