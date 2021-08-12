@@ -19,8 +19,9 @@ compute_param_diagnostics <- function(stats) {
   dplyr::summarise(dplyr::group_by(stats, run_id),
                    n_params = dplyr::n(),
                    max_rhat = max(c(-Inf, rhat)),
-                   min_ess = min(c(Inf, ess_bulk)),
-                   min_ess_to_rank = min(c(Inf, ess_bulk / max_rank)))
+                   min_ess_bulk = min(c(Inf, ess_bulk)),
+                   min_ess_tail = min(c(Inf, ess_tail)),
+                   min_ess_to_rank = min(c(Inf, ess_tail / max_rank)))
 }
 
 #' @export
@@ -234,7 +235,9 @@ compute_results <- function(datasets, backend,
 
     }
   } else {
+    # Return dummy stats that let the rest of the code work.
     stats <- data.frame(run_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
+                        ess_tail = numeric(0),
                         rank = integer(0), simulated_value = numeric(0), max_rank = integer(0))
   }
 
@@ -470,7 +473,9 @@ summary.SBC_results <- function(x) {
     n_high_rhat = sum(x$param_diagnostics$max_rhat > 1.01),
     max_max_rhat = max(x$param_diagnostics$max_rhat),
     n_low_ess_to_rank = sum(x$param_diagnostics$min_ess_to_rank < 0.5),
-    min_min_ess = min(x$param_diagnostics$min_ess))
+    min_min_ess_bulk = min(x$param_diagnostics$min_ess_bulk),
+    min_min_ess_tail = min(x$param_diagnostics$min_ess_tail)
+    )
   if(!is.null(x$fit_diagnostics)) {
     summ$fit_diagnostics <- summary(x$fit_diagnostics)
   } else {
@@ -513,13 +518,17 @@ get_diagnostics_messages.SBC_results_summary <- function(x) {
   i <- i + 1
 
   if(x$n_low_ess_to_rank > 0) {
-    msg <- paste0(x$n_low_ess_to_rank, " (", round(100 * x$n_low_ess_to_rank / x$n_fits), "%) fits had bulk ESS < ",
-                  "half of the maximum rank, potentially skewing the rank statistics. The lowest ESS was ", round(x$min_min_ess), ".\n   Consider increasing `thin_ranks` or number of posterior samples and recomputing.")
+    msg <- paste0(x$n_low_ess_to_rank, " (", round(100 * x$n_low_ess_to_rank / x$n_fits), "%) fits had tail ESS < ",
+                  "half of the maximum rank, potentially skewing the rank statistics. The lowest tail ESS was ", round(x$min_min_ess_tail),
+                  ".\n   Consider increasing `thin_ranks` or number of posterior samples and recomputing.")
     message_list[[i]] <- data.frame(ok = FALSE, message = msg)
   } else {
-    message_list[[i]] <- data.frame(ok = TRUE, message = "All fits had bulk ESS > half of the maximum rank.")
+    message_list[[i]] <- data.frame(ok = TRUE, message = "All fits had tail ESS > half of the maximum rank.")
   }
   i <- i + 1
+
+  message_list[[i]] <- data.frame(ok = TRUE, message = paste0("The lowest bulk ESS was ", round(x$min_min_ess_bulk)))
+  i <-  i + 1
 
   if(!is.null(x$fit_diagnostics)) {
     message_list[[i]] <- get_diagnostics_messages(x$fit_diagnostics)

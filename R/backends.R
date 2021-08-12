@@ -99,6 +99,41 @@ get_diagnostics_messages.SBC_nuts_diagnostics <- function(x) {
   get_diagnostics_messages(summary(x))
 }
 
+# Use the Generalized extreme value distribution
+# to get a quantile of maximum of `n_vars` random values
+# distributed as N(1, 0.005).
+# Following https://en.wikipedia.org/wiki/Generalized_extreme_value_distribution#Example_for_Normally_distributed_variables
+# The approximation looks good for n_vars >= 10
+# for smaller, we just plug in a log function with appropriate scale
+# See https://math.stackexchange.com/questions/89030/expectation-of-the-maximum-of-gaussian-random-variables
+# for a discussion on why log
+get_expected_max_rhat <- function(n_vars, prob = 0.99) {
+  stopifnot(is.numeric(n_vars))
+  stopifnot(all(n_vars >= 1))
+
+  # Maximum of n_vars standardized normals
+  gumbel_approx <- function(n) {
+    # Gumbel params
+    mu_n <- qnorm(1 - 1/n)
+    sigma_n <- qnorm(1 - (1 / n) * exp(-1)) - mu_n
+
+    # Inverse CDF of gumbel with xi = 0
+    mu_n - (sigma_n * log(-log(prob)))
+  }
+
+
+  linear_bound <- 10
+  approx_at_bound <- gumbel_approx(linear_bound)
+  value_at_1 <- qnorm(prob)
+  linear_scale <- (approx_at_bound - value_at_1 ) / log(linear_bound)
+
+  std_val_max <- dplyr::if_else(n_vars < linear_bound,
+    value_at_1 + linear_scale * log(n_vars),
+    gumbel_approx(n_vars)
+  )
+  1 + std_val_max * 0.005
+}
+
 get_diagnostics_messages.SBC_nuts_diagnostics_summary <- function(x) {
   message_list <- list()
   i <- 1
@@ -145,6 +180,9 @@ get_diagnostics_messages.SBC_nuts_diagnostics_summary <- function(x) {
   } else {
     message_list[[i]] <- data.frame(ok = TRUE, message = "No fits had steps rejected.")
   }
+  i <- i + 1
+
+  message_list[[i]] <- data.frame(ok = TRUE, message = paste0("Maximum time per chain was ", x$max_chain_time, " sec."))
   i <- i + 1
 
   SBC_diagnostic_messages(do.call(rbind, message_list))
