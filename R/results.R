@@ -466,7 +466,7 @@ summary.SBC_results <- function(x) {
   summ <- list(
     n_fits = length(x$fits),
     n_errors = sum(!purrr::map_lgl(x$errors, is.null)),
-    n_warnings = sum(!purrr::map_lgl(x$messages, ~ !is.null(.x) && any(x$type == "warning"))),
+    n_warnings = sum(purrr::map_lgl(x$messages, ~ !is.null(.x) && any(x$type == "warning"))),
     n_high_rhat = sum(x$param_diagnostics$max_rhat > 1.01),
     max_max_rhat = max(x$param_diagnostics$max_rhat),
     n_low_ess_to_rank = sum(x$param_diagnostics$min_ess_to_rank < 0.5),

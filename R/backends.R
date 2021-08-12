@@ -79,8 +79,8 @@ summary.SBC_nuts_diagnostics <- function(diagnostics) {
     max_chain_time = max(diagnostics$max_chain_time),
     has_divergent = sum(diagnostics$n_divergent > 0),
     has_treedepth = sum(diagnostics$n_max_treedepth > 0),
-    has_rejects = sum(diagnostis$n_rejects > 0),
-    max_rejects = max(diagnostis$n_rejects)
+    has_rejects = sum(diagnostics$n_rejects > 0),
+    max_rejects = max(diagnostics$n_rejects)
   )
 
   if(!is.null(diagnostics$min_bfmi)) {
@@ -121,7 +121,7 @@ get_diagnostics_messages.SBC_nuts_diagnostics_summary <- function(x) {
   i <- i + 1
 
   if(x$has_treedepth > 0) {
-    msg <- paste0(x$has_treedepth, " (", round(100 * x$has_treedepth / x$n_fits), "%) fits had iterations that saturated max treedepth.\n")
+    msg <- paste0(x$has_treedepth, " (", round(100 * x$has_treedepth / x$n_fits), "%) fits had iterations that saturated max treedepth.")
     message_list[[i]] <- data.frame(ok = FALSE, message = msg)
   } else {
     message_list[[i]] <- data.frame(ok = TRUE, message = "No fits had iterations that saturated max treedepth.")
@@ -139,7 +139,7 @@ get_diagnostics_messages.SBC_nuts_diagnostics_summary <- function(x) {
   }
 
   if(x$has_rejects > 0) {
-    msg <- paste0(x$has_rejects, " (", round(100 * x$has_rejects / x$n_fits), "%) fits had some steps",
+    msg <- paste0(x$has_rejects, " (", round(100 * x$has_rejects / x$n_fits), "%) fits had some steps ",
                   "rejected. Maximum number of rejections was ", x$max_rejects, ".")
     message_list[[i]] <- data.frame(ok = FALSE, message = msg)
   } else {
