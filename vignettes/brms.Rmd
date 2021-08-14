@@ -1,0 +1,195 @@
+---
+title: "SBC for brms models"
+output: html_notebook
+---
+
+```{r setup}
+library(SBC)
+library(brms)
+library(ggplot2)
+options(brms.backend = "cmdstanr")
+# options(brms.backend = "rstan") # Uncomment to use rstan instead
+
+# Using parallel processing
+library(future)
+plan(multisession)
+
+# The fits are very fast and we fit just a few, 
+# so we force a minimum chunk size to reduce overhead of
+# paralellization and decrease computation time.
+options(SBC.min_chunk_size = 5)
+
+```
+
+Build a generator using brms and its `sample_prior = "only"` feature.
+
+```{r}
+# We need a "template dataset" to let brms build the model.
+# The predictor (x) values will be used for data generation,
+# the response (y) values will be ignored, but need to be present and 
+# of the correct data type
+template_data = data.frame(y = rep(0, 15), x = rnorm(15))
+priors <- prior(normal(0,1), class = "b") +
+  prior(normal(0,1), class = "Intercept") +
+  prior(normal(0,1), class = "sigma")
+generator <- brms_SBC_generator(y ~ x, data = template_data, prior = priors, 
+                                thin = 50, warmup = 10000, refresh = 2000,
+                                # Will generate the log density - this is useful, 
+                                #but a bit computationally expensive
+                                generate_lp = TRUE 
+                                )
+```
+
+
+
+```{r}
+set.seed(22133548)
+datasets <- generate_datasets(generator, 100)
+```
+
+```{r}
+# Reuse the compiled model and other info from the generator
+backend <- brms_SBC_backend_from_generator(generator, warmup = 500, iter = 1000, chains = 1, thin = 1,
+                            init = 0.1)
+
+# More verbose alternative that results in exactly the same backend:
+# backend <- brms_SBC_backend(y ~ x, template_dataset = template_data, prior = priors, warmup = 500, iter = 1000, chains = 1, thin = 1
+#                            init = 0.1)
+```
+
+
+Compute the actual results
+
+```{r}
+results <- compute_results(datasets, backend, thin_ranks = 10)
+```
+
+And show ecdf_diff plot - there are no big problems at this resolution.
+
+```{r}
+plot_ecdf_diff(results)
+```
+
+## Using custom simulation code
+
+
+Let's take a bit more complex model - with a single varying intercept.
+
+This time we will not use the `brms` model to also simulate from prior, but 
+simulate using an R function.
+
+This  allows us to have different covariate values for each dataset, potentially improving sensitivity.
+
+Let's take a Gaussian model with a single varying intercept.
+
+
+The data can be generated using the following code:
+
+```{r}
+one_dataset_generator <- function(N, K) {
+  # N - number of datapoints, K number of groups for the varying intercept
+  stopifnot(K <= N)
+  x <- rnorm(N) + 10
+  
+  group <- sample(1:K, size = K, replace = TRUE)
+  # Ensure all groups are actually present
+  if(length(unique(group)) < K) {
+    group[1:K] <- 1:K
+  }
+  
+  b_Intercept <- rnorm(1, 5, 1)   
+  b_x <- rnorm(1, 0, 1)
+  
+  sd_group__Intercept <- abs(rnorm(1, 0, 0.75))
+  r_group <- matrix(rnorm(K, 0, sd_group__Intercept), 
+                 nrow = K, ncol = 1,
+                 dimnames = list(1:K, "Intercept"))
+  
+  sigma <- abs(rnorm(1, 0, 3))
+  
+  predictor <- b_Intercept + x * b_x + r_group[group]
+  y <- rnorm(N, predictor, sigma)
+  
+  list(
+    parameters = list(
+      b_Intercept = b_Intercept,
+      b_x = b_x,
+      sd_group__Intercept = sd_group__Intercept,
+      r_group = r_group,
+      sigma = sigma
+    ),
+    generated = data.frame(y = y, x = x, group = group)
+  )
+}
+
+n_dataset_generator <- function_SBC_generator(one_dataset_generator, N = 12, K = 3)
+```
+
+
+```{r}
+set.seed(12239755)
+datasets_func <- generate_datasets(n_dataset_generator, 100)
+```
+
+```{r}
+priors_func <- prior(normal(0,1), class = "b") +
+  prior(normal(5,1), class = "Intercept") +
+  prior(normal(0,5), class = "sigma") +
+  prior(normal(0,0.75), class = "sd")
+
+
+backend_func <- brms_SBC_backend(y ~ x + (1 | group),  
+                            prior = priors_func, chains = 1,
+                            template_dataset = datasets_func$generated[[1]])
+
+```
+
+
+```{r}
+results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10)
+```
+
+
+
+```{r}
+plot_ecdf_diff(results_func)
+```
+
+It looks like there is a problem affecting at least the `b_Intercept` and `sigma` parameters.
+
+What happened is that `brms` by default centers all the predictors, which changes the
+numerical values of the intercept (but not other terms). The interaction with the prior than probably also affects the other parameters.
+
+Maybe we don't want `brms` to do this --- using `0 + Intercept` syntax avoids the centering. 
+
+
+```{r}
+# Using 0 + Intercept also changes how we need to specify priors
+priors_func2 <- prior(normal(0,1), class = "b") +
+  prior(normal(5,1), class = "b", coef = "Intercept") +
+  prior(normal(0,5), class = "sigma") +
+  prior(normal(0,0.75), class = "sd")
+
+
+backend_func2 <- brms_SBC_backend(y ~ 0 + Intercept + x + (1 | group),  
+                            prior = priors_func2, warmup = 500, iter = 1000, chains = 1,
+                            template_dataset = datasets_func$generated[[1]])
+
+
+```
+
+Let's fit the same datasets with the new backend.
+
+```{r}
+results_func2 <- compute_results(datasets_func, backend_func2, thin_ranks = 10)
+```
+
+We see that this results in non-problematic univariate checks.
+
+```{r}
+plot_ecdf_diff(results_func2)
+```
+
+
+
+

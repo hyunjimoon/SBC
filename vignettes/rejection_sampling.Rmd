@@ -1,0 +1,141 @@
+
+```{r setup}
+library(SBC)
+
+# use_cmdstanr <- TRUE # Set to false to use rstan instead
+# 
+# if(use_cmdstanr) {
+#   library(cmdstanr)
+# } else {
+#   library(rstan)
+# }
+library(cmdstanr)
+library(bayesplot)
+library(posterior)
+
+library(future)
+plan(multisession) 
+
+options(SBC.min_chunk_size = 10)
+
+```
+
+How does rejectio sampling affect the validity of SBC?
+
+We'll use a very simple model throughout this vignette:
+
+```{r}
+stan_code <- "
+data {
+   int<lower=0> N;
+   real y[N];
+}
+
+parameters {
+   real mu;
+}
+
+model {
+   mu ~ normal(0, 2);
+   y ~ normal(mu, 1);
+}
+
+"
+
+backend <- cmdstan_sample_SBC_backend(cmdstan_model(write_stan_file(stan_code)), iter_warmup = 200, iter_sampling = 200)
+```
+And use a matching generator.
+
+```{r}
+N <- 30
+generator <- function_SBC_generator(function() {
+   mu <- rnorm(1, 0, 2)
+   list(
+     parameters = list(mu = mu),
+     generated = list(N = N, y = rnorm(N, mu, 1))
+   )
+})
+```
+
+So we expect the SBC to pass even with a large number of fits.
+
+```{r}
+set.seed(2323455)
+datasets <- generate_datasets(generator, 1000)
+```
+
+```{r}
+results <- compute_results(datasets, backend)
+```
+
+```{r}
+plot_ecdf_diff(results)
+```
+
+Indeed, all looks good.
+
+Now let us modify the generator to reject based on parameter values. This should fail.
+
+```{r}
+generator_reject_param <- function_SBC_generator(function() {
+   repeat {
+    mu <- rnorm(1, 0, 2)
+    if(mu > 3) {
+      break
+    }
+   }
+   list(
+     parameters = list(mu = mu),
+     generated = list(N = N, y = rnorm(N, mu, 1))
+   )
+})
+```
+
+```{r}
+set.seed(21455)
+datasets_reject_param <- generate_datasets(generator_reject_param, 1000)
+```
+
+```{r}
+results_reject_param <- compute_results(datasets_reject_param, backend)
+```
+
+```{r}
+plot_ecdf_diff(results_reject_param)
+```
+Indeed, we see a clear failure.
+
+But what if we reject based on the values of data? This should in theory result in just
+a constant change in posterior density and not affect SBC. (SBC will however then check only the 
+non-rejected parts of the data space). We will do a relatively aggressive rejection scheme (reject more than 50% of datasets).
+
+```{r}
+generator_reject_y <- function_SBC_generator(function() {
+   repeat {
+    mu <- rnorm(1, 0, 2)
+    y <- rnorm(N, mu, 1)
+    if(mean(y) > 5) {
+      break
+    }
+   }
+   list(
+     parameters = list(mu = mu),
+     generated = list(N = N, y = y)
+   )
+})
+```
+
+```{r}
+set.seed(369654)
+datasets_reject_y <- generate_datasets(generator_reject_y, 1000)
+```
+
+```{r}
+results_reject_y <- compute_results(datasets_reject_y, backend)
+```
+
+```{r}
+plot_ecdf_diff(results_reject_y)
+```
+
+We see that even with quite heavy rejection based on y, SBC to a high resolution.

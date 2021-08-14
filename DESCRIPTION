@@ -20,15 +20,22 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports:
-  R6,
-  posterior,
-  ggplot2,
-  stats,
-  stringi
+    R6,
+    posterior,
+    ggplot2,
+    stats,
+    stringi,
+    abind,
+    future.apply,
+    dplyr,
+    tidyr,
+    tidyselect,
+    purrr
 Suggests: 
     testthat,
     cmdstanr,
     rstan,
     knitr,
-    rmarkdown
+    rmarkdown,
+    brms
 VignetteBuilder: knitr

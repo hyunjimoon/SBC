@@ -1,0 +1,204 @@
+---
+title: "Discovering indexing errors with SBC"
+output: html_notebook
+---
+
+```{r setup, include = FALSE}
+library(SBC); 
+library(ggplot2)
+
+use_cmdstanr <- TRUE # Set to false to use rstan instead
+
+if(use_cmdstanr) {
+  library(cmdstanr)
+} else {
+  library(rstan)
+}
+
+```
+
+Below are three different Stan codes for implementing a simple linear regression. Not all of them are correct - can you see which are wrong?
+
+```{r}
+stan_code_1 <- "
+data {
+  int<lower=0> N;   // number of data items
+  int<lower=0> K;   // number of predictors
+  matrix[N, K] x;   // predictor matrix
+  vector[N] y;      // outcome vector
+}
+parameters {
+  real alpha;           // intercept
+  vector[K] beta;       // coefficients for predictors
+  real<lower=0> sigma;  // error scale
+}
+model {
+  vector[N] mu = rep_vector(alpha, N);
+  for(i in 1:K) {
+    for(j in 1:N) {
+      mu[j] += beta[i] * x[j, i];
+    }
+  }
+  y ~ normal(mu, sigma);  // likelihood
+  alpha ~ normal(0, 5);
+  beta ~ normal(0, 1);
+  sigma ~ normal(0, 2);
+}
+"
+
+stan_code_2 <- "
+data {
+  int<lower=0> N;   // number of data items
+  int<lower=0> K;   // number of predictors
+  matrix[N, K] x;   // predictor matrix
+  vector[N] y;      // outcome vector
+}
+parameters {
+  real alpha;           // intercept
+  vector[K] beta;       // coefficients for predictors
+  real<lower=0> sigma;  // error scale
+}
+model {
+  vector[N] mu;
+  for(i in 1:N) {
+    mu[i] = alpha;
+    for(j in 1:K) {
+      mu[i] += beta[j] * x[j, j];
+    }
+  }
+  y ~ normal(mu, sigma);  // likelihood
+  alpha ~ normal(0, 5);
+  beta ~ normal(0, 1);
+  sigma ~ normal(0, 2);
+}
+"
+
+stan_code_3 <- "
+data {
+  int<lower=0> N;   // number of data items
+  int<lower=0> K;   // number of predictors
+  matrix[N, K] x;   // predictor matrix
+  vector[N] y;      // outcome vector
+}
+parameters {
+  real alpha;           // intercept
+  vector[K] beta;       // coefficients for predictors
+  real<lower=0> sigma;  // error scale
+}
+model {
+  y ~ normal(transpose(beta) * transpose(x) + alpha, sigma);  // likelihood
+  alpha ~ normal(0, 5);
+  beta ~ normal(0, 1);
+  sigma ~ normal(0, 2);
+}
+"
+
+```
+
+If you can, good for you! If not, don't worry, SBC can help you spot coding problems, so let's simulate
+data and test all three models against simulated data.
+
+
+First we'll build backends using the individual models. 
+
+```{r}
+if(use_cmdstanr) {
+  stan_model_1 <- cmdstan_model(write_stan_file(stan_code_1))
+  stan_model_2 <- cmdstan_model(write_stan_file(stan_code_2))
+  stan_model_3 <- cmdstan_model(write_stan_file(stan_code_3))
+
+  backend_1 <- cmdstan_sample_SBC_backend(stan_model_1, iter_warmup = 200, iter_sampling = 250)
+  backend_2 <- cmdstan_sample_SBC_backend(stan_model_2, iter_warmup = 200, iter_sampling = 250)
+  backend_3 <- cmdstan_sample_SBC_backend(stan_model_3, iter_warmup = 200, iter_sampling = 250)
+} else {
+  stan_model_1 <- stan_model(model_code = stan_code_1)
+  stan_model_2 <- stan_model(model_code = stan_code_2)
+  stan_model_3 <- stan_model(model_code = stan_code_3)
+
+  
+  backend_1 <- rstan_sample_SBC_backend(stan_model_1, iter = 450, warmup = 200)
+  backend_2 <- rstan_sample_SBC_backend(stan_model_2, iter = 450, warmup = 200)
+  backend_3 <- rstan_sample_SBC_backend(stan_model_3, iter = 450, warmup = 200)
+}
+
+```
+Then we'll write a function that generates data. We write it in the most simple
+way to reduce the possibility that we make an error. We also don't really need to
+worry about performance here.
+
+```{r}
+set.seed(5666024)
+
+generator_func <- function(N, K) {
+  x <- matrix(rnorm(N * K), nrow = N, ncol = K)
+  alpha <- rnorm(1, mean = 0, sd = 1)
+  beta <- rnorm(K, mean = 0, sd = 1)
+  sigma <- abs(rnorm(1, mean = 0, sd = 2))
+  
+  y <- array(NA_real_, N)
+  for(n in 1:N) {
+    mu <- alpha
+    for(k in 1:K) {
+      mu <- mu + x[n,k] * beta[k]
+    }
+    y[n] <- rnorm(1, mu, sigma) 
+  }
+  
+  list(
+    parameters = list(
+      alpha = alpha,
+      beta = beta,
+      sigma = sigma),
+    generated = list(
+      N = N, K = K,
+      x = x, y = y
+    )
+  )
+  
+}
+```
+
+We'll start with just 10 datasets to get a quick computation - this will still
+let us see big problems (but not subtle issues)
+
+```{r}
+datasets <- generate_datasets(function_SBC_generator(generator_func, N = 100, K = 2), 10)
+
+```
+
+
+Now we can use all of the backends to fit the generated datasets.
+
+```{r}
+results_1 <- compute_results(datasets, backend_1)
+results_2 <- compute_results(datasets, backend_2)
+results_3 <- compute_results(datasets, backend_3)
+```
+
+```{r}
+plot_ecdf_diff(results_1)
+```
+
+As far as a quick SBC can see the first code is OK. You could verify further with more iterations
+but we tested the model for you and it is OK (although the implementation is not the best one).
+
+
+```{r}
+plot_ecdf_diff(results_2)
+
+
+```
+
+But the second model is actually not looking good.  In fact there is an indexing bug. The problem is the line
+`mu[i] += beta[j] * x[j, j];` which should have `x[i, j]` instead. We see that this 
+propagates most strongly to the `sigma` parameter (reusing the same `x` element leads to more similar predictions for each row, so `sigma` needs to be inflated to accommodate this)
+
+
+```{r}
+plot_ecdf_diff(results_3)
+
+
+```
+
+
+And the third model looks OK once again - and in fact we are pretty sure it is also completely correct.
