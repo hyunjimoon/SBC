@@ -259,7 +259,7 @@ data_for_ecdf_plots.matrix <- function(x,
   pit <- ranks_to_empirical_pit(ranks_matrix, max_rank)
   N <- nrow(pit)
   if (is.null(K)) {
-    K <- max_rank + 1
+    K <- min(max_rank + 1, N)
   }
   if (is.null(gamma)) {
     gamma <- adjust_gamma(

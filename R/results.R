@@ -1,21 +1,19 @@
 #' @export
 SBC_results <- function(stats,
                         fits,
-                        fit_diagnostics = NULL,
-                        outputs = NULL,
-                        messages = NULL,
-                        errors = rep(list(NULL), length(fits))) {
-  param_diagnostics <-  tryCatch(
-    { compute_param_diagnostics(stats) },
-    error = function(e) { warning("Error when computing param diagnostics. ", e); NULL })
+                        backend_diagnostics,
+                        default_diagnostics,
+                        outputs,
+                        messages,
+                        errors) {
   validate_SBC_results(
-    structure(list(stats = stats, fits = fits, fit_diagnostics = fit_diagnostics,
+    structure(list(stats = stats, fits = fits, backend_diagnostics = backend_diagnostics,
                    outputs = outputs, messages = messages,
-                   param_diagnostics = param_diagnostics, errors = errors), class = "SBC_results")
+                   default_diagnostics = default_diagnostics, errors = errors), class = "SBC_results")
   )
 }
 
-compute_param_diagnostics <- function(stats) {
+compute_default_diagnostics <- function(stats) {
   dplyr::summarise(dplyr::group_by(stats, run_id),
                    n_params = dplyr::n(),
                    max_rhat = max(c(-Inf, rhat)),
@@ -36,12 +34,12 @@ validate_SBC_results <- function(x) {
     stop("SBC_results object has to have a 'fits' field of type list")
   }
 
-  if(!is.null(x$fit_diagnostics) && !is.data.frame(x$fit_diagnostics)) {
-    stop("If the SBC_results object has a 'fit_diagnostics' field, it has to inherit from data.frame")
+  if(!is.null(x$backend_diagnostics) && !is.data.frame(x$backend_diagnostics)) {
+    stop("If the SBC_results object has a 'backend_diagnostics' field, it has to inherit from data.frame")
   }
 
-  if(!is.data.frame(x$param_diagnostics)) {
-    stop("If the SBC_results object has a 'param_diagnostics' field, it has to inherit from data.frame")
+  if(!is.data.frame(x$default_diagnostics)) {
+    stop("If the SBC_results object has a 'default_diagnostics' field, it has to inherit from data.frame")
   }
 
 
@@ -72,25 +70,25 @@ validate_SBC_results <- function(x) {
     }
   }
 
-  if(!is.null(x$fit_diagnostics) && nrow(x$fit_diagnostics) > 0) {
-    if(!is.numeric(x$fit_diagnostics$run_id)) {
-      stop("The run_id column of 'fit_diagnostics' needs to be a number.")
+  if(!is.null(x$backend_diagnostics) && nrow(x$backend_diagnostics) > 0) {
+    if(!is.numeric(x$backend_diagnostics$run_id)) {
+      stop("The run_id column of 'backend_diagnostics' needs to be a number.")
     }
 
 
-    if(min(x$fit_diagnostics$run_id) < 1 || max(x$fit_diagnostics$run_id > length(x$fits))) {
-      stop("fit_diagnostics$run_id values must be between 1 and number of fits")
+    if(min(x$backend_diagnostics$run_id) < 1 || max(x$backend_diagnostics$run_id > length(x$fits))) {
+      stop("backend_diagnostics$run_id values must be between 1 and number of fits")
     }
   }
 
-  if(nrow(x$param_diagnostics) > 0) {
-    if(!is.numeric(x$param_diagnostics$run_id)) {
-      stop("The run_id column of 'param_diagnostics' needs to be a number.")
+  if(nrow(x$default_diagnostics) > 0) {
+    if(!is.numeric(x$default_diagnostics$run_id)) {
+      stop("The run_id column of 'default_diagnostics' needs to be a number.")
     }
 
 
-    if(min(x$param_diagnostics$run_id) < 1 || max(x$param_diagnostics$run_id > length(x$fits))) {
-      stop("param_diagnostics$run_id values must be between 1 and number of fits")
+    if(min(x$default_diagnostics$run_id) < 1 || max(x$default_diagnostics$run_id > length(x$fits))) {
+      stop("default_diagnostics$run_id values must be between 1 and number of fits")
     }
   }
 
@@ -113,8 +111,11 @@ bind_results <- function(...) {
 
   stats_list <- purrr::map(args, function(x) x$stats)
   fits_list <- purrr::map(args, function(x) x$fits)
-  fit_diagnostics_list <- purrr::map(args, function(x) x$fit_diagnostics)
+  backend_diagnostics_list <- purrr::map(args, function(x) x$backend_diagnostics)
+  default_diagnostics_list <- purrr::map(args, function(x) x$default_diagnostics)
   errors_list <- purrr::map(args, function(x) x$errors)
+  messages_list <- purrr::map(args, function(x) x$messages)
+  outputs_list <- purrr::map(args, function(x) x$outputs)
 
   # Ensure unique run_ids
   max_ids <- as.numeric(purrr::map(stats_list, function(x) max(x$run_id)))
@@ -129,13 +130,54 @@ bind_results <- function(...) {
   }
 
   stats_list <- purrr::map2(stats_list, shifts, shift_run_id)
-  fit_diagnostics_list <- purrr::map2(fit_diagnostics_list, shifts, shift_run_id)
+  backend_diagnostics_list <- purrr::map2(backend_diagnostics_list, shifts, shift_run_id)
+  default_diagnostics_list <- purrr::map2(default_diagnostics_list, shifts, shift_run_id)
 
   SBC_results(stats = do.call(rbind, stats_list),
               fits = do.call(c, fits_list),
-              fit_diagnostics = do.call(rbind, fit_diagnostics_list),
-              errors =  do.call(c, errors_list))
+              backend_diagnostics = do.call(rbind, backend_diagnostics_list),
+              default_diagnostics = do.call(rbind, default_diagnostics_list),
+              errors =  do.call(c, errors_list),
+              messages = do.call(c, messages_list),
+              outputs = do.call(c, outputs_list)
+  )
 }
+
+
+#' @export
+length.SBC_results <- function(x) {
+  validate_SBC_results(x)
+  length(x$fits)
+}
+
+#' @export
+`[.SBC_results` <- function(x, indices) {
+  validate_SBC_results(x)
+  if(length(x) == 0 && length(indices) != 0) {
+    stop("Cannot subset empty results with non-empty indices")
+  }
+  indices_to_keep <- (1:length(x))[indices]
+  index_map <- 1:length(indices_to_keep)
+  names(index_map) <- indices_to_keep
+
+  subset_run_df <- function(df) {
+    if(is.null(df)) {
+      NULL
+    }
+    filtered <- dplyr::filter(df, run_id %in% indices_to_keep)
+    remapped <- dplyr::mutate(filtered, run_id = index_map[as.character(run_id)])
+    remapped
+  }
+
+  SBC_results(stats = subset_run_df(x$stats),
+              fits = x$fits[indices],
+              backend_diagnostics = subset_run_df(x$backend_diagnostics),
+              default_diagnostics = subset_run_df(x$default_diagnostics),
+              outputs = x$output[indices],
+              messages = x$messages[indices],
+              errors = x$errors[indices])
+}
+
 
 #' @export
 compute_results <- function(datasets, backend,
@@ -169,7 +211,7 @@ compute_results <- function(datasets, backend,
   messages <- rep(list(NULL), length(datasets))
   errors <- rep(list(NULL), length(datasets))
   stats_list <- list()
-  fit_diagnostics_list <- list()
+  backend_diagnostics_list <- list()
   n_errors <- 0
   max_errors_to_show <- 5
   for(i in 1:length(datasets)) {
@@ -177,8 +219,8 @@ compute_results <- function(datasets, backend,
       fits[[i]] <- results_raw[[i]]$fit
       stats_list[[i]] <- results_raw[[i]]$stats
       stats_list[[i]]$run_id <- i
-      fit_diagnostics_list[[i]] <- results_raw[[i]]$fit_diagnostics
-      fit_diagnostics_list[[i]]$run_id <- i
+      backend_diagnostics_list[[i]] <- results_raw[[i]]$backend_diagnostics
+      backend_diagnostics_list[[i]]$run_id <- i
     }
     else {
       if(n_errors < max_errors_to_show) {
@@ -205,7 +247,7 @@ compute_results <- function(datasets, backend,
   }
 
   stats <- do.call(rbind, stats_list)
-  fit_diagnostics <- do.call(rbind, fit_diagnostics_list)
+  backend_diagnostics <- do.call(rbind, backend_diagnostics_list)
 
   if(!is.null(stats)) {
 
@@ -241,9 +283,16 @@ compute_results <- function(datasets, backend,
                         rank = integer(0), simulated_value = numeric(0), max_rank = integer(0))
   }
 
+  default_diagnostics <-  tryCatch(
+    { compute_default_diagnostics(stats) },
+    error = function(e) { warning("Error when computing param diagnostics. ", e); NULL })
+
+
   res <- SBC_results(stats = stats, fits = fits, outputs = outputs,
                      messages = messages,
-                     fit_diagnostics = fit_diagnostics, errors = errors)
+                     backend_diagnostics = backend_diagnostics,
+                     default_diagnostics = default_diagnostics,
+                     errors = errors)
 
   check_all_SBC_diagnostics(res)
 
@@ -303,7 +352,7 @@ compute_results_single <- function(params_and_generated, backend, cores,
   parameters <- params_and_generated$parameters
   generated <- params_and_generated$generated
 
-  result_with_output <- capture_all_outputs({
+  result_with_output <- SBC:::capture_all_outputs({
     res <- tryCatch({
       fit <- SBC_fit(backend, generated, cores = cores)
       c(list(fit = fit, error = NULL))
@@ -317,12 +366,12 @@ compute_results_single <- function(params_and_generated, backend, cores,
 
   if(is.null(res$error)) {
     error_stats <- tryCatch( {
-      res$stats <- statistics_from_single_fit(res$fit, parameters = parameters, thin_ranks = thin_ranks)
-      res$fit_diagnostics <- SBC_fit_to_diagnostics(fit, res$outuput, res$messages)
+      res$stats <- SBC::statistics_from_single_fit(res$fit, parameters = parameters, thin_ranks = thin_ranks)
+      res$backend_diagnostics <-SBC::SBC_fit_to_diagnostics(fit, res$outuput, res$messages)
     }, error = identity)
   } else {
     res$stats <- NULL
-    res$fit_diagnostics <- NULL
+    res$backend_diagnostics <- NULL
   }
 
   if(!keep_fit) {
@@ -470,16 +519,16 @@ summary.SBC_results <- function(x) {
     n_fits = length(x$fits),
     n_errors = sum(!purrr::map_lgl(x$errors, is.null)),
     n_warnings = sum(purrr::map_lgl(x$messages, ~ !is.null(.x) && any(x$type == "warning"))),
-    n_high_rhat = sum(x$param_diagnostics$max_rhat > 1.01),
-    max_max_rhat = max(x$param_diagnostics$max_rhat),
-    n_low_ess_to_rank = sum(x$param_diagnostics$min_ess_to_rank < 0.5),
-    min_min_ess_bulk = min(x$param_diagnostics$min_ess_bulk),
-    min_min_ess_tail = min(x$param_diagnostics$min_ess_tail)
+    n_high_rhat = sum(x$default_diagnostics$max_rhat > 1.01),
+    max_max_rhat = max(x$default_diagnostics$max_rhat),
+    n_low_ess_to_rank = sum(is.na(x$default_diagnostics$min_ess_to_rank) | x$default_diagnostics$min_ess_to_rank < 0.5),
+    min_min_ess_bulk = min(x$default_diagnostics$min_ess_bulk),
+    min_min_ess_tail = min(x$default_diagnostics$min_ess_tail)
     )
-  if(!is.null(x$fit_diagnostics)) {
-    summ$fit_diagnostics <- summary(x$fit_diagnostics)
+  if(!is.null(x$backend_diagnostics)) {
+    summ$backend_diagnostics <- summary(x$backend_diagnostics)
   } else {
-    summ$fit_diagnostics <- NULL
+    summ$backend_diagnostics <- NULL
   }
   structure(
     summ,
@@ -518,9 +567,9 @@ get_diagnostics_messages.SBC_results_summary <- function(x) {
   i <- i + 1
 
   if(x$n_low_ess_to_rank > 0) {
-    msg <- paste0(x$n_low_ess_to_rank, " (", round(100 * x$n_low_ess_to_rank / x$n_fits), "%) fits had tail ESS < ",
+    msg <- paste0(x$n_low_ess_to_rank, " (", round(100 * x$n_low_ess_to_rank / x$n_fits), "%) fits had tail ESS undefined or less than ",
                   "half of the maximum rank, potentially skewing the rank statistics. The lowest tail ESS was ", round(x$min_min_ess_tail),
-                  ".\n   Consider increasing `thin_ranks` or number of posterior samples and recomputing.")
+                  ".\n If the fits look good otherwise, increasing `thin_ranks` or number of posterior samples and recomputing might help.")
     message_list[[i]] <- data.frame(ok = FALSE, message = msg)
   } else {
     message_list[[i]] <- data.frame(ok = TRUE, message = "All fits had tail ESS > half of the maximum rank.")
@@ -530,8 +579,8 @@ get_diagnostics_messages.SBC_results_summary <- function(x) {
   message_list[[i]] <- data.frame(ok = TRUE, message = paste0("The lowest bulk ESS was ", round(x$min_min_ess_bulk)))
   i <-  i + 1
 
-  if(!is.null(x$fit_diagnostics)) {
-    message_list[[i]] <- get_diagnostics_messages(x$fit_diagnostics)
+  if(!is.null(x$backend_diagnostics)) {
+    message_list[[i]] <- get_diagnostics_messages(x$backend_diagnostics)
     i <- i + 1
   }
 

@@ -107,7 +107,7 @@ get_diagnostics_messages.SBC_nuts_diagnostics <- function(x) {
 # for smaller, we just plug in a log function with appropriate scale
 # See https://math.stackexchange.com/questions/89030/expectation-of-the-maximum-of-gaussian-random-variables
 # for a discussion on why log
-get_expected_max_rhat <- function(n_vars, prob = 0.99) {
+get_expected_max_rhat <- function(n_vars, prob = 0.99, approx_sd = 0.005) {
   stopifnot(is.numeric(n_vars))
   stopifnot(all(n_vars >= 1))
 
@@ -131,7 +131,7 @@ get_expected_max_rhat <- function(n_vars, prob = 0.99) {
     value_at_1 + linear_scale * log(n_vars),
     gumbel_approx(n_vars)
   )
-  1 + std_val_max * 0.005
+  1 + std_val_max * approx_sd
 }
 
 get_diagnostics_messages.SBC_nuts_diagnostics_summary <- function(x) {

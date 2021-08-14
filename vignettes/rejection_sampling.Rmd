@@ -22,6 +22,9 @@ options(SBC.min_chunk_size = 10)
 
 How does rejectio sampling affect the validity of SBC?
 
+TODO: copy math and ideas from
+https://discourse.mc-stan.org/t/using-narrower-priors-for-sbc/21709/6?u=martinmodrak
+
 We'll use a very simple model throughout this vignette:
 
 ```{r}
