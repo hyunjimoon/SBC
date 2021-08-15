@@ -17,16 +17,16 @@ SBC_fit_to_draws_matrix.default <- function(fit) {
 #'
 #' @param fit The fit returned by `SBC_fit`
 #' @param fit_output a character string capturing what the backend wrote to stdout
-#' @param fit_messages a `data.frame` with columns `type` (type of message as signalled by R,
-#'    currently either "message" or "warning") and `message` (the actual text of the message).
+#' @param fit_messages a character vector of messages the backend raised
+#' @param fit_warnings a character vector of warnings the backend raised
 #' @return an object that includes diagnostics or NULL, if no diagnostics available.
 #' @export
-SBC_fit_to_diagnostics <- function(fit, fit_output, fit_messages) {
+SBC_fit_to_diagnostics <- function(fit, fit_output, fit_messages, fit_warnings) {
   UseMethod("SBC_fit_to_diagnostics")
 }
 
 #' @export
-SBC_fit_to_diagnostics.default <- function(fit, fit_output, fit_messages) {
+SBC_fit_to_diagnostics.default <- function(fit, fit_output, fit_messages, fit_warnings) {
   NULL
 }
 
@@ -59,13 +59,13 @@ SBC_fit.rstan_sample_SBC_backend <- function(backend, generated, cores) {
 }
 
 #' @export
-SBC_fit_to_diagnostics.stanfit <- function(fit, fit_output, fit_messages) {
+SBC_fit_to_diagnostics.stanfit <- function(fit, fit_output, fit_messages, fit_warnings) {
   res <- data.frame(
     max_chain_time = max(rowSums(rstan::get_elapsed_time(fit))),
     n_divergent = rstan::get_num_divergent(fit),
     n_max_treedepth = rstan::get_num_max_treedepth(fit),
     min_bfmi = min(rstan::get_bfmi(fit)),
-    n_rejects = sum(grepl("reject", fit_messages$message))
+    n_rejects = sum(grepl("reject", fit_messages)) + sum(grepl("reject", fit_warnings))
   )
 
   class(res) <- c("SBC_nuts_diagnostics", class(res))
@@ -107,7 +107,7 @@ get_diagnostics_messages.SBC_nuts_diagnostics <- function(x) {
 # for smaller, we just plug in a log function with appropriate scale
 # See https://math.stackexchange.com/questions/89030/expectation-of-the-maximum-of-gaussian-random-variables
 # for a discussion on why log
-get_expected_max_rhat <- function(n_vars, prob = 0.99) {
+get_expected_max_rhat <- function(n_vars, prob = 0.99, approx_sd = 0.005) {
   stopifnot(is.numeric(n_vars))
   stopifnot(all(n_vars >= 1))
 
@@ -131,7 +131,7 @@ get_expected_max_rhat <- function(n_vars, prob = 0.99) {
     value_at_1 + linear_scale * log(n_vars),
     gumbel_approx(n_vars)
   )
-  1 + std_val_max * 0.005
+  1 + std_val_max * approx_sd
 }
 
 get_diagnostics_messages.SBC_nuts_diagnostics_summary <- function(x) {
@@ -213,11 +213,17 @@ cmdstan_sample_SBC_backend <- function(model, ...) {
 
 #' @export
 SBC_fit.cmdstan_sample_SBC_backend <- function(backend, generated, cores) {
-  do.call(backend$model$sample,
+  fit <- do.call(backend$model$sample,
           combine_args(backend$args,
             list(
               data = generated,
               parallel_chains = cores)))
+
+  if(all(fit$return_codes() != 0)) {
+    stop("No chains finished succesfully")
+  }
+
+  fit
 }
 
 
@@ -229,13 +235,13 @@ SBC_fit_to_draws_matrix.CmdStanMCMC <- function(fit) {
 
 
 #' @export
-SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages) {
+SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages, fit_warnings) {
   res <- data.frame(
     max_chain_time = max(fit$time()$chains[,"total"]),
     n_failed_chains = fit$num_chains() - sum(fit$return_codes() == 0),
     n_divergent = sum(fit$sampler_diagnostics()[, , "divergent__"]),
     n_max_treedepth =  sum(fit$sampler_diagnostics()[, , "treedepth__"] == fit$metadata()$max_treedepth),
-    n_rejects = sum(grepl("reject", fit_messages$message))
+    n_rejects = sum(grepl("reject", fit_messages)) + sum(grepl("reject", fit_warnings))
     #
   ) # TODO: add min_bfmi once https://github.com/stan-dev/cmdstanr/pull/500/ is merged
   class(res) <- c("SBC_nuts_diagnostics", class(res))
@@ -316,6 +322,6 @@ SBC_fit_to_draws_matrix.brmsfit <- function(fit) {
 }
 
 #' @export
-SBC_fit_to_diagnostics.brmsfit <- function(fit, fit_output, fit_messages) {
-  SBC_fit_to_diagnostics(fit$fit, fit_output, fit_messages)
+SBC_fit_to_diagnostics.brmsfit <- function(fit, fit_output, fit_messages, fit_warnings) {
+  SBC_fit_to_diagnostics(fit$fit, fit_output, fit_messages, fit_warnings)
 }

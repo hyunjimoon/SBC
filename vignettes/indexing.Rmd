@@ -107,18 +107,18 @@ if(use_cmdstanr) {
   stan_model_2 <- cmdstan_model(write_stan_file(stan_code_2))
   stan_model_3 <- cmdstan_model(write_stan_file(stan_code_3))
 
-  backend_1 <- cmdstan_sample_SBC_backend(stan_model_1, iter_warmup = 200, iter_sampling = 250)
-  backend_2 <- cmdstan_sample_SBC_backend(stan_model_2, iter_warmup = 200, iter_sampling = 250)
-  backend_3 <- cmdstan_sample_SBC_backend(stan_model_3, iter_warmup = 200, iter_sampling = 250)
+  backend_1 <- cmdstan_sample_SBC_backend(stan_model_1, iter_warmup = 400, iter_sampling = 500)
+  backend_2 <- cmdstan_sample_SBC_backend(stan_model_2, iter_warmup = 400, iter_sampling = 500)
+  backend_3 <- cmdstan_sample_SBC_backend(stan_model_3, iter_warmup = 400, iter_sampling = 500)
 } else {
   stan_model_1 <- stan_model(model_code = stan_code_1)
   stan_model_2 <- stan_model(model_code = stan_code_2)
   stan_model_3 <- stan_model(model_code = stan_code_3)
 
   
-  backend_1 <- rstan_sample_SBC_backend(stan_model_1, iter = 450, warmup = 200)
-  backend_2 <- rstan_sample_SBC_backend(stan_model_2, iter = 450, warmup = 200)
-  backend_3 <- rstan_sample_SBC_backend(stan_model_3, iter = 450, warmup = 200)
+  backend_1 <- rstan_sample_SBC_backend(stan_model_1, iter = 900, warmup = 400)
+  backend_2 <- rstan_sample_SBC_backend(stan_model_2, iter = 900, warmup = 400)
+  backend_3 <- rstan_sample_SBC_backend(stan_model_3, iter = 900, warmup = 400)
 }
 
 ```

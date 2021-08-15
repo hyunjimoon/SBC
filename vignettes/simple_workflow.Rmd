@@ -65,7 +65,7 @@ generator_first <- function_SBC_generator(generator_func_first, N = 50)
 ```
 
 ```{r}
-set.seed(233598465)
+set.seed(68455554)
 datasets_first <- generate_datasets(generator_first, 1)
 ```
 
@@ -73,7 +73,7 @@ datasets_first <- generate_datasets(generator_first, 1)
 results_first <- compute_results(datasets_first, backend_first)
 ```
 
-We have divergences, let us examine the pairs plots
+We have convergence problems, let us examine the pairs plots
 
 ```{r}
 results_first$stats
@@ -95,7 +95,7 @@ backend_fixed_log_mix <- cmdstan_sample_SBC_backend(model_fixed_log_mix)
 results_fixed_log_mix <- compute_results(datasets_first, backend_fixed_log_mix)
 ```
 
-Some slightly problematic Rhats, but nothing obviously wrong, let's run a few more iterations.
+We see nothing obviously wrong, let's run a few more iterations.
 
 ```{r}
 results_fixed_log_mix$stats
@@ -108,10 +108,14 @@ datasets_first_10 <- generate_datasets(generator_first, 10)
 ```{r}
 results_fixed_log_mix_2 <- compute_results(datasets_first_10, backend_fixed_log_mix)
 ```
+So there are some problems.
 
 ```{r}
 hist(results_fixed_log_mix_2$stats$rhat)
+
 ```
+
+Let's examine a single pairs plot:
 
 ```{r}
 mcmc_pairs(results_fixed_log_mix_2$fits[[1]]$draws())
@@ -177,18 +181,19 @@ results_fixed_ordered <- compute_results(datasets_ordered_10, backend_fixed_orde
 ```{r}
 results_fixed_ordered$stats
 ```
-There is one fit with high R-hats and low ESS. Let's look at the pairs plot:
+There are fits with high R-hats and low ESS. Let's look at the pairs plot:
 
 ```{r}
-problematic_fit <- 2
-mcmc_pairs(results_fixed_ordered$fits[[problematic_fit]]$draws())
+problematic_fit_id <- 2
+problematic_fit <- results_fixed_ordered$fits[[problematic_fit_id]]
+mcmc_pairs(problematic_fit$draws(), np = nuts_params(problematic_fit))
 ```
 
 There is a lot of ugly stuff going on. Notably, one can notice that the posterior of theta is bimodal, preferring either almost 0 or almost 1 - and when that happens, the mean of one of the components is almost unconstrained. 
 Why does that happen? The key to the answer is in the simulated values for the component means:
 
 ```{r}
-subset_draws(datasets_ordered_10$parameters, draw = problematic_fit)
+subset_draws(datasets_ordered_10$parameters, draw = problematic_fit_id)
 ```
 We were unlucky enough to simulate a dataset where both components have almost the same mean and thus we are actually looking at a dataset that is not really a mixture. Mixture models can misbehave badly in such cases (see once again the https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html#5_singular_components_and_computational_issues) for a bit more detailed dive into this particular problem.
 
@@ -196,17 +201,128 @@ We were unlucky enough to simulate a dataset where both components have almost t
 
 What to do about this? Fixing the model to handle such cases gracefully is hard. But the problem is basically our prior - we want to express that (since we are fitting a two component model), we don't expect the means to be too similar. So if we can change our simulation to avoid this, we'll be able to proceed with SBC. If such a pattern appeared in real data, we would still have a problem, but we would notice thanks to the diagnostics.
 
-This can definitely be done. But another way is to just ignore the datasets that had divergences for SBC calculations.
+This can definitely be done. But another way is to just ignore the datasets that had divergences for SBC calculations. It turns out that if we remove datasets in a way that only depends on the observed data (and not on unobserved parameters), the SBC identity is preserved and we can use SBC without modifications. The resulting check is however telling us something only for datasets that were not rejected. In this case this is not a big issue: if a fit had divergent transitions, we would not trust it anyway, so removing fits with divergent transitions is not such a big deal.
 
-So we can use the same construction Stan uses to build the `ordered` parameter (https://mc-stan.org/docs/2_27/reference-manual/ordered-vector.html), that is the first element is unconstrained and then we parametrize in terms of differences, which are bound to be positive.
+For more details see the `rejection_sampling` vignette.
 
-It might even make sense to relax the prior when actually using the model. It is rare --- although not impossible --- for a minor change in prior to break a model that otherwise behaves well. And it is still better to use a model that was checked thoroughly (albeit with a bit different prior), than a model that was  
+So let us subset the results:
+
+```{r}
+# Tidy version
+run_ids_to_keep <- results_fixed_ordered$backend_diagnostics %>% 
+  dplyr::filter(n_divergent == 0) %>%
+  dplyr::pull(run_id)
+# Equivalent base R code
+run_ids_to_keep <- results_fixed_ordered$backend_diagnostics$run_id[results_fixed_ordered$backend_diagnostics$n_divergent == 0]
+
+results_fixed_ordered_subset <- results_fixed_ordered[run_ids_to_keep]
+summary(results_fixed_ordered_subset)
+```
+
+This gives us no obvious problems.
+
+```{r}
+plot_ecdf_diff(results_fixed_ordered_subset)
+```
+So we can run for more iterations:
+
+```{r}
+datasets_ordered_100 <- generate_datasets(generator_ordered, 100)
+results_fixed_ordered_100 <- compute_results(datasets_ordered_100, backend_fixed_ordered)
+```
+
+Once again we subset to keep only non-divergent fits
+
+```{r}
+run_ids_to_keep <- results_fixed_ordered_100$backend_diagnostics %>% 
+  dplyr::filter(n_divergent == 0) %>%
+  dplyr::pull(run_id)
 
 
-## Dirichlet regression component
+results_fixed_ordered_100_subset <- results_fixed_ordered_100[run_ids_to_keep]
+summary(results_fixed_ordered_100_subset)
+```
+
+
+And combine with the previous fits to not waste our computational effort.
+
+```{r}
+results_fixed_ordered_combined <- bind_results(results_fixed_ordered_subset, results_fixed_ordered_100_subset)
+plot_ecdf_diff(results_fixed_ordered_combined)
+```
+Seems fairly well within the expected bounds. We could definitely run more iterations if we wanted to have a more strict check, but for now, we are happy.
+
+Note: it turns out that extending the model to more components becomes somewhat tricky as the model can become sensitive to initialization and the problem of data that can be explained by fewer components than the model has becomes more prevalent.
+
+## Beta regression component
+
+```{r}
+model_beta_first <- cmdstan_model("simple_workflow/beta_first.stan")
+backend_beta_first <- cmdstan_sample_SBC_backend(model_beta_first) 
+
+```
+
+```{r}
+generator_func_beta_first <- function(N_obs, N_predictors) {
+  repeat {
+    beta <- matrix(rnorm(N_predictors * 2, 0, 1), nrow = 2, ncol = N_predictors)
+  
+    x <- matrix(rnorm(N_predictors * N_obs, 0, 1), nrow = N_predictors, ncol = N_obs)
+    x[1, ] <- 1 # Intercept
+  
+    y <- array(NA_real_, N_obs)
+      
+    for(n in 1:N_obs) {
+      linpred <- rep(0, 2)
+      for(c in 1:2) {
+        for(p in 1:N_predictors) {
+          linpred[c] <- linpred[c] + x[p, n] * beta[c, p]
+        }
+      }
+      y[n] <- rbeta(1, exp(linpred[1]), exp(linpred[2]))
+    }
+    if(all(y > 0) && all(y < 1)) {
+      break;
+    }
+  }
+    
+  list(
+    parameters = list(
+      beta = beta
+    ),
+    generated = list(
+      N_obs = N_obs,
+      N_predictors = N_predictors,
+      y = y,
+      x = x
+    )
+  )
+}
+
+generator_beta_first <- function_SBC_generator(generator_func_beta_first, N_obs = 50, N_predictors = 3)
+```
+
+
+```{r}
+set.seed(3325488)
+datasets_beta_first <- generate_datasets(generator_beta_first, 10)
+```
+
+
+```{r}
+hist(datasets_beta_first$generated[[1]]$y)
+hist(datasets_beta_first$generated[[2]]$y)
+hist(datasets_beta_first$generated[[3]]$y)
+```
+
+
+```{r}
+results_beta_first_1 <- compute_results(datasets_beta_first[1], backend_beta_first)
+```
+
 
 - Non-identifiability: predictors for all
-- Off-by-one: not informed parameter
+- Off-by-one: not informed parameter (posterior shrinkage)
 - Forgotten prior for intercept?
 
 ## Putting it together
