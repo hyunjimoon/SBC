@@ -196,6 +196,15 @@ length.SBC_results <- function(x) {
 }
 
 
+#' Fit datasets and evaluate metrics.
+#' @return An object of class `SBC_results` that holds:
+#'   - `$stats` statistics for all parameters and fits (one row per parameter-fit combination)
+#'   - `$fits`  the raw fits (unless `keep_fits = FALSE`) or `NULL` if the fit failed
+#'   - `$errors` error messages that caused fit failures
+#'   - `$outputs`, `$messages`, `$warnings` the outputs/messages/warnings written by fits
+#'   - `$default_diagnostics` a data frame of default convergence/correctness diagnostics (one row per fit)
+#'   - `$backend_diagnostics` a data frame of backend-specific diagnostics (one row per fit)
+#'
 #' @export
 compute_results <- function(datasets, backend,
                             cores_per_fit = default_cores_per_fit(length(datasets)),
@@ -546,7 +555,16 @@ check_all_SBC_diagnostics.default <- function(x) {
   } else {
     invisible(TRUE)
   }
+}
 
+#' @export
+check_all_SBC_diagnostics.SBC_results <- function(x) {
+  res <- NextMethod()
+  if(!res) {
+    message("Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, ",
+    "$backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.")
+  }
+  res
 }
 
 #' @export
@@ -636,6 +654,12 @@ print.SBC_results_summary <- function(x) {
 
   msg <- get_diagnostics_messages(x)
   print(msg)
+
+  if(!all(msg$ok)) {
+    message("Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, ",
+            "$backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.")
+  }
+
 
   invisible(x)
 }

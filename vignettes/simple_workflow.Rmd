@@ -254,44 +254,44 @@ Seems fairly well within the expected bounds. We could definitely run more itera
 
 Note: it turns out that extending the model to more components becomes somewhat tricky as the model can become sensitive to initialization and the problem of data that can be explained by fewer components than the model has becomes more prevalent.
 
-## Logistic regression component
+## Beta regression component
 
 ```{r}
-model_dir_first <- cmdstan_model("simple_workflow/beta_first.stan")
-backend_dir_first <- cmdstan_sample_SBC_backend(model_dir_first) 
+model_beta_first <- cmdstan_model("simple_workflow/beta_first.stan")
+backend_beta_first <- cmdstan_sample_SBC_backend(model_beta_first) 
 
 ```
 
-
 ```{r}
-generator_func_dir_first <- function(N_obs, N_components, N_predictors) {
-  beta <- matrix(rnorm(N_predictors * N_components, 0, 2), nrow = N_components, ncol = N_predictors)
-  precision <- rlnorm(1, 2, 1)
+generator_func_beta_first <- function(N_obs, N_predictors) {
+  repeat {
+    beta <- matrix(rnorm(N_predictors * 2, 0, 1), nrow = 2, ncol = N_predictors)
   
-  x <- matrix(rnorm(N_predictors * N_obs, 0, 1), nrow = N_predictors, ncol = N_obs)
-  x[1, ] <- 1 # Intercept
-
-  y <- matrix(NA_real, nrow = N_components, ncol = N_obs)
-    
-  for(n in 1:N_obs) {
-    linpred <- rep(0, N_components)
-    for(c in 1:N_components) {
-      for(p in 1:N_predictors) {
-        linpred[c] <- linpred[c] + x[p, n] * beta[c, p]
+    x <- matrix(rnorm(N_predictors * N_obs, 0, 1), nrow = N_predictors, ncol = N_obs)
+    x[1, ] <- 1 # Intercept
+  
+    y <- array(NA_real_, N_obs)
+      
+    for(n in 1:N_obs) {
+      linpred <- rep(0, 2)
+      for(c in 1:2) {
+        for(p in 1:N_predictors) {
+          linpred[c] <- linpred[c] + x[p, n] * beta[c, p]
+        }
       }
+      y[n] <- rbeta(1, exp(linpred[1]), exp(linpred[2]))
     }
-    mu_vec <- exp(linpred) / sum(exp(linpred))
-    y[,n] <- MCMCpack::rdirichlet(1, precision * mu_vec)
+    if(all(y > 0) && all(y < 1)) {
+      break;
+    }
   }
     
   list(
     parameters = list(
-      beta = beta,
-      precision = precision
+      beta = beta
     ),
     generated = list(
       N_obs = N_obs,
-      N_components = N_components,
       N_predictors = N_predictors,
       y = y,
       x = x
@@ -299,7 +299,25 @@ generator_func_dir_first <- function(N_obs, N_components, N_predictors) {
   )
 }
 
-generator_first <- function_SBC_generator(generator_func_first, N = 50)
+generator_beta_first <- function_SBC_generator(generator_func_beta_first, N_obs = 50, N_predictors = 3)
+```
+
+
+```{r}
+set.seed(3325488)
+datasets_beta_first <- generate_datasets(generator_beta_first, 10)
+```
+
+
+```{r}
+hist(datasets_beta_first$generated[[1]]$y)
+hist(datasets_beta_first$generated[[2]]$y)
+hist(datasets_beta_first$generated[[3]]$y)
+```
+
+
+```{r}
+results_beta_first_1 <- compute_results(datasets_beta_first[1], backend_beta_first)
 ```
 
 

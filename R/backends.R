@@ -322,6 +322,6 @@ SBC_fit_to_draws_matrix.brmsfit <- function(fit) {
 }
 
 #' @export
-SBC_fit_to_diagnostics.brmsfit <- function(fit, fit_output, fit_messages) {
-  SBC_fit_to_diagnostics(fit$fit, fit_output, fit_messages)
+SBC_fit_to_diagnostics.brmsfit <- function(fit, fit_output, fit_messages, fit_warnings) {
+  SBC_fit_to_diagnostics(fit$fit, fit_output, fit_messages, fit_warnings)
 }

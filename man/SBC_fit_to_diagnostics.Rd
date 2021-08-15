@@ -4,15 +4,16 @@
 \alias{SBC_fit_to_diagnostics}
 \title{S3 generic to get backend-specific diagnostics.}
 \usage{
-SBC_fit_to_diagnostics(fit, fit_output, fit_messages)
+SBC_fit_to_diagnostics(fit, fit_output, fit_messages, fit_warnings)
 }
 \arguments{
 \item{fit}{The fit returned by \code{SBC_fit}}
 
 \item{fit_output}{a character string capturing what the backend wrote to stdout}
 
-\item{fit_messages}{a \code{data.frame} with columns \code{type} (type of message as signalled by R,
-currently either "message" or "warning") and \code{message} (the actual text of the message).}
+\item{fit_messages}{a character vector of messages the backend raised}
+
+\item{fit_warnings}{a character vector of warnings the backend raised}
 }
 \value{
 an object that includes diagnostics or NULL, if no diagnostics available.

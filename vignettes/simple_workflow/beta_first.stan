@@ -1,23 +1,17 @@
 data {
   int<lower=0> N_obs;
-  int<lower=2> N_components;
-  matrix<lower=0, upper=1>[N_components, N_obs] y;
+  vector<lower=0, upper=1>[N_obs] y;
 
   int<lower=1> N_predictors;
   matrix[N_predictors, N_obs] x;
 }
 
 parameters {
-  matrix[N_components, N_predictors] beta;
-  real<lower=0> precision;
+  matrix[2, N_predictors] beta;
 }
 
 model {
-  matrix[N_components, N_obs] linpred = beta * x;
-  for(n in 1:N_obs) {
-    target += dirichlet_lpdf(y[, n] | precision * softmax(linpred[,n]));
-  }
-
-  target += lognormal_lpdf(precision | 2, 1);
-  target += normal_lpdf(to_vector(beta) | 0, 2);
+  matrix[2, N_obs] linpred = beta * x;
+  target += beta_lpdf(y | exp(linpred[1,]), exp(linpred[2,]));
+  target += normal_lpdf(to_vector(beta) | 0, 1);
 }
