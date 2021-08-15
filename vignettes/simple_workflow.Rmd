@@ -252,10 +252,124 @@ plot_ecdf_diff(results_fixed_ordered_combined)
 ```
 Seems fairly well within the expected bounds. We could definitely run more iterations if we wanted to have a more strict check, but for now, we are happy.
 
+### Extending to more components
+
+To avoid high chances of components with very similar means, we'll make the prior for `mu` much wider. At the same time we concentrate the prior on `theta` to avoid having components with too low probability (and thus not present in the data)
+
+```{r}
+model_final <- cmdstan_model("simple_workflow/mixture_final.stan")
+backend_final <- cmdstan_sample_SBC_backend(model_final, chains = 2)
+```
+
+```{r}
+generator_func_final <- function(N, N_components) {
+  # If the priors for all components of an ordered vector are the same
+  # then just sorting the result of a generator is enough to create
+  # a valid sample from the ordered vector
+  mu <- sort(rnorm(N_components, 5, 2.5)) 
+  # Converting via as.numeric to keep only one dimension
+  theta <- as.numeric(MCMCpack::rdirichlet(1, rep(3, N_components)))
+  
+  y <- numeric(N)
+  for(n in 1:N) {
+    comp <- sample.int(N_components, size = 1, prob = theta)
+    y[n] <- rpois(1, exp(mu[comp]))
+  }
+  
+  list(
+    parameters = list(
+      mu = mu,
+      theta = theta
+    ),
+    generated = list(
+      N = N,
+      N_components = N_components,
+      y = y
+    )
+  )
+}
+
+generator_final <- function_SBC_generator(generator_func_final, N = 100, N_components = 3)
+```
+
+Quickly test a few datasets to make sure we didn't do any big error (I actually did when writing this :-))
+
+```{r}
+set.seed(223345864)
+datasets_final_10 <- generate_datasets(generator_final, 10) 
+results_final_10 <- compute_results(datasets_final_10, backend_final)
+```
+```{r}
+bayesplot::mcmc_pairs(results_final_10$fits[[1]]$draws(), np = nuts_params(results_final_10$fits[[1]]))
+```
+
+
+This time we don't save the fits to save memory.
+
+```{r}
+set.seed(54622625)
+datasets_final_200 <- generate_datasets(generator_final, 200) 
+results_final_200 <- compute_results(datasets_final, backend_final, keep_fits = FALSE)
+```
+
+```{r}
+results_final <- bind_results(results_final_10, results_final_200)
+results_final_subset <- results_final[results_final$backend_diagnostics$n_divergent == 0]
+summary(results_final_subset)
+```
+
+
 ## Dirichlet regression component
 
+```{r}
+model_dir_first <- cmdstan_model("simple_workflow/dirichlet_first.stan")
+backend_dir_first <- cmdstan_sample_SBC_backend(model_dir_first) 
+
+```
+
+
+```{r}
+generator_func_dir_first <- function(N_obs, N_components, N_predictors) {
+  beta <- matrix(rnorm(N_predictors * N_components, 0, 2), nrow = N_components, ncol = N_predictors)
+  precision <- rlnorm(1, 2, 1)
+  
+  x <- matrix(rnorm(N_predictors * N_obs, 0, 1), nrow = N_predictors, ncol = N_obs)
+  x[1, ] <- 1 # Intercept
+
+  y <- matrix(NA_real, nrow = N_components, ncol = N_obs)
+    
+  for(n in 1:N_obs) {
+    linpred <- rep(0, N_components)
+    for(c in 1:N_components) {
+      for(p in 1:N_predictors) {
+        linpred[c] <- linpred[c] + x[p, n] * beta[c, p]
+      }
+    }
+    mu_vec <- exp(linpred) / sum(exp(linpred))
+    y[,n] <- MCMCpack::rdirichlet(1, precision * mu_vec)
+  }
+    
+  list(
+    parameters = list(
+      beta = beta,
+      precision = precision
+    ),
+    generated = list(
+      N_obs = N_obs,
+      N_components = N_components,
+      N_predictors = N_predictors,
+      y = y,
+      x = x
+    )
+  )
+}
+
+generator_first <- function_SBC_generator(generator_func_first, N = 50)
+```
+
+
 - Non-identifiability: predictors for all
-- Off-by-one: not informed parameter
+- Off-by-one: not informed parameter (posterior shrinkage)
 - Forgotten prior for intercept?
 
 ## Putting it together

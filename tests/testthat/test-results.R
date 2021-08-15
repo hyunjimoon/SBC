@@ -3,13 +3,40 @@ test_that("capture_all_outputs", {
         capture_all_outputs({
             cat("Test")
             warning("W")
-            message("M")
+            message("M", appendLF = FALSE)
+            warning("W2")
+            message("M2", appendLF = FALSE)
+            message("M3", appendLF = FALSE)
             14
             }),
         list(result = 14,
-             messages = data.frame(type = c("warning", "message"),
-                                   message = c("W", "M\n")),
+             messages = c("M", "M2", "M3"),
+             warnings = c("W", "W2"),
              output = "Test"))
+})
+
+test_that("subset_bind", {
+    res <- SBC_results(stats = data.frame(run_id = rep(1:3, each = 4), s = 1:12),
+                       fits = list("A", NULL, "C"),
+                       outputs = list(c("A1","A2"), c(), c("C1", "C4")),
+                       warnings = list(c(), "XXXX", "asdfdaf"),
+                       messages = list("aaaa", "ddddd", NA_character_),
+                       errors = list(NULL, "customerror", NULL),
+                       default_diagnostics = data.frame(run_id = 1:3, qq = rnorm(3)),
+                       backend_diagnostics = data.frame(run_id = 1:3, rr = rnorm(3))
+                       )
+
+    remove_run_id_names <- function(x) {
+        names(x$stats$run_id) <- NULL
+        names(x$default_diagnostics$run_id) <- NULL
+        names(x$backend_diagnostics$run_id) <- NULL
+        x
+    }
+
+    expect_equal(res, remove_run_id_names(bind_results(res[1], res[2:3])))
+    expect_equal(res, remove_run_id_names(bind_results(res[1:2], res[3])))
+    expect_equal(remove_run_id_names(res[3:1]), remove_run_id_names(bind_results(res[3:2], res[1])))
+    expect_equal(remove_run_id_names(res[2]), remove_run_id_names(((res[2:3])[1])))
 })
 
 test_that("calculate_ranks_draws_matrix works", {

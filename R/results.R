@@ -5,10 +5,11 @@ SBC_results <- function(stats,
                         default_diagnostics,
                         outputs,
                         messages,
+                        warnings,
                         errors) {
   validate_SBC_results(
     structure(list(stats = stats, fits = fits, backend_diagnostics = backend_diagnostics,
-                   outputs = outputs, messages = messages,
+                   outputs = outputs, messages = messages, warnings = warnings,
                    default_diagnostics = default_diagnostics, errors = errors), class = "SBC_results")
   )
 }
@@ -53,7 +54,7 @@ validate_SBC_results <- function(x) {
     }
 
 
-    if(min(x$stats$run_id) < 1 || max(x$stats$run_id > length(x$fits))) {
+    if(min(x$stats$run_id) < 1 || max(x$stats$run_id) > length(x$fits)) {
       stop("stats$run_id values must be between 1 and number of fits")
     }
   }
@@ -65,8 +66,14 @@ validate_SBC_results <- function(x) {
   }
 
   if(!is.null(x$messages)) {
-    if(!is.list(x$messages) || length(x$messages) != length(x$messages)) {
+    if(!is.list(x$messages) || length(x$messages) != length(x$fits)) {
       stop("messages can only be a list of the same length as fits")
+    }
+  }
+
+  if(!is.null(x$warnings)) {
+    if(!is.list(x$warnings) || length(x$warnings) != length(x$fits)) {
+      stop("warnings can only be a list of the same length as fits")
     }
   }
 
@@ -115,6 +122,7 @@ bind_results <- function(...) {
   default_diagnostics_list <- purrr::map(args, function(x) x$default_diagnostics)
   errors_list <- purrr::map(args, function(x) x$errors)
   messages_list <- purrr::map(args, function(x) x$messages)
+  warnings_list <- purrr::map(args, function(x) x$warnings)
   outputs_list <- purrr::map(args, function(x) x$outputs)
 
   # Ensure unique run_ids
@@ -129,16 +137,24 @@ bind_results <- function(...) {
     }
   }
 
+  bind_and_rearrange_df <- function(df_list) {
+    dplyr::arrange(
+      do.call(rbind, df_list),
+      run_id
+    )
+  }
+
   stats_list <- purrr::map2(stats_list, shifts, shift_run_id)
   backend_diagnostics_list <- purrr::map2(backend_diagnostics_list, shifts, shift_run_id)
   default_diagnostics_list <- purrr::map2(default_diagnostics_list, shifts, shift_run_id)
 
-  SBC_results(stats = do.call(rbind, stats_list),
+  SBC_results(stats = bind_and_rearrange_df(stats_list),
               fits = do.call(c, fits_list),
-              backend_diagnostics = do.call(rbind, backend_diagnostics_list),
-              default_diagnostics = do.call(rbind, default_diagnostics_list),
+              backend_diagnostics = bind_and_rearrange_df(backend_diagnostics_list),
+              default_diagnostics = bind_and_rearrange_df(default_diagnostics_list),
               errors =  do.call(c, errors_list),
               messages = do.call(c, messages_list),
+              warnings = do.call(c, warnings_list),
               outputs = do.call(c, outputs_list)
   )
 }
@@ -166,7 +182,7 @@ length.SBC_results <- function(x) {
     }
     filtered <- dplyr::filter(df, run_id %in% indices_to_keep)
     remapped <- dplyr::mutate(filtered, run_id = index_map[as.character(run_id)])
-    remapped
+    dplyr::arrange(remapped, run_id)
   }
 
   SBC_results(stats = subset_run_df(x$stats),
@@ -175,6 +191,7 @@ length.SBC_results <- function(x) {
               default_diagnostics = subset_run_df(x$default_diagnostics),
               outputs = x$output[indices],
               messages = x$messages[indices],
+              warnings = x$warnings[indices],
               errors = x$errors[indices])
 }
 
@@ -192,7 +209,7 @@ compute_results <- function(datasets, backend,
   for(i in 1:length(datasets)) {
     params_and_generated_list[[i]] <- list(
       parameters = posterior::subset_draws(datasets$parameters,
-                                      draw = i),
+                                           draw = i),
       generated = datasets$generated[[i]]
     )
   }
@@ -209,6 +226,7 @@ compute_results <- function(datasets, backend,
   fits <- rep(list(NULL), length(datasets))
   outputs <- rep(list(NULL), length(datasets))
   messages <- rep(list(NULL), length(datasets))
+  warnings <- rep(list(NULL), length(datasets))
   errors <- rep(list(NULL), length(datasets))
   stats_list <- list()
   backend_diagnostics_list <- list()
@@ -216,7 +234,9 @@ compute_results <- function(datasets, backend,
   max_errors_to_show <- 5
   for(i in 1:length(datasets)) {
     if(is.null(results_raw[[i]]$error)) {
-      fits[[i]] <- results_raw[[i]]$fit
+      if(!is.null(results_raw[[i]]$fit)) {
+        fits[[i]] <- results_raw[[i]]$fit
+      }
       stats_list[[i]] <- results_raw[[i]]$stats
       stats_list[[i]]$run_id <- i
       backend_diagnostics_list[[i]] <- results_raw[[i]]$backend_diagnostics
@@ -224,10 +244,26 @@ compute_results <- function(datasets, backend,
     }
     else {
       if(n_errors < max_errors_to_show) {
-        warning("Dataset ", i, " resulted in error when fitting.\n")
+        message("Dataset ", i, " resulted in error when fitting.\n")
         message(results_raw[[i]]$error, "\n")
+        if(!is.null(results_raw[[i]]$warnings)) {
+          message(" --- Warnings for fit ", i, " ----")
+          message(paste0(results_raw[[i]]$warnings, collapse = "\n"))
+        }
+        if(!is.null(results_raw[[i]]$messages)) {
+          message(" --- Messages for fit ", i, " ----")
+          message(paste0(results_raw[[i]]$messages, collapse = "\n"))
+        }
+        if(is.null(results_raw[[i]]$output)) {
+          message(" --- Nothing in stdout ---")
+        } else {
+          message(" ---- Model output ----")
+          cat(paste0(results_raw[[i]]$output, collapse = "\n"))
+        }
+        message("\n ---- End of output for dataset ", i, " -----")
+
       } else if(n_errors == max_errors_to_show) {
-        warning("Too many datasets produced errors. Further error messages not shown.\n")
+        message("Too many datasets produced errors. Further error messages not shown.\n")
       }
       n_errors <- n_errors + 1
       errors[[i]] <- results_raw[[i]]$error
@@ -237,6 +273,9 @@ compute_results <- function(datasets, backend,
     }
     if(!is.null(results_raw[[i]]$messages)) {
       messages[[i]] <- results_raw[[i]]$messages
+    }
+    if(!is.null(results_raw[[i]]$warnings)) {
+      warnings[[i]] <- results_raw[[i]]$warnings
     }
   }
 
@@ -290,6 +329,7 @@ compute_results <- function(datasets, backend,
 
   res <- SBC_results(stats = stats, fits = fits, outputs = outputs,
                      messages = messages,
+                     warnings = warnings,
                      backend_diagnostics = backend_diagnostics,
                      default_diagnostics = default_diagnostics,
                      errors = errors)
@@ -324,11 +364,10 @@ default_chunk_size <- function(n_fits, n_workers = future::nbrOfWorkers()) {
 # Capturing output.
 # Based on https://www.r-bloggers.com/2020/10/capture-message-warnings-and-errors-from-a-r-function/
 capture_all_outputs <- function(expr) {
-  logs <- list()
+  logs <- list(message = list(), warning = list())
   add_log <- function(type, message) {
     new_l <- logs
-    new_log <- data.frame(type = type, message =  message)
-    new_l[[length(new_l) + 1]]  <- new_log
+    new_l[[type]][[length(new_l[[type]]) + 1]]  <- message
     logs <<- new_l
   }
   output <- capture.output({
@@ -342,7 +381,7 @@ capture_all_outputs <- function(expr) {
         invokeRestart("muffleMessage")
       })
   }, type = "output")
-  list(result = res, messages = do.call(rbind, logs), output = output)
+  list(result = res, messages = do.call(c, logs$message), warnings = do.call(c, logs$warning), output = output)
 }
 
 
@@ -367,8 +406,12 @@ compute_results_single <- function(params_and_generated, backend, cores,
   if(is.null(res$error)) {
     error_stats <- tryCatch( {
       res$stats <- SBC::statistics_from_single_fit(res$fit, parameters = parameters, thin_ranks = thin_ranks)
-      res$backend_diagnostics <-SBC::SBC_fit_to_diagnostics(fit, res$outuput, res$messages)
+      res$backend_diagnostics <-SBC::SBC_fit_to_diagnostics(fit, res$outuput, res$messages, res$warnings)
+      NULL
     }, error = identity)
+    if(!is.null(error_stats)) {
+      res$error <- error_stats
+    }
   } else {
     res$stats <- NULL
     res$backend_diagnostics <- NULL
@@ -520,11 +563,11 @@ summary.SBC_results <- function(x) {
     n_errors = sum(!purrr::map_lgl(x$errors, is.null)),
     n_warnings = sum(purrr::map_lgl(x$messages, ~ !is.null(.x) && any(x$type == "warning"))),
     n_high_rhat = sum(x$default_diagnostics$max_rhat > 1.01),
-    max_max_rhat = max(x$default_diagnostics$max_rhat),
+    max_max_rhat = max(c(-Inf, x$default_diagnostics$max_rhat)),
     n_low_ess_to_rank = sum(is.na(x$default_diagnostics$min_ess_to_rank) | x$default_diagnostics$min_ess_to_rank < 0.5),
-    min_min_ess_bulk = min(x$default_diagnostics$min_ess_bulk),
-    min_min_ess_tail = min(x$default_diagnostics$min_ess_tail)
-    )
+    min_min_ess_bulk = min(c(Inf, x$default_diagnostics$min_ess_bulk)),
+    min_min_ess_tail = min(c(Inf, x$default_diagnostics$min_ess_tail))
+  )
   if(!is.null(x$backend_diagnostics)) {
     summ$backend_diagnostics <- summary(x$backend_diagnostics)
   } else {
