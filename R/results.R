@@ -688,7 +688,7 @@ get_diagnostics_messages.SBC_results_summary <- function(x) {
   if(x$n_low_ess_to_rank > 0) {
     msg <- paste0(x$n_low_ess_to_rank, " (", round(100 * x$n_low_ess_to_rank / x$n_fits), "%) fits had tail ESS undefined or less than ",
                   "half of the maximum rank, potentially skewing the rank statistics. The lowest tail ESS was ", round(x$min_min_ess_tail),
-                  ".\n If the fits look good otherwise, increasing `thin_ranks` or number of posterior samples and recomputing might help.")
+                  ".\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_statistcs) or number of posterior samples (by refitting) might help.")
     message_list[[i]] <- data.frame(ok = FALSE, message = msg)
   } else {
     message_list[[i]] <- data.frame(ok = TRUE, message = "All fits had tail ESS > half of the maximum rank.")

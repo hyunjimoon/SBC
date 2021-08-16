@@ -4,7 +4,26 @@ output: html_notebook
 ---
 
 ```{r setup, include = FALSE}
-library(SBC); library(cmdstanr)
+library(SBC); 
+library(ggplot2)
+
+use_cmdstanr <- TRUE # Set to false to use rstan instead
+
+if(use_cmdstanr) {
+  library(cmdstanr)
+} else {
+  library(rstan)
+}
+
+# Multiprocessing support
+library(future)
+plan(multisession)
+
+# The fits are very fast and we fit just a few, 
+# so we force a minimum chunk size to reduce overhead of
+# paralellization and decrease computation time.
+options(SBC.min_chunk_size = 5)
+
 ```
 
 Model from:
@@ -47,106 +66,131 @@ generated quantities {
 }
 "
 
-model_1 <- cmdstan_model(write_stan_file(stan_code_1))
-
-
-
-sbc_obj_1 <- SBCModel$new(name = "change_point", stan_model = model_1)
-
-
-```
-
-```{r}
-set.seed(5846502)
-n_datasets <- 30
-thin <- 4
-
-T <- 5
-r_e <- 0.5
-r_l <- 0.1
-
-hyperpriors <- list("e" = function(){rexp(1, r_e)},
-                    "l" = function() { rexp(1, r_l)},
-                    "s" = function() { purrr::rdunif(1, a = 1, b = T)}
-                    )
-
-theta_prior <- sbc_obj_1$sample_theta_tilde(list("e", "l", "s"), n_datasets, hyperpriors)
-
-sampled_y <- array(NA_real_, dim = c(n_datasets, T))
-for(n in 1:n_datasets) {
-  for(t in 1:T) {
-    if(t <= theta_prior$s[n]) {
-      rate <- theta_prior$e[n]
-    } else {
-      rate <- theta_prior$l[n]
-    }
-    sampled_y[n, t] <- rpois(1, rate) 
-  }
+if(use_cmdstanr) {
+  model_1 <- cmdstan_model(write_stan_file(stan_code_1))
+  backend_1 <- cmdstan_sample_SBC_backend(model_1)
+} else {
+  model_1 <- stan_model(model_code = stan_code_1)
+  backend_1 <- rstan_sample_SBC_backend(model_1)
 }
 
 
+
+
+```
+```{r}
+generate_single_dataset_1 <- function(T, r_e, r_l) {
+  e <- rexp(1, r_e)
+  l <- rexp(1, r_l)
+  s <- sample.int(T, size = 1)
+  
+  y <- array(NA_real_, T)
+  for(t in 1:T) {
+    if(t <= s) {
+      rate <- e
+    } else {
+      rate <- l
+    }
+    y[t] <- rpois(1, rate) 
+  }
+  
+  list(
+    parameters = list(
+      e = e, l = l, s = s
+    ), generated = list(
+      T = T,
+      r_e = r_e,
+      r_l = r_l,
+      y = y
+    )
+  )
+}
+
+generator_1 <- function_SBC_generator(generate_single_dataset_1, T = 5, r_e = 0.5, r_l = 0.1)
+```
+
+
+```{r}
+set.seed(85394672)
+datasets_1 <- generate_datasets(generator_1, 30)
+
 ```
 
 ```{r}
-data <- list(T=T, r_e = r_e, r_l = r_l)
-
-theta_post <- sbc_obj_1$sample_theta_bar_y(sampled_y, data=data, pars=list("e", "l", "s"), fit_iter = 400)
+results_1 <- compute_results(datasets_1, backend_1)
 ```
+TODO the diagnostics are false positives, because Rhat and ESS don't work very well for discrete parameters.
+We need to figure out how to handle this better.
 
-Let's look at the plots
+We can quickly note that the statistics for the `s` parameter are extreme - many ranks of 0 and _extreme_ z-scores, including -Infinity. Seing just one or two such fits should be enough to convince us that there is something fundamentally wrong.
 
 ```{r}
-rank <- calculate_rank(theta_prior, theta_post, thin = thin) 
-plot_hist(rank, "e")
-plot_hist(rank, "l")
-plot_hist(rank, "s")
-plot_ecdf(rank, "e")
-plot_ecdf(rank, "l")
-plot_ecdf(rank, "s")
+dplyr::filter(results_1$stats, parameter == "s") 
 ```
-We'll note that the discrete `s` parameter looks problematic. Did we get our marginalization wrong? After some inspection, you may notice that the simulator does not match the model - the model takes the early rate (`e`) for points `t < s` while the simulator takes `e` for points `t <=  s`, so there is effectively a shift by one time point between the simulator and the model. So let's assume that we belive that the model is in fact right, so we updated the simulator to match the model:
+
+
+Inspecting the statistics shows that quite often, the model is quite sure of the value of `s` while the simulated value is just one less. 
+
+Looking at the ecdf_diff plot we see that this seems to compromise heavily the inference for `s`, but the other parmaters do not show such bad behaviour.
+
+```{r}
+plot_ecdf_diff(results_1)
+```
+
+So what happened? After some inspection, you may notice that the simulator does not match the model - the model takes the early rate (`e`) for points `t < s` while the simulator takes `e` for points `t <=  s`, so there is effectively a shift by one time point between the simulator and the model. So let's assume that we beleive that the Stan model is in fact right. We therfore updated the simulator to match the model:
+
+
+```{r}
+generate_single_dataset_2 <- function(T, r_e, r_l) {
+  e <- rexp(1, r_e)
+  l <- rexp(1, r_l)
+  s <- sample.int(T, size = 1)
+  
+  y <- array(NA_real_, T)
+  for(t in 1:T) {
+    if(t < s) { ### <--- Only change here
+      rate <- e
+    } else {
+      rate <- l
+    }
+    y[t] <- rpois(1, rate) 
+  }
+  
+  list(
+    parameters = list(
+      e = e, l = l, s = s
+    ), generated = list(
+      T = T,
+      r_e = r_e,
+      r_l = r_l,
+      y = y
+    )
+  )
+}
+
+generator_2 <- function_SBC_generator(generate_single_dataset_2, T = 5, r_e = 0.5, r_l = 0.1)
+```
+
+
 
 ```{r}
 set.seed(5846502)
-
-hyperpriors <- list("e" = function(){rexp(1, r_e)},
-                    "l" = function() { rexp(1, r_l)},
-                    "s" = function() { purrr::rdunif(1, a = 1, b = T)}
-                    )
-
-theta_prior <- sbc_obj_1$sample_theta_tilde(list("e", "l", "s"), n_datasets, hyperpriors)
-
-sampled_y <- array(NA_real_, dim = c(n_datasets, T))
-for(n in 1:n_datasets) {
-  for(t in 1:T) {
-    if(t < theta_prior$s[n]) {
-      rate <- theta_prior$e[n]
-    } else {
-      rate <- theta_prior$l[n]
-    }
-    sampled_y[n, t] <- rpois(1, rate) 
-  }
-}
-
-
+datasets_2 <- generate_datasets(generator_2, 30)
+results_2 <- compute_results(datasets_2, backend_1)
+plot_ecdf_diff(results_2)
 ```
 
-And rerun SBC.
+Looks good, so let us add some more SBC steps to make sure the model behaves well.
 
 ```{r}
-data <- list(T=T, r_e = r_e, r_l = r_l)
+set.seed(54321488)
+datasets_3 <- generate_datasets(generator_2, 100)
+results_3 <- compute_results(datasets_3, backend_1)
 
-theta_post <- sbc_obj_1$sample_theta_bar_y(sampled_y, data=data, pars=list("e", "l", "s"), fit_iter = 400)
+results_all <- bind_results(results_2, results_3)
+plot_ecdf_diff(results_all)
 ```
 
 
-```{r}
-rank <- calculate_rank(theta_prior, theta_post, thin = thin) 
-plot_hist(rank, "e")
-plot_hist(rank, "l")
-plot_hist(rank, "s")
-plot_ecdf(rank, "e")
-plot_ecdf(rank, "l")
-plot_ecdf(rank, "s")
-```
-Now - as far as this amount of iterations can see, the model is good and we get good behaviour for both the continuous and the discrete parameters.
+Now - as far as this amount of SBC steps can see, the model is good and we get good behaviour for both the continuous and the discrete parameters.
+
