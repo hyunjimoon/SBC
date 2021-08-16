@@ -1,0 +1,152 @@
+---
+title: "SBC with discrete parameters"
+output: html_notebook
+---
+
+```{r setup, include = FALSE}
+library(SBC); library(cmdstanr)
+```
+
+Model from:
+https://mc-stan.org/docs/2_26/stan-users-guide/change-point-section.html
+
+
+```{r}
+stan_code_1 <- "
+data {
+  real<lower=0> r_e;
+  real<lower=0> r_l;
+
+  int<lower=1> T;
+  int<lower=0> y[T];
+}
+transformed data {
+  real log_unif;
+  log_unif = -log(T);
+}
+parameters {
+  real<lower=0> e;
+  real<lower=0> l;
+}
+transformed parameters {
+  vector[T] lp;
+  lp = rep_vector(log_unif, T);
+  for (s in 1:T)
+    for (t in 1:T)
+      lp[s] = lp[s] + poisson_lpmf(y[t] | t < s ? e : l);
+}
+model {
+  e ~ exponential(r_e);
+  l ~ exponential(r_l);
+  target += log_sum_exp(lp);
+}
+
+generated quantities {
+  int<lower=1,upper=T> s;
+  s = categorical_logit_rng(lp);
+}
+"
+
+model_1 <- cmdstan_model(write_stan_file(stan_code_1))
+
+
+
+sbc_obj_1 <- SBCModel$new(name = "change_point", stan_model = model_1)
+
+
+```
+
+```{r}
+set.seed(5846502)
+n_datasets <- 30
+thin <- 4
+
+T <- 5
+r_e <- 0.5
+r_l <- 0.1
+
+hyperpriors <- list("e" = function(){rexp(1, r_e)},
+                    "l" = function() { rexp(1, r_l)},
+                    "s" = function() { purrr::rdunif(1, a = 1, b = T)}
+                    )
+
+theta_prior <- sbc_obj_1$sample_theta_tilde(list("e", "l", "s"), n_datasets, hyperpriors)
+
+sampled_y <- array(NA_real_, dim = c(n_datasets, T))
+for(n in 1:n_datasets) {
+  for(t in 1:T) {
+    if(t <= theta_prior$s[n]) {
+      rate <- theta_prior$e[n]
+    } else {
+      rate <- theta_prior$l[n]
+    }
+    sampled_y[n, t] <- rpois(1, rate) 
+  }
+}
+
+
+```
+
+```{r}
+data <- list(T=T, r_e = r_e, r_l = r_l)
+
+theta_post <- sbc_obj_1$sample_theta_bar_y(sampled_y, data=data, pars=list("e", "l", "s"), fit_iter = 400)
+```
+
+Let's look at the plots
+
+```{r}
+rank <- calculate_rank(theta_prior, theta_post, thin = thin) 
+plot_hist(rank, "e")
+plot_hist(rank, "l")
+plot_hist(rank, "s")
+plot_ecdf(rank, "e")
+plot_ecdf(rank, "l")
+plot_ecdf(rank, "s")
+```
+We'll note that the discrete `s` parameter looks problematic. Did we get our marginalization wrong? After some inspection, you may notice that the simulator does not match the model - the model takes the early rate (`e`) for points `t < s` while the simulator takes `e` for points `t <=  s`, so there is effectively a shift by one time point between the simulator and the model. So let's assume that we belive that the model is in fact right, so we updated the simulator to match the model:
+
+```{r}
+set.seed(5846502)
+
+hyperpriors <- list("e" = function(){rexp(1, r_e)},
+                    "l" = function() { rexp(1, r_l)},
+                    "s" = function() { purrr::rdunif(1, a = 1, b = T)}
+                    )
+
+theta_prior <- sbc_obj_1$sample_theta_tilde(list("e", "l", "s"), n_datasets, hyperpriors)
+
+sampled_y <- array(NA_real_, dim = c(n_datasets, T))
+for(n in 1:n_datasets) {
+  for(t in 1:T) {
+    if(t < theta_prior$s[n]) {
+      rate <- theta_prior$e[n]
+    } else {
+      rate <- theta_prior$l[n]
+    }
+    sampled_y[n, t] <- rpois(1, rate) 
+  }
+}
+
+
+```
+
+And rerun SBC.
+
+```{r}
+data <- list(T=T, r_e = r_e, r_l = r_l)
+
+theta_post <- sbc_obj_1$sample_theta_bar_y(sampled_y, data=data, pars=list("e", "l", "s"), fit_iter = 400)
+```
+
+
+```{r}
+rank <- calculate_rank(theta_prior, theta_post, thin = thin) 
+plot_hist(rank, "e")
+plot_hist(rank, "l")
+plot_hist(rank, "s")
+plot_ecdf(rank, "e")
+plot_ecdf(rank, "l")
+plot_ecdf(rank, "s")
+```
+Now - as far as this amount of iterations can see, the model is good and we get good behaviour for both the continuous and the discrete parameters.
