@@ -216,10 +216,10 @@ data_for_ecdf_plots.SBC_results <- function(x, parameters = NULL,
     stop("Not all varaibles have the same number of ranks")
   }
 
-  rank <- dplyr::select(stats, run_id, parameter, rank)
+  rank <- dplyr::select(stats, dataset_id, parameter, rank)
   rank_matrix <- tidyr::pivot_wider(rank, names_from = "parameter",
                                               values_from = "rank")
-  rank_matrix <- as.matrix(dplyr::select(rank_matrix, -run_id))
+  rank_matrix <- as.matrix(dplyr::select(rank_matrix, -dataset_id))
 
 
   data_for_ecdf_plots(rank_matrix, max_rank = stats$max_rank[1], prob = prob,

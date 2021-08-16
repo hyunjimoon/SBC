@@ -15,7 +15,7 @@ SBC_results <- function(stats,
 }
 
 compute_default_diagnostics <- function(stats) {
-  dplyr::summarise(dplyr::group_by(stats, run_id),
+  dplyr::summarise(dplyr::group_by(stats, dataset_id),
                    n_params = dplyr::n(),
                    max_rhat = max(c(-Inf, rhat)),
                    min_ess_bulk = min(c(Inf, ess_bulk)),
@@ -49,13 +49,13 @@ validate_SBC_results <- function(x) {
   }
 
   if(nrow(x$stats) > 0) {
-    if(!is.numeric(x$stats$run_id)) {
-      stop("The run_id column of stats needs to be a number.")
+    if(!is.numeric(x$stats$dataset_id)) {
+      stop("The dataset_id column of stats needs to be a number.")
     }
 
 
-    if(min(x$stats$run_id) < 1 || max(x$stats$run_id) > length(x$fits)) {
-      stop("stats$run_id values must be between 1 and number of fits")
+    if(min(x$stats$dataset_id) < 1 || max(x$stats$dataset_id) > length(x$fits)) {
+      stop("stats$dataset_id values must be between 1 and number of fits")
     }
   }
 
@@ -78,24 +78,24 @@ validate_SBC_results <- function(x) {
   }
 
   if(!is.null(x$backend_diagnostics) && nrow(x$backend_diagnostics) > 0) {
-    if(!is.numeric(x$backend_diagnostics$run_id)) {
-      stop("The run_id column of 'backend_diagnostics' needs to be a number.")
+    if(!is.numeric(x$backend_diagnostics$dataset_id)) {
+      stop("The dataset_id column of 'backend_diagnostics' needs to be a number.")
     }
 
 
-    if(min(x$backend_diagnostics$run_id) < 1 || max(x$backend_diagnostics$run_id > length(x$fits))) {
-      stop("backend_diagnostics$run_id values must be between 1 and number of fits")
+    if(min(x$backend_diagnostics$dataset_id) < 1 || max(x$backend_diagnostics$dataset_id > length(x$fits))) {
+      stop("backend_diagnostics$dataset_id values must be between 1 and number of fits")
     }
   }
 
   if(nrow(x$default_diagnostics) > 0) {
-    if(!is.numeric(x$default_diagnostics$run_id)) {
-      stop("The run_id column of 'default_diagnostics' needs to be a number.")
+    if(!is.numeric(x$default_diagnostics$dataset_id)) {
+      stop("The dataset_id column of 'default_diagnostics' needs to be a number.")
     }
 
 
-    if(min(x$default_diagnostics$run_id) < 1 || max(x$default_diagnostics$run_id > length(x$fits))) {
-      stop("default_diagnostics$run_id values must be between 1 and number of fits")
+    if(min(x$default_diagnostics$dataset_id) < 1 || max(x$default_diagnostics$dataset_id > length(x$fits))) {
+      stop("default_diagnostics$dataset_id values must be between 1 and number of fits")
     }
   }
 
@@ -125,28 +125,28 @@ bind_results <- function(...) {
   warnings_list <- purrr::map(args, function(x) x$warnings)
   outputs_list <- purrr::map(args, function(x) x$outputs)
 
-  # Ensure unique run_ids
-  max_ids <- as.numeric(purrr::map(stats_list, function(x) max(x$run_id)))
+  # Ensure unique dataset_ids
+  max_ids <- as.numeric(purrr::map(stats_list, function(x) max(x$dataset_id)))
   shifts <- c(0, max_ids[1:(length(max_ids)) - 1])
 
-  shift_run_id <- function(x, shift) {
+  shift_dataset_id <- function(x, shift) {
     if(is.null(x)) {
       x
     } else {
-      dplyr::mutate(x, run_id = run_id + shift)
+      dplyr::mutate(x, dataset_id = dataset_id + shift)
     }
   }
 
   bind_and_rearrange_df <- function(df_list) {
     dplyr::arrange(
       do.call(rbind, df_list),
-      run_id
+      dataset_id
     )
   }
 
-  stats_list <- purrr::map2(stats_list, shifts, shift_run_id)
-  backend_diagnostics_list <- purrr::map2(backend_diagnostics_list, shifts, shift_run_id)
-  default_diagnostics_list <- purrr::map2(default_diagnostics_list, shifts, shift_run_id)
+  stats_list <- purrr::map2(stats_list, shifts, shift_dataset_id)
+  backend_diagnostics_list <- purrr::map2(backend_diagnostics_list, shifts, shift_dataset_id)
+  default_diagnostics_list <- purrr::map2(default_diagnostics_list, shifts, shift_dataset_id)
 
   SBC_results(stats = bind_and_rearrange_df(stats_list),
               fits = do.call(c, fits_list),
@@ -180,9 +180,9 @@ length.SBC_results <- function(x) {
     if(is.null(df)) {
       NULL
     }
-    filtered <- dplyr::filter(df, run_id %in% indices_to_keep)
-    remapped <- dplyr::mutate(filtered, run_id = index_map[as.character(run_id)])
-    dplyr::arrange(remapped, run_id)
+    filtered <- dplyr::filter(df, dataset_id %in% indices_to_keep)
+    remapped <- dplyr::mutate(filtered, dataset_id = index_map[as.character(dataset_id)])
+    dplyr::arrange(remapped, dataset_id)
   }
 
   SBC_results(stats = subset_run_df(x$stats),
@@ -247,9 +247,9 @@ compute_results <- function(datasets, backend,
         fits[[i]] <- results_raw[[i]]$fit
       }
       stats_list[[i]] <- results_raw[[i]]$stats
-      stats_list[[i]]$run_id <- i
+      stats_list[[i]]$dataset_id <- i
       backend_diagnostics_list[[i]] <- results_raw[[i]]$backend_diagnostics
-      backend_diagnostics_list[[i]]$run_id <- i
+      backend_diagnostics_list[[i]]$dataset_id <- i
     }
     else {
       if(n_errors < max_errors_to_show) {
@@ -301,7 +301,7 @@ compute_results <- function(datasets, backend,
     check_stats(stats, datasets)
   } else {
     # Return dummy stats that let the rest of the code work.
-    stats <- data.frame(run_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
+    stats <- data.frame(dataset_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
                         ess_tail = numeric(0),
                         rank = integer(0), simulated_value = numeric(0), max_rank = integer(0))
   }
@@ -459,7 +459,7 @@ check_stats <- function(stats, datasets) {
   }
 
   all_pars <- dplyr::summarise(
-    dplyr::group_by(stats, run_id),
+    dplyr::group_by(stats, dataset_id),
     all_pars = paste0(parameter, collapse = ","), .groups = "drop")
   if(length(unique(all_pars$all_pars)) != 1) {
     warning("Not all fits share the same parameters")
@@ -504,7 +504,7 @@ recompute_statistics <- function(old_results, datasets, thin_ranks = 10) {
       new_stats_list[[i]] <- statistics_from_single_fit(old_results$fits[[i]],
                                                         parameters = parameters,
                                                         thin_ranks = thin_ranks)
-      new_stats_list[[i]]$run_id <- i
+      new_stats_list[[i]]$dataset_id <- i
 
     }
   }

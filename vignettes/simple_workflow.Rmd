@@ -208,14 +208,15 @@ For more details see the `rejection_sampling` vignette.
 So let us subset the results:
 
 ```{r}
-# Tidy version
-run_ids_to_keep <- results_fixed_ordered$backend_diagnostics %>% 
-  dplyr::filter(n_divergent == 0) %>%
-  dplyr::pull(run_id)
-# Equivalent base R code
-run_ids_to_keep <- results_fixed_ordered$backend_diagnostics$run_id[results_fixed_ordered$backend_diagnostics$n_divergent == 0]
+dataset_ids_to_keep <- results_fixed_ordered$backend_diagnostics$dataset_id[results_fixed_ordered$backend_diagnostics$n_divergent == 0]
 
-results_fixed_ordered_subset <- results_fixed_ordered[run_ids_to_keep]
+# Equivalent tidy version if you prefer
+# dataset_ids_to_keep <- results_fixed_ordered$backend_diagnostics %>% 
+#   dplyr::filter(n_divergent == 0) %>%
+#   dplyr::pull(dataset_id)
+
+
+results_fixed_ordered_subset <- results_fixed_ordered[dataset_ids_to_keep]
 summary(results_fixed_ordered_subset)
 ```
 
@@ -234,12 +235,12 @@ results_fixed_ordered_100 <- compute_results(datasets_ordered_100, backend_fixed
 Once again we subset to keep only non-divergent fits
 
 ```{r}
-run_ids_to_keep <- results_fixed_ordered_100$backend_diagnostics %>% 
+dataset_ids_to_keep <- results_fixed_ordered_100$backend_diagnostics %>% 
   dplyr::filter(n_divergent == 0) %>%
-  dplyr::pull(run_id)
+  dplyr::pull(dataset_id)
 
 
-results_fixed_ordered_100_subset <- results_fixed_ordered_100[run_ids_to_keep]
+results_fixed_ordered_100_subset <- results_fixed_ordered_100[dataset_ids_to_keep]
 summary(results_fixed_ordered_100_subset)
 ```
 
