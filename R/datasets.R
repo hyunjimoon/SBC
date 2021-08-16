@@ -220,13 +220,13 @@ generate_datasets.brms_SBC_generator <- function(generator, n_datasets) {
       max_rhat <- max(summ$rhat)
       if(max_rhat > 1.01) {
         message("Warning: Some rhats are > 1.01 indicating the prior was not explored well.\n",
-                "The highest rhat is ", round(max_rhat, 2)," for ", summ$variable[which.max(summ$rhat)],
+                "The highest rhat is ", round(max_rhat, 2)," for ", summ$parameter[which.max(summ$rhat)],
                 "\nConsider adding warmup iterations (via 'warmup' argument).")
       }
       min_ess <- min(summ$ess_bulk)
       if(min_ess < n_datasets / 2) {
         message("Warning: Bulk effective sample size for some parameters is less than half the number of datasets.\n",
-                "The lowest ESS_bulk/n_datasets is ", round(min_ess / n_datasets, 2)," for ", summ$variable[which.min(summ$ess_bulk)],
+                "The lowest ESS_bulk/n_datasets is ", round(min_ess / n_datasets, 2)," for ", summ$parameter[which.min(summ$ess_bulk)],
                 "\nConsider increased thinning  (via 'thin' argument) .")
       }
 

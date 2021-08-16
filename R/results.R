@@ -298,32 +298,7 @@ compute_results <- function(datasets, backend,
   backend_diagnostics <- do.call(rbind, backend_diagnostics_list)
 
   if(!is.null(stats)) {
-
-    unique_max_ranks <- unique(stats$max_rank)
-    if(length(unique_max_ranks) != 1) {
-      warning("Differening max_rank across fits")
-    }
-
-    if(min(unique_max_ranks) < 50) {
-      warning("Ranks were computed from fewer than 50 samples, the SBC checks will have low ",
-              "precision.\nYou may need to increase the number of samples from the backend and make sure that ",
-              "the combination of thinning in the backend and `thin_ranks` is sensible.\n",
-              "Currently thin_ranks = ", thin_ranks, ".")
-
-    }
-
-    all_vars <- dplyr::summarise(
-      dplyr::group_by(stats, run_id),
-      all_vars = paste0(variable, collapse = ","), .groups = "drop")
-    if(length(unique(all_vars$all_vars)) != 1) {
-      warning("Not all fits share the same variables")
-    }
-
-    missing_vars <- setdiff(posterior::variables(datasets$parameters), stats$variable)
-    if(length(missing_vars) > 0) {
-      warning("Some variables missing in fits: ", paste0(missing_vars, collapse = ", "))
-
-    }
+    check_stats(stats, datasets)
   } else {
     # Return dummy stats that let the rest of the code work.
     stats <- data.frame(run_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
@@ -437,24 +412,25 @@ compute_results_single <- function(params_and_generated, backend, cores,
 statistics_from_single_fit <- function(fit, parameters, thin_ranks) {
   fit_matrix <- SBC_fit_to_draws_matrix(fit)
 
-  shared_vars <- intersect(posterior::variables(parameters),
+  shared_pars <- intersect(posterior::variables(parameters),
                            posterior::variables(fit_matrix))
 
 
-  # Make sure the order of variables matches
-  parameters <- posterior::subset_draws(parameters, variable = shared_vars)
+  # Make sure the order of parameters matches
+  parameters <- posterior::subset_draws(parameters, variable = shared_pars)
 
 
-  fit_matrix <- posterior::subset_draws(fit_matrix, variable = shared_vars)
+  fit_matrix <- posterior::subset_draws(fit_matrix, variable = shared_pars)
 
   fit_thinned <- posterior::thin_draws(fit_matrix, thin_ranks)
 
 
   stats <- posterior::summarise_draws(fit_matrix)
+  stats <- dplyr::rename(stats, parameter = variable)
   stats$simulated_value <- as.numeric(parameters)
 
   ranks <- calculate_ranks_draws_matrix(parameters, fit_thinned)
-  if(!identical(stats$variable, names(ranks))) {
+  if(!identical(stats$parameter, names(ranks))) {
     stop("A naming conflict")
   }
   stats$rank <- ranks
@@ -462,9 +438,91 @@ statistics_from_single_fit <- function(fit, parameters, thin_ranks) {
   stats$z_score <- (stats$simulated_value - stats$mean) / stats$sd
 
   stats <- dplyr::select(
-    stats, simulated_value, rank, z_score, tidyselect::everything())
+    stats, parameter, simulated_value, rank, z_score, tidyselect::everything())
 
   stats
+}
+
+# check that the computed stats data frame hs problems
+check_stats <- function(stats, datasets) {
+  unique_max_ranks <- unique(stats$max_rank)
+  if(length(unique_max_ranks) != 1) {
+    warning("Differening max_rank across fits")
+  }
+
+  if(min(unique_max_ranks) < 50) {
+    warning("Ranks were computed from fewer than 50 samples, the SBC checks will have low ",
+            "precision.\nYou may need to increase the number of samples from the backend and make sure that ",
+            "the combination of thinning in the backend and `thin_ranks` is sensible.\n",
+            "Currently thin_ranks = ", thin_ranks, ".")
+
+  }
+
+  all_pars <- dplyr::summarise(
+    dplyr::group_by(stats, run_id),
+    all_pars = paste0(parameter, collapse = ","), .groups = "drop")
+  if(length(unique(all_pars$all_pars)) != 1) {
+    warning("Not all fits share the same parameters")
+  }
+
+  missing_pars <- setdiff(posterior::variables(datasets$parameters), stats$parameter)
+  if(length(missing_pars) > 0) {
+    warning("Some parameters missing in fits: ", paste0(missing_pars, collapse = ", "))
+
+  }
+}
+
+#' Recompute SBC statistics without refitting models.
+#'
+#' Useful for example to recompute SBC ranks with a different choice of `thin_ranks`
+#' @return An S3 object of class `SBC_results` with updated `$stats` and `$default_diagnostics` fields.
+#' @export
+recompute_statistics <- function(old_results, datasets, thin_ranks = 10) {
+  validate_SBC_results(old_results)
+  validate_SBC_datasets(datasets)
+
+  if(length(old_results) != length(datasets)) {
+    stop("The number of fits in old_results does not match the number of datasets")
+  }
+
+  new_results <- old_results
+  missing_fits <- purrr::map_lgl(old_results$fits, is.null)
+  errors <- ! purrr::map_lgl(old_results$errors, is.null)
+  if(all(errors)) {
+    stop("All fits resulted in an error, cannot recompute")
+  }
+  else if(all(missing_fits)) {
+    stop("No raw fits preserved, cannot recompute. Maybe the results were computed with keep_fits = FALSE?")
+  } else if(any(missing_fits & !errors)) {
+    warning("Some raw fits not available. Those fits will be ignored when recomputing statistics")
+  }
+
+  new_stats_list <- list()
+  for(i in 1:length(old_results)) {
+    if(!is.null(old_results$fits[[i]])) {
+      parameters <- posterior::subset_draws(datasets$parameters, draw = i)
+      new_stats_list[[i]] <- statistics_from_single_fit(old_results$fits[[i]],
+                                                        parameters = parameters,
+                                                        thin_ranks = thin_ranks)
+      new_stats_list[[i]]$run_id <- i
+
+    }
+  }
+
+  new_stats <- do.call(rbind, new_stats_list)
+  check_stats(new_stats, datasets)
+
+  new_results$stats <- new_stats
+
+  new_results$default_diagnostics <-  tryCatch(
+    { compute_default_diagnostics(new_stats) },
+    error = function(e) { warning("Error when computing param diagnostics. ", e); NULL })
+
+
+  check_all_SBC_diagnostics(new_results)
+
+  new_results
+
 }
 
 #' Discrete uniform distribution allowing for varying lower and upper bounds.
@@ -580,7 +638,7 @@ summary.SBC_results <- function(x) {
     n_fits = length(x$fits),
     n_errors = sum(!purrr::map_lgl(x$errors, is.null)),
     n_warnings = sum(purrr::map_lgl(x$messages, ~ !is.null(.x) && any(x$type == "warning"))),
-    n_high_rhat = sum(x$default_diagnostics$max_rhat > 1.01),
+    n_high_rhat = sum(is.na(x$default_diagnostics$max_rhat) | x$default_diagnostics$max_rhat > 1.01),
     max_max_rhat = max(c(-Inf, x$default_diagnostics$max_rhat)),
     n_low_ess_to_rank = sum(is.na(x$default_diagnostics$min_ess_to_rank) | x$default_diagnostics$min_ess_to_rank < 0.5),
     min_min_ess_bulk = min(c(Inf, x$default_diagnostics$min_ess_bulk)),

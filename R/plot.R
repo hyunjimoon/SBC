@@ -68,7 +68,7 @@ plot_hist <- function(ranks, par, bins=20){
 #'   'K = ncol(yrep)', or lastly to 'K = ncol(pit)' depending on which one is
 #'   provided.
 plot_ecdf <- function(x,
-                      variables = NULL,
+                      parameters = NULL,
                       K = NULL,
                       gamma = NULL,
                       prob = 0.95,
@@ -76,7 +76,7 @@ plot_ecdf <- function(x,
                       alpha = 0.33) {
 
   ecdf_data <-
-    data_for_ecdf_plots(x, variables = variables,
+    data_for_ecdf_plots(x, parameters = parameters,
                         prob = prob, K = K, gamma = gamma)
 
   N <- ecdf_data$N
@@ -124,20 +124,20 @@ plot_ecdf <- function(x,
     ) +
     xlab(NULL) +
     ylab(NULL) +
-    facet_wrap(~ variable)
+    facet_wrap(~ parameter)
 }
 
 #' @export
 #' @rdname ECDF-plots
 plot_ecdf_diff <- function(x,
-                           variables = NULL,
+                           parameters = NULL,
                            K = NULL,
                            gamma = NULL,
                            prob = 0.95,
                            size = 1,
                            alpha = 0.33) {
   ecdf_data <-
-    data_for_ecdf_plots(x, variables = variables,
+    data_for_ecdf_plots(x, parameters = parameters,
                         prob = prob, K = K, gamma = gamma)
 
   N <- ecdf_data$N
@@ -182,7 +182,7 @@ plot_ecdf_diff <- function(x,
     ) +
     xlab(NULL) +
     ylab(NULL) +
-    facet_wrap(~ variable)
+    facet_wrap(~ parameter)
 }
 
 
@@ -198,26 +198,26 @@ data_for_ecdf_plots <- function(x, ...,
 }
 
 
-data_for_ecdf_plots.SBC_results <- function(x, variables = NULL,
+data_for_ecdf_plots.SBC_results <- function(x, parameters = NULL,
                                                     prob = 0.95,
                                                     gamma = NULL,
                                                     K = NULL) {
   stats <- x$stats
-  if(!is.null(variables)) {
-    stats <- dplyr::filter(stats, variable %in% variables)
+  if(!is.null(parameters)) {
+    stats <- dplyr::filter(stats, parameter %in% parameters)
   }
 
   if(length(unique(stats$max_rank)) > 1) {
-    stop("Not all variables have the same max_rank")
+    stop("Not all parameters have the same max_rank")
   }
 
-  summ <- dplyr::summarise(dplyr::group_by(stats, variable), count = dplyr::n(), .groups = "drop")
+  summ <- dplyr::summarise(dplyr::group_by(stats, parameter), count = dplyr::n(), .groups = "drop")
   if(length(unique(summ$count)) > 1) {
     stop("Not all varaibles have the same number of ranks")
   }
 
-  rank <- dplyr::select(stats, run_id, variable, rank)
-  rank_matrix <- tidyr::pivot_wider(rank, names_from = "variable",
+  rank <- dplyr::select(stats, run_id, parameter, rank)
+  rank_matrix <- tidyr::pivot_wider(rank, names_from = "parameter",
                                               values_from = "rank")
   rank_matrix <- as.matrix(dplyr::select(rank_matrix, -run_id))
 
@@ -228,7 +228,7 @@ data_for_ecdf_plots.SBC_results <- function(x, variables = NULL,
 
 
 data_for_ecdf_plots.SBCWorkflow <- function(
-  x, variables = NULL,
+  x, parameters = NULL,
   prob = 0.95,
   gamma = NULL,
   K = NULL
@@ -280,7 +280,7 @@ data_for_ecdf_plots.matrix <- function(x,
 
   ecdf_df <- as.data.frame(ecdf_vals)
   ecdf_df$..z <- z
-  ecdf_df <- tidyr::pivot_longer(ecdf_df, -..z, names_to = "variable", values_to = "ecdf")
+  ecdf_df <- tidyr::pivot_longer(ecdf_df, -..z, names_to = "parameter", values_to = "ecdf")
   ecdf_df <- dplyr::rename(ecdf_df, z = ..z)
 
   structure(list(limits_df = limits_df, ecdf_df = ecdf_df, K = K, N = N, z = z),
