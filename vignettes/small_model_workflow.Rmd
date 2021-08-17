@@ -1,5 +1,5 @@
 ---
-title: "Small model workflow"
+title: "Simple model workflow"
 output: html_notebook
 ---
 
@@ -29,7 +29,7 @@ options(SBC.min_chunk_size = 5)
 ## Mixture component
 
 ```{r}
-model_first <- cmdstan_model("small_model_workflow/mixture_first.stan")
+model_first <- cmdstan_model("simple_workflow/mixture_first.stan")
 backend_first <- cmdstan_sample_SBC_backend(model_first) 
 ```
 
@@ -87,7 +87,7 @@ This might be puzzling but relates to bad usage of `log_mix` (TODO explain)
 ### Fixing mixture
 
 ```{r}
-model_fixed_log_mix <- cmdstan_model("small_model_workflow/mixture_fixed_log_mix.stan")
+model_fixed_log_mix <- cmdstan_model("simple_workflow/mixture_fixed_log_mix.stan")
 backend_fixed_log_mix <- cmdstan_sample_SBC_backend(model_fixed_log_mix)
 ```
 
@@ -128,7 +128,7 @@ We clearly see two modes. And upon reflection, it is not a lot surprising why: s
 We can easily fix the ordering of the `mu`s by using the `ordered` built-in type.
 
 ```{r}
-model_fixed_ordered <- cmdstan_model("small_model_workflow/mixture_fixed_ordered.stan")
+model_fixed_ordered <- cmdstan_model("simple_workflow/mixture_fixed_ordered.stan")
 backend_fixed_ordered <- cmdstan_sample_SBC_backend(model_fixed_ordered) 
 ```
 We also need to update the generator to match the new names and ordering constant:
@@ -261,7 +261,7 @@ Note: it turns out that extending the model to more components becomes somewhat 
 ## Beta regression component
 
 ```{r}
-model_beta_first <- cmdstan_model("small_model_workflow/beta_first.stan")
+model_beta_first <- cmdstan_model("simple_workflow/beta_first.stan")
 backend_beta_first <- cmdstan_sample_SBC_backend(model_beta_first) 
 
 ```
