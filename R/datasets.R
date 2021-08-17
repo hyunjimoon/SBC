@@ -29,7 +29,15 @@ validate_SBC_datasets <- function(x) {
   x
 }
 
-#' Create new datasets object
+#' Create new `SBC_datasets` object.
+#'
+#' In most cases, you may want to use `generate_datasets` to build the object, but
+#' for full control, you can also create datasets directly via this function.
+#'
+#' @param parameters samples of "true" values of unobserved parameters.
+#' An object of class `draws_matrix` (from the `posterior` package)
+#' @param generated a list of objects that can be passed as data to the backend you plan to use.
+#' (e.g. list of values for Stan-based backends, a data frame for `brms_SBC_backend`)
 #' @export
 SBC_datasets <- function(parameters, generated) {
   x <-  new_SBC_datasets(parameters, generated)
@@ -43,6 +51,8 @@ length.SBC_datasets <- function(x) {
   posterior::ndraws(x$parameters)
 }
 
+#' Subset an `SBC_datasets` object.
+#'
 #' @export
 `[.SBC_datasets` <- function(x, indices) {
   validate_SBC_datasets(x)
@@ -68,7 +78,9 @@ bind_datasets <- function(...) {
 
 #' Generate datasets.
 #'
-#' @return object of class SBC_datasets
+#' @param generator a generator object - build e.g. via `function_SBC_generator` or
+#'  `brms_SBC_generator`.
+#' @return object of class `SBC_datasets`
 #' TODO: seed
 #' @export
 generate_datasets <- function(generator, n_datasets) {

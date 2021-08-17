@@ -174,6 +174,10 @@ length.SBC_results <- function(x) {
   length(x$fits)
 }
 
+#' Subset the results.
+#'
+#' @param indices integer indices or a binary vector of the same length as the number fits,
+#' selecting which fits to keep.
 #' @export
 `[.SBC_results` <- function(x, indices) {
   validate_SBC_results(x)
@@ -204,7 +208,38 @@ length.SBC_results <- function(x) {
 }
 
 
-#' Fit datasets and evaluate metrics.
+#' Fit datasets and evaluate diagnostics and SBC metrics.
+#'
+#' Parallel processing is supported via the `future` package, for most uses, it is most sensible
+#'  to just call `plan(multisession)` once in your R session and  all
+#'  cores your computer has will be used. For more details refer to the documentation
+#'  of the `future` package.
+#'
+#' @param datasets an object of class `SBC_datasets`
+#' @param backend the model + sampling algorithm. The built-in backends can be constructed
+#'   using `cmdstan_sample_SBC_backend()`, `rstan_sample_SBC_backend()` and `brms_SBC_backend()`.
+#'   (more to come). The backend is an S3 class supporting at least the `SBC_fit`,
+#'   `SBC_fit_to_draws_matrix` methods.
+#' @param cores_per_fit how many cores should the backend be allowed to use for a single fit?
+#'    Defaults to the maximum number that does not produce more parallel chains
+#'    than you have cores. See `default_cores_per_fit()`.
+#' @param keep_fits boolean, when `FALSE` full fits are discarded from memory -
+#'    reduces memory consumption and increases speed (when processing in parallel), but
+#'    prevents you from inspecting the fits and using `recompute_statistics()`.
+#'    We recommend to set to `TRUE` in early phases of workflow, when you run just a few fits.
+#'    Once the model is stable and you want to run a lot of iterations, we recommend setting
+#'    to `FALSE` (even for quite a simple model, 1000 fits can easily exhaust 32GB of RAM).
+#' @param thin_ranks how much thinning should be applied to posterior samples before computing
+#'    ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
+#'    thinned samples.
+#' @param chunk_size How many fits of `datasets` shall be processed in one batch
+#'    by the same worker. Relevant only when using parallel processing.
+#'    The larger the value, the smaller overhead there will be for parallel processing, but
+#'    the work may be distributed less equally across workers. We recommend setting this high
+#'    enough that a single batch takes at least several seconds, i.e. for small models,
+#'    you can often reduce computation time noticeably by increasing this value.
+#'    You can use `options(SBC.min_chunk_size = value)` to set a minimum chunk size globally.
+#'    See documentation of `future.chunk.size` argument for `future_lapply()` for more details.
 #' @return An object of class `SBC_results` that holds:
 #'   - `$stats` statistics for all parameters and fits (one row per parameter-fit combination)
 #'   - `$fits`  the raw fits (unless `keep_fits = FALSE`) or `NULL` if the fit failed
@@ -331,6 +366,12 @@ compute_results <- function(datasets, backend,
   res
 }
 
+#' Determines the default cores per single fit.
+#'
+#' When parallel processing is disabled, this just returns the number of available
+#' cores. Otherwise, it chooses the largest integer that keeps
+#' `cores_per_fit * (n_fits / chunk_size) <= total_cores`, i.e. it avoids
+#' running so many chains in parallel that there will be more chains than cores.
 #' @export
 default_cores_per_fit <- function(n_fits, total_cores = future::availableCores(),
                                   chunk_size = default_chunk_size(n_fits)) {
@@ -343,6 +384,12 @@ default_cores_per_fit <- function(n_fits, total_cores = future::availableCores()
   }
 }
 
+#' Determines the default chunk size.
+#'
+#' By default will make every worker process a single chunk.
+#' You can set the `options(SBC.min_chunk_size = value)` to enforce a minimum
+#' chunk size globally (chunk size can still be larger if you have substantially more
+#' fits to run than workers.
 #' @export
 default_chunk_size <- function(n_fits, n_workers = future::nbrOfWorkers()) {
   guess <- if(is.infinite(n_workers)) {
@@ -416,7 +463,14 @@ compute_results_single <- function(params_and_generated, backend, cores,
   res
 }
 
+#' Recompute SBC statistics given a single fit.
+#'
+#' Potentially useful for doing some advanced stuff, but should not
+#' be used in regular workflow. Use `recompute_statistics` to update
+#' an `SBC_results` objects with different `thin_ranks` or other settings.
+#'
 #' @export
+#' @seealso recompute_statistics
 statistics_from_single_fit <- function(fit, parameters, thin_ranks) {
   fit_matrix <- SBC_fit_to_draws_matrix(fit)
 
@@ -599,6 +653,10 @@ print.SBC_diagnostics_messages <- function(x, include_ok = TRUE, print_func = ca
   }
 }
 
+#' Get diagnostic messages for `SBC_results` or other objects.
+#'
+#' @export
+#' @return An object of class `SBC_diagnostics_messages`, inheriting a data.frame.
 get_diagnostics_messages <- function(x) {
   UseMethod("get_diagnostics_messages")
 }

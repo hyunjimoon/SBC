@@ -254,6 +254,7 @@ And combine with the previous fits to not waste our computational effort.
 results_fixed_ordered_combined <- bind_results(results_fixed_ordered_subset, results_fixed_ordered_100_subset)
 plot_ecdf_diff(results_fixed_ordered_combined)
 ```
+
 Seems fairly well within the expected bounds. We could definitely run more iterations if we wanted to have a more strict check, but for now, we are happy.
 
 Note: it turns out that extending the model to more components becomes somewhat tricky as the model can become sensitive to initialization and the problem of data that can be explained by fewer components than the model has becomes more prevalent.

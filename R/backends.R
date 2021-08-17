@@ -30,6 +30,12 @@ SBC_fit_to_diagnostics.default <- function(fit, fit_output, fit_messages, fit_wa
   NULL
 }
 
+#' SBC backend using the `sampling` method from `rstan`.
+#'
+#' @param model a `stanmodel` object (created via `rstan::stan_model`)
+#' @param ... other arguments passed to `sampling` (number of iterations, ...).
+#'   Arguments `data` and `cores` cannot be set this way as they need to be
+#'   controlled by the package.
 #' @export
 rstan_sample_SBC_backend <- function(model, ...) {
   stopifnot(inherits(model, "stanmodel"))
@@ -99,6 +105,9 @@ get_diagnostics_messages.SBC_nuts_diagnostics <- function(x) {
   get_diagnostics_messages(summary(x))
 }
 
+# Not currently used. Discussion at https://discourse.mc-stan.org/t/summarising-rhat-values-over-multiple-variables-fits/23957/
+# was helpful and need to figure out a better way to handle this.
+#
 # Use the Generalized extreme value distribution
 # to get a quantile of maximum of `n_vars` random values
 # distributed as N(1, 0.005).
@@ -195,6 +204,12 @@ print.SBC_nuts_diagnostics_summary <- function(x) {
   invisible(x)
 }
 
+#' Backend based on sampling via `cmdstanr`.
+#'
+#' @param model an object of class `CmdStanModel` (as created by `cmdstanr::cmdstan_model`)
+#' @param ... other arguments passed to the `$sample()` method of the model. The `data` and
+#'   `parallel_chains` arguments cannot be set this way as they need to be controlled by the SBC
+#'   package.
 #' @export
 cmdstan_sample_SBC_backend <- function(model, ...) {
   stopifnot(inherits(model, "CmdStanModel"))
@@ -248,7 +263,7 @@ SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages, fi
   res
 }
 
-
+# For internal use, creates brms backend.
 new_brms_SBC_backend <- function(compiled_model,
   args
 ) {
@@ -273,7 +288,7 @@ validate_brms_SBC_backend_args <- function(args) {
   }
 }
 
-#' Build a brms backend.
+#' Build a backend based on the `brms` package.
 #'
 #' @param ... arguments passed to `brm`.
 #' @param template_dataset a representative dataset that can be used to generate code.
@@ -287,7 +302,9 @@ brms_SBC_backend <- function(..., template_dataset) {
   new_brms_SBC_backend(stanmodel, args)
 }
 
-#' Build a brms backend, reusing the compiled model from a previously created generator.
+#' Build a brms backend, reusing the compiled model from a previously created `brms_SBC_generator`
+#' object.
+#'
 #' @export
 brms_SBC_backend_from_generator <- function(generator, ...) {
   stopifnot(inherits(generator, "brms_SBC_generator"))
