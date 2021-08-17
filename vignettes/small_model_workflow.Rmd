@@ -1,5 +1,5 @@
 ---
-title: "Simple model workflow"
+title: "Small model workflow"
 output: html_notebook
 ---
 

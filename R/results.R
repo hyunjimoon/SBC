@@ -108,7 +108,12 @@ validate_SBC_results <- function(x) {
   x
 }
 
-#' Combine multiple SBC results together
+#' Combine multiple SBC results together.
+#'
+#' Primarily useful for iteratively adding more datasets to your SBC check.
+#'
+#' An example usage can be found in the `small_model_workflow` vignette.
+#' @param ... objects of type `SBC_results` to be combined.
 #' @export
 bind_results <- function(...) {
   args <- list(...)
@@ -127,7 +132,7 @@ bind_results <- function(...) {
 
   # Ensure unique dataset_ids
   max_ids <- as.numeric(purrr::map(stats_list, function(x) max(x$dataset_id)))
-  shifts <- c(0, max_ids[1:(length(max_ids)) - 1])
+  shifts <- c(0, max_ids[1:(length(max_ids)) - 1]) # Shift of IDs per dataset
 
   shift_dataset_id <- function(x, shift) {
     if(is.null(x)) {
@@ -137,6 +142,7 @@ bind_results <- function(...) {
     }
   }
 
+  # Combines multiple data frame objects and then sorts by dataset_id
   bind_and_rearrange_df <- function(df_list) {
     dplyr::arrange(
       do.call(rbind, df_list),
@@ -144,10 +150,12 @@ bind_results <- function(...) {
     )
   }
 
+  # Apply the shifts of IDs to individual stats/diagnostics data frames
   stats_list <- purrr::map2(stats_list, shifts, shift_dataset_id)
   backend_diagnostics_list <- purrr::map2(backend_diagnostics_list, shifts, shift_dataset_id)
   default_diagnostics_list <- purrr::map2(default_diagnostics_list, shifts, shift_dataset_id)
 
+  # Combine all the elements into a bigger object
   SBC_results(stats = bind_and_rearrange_df(stats_list),
               fits = do.call(c, fits_list),
               backend_diagnostics = bind_and_rearrange_df(backend_diagnostics_list),
