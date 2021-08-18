@@ -4,7 +4,7 @@
 \alias{recompute_statistics}
 \title{Recompute SBC statistics without refitting models.}
 \usage{
-recompute_statistics(old_results, datasets, thin_ranks = 10)
+recompute_statistics(old_results, datasets, thin_ranks = 10, gen_quants = NULL)
 }
 \value{
 An S3 object of class \code{SBC_results} with updated \verb{$stats} and \verb{$default_diagnostics} fields.

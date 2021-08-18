@@ -339,3 +339,25 @@ draws_rvars_to_standata <- function(x) {
   })
 }
 
+#' Calculate  prior standard deviation of a dataset
+#'
+#' @returns a named vector of prior SDs
+#' @export
+calculate_prior_sd <- function(datasets) {
+  validate_SBC_datasets(datasets)
+  # TODO this is a hack - there has to be a better diagnostic to get whether
+  # our sd estimate is good (probably via MCSE?)
+  if(length(datasets) < 50) {
+    warning("Cannot reliably estimate prior_sd with less than 50 datasets.\n",
+            "Note that you can generate extra datasets that you don't actually fit and use those to estimate prior sd.")
+  }
+  if(length(datasets) < 2) {
+    stop("Cannot estimate prior sd with less than 2 datasets")
+  }
+
+  sds_df <- posterior::summarise_draws(datasets$parameters, sd)
+  sds_vec <- sds_df$sd
+  names(sds_vec) <- sds_df$variable
+
+  sds_vec
+}

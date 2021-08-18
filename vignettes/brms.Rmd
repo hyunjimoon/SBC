@@ -14,7 +14,7 @@ options(brms.backend = "cmdstanr")
 library(future)
 plan(multisession)
 
-# The fits are very fast and we fit just a few, 
+# The fits are very fast,
 # so we force a minimum chunk size to reduce overhead of
 # paralellization and decrease computation time.
 options(SBC.min_chunk_size = 5)
@@ -125,6 +125,15 @@ one_dataset_generator <- function(N, K) {
 n_dataset_generator <- function_SBC_generator(one_dataset_generator, N = 12, K = 3)
 ```
 
+For increased sensitivity, we also add the log likelihood of the data given parameters
+as a generated quantity that we'll also monitor.
+
+```{r}
+log_lik_gq_func <- generated_quantities(
+  log_lik = sum(dnorm(y, b_Intercept + x * b_x + r_group[group], sigma, log = TRUE)))
+
+```
+
 
 ```{r}
 set.seed(12239755)
@@ -146,7 +155,7 @@ backend_func <- brms_SBC_backend(y ~ x + (1 | group),
 
 
 ```{r}
-results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10)
+results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10, gen_quants = log_lik_gq_func)
 ```
 
 
@@ -156,6 +165,8 @@ plot_ecdf_diff(results_func)
 ```
 
 It looks like there is a problem affecting at least the `b_Intercept` and `sigma` parameters.
+We may also notice that the `log_lik` (log likelihood derived from all the parameters) is copying
+the behaviour of the worst behaving parameter. This tends to be the case in many models, so in models with lots of parameters, it can be useful to add such a term as they make noticing problems easier. There also other advantages as discussed in the `limits_of_SBC` vignette.
 
 What happened is that `brms` by default centers all the predictors, which changes the
 numerical values of the intercept (but not other terms). The interaction with the prior than probably also affects the other parameters.
@@ -181,7 +192,7 @@ backend_func2 <- brms_SBC_backend(y ~ 0 + Intercept + x + (1 | group),
 Let's fit the same datasets with the new backend.
 
 ```{r}
-results_func2 <- compute_results(datasets_func, backend_func2, thin_ranks = 10)
+results_func2 <- compute_results(datasets_func, backend_func2, thin_ranks = 10, gen_quants = log_lik_gq_func)
 ```
 
 We see that this results in non-problematic univariate checks.

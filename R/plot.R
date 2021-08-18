@@ -1,18 +1,3 @@
-
-#' Plot Rank Histogram given rank array "ranks"
-#'
-#' @param ranks array of dimension(n_iter, n_pars) where n_iter=number of posterior draw iterations, n_pars the number of parameters of interest
-#' @param par names of parameter to plot
-#' @param bins number of histogram bins to plot default is 20
-#' @import ggplot2
-#' @export
-plot_hist <- function(ranks, par, bins=20){
-  CI = stats::qbinom(c(0.05,0.5,0.95), size=dim(ranks)[1], prob = 1/(bins))
-  ggplot() + aes(ranks[, par]) + geom_histogram(bins=bins) +
-    geom_hline(yintercept = CI, color="black", linetype="dashed") +
-    xlab("rank") + ylab("count") + ggtitle(paste("Rank Histogram for parameter", par))
-}
-
 #' Plot rank histogram of an SBC results.
 #'
 #' By default the support is for `SBC_results` objects and data frames in the same
@@ -24,11 +9,12 @@ plot_rank_hist <- function(x, parameters = NULL, bins = NULL, prob = 0.95, ...) 
 }
 
 #' @export
+#' @import ggplot2
 plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 0.95, max_rank = x$max_rank) {
   if(!all(c("parameter", "rank") %in% names(x))) {
     stop("The data.frame needs a 'parameter' and 'rank' columns")
   }
-  n_simulations <- dplyr::summarise(dplyr::group_by(x, parameter), count = n())$count
+  n_simulations <- dplyr::summarise(dplyr::group_by(x, parameter), count = dplyr::n())$count
   if(length(unique(n_simulations)) > 1) {
     stop("Differing number of SBC steps per parameter not supported.")
   }
@@ -42,6 +28,8 @@ plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 
 
   if(is.null(bins)){
     bins <- guess_bins(max_rank, n_simulations)
+  } else if(bins > max_rank + 1) {
+    stop("Cannot use more bins than max_rank + 1")
   }
 
   if(!is.null(parameters)) {
@@ -55,18 +43,20 @@ plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 
   #CI - taken from https://github.com/seantalts/simulation-based-calibration/blob/master/Rsbc/generate_plots_sbc_inla.R
 
 
+  # Bins can differ by size (at most by 1). Build a CI that is conservative,
+  # i.e. includes lower quantile of smalelr bins and higher quantile of larger bins
   larger_bin_size <- ceiling((max_rank / bins))
+  smaller_bin_size <- floor((max_rank / bins))
   CI = qbinom(c(0.5 * (1 - prob),0.5,0.5 * (1 + prob)), size=n_simulations,prob  =  larger_bin_size / max_rank)
-  ci_lower = CI[1]
-  ci_mean = CI[2]
-  ci_upper = CI[3]
+  ci_lower = qbinom(0.5 * (1 - prob), size=n_simulations,prob  =  smaller_bin_size / max_rank)
+  ci_mean = qbinom(0.5, size=n_simulations,prob  =  1 / bins)
+  ci_upper = qbinom(0.5 * (1 + prob), size=n_simulations,prob  =  larger_bin_size / max_rank)
 
   CI_polygon_x <- c(-0.1*max_rank,0,-0.1*max_rank,1.1 * max_rank,max_rank,1.1 * max_rank,-0.1 * max_rank)
   CI_polygon_y <- c(ci_lower,ci_mean,ci_upper,ci_upper,ci_mean,ci_lower,ci_lower)
 
   #The visualisation style taken as well from   https://github.com/seantalts/simulation-based-calibration/blob/master/Rsbc/generate_plots_sbc_inla.R
-  x %>%
-          ggplot(aes(x = rank)) +
+  ggplot(x, aes(x = rank)) +
           geom_segment(aes(x=0,y=ci_mean,xend=max_rank,yend=ci_mean),colour="grey25") +
           geom_polygon(data=data.frame(x= CI_polygon_x,y= CI_polygon_y),aes(x=x,y=y),fill="skyblue",color="skyblue1",alpha=0.33) +
           geom_histogram(breaks =  seq(0, max_rank, length.out = bins + 1), closed = "left" ,fill="#808080",colour="black") +
@@ -90,7 +80,7 @@ plot_rank_hist.SBC_results <- function(x, parameters = NULL, bins = NULL, prob =
 #' @param N the number of ranks observed
 #' @param max_rank the maximum rank observed
 guess_bins <- function(max_rank, N) {
-  min(max_rank, max(floor(N / 10), 5))
+  min(max_rank + 1, max(floor(N / 10), 5))
 }
 
 #' Plot the ECDF-based plots.
@@ -103,12 +93,13 @@ guess_bins <- function(max_rank, N) {
 #' @param parameters optional subset of parameters to show in the plot
 #' @param gamma TODO
 #' @param prob the width of the plotted confidence interval for the ECDF.
-#' @param size size passed to [ggplot::geom_ribbon()] for the confidence band
+#' @param size size passed to [ggplot2::geom_ribbon()] for the confidence band
 #' @param alpha alpha level of the confidence band
 #' @param K number of uniformly spaced evaluation points for the ECDF or ECDFs. Affects
 #'   the granularity of the plot and can significantly speed up the computation
 #'   of the simultaneous confidence bands. Defaults to the smaller of number of
 #'   ranks per parameter and the maximum rank.
+#' @import ggplot2
 plot_ecdf <- function(x,
                       parameters = NULL,
                       K = NULL,
@@ -171,6 +162,7 @@ plot_ecdf <- function(x,
 
 #' @export
 #' @rdname ECDF-plots
+#' @import ggplot2
 plot_ecdf_diff <- function(x,
                            parameters = NULL,
                            K = NULL,
@@ -336,4 +328,58 @@ data_for_ecdf_plots.matrix <- function(x,
 
   structure(list(limits_df = limits_df, ecdf_df = ecdf_df, K = K, N = N, z = z),
             class = "SBC_ecdf_data")
+}
+
+
+#' Prior/posterior contraction plot
+#'
+#' @export
+plot_contraction <- function(x, prior_sd, parameters = NULL, scale = "sd", alpha = 0.8) {
+  UseMethod("plot_contraction")
+}
+
+#' @export
+plot_contraction.SBC_results <- function(x, prior_sd, parameters = NULL, scale = "sd", alpha = 0.8) {
+  plot_contraction(x$stats, prior_sd = prior_sd, parameters = parameters, alpha = alpha)
+}
+
+#' @export
+plot_contraction.data.frame <- function(x, prior_sd, parameters = NULL, scale = "sd", alpha = 0.8) {
+  if(!all(c("parameter", "sd") %in% names(x))) {
+    stop("The data.frame needs a 'parameter' and 'sd' columns")
+  }
+
+  if(!is.numeric(prior_sd) || is.null(names(prior_sd))) {
+    stop("prior_sd has to be a named vector")
+  }
+
+  if(!is.null(parameters)) {
+    prior_sd <- prior_sd[names(prior_sd) %in% parameters]
+    x <- dplyr::filter(x, parameter %in% parameters)
+  }
+
+  if(nrow(x) == 0 || length(prior_sd) == 0) {
+    stop("No data to plot.")
+  }
+
+  shared_params <- intersect(unique(x$parameter), names(prior_sd))
+  if(length(shared_params) < length(unique(x$parameter))) {
+    warning("Some parameters do not have prior_sd in the data: ", setdiff(unique(x$parameter), shared_params))
+  }
+  if(length(shared_params) < length(prior_sd)) {
+    warning("Some prior_sd values do not have counterpart in the data: ", setdiff(names(prior_sd), shared_params))
+  }
+
+  x <- dplyr::filter(x, parameter %in% shared_params)
+
+  x$prior_sd <- prior_sd[x$parameter]
+  if(scale == "sd") {
+    x <- dplyr::mutate(x, contraction = 1 - sd / prior_sd)
+  } else if(scale == "var") {
+    x <- dplyr::mutate(x, contraction = 1 - (sd / prior_sd)^2)
+  }
+
+  ggplot2::ggplot(x, aes(x = contraction, y = z_score)) + geom_point(alpha = alpha) +
+    expand_limits(x = c(0,1)) +
+    facet_wrap(~parameter)
 }

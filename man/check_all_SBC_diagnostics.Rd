@@ -2,9 +2,18 @@
 % Please edit documentation in R/results.R
 \name{check_all_SBC_diagnostics}
 \alias{check_all_SBC_diagnostics}
+\alias{check_all_SBC_diagnostics.default}
+\alias{check_all_SBC_diagnostics.SBC_results}
 \title{Check diagnostics and issue warnings when those fail.}
 \usage{
 check_all_SBC_diagnostics(x)
+
+\method{check_all_SBC_diagnostics}{default}(x)
+
+\method{check_all_SBC_diagnostics}{SBC_results}(x)
+}
+\value{
+TRUE if all checks are OK, FALSE otherwise.
 }
 \description{
 Check diagnostics and issue warnings when those fail.

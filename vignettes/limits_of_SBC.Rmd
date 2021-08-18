@@ -1,0 +1,196 @@
+---
+title: "Limits of SBC"
+output: html_notebook
+---
+
+```{r setup, include = FALSE}
+library(SBC); 
+use_cmdstanr <- TRUE # Set to false to use rstan instead
+
+if(use_cmdstanr) {
+  library(cmdstanr)
+} else {
+  library(rstan)
+}
+
+options(mc.cores = parallel::detectCores())
+
+library(future)
+plan(multisession)
+
+# The fits are very fast,
+# so we force a minimum chunk size to reduce overhead of
+# paralellization and decrease computation time.
+options(SBC.min_chunk_size = 5)
+
+
+```
+
+
+# Minor changes and prior mismatches
+
+SBC requires _a lot_ of iterations to discover small problems.
+
+Especially when those affect only prior as SBC is based on fitted posterior - so
+if prior does not influence posterior very much...
+
+TODO
+
+# Missing likelihood
+
+SBC will not notice if you completely omit likelihood from your Stan model!
+
+```{r}
+single_dataset_missing <- function(N) {
+  mu <- rnorm(n = 1, mean = 0, sd = 1)
+  y <- rnorm(n = N, mean = mu, sd = 1)
+  
+  list(
+    parameters = list(mu = mu),
+    generated = list(N = N, y = y)
+  )
+}
+
+set.seed(25746223)
+generator_missing <- function_SBC_generator(single_dataset_missing, N = 10)
+datasets_missing <- generate_datasets(generator_missing, n_datasets = 200)
+```
+
+
+```{r}
+model_code_missing <- "
+data {
+  int<lower=0> N;
+  vector[N] y;
+}
+
+parameters {
+  real mu;
+}
+
+model {
+  target += normal_lpdf(mu | 0, 1);
+}
+"
+
+iter_warmup <- 300
+iter_sampling <- 1000
+
+if(use_cmdstanr) {
+  model_missing <- cmdstan_model(write_stan_file(model_code_missing))
+
+  backend_missing <- cmdstan_sample_SBC_backend(
+    model_missing, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 1)
+} else {
+  model_missing <- stan_model(model_code = model_code_missing)
+
+  backend_missing <- rstan_sample_SBC_backend(
+    model_missing, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 1)
+}
+
+```
+```{r}
+results_missing <- compute_results(datasets_missing, backend_missing)
+```
+
+```{r}
+plot_ecdf_diff(results_missing)
+plot_rank_hist(results_missing)
+```
+
+
+Can be noticed by prior/posterior contraction plot. For this model, we can
+get the prior sd directly, but one can also use a (preferably large) `SBC_datasets` object
+to estimate it empirically for more complex models.
+
+```{r}
+prior_sd <- c("mu" = 1)
+#prior_sd <- calculate_prior_sd(generate_datasets(generator_missing, 1000))
+plot_contraction(results_missing, prior_sd)
+```
+We see that the contraction centers around 0 (no contraction) with some deviation (as expected due to stochasticity of the estimate), which means that the model learns
+nothing useful on average about `mu`.
+
+There is however even more powerful method - and that is to include the likelihood in the SBC.
+This is most easily done by adding a "generated quantity" to the SBC results - this is a function
+that is evaluated within the context of the parameters AND data.
+
+```{r}
+normal_lpdf <- function(y, mu, sigma) {
+  sum(dnorm(y, mean = mu, sd = sigma, log = TRUE))
+}
+
+log_lik_gq <- generated_quantities(log_lik = normal_lpdf(y, mu, 1), .globals = "normal_lpdf" )
+
+results_missing_gq <- recompute_statistics(results_missing, datasets_missing, 
+                                             gen_quants = log_lik_gq)
+```
+
+
+```{r}
+plot_ecdf_diff(results_missing_gq)
+plot_rank_hist(results_missing_gq)
+```
+
+
+# Partially missing likelihood
+
+A more complicated case is when the likelihood is only slightly wrong (and missing something) - e.g. due to an indexing error.
+Turns out missing just one data point needs a lot of steps, so we'll miss 3 in our likelihood.
+
+```{r}
+model_code_missing_2 <- "
+data {
+  int<lower=0> N;
+  vector[N] y;
+}
+
+transformed data {
+  int N2 = N / 2 + 1;
+}
+
+parameters {
+  real mu;
+}
+
+model {
+  target += normal_lpdf(mu | 0, 1);
+  for(n in 1:N2) {
+    target += normal_lpdf(y[n] | mu, 1);
+  }
+}
+"
+
+if(use_cmdstanr) {
+  model_missing_2 <- cmdstan_model(write_stan_file(model_code_missing_2))
+
+  backend_missing_2 <- cmdstan_sample_SBC_backend(
+    model_missing_2, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 1)
+} else {
+  model_missing_2 <- stan_model(model_code = model_code_missing_2)
+
+  backend_missing_2 <- rstan_sample_SBC_backend(
+    model_missing_2, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 1)
+}
+
+```
+
+```{r}
+results_missing_2 <- compute_results(datasets_missing, backend_missing_2, gen_quants = log_lik_gq)
+```
+
+The contraction plot would not show anything suspicious - we get decent contraction
+
+```{r}
+plot_contraction(results_missing_2, prior_sd, parameters = "mu")
+```
+
+Now contraction is pretty high, and `mu` is behavign well, but our `log_lik` generated quantity shows a clear problem
+
+```{r}
+plot_ecdf_diff(results_missing_2)
+plot_rank_hist(results_missing_2)
+```
+
+We could definitely find even smaller deviations than omitting half the data points, that would however require more SBC steps.
+This boils down to the earlier discussion on small changes to the model - omitting a few data points does not change the posterior very much and thus is harder to detect by SBC - but it is possible.

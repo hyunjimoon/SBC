@@ -4,13 +4,13 @@
 \alias{statistics_from_single_fit}
 \title{Recompute SBC statistics given a single fit.}
 \usage{
-statistics_from_single_fit(fit, parameters, thin_ranks)
+statistics_from_single_fit(fit, parameters, generated, thin_ranks, gen_quants)
 }
 \description{
 Potentially useful for doing some advanced stuff, but should not
-be used in regular workflow. Use \code{recompute_statistics} to update
-an \code{SBC_results} objects with different \code{thin_ranks} or other settings.
+be used in regular workflow. Use \code{\link[=recompute_statistics]{recompute_statistics()}} to update
+an \verb{[SBC_results]} objects with different \code{thin_ranks} or other settings.
 }
 \seealso{
-recompute_statistics
+\code{\link[=recompute_statistics]{recompute_statistics()}}
 }

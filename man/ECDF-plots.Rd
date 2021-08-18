@@ -39,7 +39,7 @@ ranks per parameter and the maximum rank.}
 
 \item{prob}{the width of the plotted confidence interval for the ECDF.}
 
-\item{size}{size passed to \code{\link[ggplot:geom_ribbon]{ggplot::geom_ribbon()}} for the confidence band}
+\item{size}{size passed to \code{\link[ggplot2:geom_ribbon]{ggplot2::geom_ribbon()}} for the confidence band}
 
 \item{alpha}{alpha level of the confidence band}
 }

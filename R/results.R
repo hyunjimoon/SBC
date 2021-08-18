@@ -253,8 +253,14 @@ compute_results <- function(datasets, backend,
                             cores_per_fit = default_cores_per_fit(length(datasets)),
                             keep_fits = TRUE,
                             thin_ranks = 10,
-                            chunk_size = default_chunk_size(length(datasets)) ) {
+                            chunk_size = default_chunk_size(length(datasets)),
+                            gen_quants = NULL) {
   stopifnot(length(datasets) > 0)
+
+  datasets <- validate_SBC_datasets(datasets)
+  if(!is.null(gen_quants)) {
+    gen_quants <- validate_generated_quantities(gen_quants)
+  }
 
   # Create combined data for computation
   params_and_generated_list <- list()
@@ -266,11 +272,20 @@ compute_results <- function(datasets, backend,
     )
   }
 
+  if(is.null(gen_quants)) {
+    future.globals <- FALSE
+  } else {
+    future.globals <- attr(gen_quants, "globals")
+
+  }
+
   results_raw <- future.apply::future_lapply(
     params_and_generated_list, SBC:::compute_results_single,
     backend = backend, cores = cores_per_fit,
     keep_fit = keep_fits, thin_ranks = thin_ranks,
+    gen_quants = gen_quants,
     future.seed = TRUE,
+    future.globals = future.globals,
     future.chunk.size = chunk_size)
 
 
@@ -425,7 +440,7 @@ capture_all_outputs <- function(expr) {
 
 
 compute_results_single <- function(params_and_generated, backend, cores,
-                                   keep_fit, thin_ranks) {
+                                   keep_fit, thin_ranks, gen_quants) {
 
   parameters <- params_and_generated$parameters
   generated <- params_and_generated$generated
@@ -444,7 +459,8 @@ compute_results_single <- function(params_and_generated, backend, cores,
 
   if(is.null(res$error)) {
     error_stats <- tryCatch( {
-      res$stats <- SBC::statistics_from_single_fit(res$fit, parameters = parameters, thin_ranks = thin_ranks)
+      res$stats <- SBC::statistics_from_single_fit(res$fit, parameters = parameters, thin_ranks = thin_ranks,
+                                                   generated = generated, gen_quants = gen_quants)
       res$backend_diagnostics <-SBC::SBC_fit_to_diagnostics(fit, res$outuput, res$messages, res$warnings)
       NULL
     }, error = identity)
@@ -466,13 +482,24 @@ compute_results_single <- function(params_and_generated, backend, cores,
 #' Recompute SBC statistics given a single fit.
 #'
 #' Potentially useful for doing some advanced stuff, but should not
-#' be used in regular workflow. Use `recompute_statistics` to update
-#' an `SBC_results` objects with different `thin_ranks` or other settings.
+#' be used in regular workflow. Use [recompute_statistics()] to update
+#' an `[SBC_results]` objects with different `thin_ranks` or other settings.
 #'
 #' @export
-#' @seealso recompute_statistics
-statistics_from_single_fit <- function(fit, parameters, thin_ranks) {
+#' @seealso [recompute_statistics()]
+statistics_from_single_fit <- function(fit, parameters, generated,
+                                       thin_ranks, gen_quants) {
+
   fit_matrix <- SBC_fit_to_draws_matrix(fit)
+
+  if(!is.null(gen_quants)){
+    gen_quants <- validate_generated_quantities(gen_quants)
+    gq_fit <- compute_gen_quants(fit_matrix, generated, gen_quants)
+    fit_matrix <- posterior::bind_draws(fit_matrix, gq_fit, along = "variable")
+
+    gq_parameter <- compute_gen_quants(parameters, generated, gen_quants)
+    parameters <- posterior::bind_draws(parameters, gq_parameter, along = "variable")
+  }
 
   shared_pars <- intersect(posterior::variables(parameters),
                            posterior::variables(fit_matrix))
@@ -534,12 +561,59 @@ check_stats <- function(stats, datasets) {
   }
 }
 
+#' Create a definition of generated quantities evaluated in R.
+#'
+#' When the expression contains non-library functions/objects, and parallel processing
+#' is enabled, those must be
+#' named in the `.globals` parameter (hopefully we'll be able to detect those
+#' automatically in the future). Note that [recompute_statistics()] currently
+#' does not use parallel processing, so `.globals` don't need to be set.
+#'
+#' @param ... named expressions representing the quantitites
+#' @param .globals A list of names of objects that are defined
+#' in the global environment and need to present for the gen. quants. to evaluate.
+#' It is added to the `globals` argument to [future::future()], to make those
+#' objects available on all workers.
+#' @export
+generated_quantities <- function(..., .globals = list()) {
+  structure(rlang::enquos(..., .named = TRUE),
+            class = "SBC_generated_quantities",
+            globals = .globals
+            )
+}
+
+#' @export
+validate_generated_quantities <- function(x) {
+  stopifnot(inherits(x, "SBC_generated_quantities"))
+  invisible(x)
+}
+
+#'@export
+compute_gen_quants <- function(draws, generated, gen_quants) {
+  gen_quants <- validate_generated_quantities(gen_quants)
+  draws_rv <- posterior::as_draws_rvars(draws)
+
+  draws_env <- list2env(draws_rv)
+  generated_env <- list2env(generated, parent = draws_env)
+
+  data_mask <- rlang::new_data_mask(bottom = generated_env, top = draws_env)
+
+  eval_func <- function(gq) {
+    # Wrap the expression in `rdo` which will mostly do what we need
+    # all the tricks are just to have the correct environment when we need it
+    wrapped_gq <- rlang::new_quosure(rlang::expr(posterior::rdo(!!rlang::get_expr(gq))), rlang::get_env(gq))
+    rlang::eval_tidy(wrapped_gq, data = data_mask)
+  }
+  rvars <- lapply(gen_quants, FUN = eval_func)
+  do.call(posterior::draws_rvars, rvars)
+}
+
 #' Recompute SBC statistics without refitting models.
 #'
 #' Useful for example to recompute SBC ranks with a different choice of `thin_ranks`
 #' @return An S3 object of class `SBC_results` with updated `$stats` and `$default_diagnostics` fields.
 #' @export
-recompute_statistics <- function(old_results, datasets, thin_ranks = 10) {
+recompute_statistics <- function(old_results, datasets, thin_ranks = 10, gen_quants = NULL) {
   validate_SBC_results(old_results)
   validate_SBC_datasets(datasets)
 
@@ -565,7 +639,9 @@ recompute_statistics <- function(old_results, datasets, thin_ranks = 10) {
       parameters <- posterior::subset_draws(datasets$parameters, draw = i)
       new_stats_list[[i]] <- statistics_from_single_fit(old_results$fits[[i]],
                                                         parameters = parameters,
-                                                        thin_ranks = thin_ranks)
+                                                        generated = datasets$generated[[i]],
+                                                        thin_ranks = thin_ranks,
+                                                        gen_quants = gen_quants)
       new_stats_list[[i]]$dataset_id <- i
 
     }
@@ -667,13 +743,15 @@ get_diagnostics_messages <- function(x) {
 
 #' Check diagnostics and issue warnings when those fail.
 #'
+#' @rdname check_all_SBC_diagnostics
 #' @export
+#' @return TRUE if all checks are OK, FALSE otherwise.
 check_all_SBC_diagnostics <- function(x) {
   UseMethod("check_all_SBC_diagnostics")
 }
 
 #' @export
-#' @return TRUE if all checks are OK, FALSE otherwise.
+#' @rdname check_all_SBC_diagnostics
 check_all_SBC_diagnostics.default <- function(x) {
   if(!is.null(x)) {
     msg <- get_diagnostics_messages(x)
@@ -684,6 +762,7 @@ check_all_SBC_diagnostics.default <- function(x) {
   }
 }
 
+#' @rdname check_all_SBC_diagnostics
 #' @export
 check_all_SBC_diagnostics.SBC_results <- function(x) {
   res <- NextMethod()
