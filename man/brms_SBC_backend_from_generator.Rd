@@ -2,10 +2,12 @@
 % Please edit documentation in R/backends.R
 \name{brms_SBC_backend_from_generator}
 \alias{brms_SBC_backend_from_generator}
-\title{Build a brms backend, reusing the compiled model from a previously created generator.}
+\title{Build a brms backend, reusing the compiled model from a previously created \code{brms_SBC_generator}
+object.}
 \usage{
 brms_SBC_backend_from_generator(generator, ...)
 }
 \description{
-Build a brms backend, reusing the compiled model from a previously created generator.
+Build a brms backend, reusing the compiled model from a previously created \code{brms_SBC_generator}
+object.
 }

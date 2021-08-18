@@ -103,36 +103,37 @@ First we'll build backends using the individual models.
 
 ```{r}
 if(use_cmdstanr) {
-  stan_model_1 <- cmdstan_model(write_stan_file(stan_code_1))
-  stan_model_2 <- cmdstan_model(write_stan_file(stan_code_2))
-  stan_model_3 <- cmdstan_model(write_stan_file(stan_code_3))
+  model_regression_1 <- cmdstan_model(write_stan_file(stan_code_1))
+  model_regression_2 <- cmdstan_model(write_stan_file(stan_code_2))
+  model_regression_3 <- cmdstan_model(write_stan_file(stan_code_3))
 
-  backend_1 <- cmdstan_sample_SBC_backend(stan_model_1, iter_warmup = 400, iter_sampling = 500)
-  backend_2 <- cmdstan_sample_SBC_backend(stan_model_2, iter_warmup = 400, iter_sampling = 500)
-  backend_3 <- cmdstan_sample_SBC_backend(stan_model_3, iter_warmup = 400, iter_sampling = 500)
+  backend_regression_1 <- cmdstan_sample_SBC_backend(model_regression_1, iter_warmup = 400, iter_sampling = 500)
+  backend_regression_2 <- cmdstan_sample_SBC_backend(model_regression_2, iter_warmup = 400, iter_sampling = 500)
+  backend_regression_3 <- cmdstan_sample_SBC_backend(model_regression_3, iter_warmup = 400, iter_sampling = 500)
 } else {
-  stan_model_1 <- stan_model(model_code = stan_code_1)
-  stan_model_2 <- stan_model(model_code = stan_code_2)
-  stan_model_3 <- stan_model(model_code = stan_code_3)
+  model_regression_1 <- stan_model(model_code = stan_code_1)
+  model_regression_2 <- stan_model(model_code = stan_code_2)
+  model_regression_3 <- stan_model(model_code = stan_code_3)
 
   
-  backend_1 <- rstan_sample_SBC_backend(stan_model_1, iter = 900, warmup = 400)
-  backend_2 <- rstan_sample_SBC_backend(stan_model_2, iter = 900, warmup = 400)
-  backend_3 <- rstan_sample_SBC_backend(stan_model_3, iter = 900, warmup = 400)
+  backend_regression_1 <- rstan_sample_SBC_backend(model_regression_1, iter = 900, warmup = 400)
+  backend_regression_2 <- rstan_sample_SBC_backend(model_regression_2, iter = 900, warmup = 400)
+  backend_regression_3 <- rstan_sample_SBC_backend(model_regression_3, iter = 900, warmup = 400)
 }
 
 ```
+
 Then we'll write a function that generates data. We write it in the most simple
 way to reduce the possibility that we make an error. We also don't really need to
 worry about performance here.
 
 ```{r}
 
-generator_func <- function(N, K) {
-  x <- matrix(rnorm(N * K), nrow = N, ncol = K)
-  alpha <- rnorm(1, mean = 0, sd = 1)
-  beta <- rnorm(K, mean = 0, sd = 1)
-  sigma <- abs(rnorm(1, mean = 0, sd = 2))
+single_dataset_regression <- function(N, K) {
+  x <- matrix(rnorm(n = N * K, mean = 0, sd = 1), nrow = N, ncol = K)
+  alpha <- rnorm(n = 1, mean = 0, sd = 1)
+  beta <- rnorm(n = K, mean = 0, sd = 1)
+  sigma <- abs(rnorm(n = 1, mean = 0, sd = 2))
   
   y <- array(NA_real_, N)
   for(n in 1:N) {
@@ -140,7 +141,7 @@ generator_func <- function(N, K) {
     for(k in 1:K) {
       mu <- mu + x[n,k] * beta[k]
     }
-    y[n] <- rnorm(1, mu, sigma) 
+    y[n] <- rnorm(n = 1, mean = mu, sd = sigma) 
   }
   
   list(
@@ -162,20 +163,22 @@ let us see big problems (but not subtle issues)
 
 ```{r}
 set.seed(5666024)
-datasets <- generate_datasets(function_SBC_generator(generator_func, N = 100, K = 2), 10)
+datasets_regression <- generate_datasets(function_SBC_generator(single_dataset_regression, N = 100, K = 2), 10)
 ```
 
 
 Now we can use all of the backends to fit the generated datasets.
 
 ```{r}
-results_1 <- compute_results(datasets, backend_1)
-results_2 <- compute_results(datasets, backend_2)
-results_3 <- compute_results(datasets, backend_3)
+results_regression_1 <- compute_results(datasets_regression, backend_regression_1)
+results_regression_2 <- compute_results(datasets_regression, backend_regression_2)
+results_regression_3 <- compute_results(datasets_regression, backend_regression_3)
 ```
 
 ```{r}
-plot_ecdf_diff(results_1)
+plot_ecdf_diff(results_regression_1)
+plot_rank_hist(results_regression_1)
+
 ```
 
 As far as a quick SBC can see the first code is OK. You could verify further with more iterations
@@ -183,8 +186,8 @@ but we tested the model for you and it is OK (although the implementation is not
 
 
 ```{r}
-plot_ecdf_diff(results_2)
-
+plot_ecdf_diff(results_regression_2)
+plot_rank_hist(results_regression_2)
 
 ```
 
@@ -194,9 +197,8 @@ propagates most strongly to the `sigma` parameter (reusing the same `x` element 
 
 
 ```{r}
-plot_ecdf_diff(results_3)
-
-
+plot_ecdf_diff(results_regression_3)
+plot_rank_hist(results_regression_3)
 ```
 
 

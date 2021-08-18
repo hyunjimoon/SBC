@@ -6,8 +6,12 @@
 \usage{
 generate_datasets(generator, n_datasets)
 }
+\arguments{
+\item{generator}{a generator object - build e.g. via \code{function_SBC_generator} or
+\code{brms_SBC_generator}.}
+}
 \value{
-object of class SBC_datasets
+object of class \code{SBC_datasets}
 TODO: seed
 }
 \description{

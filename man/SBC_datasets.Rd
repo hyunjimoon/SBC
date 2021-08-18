@@ -2,10 +2,18 @@
 % Please edit documentation in R/datasets.R
 \name{SBC_datasets}
 \alias{SBC_datasets}
-\title{Create new datasets object}
+\title{Create new \code{SBC_datasets} object.}
 \usage{
 SBC_datasets(parameters, generated)
 }
+\arguments{
+\item{parameters}{samples of "true" values of unobserved parameters.
+An object of class \code{draws_matrix} (from the \code{posterior} package)}
+
+\item{generated}{a list of objects that can be passed as data to the backend you plan to use.
+(e.g. list of values for Stan-based backends, a data frame for \code{brms_SBC_backend})}
+}
 \description{
-Create new datasets object
+In most cases, you may want to use \code{generate_datasets} to build the object, but
+for full control, you can also create datasets directly via this function.
 }

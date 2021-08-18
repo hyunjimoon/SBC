@@ -595,6 +595,9 @@ rdunif <- function(n, a, b) {
   ceiling(runif(n, min = a - 1, max= b))
 }
 
+#' Calculate ranks given parameter values within a posterior distribution.
+#'
+#' @param params a vector of values to check
 #' @param dm draws_matrix of the fit (assumed to be already thinned if that was necessary)
 #' @export
 calculate_ranks_draws_matrix <- function(params, dm) {

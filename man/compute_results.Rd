@@ -2,7 +2,7 @@
 % Please edit documentation in R/results.R
 \name{compute_results}
 \alias{compute_results}
-\title{Fit datasets and evaluate metrics.}
+\title{Fit datasets and evaluate diagnostics and SBC metrics.}
 \usage{
 compute_results(
   datasets,
@@ -12,6 +12,38 @@ compute_results(
   thin_ranks = 10,
   chunk_size = default_chunk_size(length(datasets))
 )
+}
+\arguments{
+\item{datasets}{an object of class \code{SBC_datasets}}
+
+\item{backend}{the model + sampling algorithm. The built-in backends can be constructed
+using \code{cmdstan_sample_SBC_backend()}, \code{rstan_sample_SBC_backend()} and \code{brms_SBC_backend()}.
+(more to come). The backend is an S3 class supporting at least the \code{SBC_fit},
+\code{SBC_fit_to_draws_matrix} methods.}
+
+\item{cores_per_fit}{how many cores should the backend be allowed to use for a single fit?
+Defaults to the maximum number that does not produce more parallel chains
+than you have cores. See \code{default_cores_per_fit()}.}
+
+\item{keep_fits}{boolean, when \code{FALSE} full fits are discarded from memory -
+reduces memory consumption and increases speed (when processing in parallel), but
+prevents you from inspecting the fits and using \code{recompute_statistics()}.
+We recommend to set to \code{TRUE} in early phases of workflow, when you run just a few fits.
+Once the model is stable and you want to run a lot of iterations, we recommend setting
+to \code{FALSE} (even for quite a simple model, 1000 fits can easily exhaust 32GB of RAM).}
+
+\item{thin_ranks}{how much thinning should be applied to posterior samples before computing
+ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
+thinned samples.}
+
+\item{chunk_size}{How many fits of \code{datasets} shall be processed in one batch
+by the same worker. Relevant only when using parallel processing.
+The larger the value, the smaller overhead there will be for parallel processing, but
+the work may be distributed less equally across workers. We recommend setting this high
+enough that a single batch takes at least several seconds, i.e. for small models,
+you can often reduce computation time noticeably by increasing this value.
+You can use \code{options(SBC.min_chunk_size = value)} to set a minimum chunk size globally.
+See documentation of \code{future.chunk.size} argument for \code{future_lapply()} for more details.}
 }
 \value{
 An object of class \code{SBC_results} that holds:
@@ -25,5 +57,8 @@ An object of class \code{SBC_results} that holds:
 }
 }
 \description{
-Fit datasets and evaluate metrics.
+Parallel processing is supported via the \code{future} package, for most uses, it is most sensible
+to just call \code{plan(multisession)} once in your R session and  all
+cores your computer has will be used. For more details refer to the documentation
+of the \code{future} package.
 }

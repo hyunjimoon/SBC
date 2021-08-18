@@ -2,7 +2,7 @@
 % Please edit documentation in R/backends.R
 \name{brms_SBC_backend}
 \alias{brms_SBC_backend}
-\title{Build a brms backend.}
+\title{Build a backend based on the \code{brms} package.}
 \usage{
 brms_SBC_backend(..., template_dataset)
 }
@@ -12,5 +12,5 @@ brms_SBC_backend(..., template_dataset)
 \item{template_dataset}{a representative dataset that can be used to generate code.}
 }
 \description{
-Build a brms backend.
+Build a backend based on the \code{brms} package.
 }

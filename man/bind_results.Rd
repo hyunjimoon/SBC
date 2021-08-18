@@ -2,10 +2,16 @@
 % Please edit documentation in R/results.R
 \name{bind_results}
 \alias{bind_results}
-\title{Combine multiple SBC results together}
+\title{Combine multiple SBC results together.}
 \usage{
 bind_results(...)
 }
+\arguments{
+\item{...}{objects of type \code{SBC_results} to be combined.}
+}
 \description{
-Combine multiple SBC results together
+Primarily useful for iteratively adding more datasets to your SBC check.
+}
+\details{
+An example usage can be found in the \code{small_model_workflow} vignette.
 }

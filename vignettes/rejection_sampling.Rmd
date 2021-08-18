@@ -45,7 +45,7 @@ model {
 
 "
 
-backend <- cmdstan_sample_SBC_backend(cmdstan_model(write_stan_file(stan_code)), iter_warmup = 200, iter_sampling = 200)
+backend <- cmdstan_sample_SBC_backend(cmdstan_model(write_stan_file(stan_code)), iter_warmup = 800, iter_sampling = 800)
 ```
 And use a matching generator.
 
