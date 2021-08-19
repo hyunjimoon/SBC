@@ -19,6 +19,9 @@ plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 
     stop("Differing number of SBC steps per parameter not supported.")
   }
 
+  if(is.null(max_rank)) {
+    stop("max_rank either has to be supplied explicitly or be a column in the data")
+  }
   max_rank <- unique(max_rank)
   if(length(max_rank) > 1) {
     stop("Differing max_rank across parameters is not supported yet.")
@@ -60,6 +63,7 @@ plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 
           geom_segment(aes(x=0,y=ci_mean,xend=max_rank,yend=ci_mean),colour="grey25") +
           geom_polygon(data=data.frame(x= CI_polygon_x,y= CI_polygon_y),aes(x=x,y=y),fill="skyblue",color="skyblue1",alpha=0.33) +
           geom_histogram(breaks =  seq(0, max_rank, length.out = bins + 1), closed = "left" ,fill="#808080",colour="black") +
+          scale_y_continuous("count") +
           facet_wrap(~parameter, scales = "free_y")
 
 }
@@ -106,11 +110,11 @@ plot_ecdf <- function(x,
                       gamma = NULL,
                       prob = 0.95,
                       size = 1,
-                      alpha = 0.33) {
+                      alpha = 0.33, ...) {
 
   ecdf_data <-
     data_for_ecdf_plots(x, parameters = parameters,
-                        prob = prob, K = K, gamma = gamma)
+                        prob = prob, K = K, gamma = gamma, ...)
 
   N <- ecdf_data$N
   K <- ecdf_data$K
@@ -169,10 +173,10 @@ plot_ecdf_diff <- function(x,
                            gamma = NULL,
                            prob = 0.95,
                            size = 1,
-                           alpha = 0.33) {
+                           alpha = 0.33, ...) {
   ecdf_data <-
     data_for_ecdf_plots(x, parameters = parameters,
-                        prob = prob, K = K, gamma = gamma)
+                        prob = prob, K = K, gamma = gamma, ...)
 
   N <- ecdf_data$N
   K <- ecdf_data$K
@@ -250,6 +254,9 @@ data_for_ecdf_plots.data.frame <- function(x, parameters = NULL,
     stats <- dplyr::filter(stats, parameter %in% parameters)
   }
 
+  if(is.null(max_rank)) {
+    stop("max_rank either has to be supplied explicitly or be a column in the data")
+  }
   max_rank <- unique(max_rank)
   if(length(max_rank) > 1) {
     stop("Differing max_rank across parameters is not supported yet.")

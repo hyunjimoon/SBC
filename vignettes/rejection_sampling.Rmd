@@ -141,4 +141,4 @@ results_reject_y <- compute_results(datasets_reject_y, backend)
 plot_ecdf_diff(results_reject_y)
 ```
 
-We see that even with quite heavy rejection based on y, SBC to a high resolution.
+We see that even with quite heavy rejection based on y, SBC to a high resolution passes.
