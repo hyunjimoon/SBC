@@ -1,83 +1,40 @@
-# Simulation-based Calibration
+# Simulation-based Calibration: SBC
 ## Efficient simulation-based calibration for Bayesian models
-SBC provides tools to easily validate and offer corrections on prior, likelihood, and computation algorithms based on the self-recovering property of Bayesian models. This package contains tools such as SBC rank histograms, ECDF plots, and their summary statistics which can be used to assess computational faithfulness. Please refer to the included vignette for detailed usage.
+SBC provides tools to easily validate and offer corrections on prior, likelihood, and computation algorithms based on the self-recovering property of Bayesian models. This package contains tools such as SBC rank histograms, ECDF plots, and their summary statistics which can be used to assess computational faithfulness. 
 
-## Varieties of calibrations: scope of this package
+### Varieties of calibrations: scope of this package
 Calibration (i.e. reliability) is not a sufficient condition for a good forecast but a minimal property that any forecast should satisfy (FV1998). It serves as a bootstrap for model development and its method and target varies. Target is chosen as modeler's quantity of interest and directly affects the calibrated result as reward in reinforcement learning. Method depends on how much you marginalized or conditioned the full joint space to test coverage. Scope of this package is checked below.
 
-## Target
-- [x] a. Prediction, p(y.new): Predictive checks which compares the distribution of replicated y and real y.
+## Interface and Usage
 
-- [x] b. Posterior: p(theta.new|theta = c): Prior and likelihood are tested assuming the consistency of computation. Any Bayesian model has the *self recovering property*, in which averaging over posterior distributions fitted with samples from the prior predictive distribution will always be equal to the prior distribution. SBC uses the above principle and evaluates the combination of the prior and likelihood model under a fixed computation algorithm. Users should choose one computation algorithm in advance, such as full HMC, ADVI, Laplace approximation. Properties of potential posterior distributions resulting from these calibration simulations allows us to identify common pathologies, such as overfitting and poor identifiability, that limit the utility of any resulting inferences. 
+SBC is designed to be primarily used with [Stan](https://mc-stan.org/) models, offering a highly customizable interface to integrate Simulation Based Calibration into existing Bayesian workflows with minimal effort. Its main feature is the `api` interface, which defines a fully-blown SBC pipeline starting from dataset generation to posterior sampling. Once a user has a valid Stan model and a minor R function defining the data generating process(referred to as `Generator`), running SBC becomes as simple as:
 
-- [x] c. Posterior computations: This quantifies how faithfully our computational tools represent the model that they’re fitting. One usecase would be testing approximation algorithms. Approximation based Bayesian computation is very promising but one limitation is that it can be hard to diagnose its reliability. For example, full HMC benchmark is needed to measure its error. SBC which evaluates how well an algorithm samples from the posterior distribution, given a model and a prior could be an alternative tool for measuring reliability.
+```
+n_datasets <- 100  # Number of SBC iterations to run
 
-Note. Calibration matters but so does sharpness; ideal conditions are unbiasedness and high precision for each.
+sbc_generator <- SBC::function_SBC_generator(Generator)
+sbc_dataset <- SBC::generate_datasets(
+  sbc_generator, 
+  n_datasets)
 
-## Method
-With the quantities of interest (QI) determined from the target above, different modes of QI calibration exist based on the space where coverage is test. The space is derived by marginalizing or conditioning the full joint space; a. is fully marginalized while b and c is conditional on data and parameter. When QI is forecast probability, `y.new` serves as QI which is compared with `p.hat = E(y.new|y)` on different spaces. `E[QI|y]` or `E(y.new|y)` could be thought as ground truth for simulation.
+cmdstan_backend <- SBC::cmdstan_sample_SBC_backend(
+    cmdstan_model, iter_warmup = 1000, iter_sampling = 1000)
+    
+results <- SBC::compute_results(sbc_dataset, cmdstan_backend)
+plot_rank_hist(results)
+```
 
-- [x] a. Unconditional coverage `E[QI] = E[E[QI|y]]`: both a Bayesian and frequentist property and unconditional coverage will occur if all the assumptions are true for both. e.g. `E(y.new) = E(p.hat)`
+For detailed usage, please refer to the included vignettes.
 
-- [x] b. Coverage conditional on data `E[QI|E[QI|y]] = E[QI|y]` for all values of `E[QI|y]`: Bayesian calibration. It tests how well the recovered posteriors are centered around the ground truth theta value (`E[QI|y]`). e.g. `E(y.new|p.hat) = p.hat for any p.hat`
-- [ ] c. Coverage conditional on theta `E[QI|theta] = E[E[QI|y]|theta]`: frequentist calbiration. e.g.  `E[y.new|theta] = E[p.hat|theta]`
-
-See Andrew Gelman's [writing](https://statmodeling.stat.columbia.edu/2012/12/06/yes-checking-calibration-of-probability-forecasts-is-part-of-bayesian-statistics/) for further detail.
+### Compatibility
+Currently `SBC` supports `cmdstan`, `rstan`, and `brms` models out of the box. However, adding Backends for other platforms is supported through the `api` interface.
 
 ## Installation
+To install the development version of SBC, run
 ```
 devtools::install_github("hyunjimoon/SBC")
 ```
-## Stan file manual
-One stan file includes three blocks:
-
-1. pri_sim: `sample_theta_tilde_stan`
-simulate N parameter values from given prior distribution.
-```{stan}
-generated quantities {
-  real beta_;
-  real alpha_;
-  beta_ = normal_rng(0, 10);
-  alpha_ = normal_rng(0, 10);
-  ...
-}
-```
-2. data_sim: `sample_y_tilde`
-simulate y from each simulated parameter values in 1.
-```{stan}
-generated quantities {
-  ...
-  vector[N] y_;
-  for (n in 1:N){
-    y_[n] = normal_rng(X[n] * beta + alpha, 1.2);
-  }
-  }
-```
-3. post_sim: `sample_theta_bar_y`
-return parameter samples that best explain the simulated y in 2.
-```{stan}
-model {
-  beta ~ normal(0,10);
-  alpha ~ normal(0,10);
-  y ~ normal(X * beta + alpha, 1.2);
-}
-```
-Further examples are in [tests](https://github.com/hyunjimoon/SBC/tree/master/tests) folder.
----
-### Currently supports:
-* Rank Histogram
-* ECDF plot
-* Uniformity checks
-* ~~Centered Histogram plot~~
-* Support for automated predictive sampling of Stan models in canonical form yhat ~ P(y | theta)
-* Multi-parameter SBC plots
----
-### TODO:
-* ECDF\_diff plot
-* More envelope metrics
-* Add verbose diagnostics, akin to stan's get\_hmc\_diagnostics
-* Inferential Calibration
-* Decision Calibration
+from your R console.
 
 ### References:
 Theoretical support
@@ -95,7 +52,7 @@ Application support
 Vignette
 * [ECDF with codes](https://avehtari.github.io/rhat_ess/rhat_ess.html) (new implementation by Teemu Säilynoja will be available in `bayesplot` and `SBC` package soon)
 
-FAQ
+## FAQ
 > How does calibration relate to prediction accuracy?
 
 Comparing the ground truth and the simulated result is a backbone of calibration and comparison target greatly affects the calibrated (i.e. trained) result, similar to reward in reinforcement learning. In this sense, if the U(a(y), theta) term is designed for prediction, the model will be calibrated to have best predictive result as possible.
