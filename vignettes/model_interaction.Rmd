@@ -1,0 +1,196 @@
+---
+title: "Model interaction"
+output: html_document
+---
+
+```{r setup}
+devtools::install_github("hyunjimoon/SBC",ref="api-variant")
+library(SBC)
+
+# use_cmdstanr <- TRUE # Set to false to use rstan instead
+# 
+# if(use_cmdstanr) {
+#   library(cmdstanr)
+# } else {
+#   library(rstan)
+# }
+library(cmdstanr)
+library(bayesplot)
+library(posterior)
+
+library(future)
+plan(multisession) 
+
+options(SBC.min_chunk_size = 5)
+```
+
+Three models of simple.stan from "ryanbe.me", indexed in order of choice from the tree graph. To define model correlation score the following should be inspected: symmetry, triangular inequality, 
+```{r simple}
+backend_1_1 <- cmdstan_sample_SBC_backend(cmdstan_model("model_interaction/simple1_1.stan"))
+backend_1_2 <- cmdstan_sample_SBC_backend(cmdstan_model("model_interaction/simple1_2.stan"))
+backend_2_1 <- cmdstan_sample_SBC_backend(cmdstan_model("model_interaction/simple2_1.stan"))
+# backend_2_2 <- cmdstan_sample_SBC_backend(cmdstan_model("model_interaction/simple2_2.stan")) doesn't have any parameter
+```
+
+```{r }
+generator_func_1_1 <- function(N) {
+  sigma <-  rlnorm(1);
+  mu <- rnorm(1);
+  y <- rnorm(N, mu, sigma);
+  list(
+    parameters = list(
+      mu = mu,
+      sigma = sigma
+    ),
+    generated = list(
+      N = N,
+      y = y
+    )
+  )
+}
+generator_func_1_1 <- function_SBC_generator(generator_func_1_1, N = 50)
+dataset_1_1 <- generate_datasets(generator_func_1_1, n_datasets = 100)
+```
+
+```{r }
+generator_func_1_2 <- function(N) {
+  sigma <-  rexp(1)
+  mu <- rnorm(1)
+  y <- rnorm(N, mu, sigma)
+  list(
+    parameters = list(
+      mu = mu, 
+      sigma = sigma
+    ),
+    generated = list(
+      N = N,
+      y = y
+    )
+  )
+}
+generator_func_1_2 <- function_SBC_generator(generator_func_1_2, N = 50)
+dataset_1_2 <- generate_datasets(generator_func_1_2, n_datasets = 100)
+```
+
+```{r }
+generator_func_2_1 <- function(N) {
+  sigma <-  rlnorm(1) # from parameter block
+  mu <- 0 # from transformed parameter block
+  y <- rnorm(N, mu, sigma) #not sure between rnorm(N, 0, sigma)
+  list(
+    parameters = list(
+      mu = mu,
+      sigma = sigma
+    ),
+    generated = list(
+      N = N,
+      y = y
+    )
+  )
+}
+generator_func_2_1 <- function_SBC_generator(generator_func_2_1, N = 50)
+dataset_2_1 <- generate_datasets(generator_func_2_1, 100)
+```
+
+```{r }
+# How would the degree of neighbor affect the correlation score between two models? Following questions are in order
+# 1. Would there exist any stats s.t. results_i_j_i_j+1$stat < results_i_j_!(i_j) for all i_j paris?
+# 2. Would symmetric? triangular inequality?
+results_1_1_1_1 <- compute_results(dataset_1_1, backend_1_1)
+results_1_1_1_2 <- compute_results(dataset_1_1, backend_1_2)
+results_1_1_2_1 <- compute_results(dataset_1_1, backend_2_1)
+
+results_1_2_1_2 <- compute_results(dataset_1_2, backend_1_2)
+results_1_2_1_1 <- compute_results(dataset_1_2, backend_1_1)
+results_1_2_2_1 <- compute_results(dataset_1_2, backend_2_1)
+
+results_2_1_2_1 <- compute_results(dataset_2_1, backend_2_1)
+results_2_1_1_1 <- compute_results(dataset_2_1, backend_1_1)
+results_2_1_1_2 <- compute_results(dataset_2_1, backend_1_2)
+```
+
+```{R}
+rank_summary(results_1_1_1_1, par = c("mu", "sigma"))
+rank_summary(results_1_1_1_2, par = c("mu", "sigma"))
+rank_summary(results_1_1_2_1, par = c("mu", "sigma"))
+
+rank_summary(results_1_2_1_2, par = c("mu", "sigma"))
+rank_summary(results_1_2_1_1, par = c("mu", "sigma"))
+rank_summary(results_1_2_2_1, par = c("mu", "sigma"))
+
+rank_summary(results_2_1_2_1, par = c("mu", "sigma"))
+rank_summary(results_2_1_1_1, par = c("mu", "sigma"))
+rank_summary(results_2_1_1_2, par = c("mu", "sigma"))
+```
+
+> rank_summary(results_1_1_1_1, par = c("mu", "sigma"))
+[1] " max_diff: 1.6 wasserstein: 0.315"
+[1] " max_diff: 0.6 wasserstein: 0.241"
+
+> rank_summary(results_1_1_1_2, par = c("mu", "sigma"))
+[1] " max_diff: 1.4 wasserstein: 0.318"
+[1] " max_diff: 1 wasserstein: 0.291"
+
+> rank_summary(results_1_1_2_1, par = c("mu", "sigma"))
+[1] " max_diff: 19 wasserstein: 0.95"
+[1] " max_diff: 3.179 wasserstein: 0.411"
+
+> rank_summary(results_1_2_1_2, par = c("mu", "sigma"))
+[1] " max_diff: 1 wasserstein: 0.249"
+[1] " max_diff: 0.8 wasserstein: 0.291"
+
+> rank_summary(results_1_2_1_1, par = c("mu", "sigma"))
+[1] " max_diff: 0.6 wasserstein: 0.255"
+[1] " max_diff: 0.8 wasserstein: 0.265"
+
+> rank_summary(results_1_2_2_1, par = c("mu", "sigma"))
+[1] " max_diff: 19 wasserstein: 0.95"
+[1] " max_diff: 4.581 wasserstein: 0.851"
+
+> 
+> rank_summary(results_2_1_2_1, par = c("mu", "sigma"))
+[1] " max_diff: 1 wasserstein: 0.298"
+[1] " max_diff: 1 wasserstein: 0.402"
+
+> rank_summary(results_2_1_1_1, par = c("mu", "sigma"))
+[1] " max_diff: 0.8 wasserstein: 0.375"
+[1] " max_diff: 0.8 wasserstein: 0.356"
+
+> rank_summary(results_2_1_1_2, par = c("mu", "sigma"))
+[1] " max_diff: 1 wasserstein: 0.406"
+[1] " max_diff: 0.8 wasserstein: 0.374"
+
+Graphical comparison.
+```{R}
+
+plot_ecdf_diff(results_1_1_1_1)
+plot_ecdf_diff(results_1_1_1_2)
+plot_ecdf_diff(results_1_1_2_1) # mu is fixed to 0 and therefore have a therefore highly under-dispersed.
+
+plot_ecdf_diff(results_1_2_1_2)
+plot_ecdf_diff(results_1_2_1_1)
+plot_ecdf_diff(results_1_2_2_1)
+
+plot_ecdf_diff(results_2_1_2_1)
+plot_ecdf_diff(results_2_1_1_1)
+plot_ecdf_diff(results_2_1_1_2)
+```
+
+As can be seen from by comparing (`results_1_1_2_1` , `results_2_1_1_1` ) (`results_1_2_2_1`, `results_2_1_1_2`) rank scores are not symmetric. Compared to the `generator` model, `backend` model seem to have a greater effect on the outcome. 
+
+The next question is, how would this metric affect the final goal, finding the model with high elpd within the model network? What common trait would model that are close would have? If we calculate rank summaries with `lp__`, what implication would this have? For this let's experiment with bram
+
+```
+template_data = data.frame(y = rep(0, 15), x = rnorm(15))
+priors <- prior(normal(0,1), class = "b") +
+  prior(normal(0,1), class = "Intercept") +
+  prior(normal(0,1), class = "sigma")
+generator <- brms_SBC_generator(y ~ x, data = template_data, prior = priors, 
+                                thin = 50, warmup = 10000, refresh = 2000,
+                                # Will generate the log density - this is useful, 
+                                #but a bit computationally expensive
+                                generate_lp = TRUE 
+                                )
+```
+
+then this would mean for This is a 1d summary of two models;  At first, it is recommended to explore diverse models; heterogenity is 
