@@ -30,7 +30,7 @@ options(SBC.min_chunk_size = 5)
 
 ```{r}
 model_first <- cmdstan_model("simple_workflow/mixture_first.stan")
-backend_first <- cmdstan_sample_SBC_backend(model_first) 
+backend_first <- SBC_backend_cmdstan_sample(model_first) 
 ```
 
 ```{r}
@@ -61,7 +61,7 @@ generator_func_first <- function(N) {
   )
 }
 
-generator_first <- function_SBC_generator(generator_func_first, N = 50)
+generator_first <- SBC_generator_function(generator_func_first, N = 50)
 ```
 
 ```{r}
@@ -88,7 +88,7 @@ This might be puzzling but relates to bad usage of `log_mix` (TODO explain)
 
 ```{r}
 model_fixed_log_mix <- cmdstan_model("simple_workflow/mixture_fixed_log_mix.stan")
-backend_fixed_log_mix <- cmdstan_sample_SBC_backend(model_fixed_log_mix)
+backend_fixed_log_mix <- SBC_backend_cmdstan_sample(model_fixed_log_mix)
 ```
 
 ```{r}
@@ -129,7 +129,7 @@ We can easily fix the ordering of the `mu`s by using the `ordered` built-in type
 
 ```{r}
 model_fixed_ordered <- cmdstan_model("simple_workflow/mixture_fixed_ordered.stan")
-backend_fixed_ordered <- cmdstan_sample_SBC_backend(model_fixed_ordered) 
+backend_fixed_ordered <- SBC_backend_cmdstan_sample(model_fixed_ordered) 
 ```
 We also need to update the generator to match the new names and ordering constant:
 
@@ -162,7 +162,7 @@ generator_func_ordered <- function(N) {
   )
 }
 
-generator_ordered <- function_SBC_generator(generator_func_ordered, N = 50)
+generator_ordered <- SBC_generator_function(generator_func_ordered, N = 50)
 ```
 
 We are kind of confident (and the model fits quickly), so we'll already start with 10 datasets.
@@ -263,7 +263,7 @@ Note: it turns out that extending the model to more components becomes somewhat 
 
 ```{r}
 model_beta_first <- cmdstan_model("simple_workflow/beta_first.stan")
-backend_beta_first <- cmdstan_sample_SBC_backend(model_beta_first) 
+backend_beta_first <- SBC_backend_cmdstan_sample(model_beta_first) 
 
 ```
 
@@ -304,7 +304,7 @@ generator_func_beta_first <- function(N_obs, N_predictors) {
   )
 }
 
-generator_beta_first <- function_SBC_generator(generator_func_beta_first, N_obs = 50, N_predictors = 3)
+generator_beta_first <- SBC_generator_function(generator_func_beta_first, N_obs = 50, N_predictors = 3)
 ```
 
 

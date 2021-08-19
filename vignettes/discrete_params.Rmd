@@ -68,10 +68,10 @@ generated quantities {
 
 if(use_cmdstanr) {
   model_1 <- cmdstan_model(write_stan_file(stan_code_1))
-  backend_1 <- cmdstan_sample_SBC_backend(model_1)
+  backend_1 <- SBC_backend_cmdstan_sample(model_1)
 } else {
   model_1 <- stan_model(model_code = stan_code_1)
-  backend_1 <- rstan_sample_SBC_backend(model_1)
+  backend_1 <- SBC_backend_rstan_sample(model_1)
 }
 
 
@@ -106,7 +106,7 @@ generate_single_dataset_1 <- function(T, r_e, r_l) {
   )
 }
 
-generator_1 <- function_SBC_generator(generate_single_dataset_1, T = 5, r_e = 0.5, r_l = 0.1)
+generator_1 <- SBC_generator_function(generate_single_dataset_1, T = 5, r_e = 0.5, r_l = 0.1)
 ```
 
 
@@ -168,7 +168,7 @@ generate_single_dataset_2 <- function(T, r_e, r_l) {
   )
 }
 
-generator_2 <- function_SBC_generator(generate_single_dataset_2, T = 5, r_e = 0.5, r_l = 0.1)
+generator_2 <- SBC_generator_function(generate_single_dataset_2, T = 5, r_e = 0.5, r_l = 0.1)
 ```
 
 

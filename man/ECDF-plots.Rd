@@ -12,7 +12,8 @@ plot_ecdf(
   gamma = NULL,
   prob = 0.95,
   size = 1,
-  alpha = 0.33
+  alpha = 0.33,
+  ...
 )
 
 plot_ecdf_diff(
@@ -22,7 +23,8 @@ plot_ecdf_diff(
   gamma = NULL,
   prob = 0.95,
   size = 1,
-  alpha = 0.33
+  alpha = 0.33,
+  ...
 )
 }
 \arguments{

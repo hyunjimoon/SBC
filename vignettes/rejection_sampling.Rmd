@@ -20,7 +20,7 @@ options(SBC.min_chunk_size = 10)
 
 ```
 
-How does rejectio sampling affect the validity of SBC?
+How does rejection sampling affect the validity of SBC?
 
 TODO: copy math and ideas from
 https://discourse.mc-stan.org/t/using-narrower-priors-for-sbc/21709/6?u=martinmodrak
@@ -45,13 +45,13 @@ model {
 
 "
 
-backend <- cmdstan_sample_SBC_backend(cmdstan_model(write_stan_file(stan_code)), iter_warmup = 800, iter_sampling = 800)
+backend <- SBC_backend_cmdstan_sample(cmdstan_model(write_stan_file(stan_code)), iter_warmup = 800, iter_sampling = 800)
 ```
 And use a matching generator.
 
 ```{r}
 N <- 30
-generator <- function_SBC_generator(function() {
+generator <- SBC_generator_function(function() {
    mu <- rnorm(1, 0, 2)
    list(
      parameters = list(mu = mu),
@@ -80,7 +80,7 @@ Indeed, all looks good.
 Now let us modify the generator to reject based on parameter values. This should fail.
 
 ```{r}
-generator_reject_param <- function_SBC_generator(function() {
+generator_reject_param <- SBC_generator_function(function() {
    repeat {
     mu <- rnorm(1, 0, 2)
     if(mu > 3) {
@@ -113,7 +113,7 @@ a constant change in posterior density and not affect SBC. (SBC will however the
 non-rejected parts of the data space). We will do a relatively aggressive rejection scheme (reject more than 50% of datasets).
 
 ```{r}
-generator_reject_y <- function_SBC_generator(function() {
+generator_reject_y <- SBC_generator_function(function() {
    repeat {
     mu <- rnorm(1, 0, 2)
     y <- rnorm(N, mu, 1)

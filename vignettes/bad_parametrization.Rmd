@@ -56,12 +56,12 @@ iter_sampling <- 1000
 if(use_cmdstanr) {
   model_gamma <- cmdstan_model(write_stan_file(stan_code_1))
 
-  backend_gamma <- cmdstan_sample_SBC_backend(
+  backend_gamma <- SBC_backend_cmdstan_sample(
     model_gamma, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 2)
 } else {
   model_gamma <- stan_model(model_code = stan_code_1)
 
-  backend_gamma <- rstan_sample_SBC_backend(
+  backend_gamma <- SBC_backend_rstan_sample(
     model_gamma, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 2)
 }
 
@@ -90,7 +90,7 @@ single_dataset_gamma <- function(N) {
 }
 
 
-generator_gamma <- function_SBC_generator(single_dataset_gamma, N = 40)
+generator_gamma <- SBC_generator_function(single_dataset_gamma, N = 40)
 datasets_gamma <- generate_datasets(
   generator_gamma, 
   n_datasets)
@@ -141,12 +141,12 @@ model {
 if(use_cmdstanr) {
   model_gamma_2 <- cmdstan_model(write_stan_file(stan_code_2))
 
-  backend_gamma_2 <- cmdstan_sample_SBC_backend(
+  backend_gamma_2 <- SBC_backend_cmdstan_sample(
     model_gamma_2, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 2)
 } else {
   model_gamma_2 <- stan_model(model_code = stan_code_2)
 
-  backend_gamma_2 <- rstan_sample_SBC_backend(
+  backend_gamma_2 <- SBC_backend_rstan_sample(
     model_gamma_2, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 2)
 }
 

@@ -52,7 +52,7 @@ single_dataset_missing <- function(N) {
 }
 
 set.seed(25746223)
-generator_missing <- function_SBC_generator(single_dataset_missing, N = 10)
+generator_missing <- SBC_generator_function(single_dataset_missing, N = 10)
 datasets_missing <- generate_datasets(generator_missing, n_datasets = 200)
 ```
 
@@ -79,12 +79,12 @@ iter_sampling <- 1000
 if(use_cmdstanr) {
   model_missing <- cmdstan_model(write_stan_file(model_code_missing))
 
-  backend_missing <- cmdstan_sample_SBC_backend(
+  backend_missing <- SBC_backend_cmdstan_sample(
     model_missing, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 1)
 } else {
   model_missing <- stan_model(model_code = model_code_missing)
 
-  backend_missing <- rstan_sample_SBC_backend(
+  backend_missing <- SBC_backend_rstan_sample(
     model_missing, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 1)
 }
 
@@ -164,12 +164,12 @@ model {
 if(use_cmdstanr) {
   model_missing_2 <- cmdstan_model(write_stan_file(model_code_missing_2))
 
-  backend_missing_2 <- cmdstan_sample_SBC_backend(
+  backend_missing_2 <- SBC_backend_cmdstan_sample(
     model_missing_2, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 1)
 } else {
   model_missing_2 <- stan_model(model_code = model_code_missing_2)
 
-  backend_missing_2 <- rstan_sample_SBC_backend(
+  backend_missing_2 <- SBC_backend_rstan_sample(
     model_missing_2, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 1)
 }
 

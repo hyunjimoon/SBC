@@ -32,7 +32,7 @@ template_data = data.frame(y = rep(0, 15), x = rnorm(15))
 priors <- prior(normal(0,1), class = "b") +
   prior(normal(0,1), class = "Intercept") +
   prior(normal(0,1), class = "sigma")
-generator <- brms_SBC_generator(y ~ x, data = template_data, prior = priors, 
+generator <- SBC_generator_brms(y ~ x, data = template_data, prior = priors, 
                                 thin = 50, warmup = 10000, refresh = 2000,
                                 # Will generate the log density - this is useful, 
                                 #but a bit computationally expensive
@@ -49,11 +49,11 @@ datasets <- generate_datasets(generator, 100)
 
 ```{r}
 # Reuse the compiled model and other info from the generator
-backend <- brms_SBC_backend_from_generator(generator, warmup = 500, iter = 1000, chains = 1, thin = 1,
+backend <- SBC_backend_brms_from_generator(generator, warmup = 500, iter = 1000, chains = 1, thin = 1,
                             init = 0.1)
 
 # More verbose alternative that results in exactly the same backend:
-# backend <- brms_SBC_backend(y ~ x, template_dataset = template_data, prior = priors, warmup = 500, iter = 1000, chains = 1, thin = 1
+# backend <- SBC_backend_brms(y ~ x, template_dataset = template_data, prior = priors, warmup = 500, iter = 1000, chains = 1, thin = 1
 #                            init = 0.1)
 ```
 
@@ -122,7 +122,7 @@ one_dataset_generator <- function(N, K) {
   )
 }
 
-n_dataset_generator <- function_SBC_generator(one_dataset_generator, N = 12, K = 3)
+n_dataset_generator <- SBC_generator_function(one_dataset_generator, N = 12, K = 3)
 ```
 
 For increased sensitivity, we also add the log likelihood of the data given parameters
@@ -147,7 +147,7 @@ priors_func <- prior(normal(0,1), class = "b") +
   prior(normal(0,0.75), class = "sd")
 
 
-backend_func <- brms_SBC_backend(y ~ x + (1 | group),  
+backend_func <- SBC_backend_brms(y ~ x + (1 | group),  
                             prior = priors_func, chains = 1,
                             template_dataset = datasets_func$generated[[1]])
 
@@ -182,7 +182,7 @@ priors_func2 <- prior(normal(0,1), class = "b") +
   prior(normal(0,0.75), class = "sd")
 
 
-backend_func2 <- brms_SBC_backend(y ~ 0 + Intercept + x + (1 | group),  
+backend_func2 <- SBC_backend_brms(y ~ 0 + Intercept + x + (1 | group),  
                             prior = priors_func2, warmup = 500, iter = 1000, chains = 1,
                             template_dataset = datasets_func$generated[[1]])
 

@@ -107,18 +107,18 @@ if(use_cmdstanr) {
   model_regression_2 <- cmdstan_model(write_stan_file(stan_code_2))
   model_regression_3 <- cmdstan_model(write_stan_file(stan_code_3))
 
-  backend_regression_1 <- cmdstan_sample_SBC_backend(model_regression_1, iter_warmup = 400, iter_sampling = 500)
-  backend_regression_2 <- cmdstan_sample_SBC_backend(model_regression_2, iter_warmup = 400, iter_sampling = 500)
-  backend_regression_3 <- cmdstan_sample_SBC_backend(model_regression_3, iter_warmup = 400, iter_sampling = 500)
+  backend_regression_1 <- SBC_backend_cmdstan_sample(model_regression_1, iter_warmup = 400, iter_sampling = 500)
+  backend_regression_2 <- SBC_backend_cmdstan_sample(model_regression_2, iter_warmup = 400, iter_sampling = 500)
+  backend_regression_3 <- SBC_backend_cmdstan_sample(model_regression_3, iter_warmup = 400, iter_sampling = 500)
 } else {
   model_regression_1 <- stan_model(model_code = stan_code_1)
   model_regression_2 <- stan_model(model_code = stan_code_2)
   model_regression_3 <- stan_model(model_code = stan_code_3)
 
   
-  backend_regression_1 <- rstan_sample_SBC_backend(model_regression_1, iter = 900, warmup = 400)
-  backend_regression_2 <- rstan_sample_SBC_backend(model_regression_2, iter = 900, warmup = 400)
-  backend_regression_3 <- rstan_sample_SBC_backend(model_regression_3, iter = 900, warmup = 400)
+  backend_regression_1 <- SBC_backend_rstan_sample(model_regression_1, iter = 900, warmup = 400)
+  backend_regression_2 <- SBC_backend_rstan_sample(model_regression_2, iter = 900, warmup = 400)
+  backend_regression_3 <- SBC_backend_rstan_sample(model_regression_3, iter = 900, warmup = 400)
 }
 
 ```
@@ -163,7 +163,7 @@ let us see big problems (but not subtle issues)
 
 ```{r}
 set.seed(5666024)
-datasets_regression <- generate_datasets(function_SBC_generator(single_dataset_regression, N = 100, K = 2), 10)
+datasets_regression <- generate_datasets(SBC_generator_function(single_dataset_regression, N = 100, K = 2), 10)
 ```
 
 

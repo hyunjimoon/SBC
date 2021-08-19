@@ -62,9 +62,9 @@ sampling_backend_from_stanmodel <- function(stanmodel, args) {
   if(inherits(stanmodel, "CmdStanModel")) {
     translated_args <- translate_rstan_args_to_cmdstan(args)
 
-    do.call(cmdstan_sample_SBC_backend, combine_args(translated_args, list(model = stanmodel)))
+    do.call(SBC_backend_cmdstan_sample, combine_args(translated_args, list(model = stanmodel)))
   } else if(inherits(stanmodel, "stanmodel")) {
-    do.call(rstan_sample_SBC_backend, combine_args(args,list(model = stanmodel)))
+    do.call(SBC_backend_rstan_sample, combine_args(args,list(model = stanmodel)))
   } else {
     stop("stanmodel does not inherit from `stanmodel` or `CmdStanModel`")
   }

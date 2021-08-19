@@ -9,7 +9,7 @@ test_that("Generating datasets via functions", {
   }
 
   res <- generate_datasets(
-    function_SBC_generator(list_function, N = 10),
+    SBC_generator_function(list_function, N = 10),
     n_datasets = 7)
 
   expect_true(length(res) == 7)
@@ -23,11 +23,11 @@ test_that("Generating datasets via functions", {
       res[base_indices[rep(1:length(base_indices), length.out = n_datasets)]]
     }
 
-  res_direct1 <- generate_datasets(custom_SBC_generator(direct_func),  n_datasets = 7)
+  res_direct1 <- generate_datasets(SBC_generator_custom(direct_func),  n_datasets = 7)
 
   expect_equal(res, res_direct1, check.attributes = FALSE)
 
-  res_direct2 <- generate_datasets(custom_SBC_generator(direct_func, base_indices = 1:3),
+  res_direct2 <- generate_datasets(SBC_generator_custom(direct_func, base_indices = 1:3),
   n_datasets = 5)
 
   expect_identical(res[c(1,2,3,1,2)], res_direct2)
@@ -45,7 +45,7 @@ test_that("subsetting datasets", {
   }
 
   res <- generate_datasets(
-    function_SBC_generator(list_function, N = 10),
+    SBC_generator_function(list_function, N = 10),
     n_datasets = 7)
 
   res_subs <- res[3:5]

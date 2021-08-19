@@ -18,7 +18,7 @@ compute_results(
 \item{datasets}{an object of class \code{SBC_datasets}}
 
 \item{backend}{the model + sampling algorithm. The built-in backends can be constructed
-using \code{cmdstan_sample_SBC_backend()}, \code{rstan_sample_SBC_backend()} and \code{brms_SBC_backend()}.
+using \code{SBC_backend_cmdstan_sample()}, \code{SBC_backend_rstan_sample()} and \code{SBC_backend_brms()}.
 (more to come). The backend is an S3 class supporting at least the \code{SBC_fit},
 \code{SBC_fit_to_draws_matrix} methods.}
 

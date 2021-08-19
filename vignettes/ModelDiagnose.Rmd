@@ -98,12 +98,12 @@ packages, the format needs to conform to what the packages expect.
 
 ### API Example - Create `SBC_Datasets` from Generator
 
-`SBC` provides helper functions `function_SBC_generator` and `generate_datasets` which takes a Generator function and creates a benign `SBC_datasets' object. 
+`SBC` provides helper functions `SBC_generator_function` and `generate_datasets` which takes a Generator function and creates a benign `SBC_datasets' object. 
 
 ```{r}
 n_datasets <- 100  # Number of SBC iterations to run
 
-poisson_generator <- function_SBC_generator(poisson_generator_single, N = 40)
+poisson_generator <- SBC_generator_function(poisson_generator_single, N = 40)
 poisson_dataset <- generate_datasets(
   poisson_generator, 
   n_datasets)
@@ -119,10 +119,10 @@ Here we'll just use the pre-defined cmdstan Backend, in which we pass our compil
 
 ```{r}
 if(use_cmdstanr) {
-  poisson_backend <- cmdstan_sample_SBC_backend(
+  poisson_backend <- SBC_backend_cmdstan_sample(
       cmdstan_model, iter_warmup = 1000, iter_sampling = 1000)
 } else {
-  poisson_backend <- rstan_sample_SBC_backend(
+  poisson_backend <- SBC_backend_rstan_sample(
       rstan_model, iter = 2000, warmup = 1000)
 }
 ```

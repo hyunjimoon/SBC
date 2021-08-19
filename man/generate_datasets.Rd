@@ -7,8 +7,8 @@
 generate_datasets(generator, n_datasets)
 }
 \arguments{
-\item{generator}{a generator object - build e.g. via \code{function_SBC_generator} or
-\code{brms_SBC_generator}.}
+\item{generator}{a generator object - build e.g. via \code{SBC_generator_function} or
+\code{SBC_generator_brms}.}
 }
 \value{
 object of class \code{SBC_datasets}

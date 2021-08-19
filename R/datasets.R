@@ -37,7 +37,7 @@ validate_SBC_datasets <- function(x) {
 #' @param parameters samples of "true" values of unobserved parameters.
 #' An object of class `draws_matrix` (from the `posterior` package)
 #' @param generated a list of objects that can be passed as data to the backend you plan to use.
-#' (e.g. list of values for Stan-based backends, a data frame for `brms_SBC_backend`)
+#' (e.g. list of values for Stan-based backends, a data frame for `SBC_backend_brms`)
 #' @export
 SBC_datasets <- function(parameters, generated) {
   x <-  new_SBC_datasets(parameters, generated)
@@ -78,8 +78,8 @@ bind_datasets <- function(...) {
 
 #' Generate datasets.
 #'
-#' @param generator a generator object - build e.g. via `function_SBC_generator` or
-#'  `brms_SBC_generator`.
+#' @param generator a generator object - build e.g. via `SBC_generator_function` or
+#'  `SBC_generator_brms`.
 #' @return object of class `SBC_datasets`
 #' TODO: seed
 #' @export
@@ -94,14 +94,14 @@ generate_datasets <- function(generator, n_datasets) {
 #' `generated` (observed dataset, ready to be passed to backend)
 #' @param ... Additional arguments passed to `f`
 #'@export
-function_SBC_generator <- function(f, ...) {
+SBC_generator_function <- function(f, ...) {
   stopifnot(is.function(f))
-  structure(list(f = f, args = list(...)), class = "function_SBC_generator")
+  structure(list(f = f, args = list(...)), class = "SBC_generator_function")
 }
 
 
 #' @export
-generate_datasets.function_SBC_generator <- function(generator, n_datasets) {
+generate_datasets.SBC_generator_function <- function(generator, n_datasets) {
   parameters_list <- list()
   generated <- list()
   for(iter in 1:n_datasets){
@@ -138,7 +138,7 @@ generate_datasets.function_SBC_generator <- function(generator, n_datasets) {
 #' Running:
 #'
 #' ```r
-#' gen <- custom_SBC_generator(f, <<some other args>>)
+#' gen <- SBC_generator_custom(f, <<some other args>>)
 #' datasets <- generate_datasets(gen, n_datasets = my_n_datasets)
 #' ```
 #'
@@ -150,8 +150,8 @@ generate_datasets.function_SBC_generator <- function(generator, n_datasets) {
 #'
 #' So whenever you control the code calling `generate_datasets`,
 #' it usually makes more sense to just create an `SBC_datasets`
-#' object directly and avoid using `custom_SBC_generator` and `generate_datasets` at all.
-#' `custom_SBC_generator` can however be useful, when a code you
+#' object directly and avoid using `SBC_generator_custom` and `generate_datasets` at all.
+#' `SBC_generator_custom` can however be useful, when a code you
 #' do not control calls `generate_datasets` for you and the
 #' built-in generators do not provide you with enough flexibility.
 #'
@@ -160,13 +160,13 @@ generate_datasets.function_SBC_generator <- function(generator, n_datasets) {
 #' and `SBC_datasets` object
 #' @param ... Additional arguments passed to `f`
 #' @export
-custom_SBC_generator <- function(f, ...) {
+SBC_generator_custom <- function(f, ...) {
   stopifnot(is.function(f))
-  structure(list(f = f, args = list(...)), class = "custom_SBC_generator")
+  structure(list(f = f, args = list(...)), class = "SBC_generator_custom")
 }
 
 #'@export
-generate_datasets.custom_SBC_generator <- function(generator, n_datasets) {
+generate_datasets.SBC_generator_custom <- function(generator, n_datasets) {
   res <- do.call(generator$f, combine_args(generator$args, list(n_datasets = n_datasets)))
   res <- validate_SBC_datasets(res)
   res
@@ -182,7 +182,7 @@ generate_datasets.custom_SBC_generator <- function(generator, n_datasets) {
 #' as an additional parameter. This can be somewhat computationally expensive,
 #' but improves sensitivity of the SBC process.
 #' @export
-brms_SBC_generator <- function(..., generate_lp = TRUE) {
+SBC_generator_brms <- function(..., generate_lp = TRUE) {
   model_data <- brms::make_standata(..., sample_prior = "only")
   class(model_data) <- NULL
 
@@ -201,11 +201,11 @@ brms_SBC_generator <- function(..., generate_lp = TRUE) {
     args = args,
     generate_lp = generate_lp,
     compiled_model = compiled_model),
-    class = "brms_SBC_generator")
+    class = "SBC_generator_brms")
 }
 
 #' @export
-generate_datasets.brms_SBC_generator <- function(generator, n_datasets) {
+generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
   #TODO pass args for control, warmup, .... to sampling
   if(inherits(generator$compiled_model, "CmdStanModel")) {
       args_for_fitting <- translate_rstan_args_to_cmdstan(generator$args, include_unrecognized = FALSE)

@@ -37,7 +37,7 @@ SBC_fit_to_diagnostics.default <- function(fit, fit_output, fit_messages, fit_wa
 #'   Arguments `data` and `cores` cannot be set this way as they need to be
 #'   controlled by the package.
 #' @export
-rstan_sample_SBC_backend <- function(model, ...) {
+SBC_backend_rstan_sample <- function(model, ...) {
   stopifnot(inherits(model, "stanmodel"))
   args <- list(...)
   unacceptable_params <- c("data", "cores")
@@ -50,12 +50,12 @@ rstan_sample_SBC_backend <- function(model, ...) {
   if(is.null(args$open_progress)) {
     args$open_progress <- FALSE
   }
-  structure(list(model = model, args = args), class = "rstan_sample_SBC_backend")
+  structure(list(model = model, args = args), class = "SBC_backend_rstan_sample")
 }
 
 
 #' @export
-SBC_fit.rstan_sample_SBC_backend <- function(backend, generated, cores) {
+SBC_fit.SBC_backend_rstan_sample <- function(backend, generated, cores) {
   do.call(rstan::sampling,
           combine_args(list(object = backend$model,
                  data = generated,
@@ -211,7 +211,7 @@ print.SBC_nuts_diagnostics_summary <- function(x) {
 #'   `parallel_chains` arguments cannot be set this way as they need to be controlled by the SBC
 #'   package.
 #' @export
-cmdstan_sample_SBC_backend <- function(model, ...) {
+SBC_backend_cmdstan_sample <- function(model, ...) {
   stopifnot(inherits(model, "CmdStanModel"))
   if(length(model$exe_file()) == 0) {
     stop("The model has to be already compiled, call $compile() first.")
@@ -223,11 +223,11 @@ cmdstan_sample_SBC_backend <- function(model, ...) {
                 " cannot be provided when defining a backend as they need to be set ",
                 "by the SBC package"))
   }
-  structure(list(model = model, args = args), class = "cmdstan_sample_SBC_backend")
+  structure(list(model = model, args = args), class = "SBC_backend_cmdstan_sample")
 }
 
 #' @export
-SBC_fit.cmdstan_sample_SBC_backend <- function(backend, generated, cores) {
+SBC_fit.SBC_backend_cmdstan_sample <- function(backend, generated, cores) {
   fit <- do.call(backend$model$sample,
           combine_args(backend$args,
             list(
@@ -264,7 +264,7 @@ SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages, fi
 }
 
 # For internal use, creates brms backend.
-new_brms_SBC_backend <- function(compiled_model,
+new_SBC_backend_brms <- function(compiled_model,
   args
 ) {
 
@@ -272,10 +272,10 @@ new_brms_SBC_backend <- function(compiled_model,
   args_for_stan <- args[intersect(names(args), arg_names_for_stan)]
   stan_backend <- sampling_backend_from_stanmodel(compiled_model, args_for_stan)
 
-  structure(list(stan_backend = stan_backend, args = args), class = "brms_SBC_backend")
+  structure(list(stan_backend = stan_backend, args = args), class = "SBC_backend_brms")
 }
 
-validate_brms_SBC_backend_args <- function(args) {
+validate_SBC_backend_brms_args <- function(args) {
   if(!is.null(args$algorithm) && args$algorithm != "sampling") {
     stop("Algorithms other than sampling not supported yet")
   }
@@ -293,22 +293,22 @@ validate_brms_SBC_backend_args <- function(args) {
 #' @param ... arguments passed to `brm`.
 #' @param template_dataset a representative dataset that can be used to generate code.
 #' @export
-brms_SBC_backend <- function(..., template_dataset) {
+SBC_backend_brms <- function(..., template_dataset) {
   args = list(...)
-  validate_brms_SBC_backend_args(args)
+  validate_SBC_backend_brms_args(args)
 
   stanmodel <- stanmodel_for_brms(data = template_dataset, ...)
 
-  new_brms_SBC_backend(stanmodel, args)
+  new_SBC_backend_brms(stanmodel, args)
 }
 
-#' Build a brms backend, reusing the compiled model from a previously created `brms_SBC_generator`
+#' Build a brms backend, reusing the compiled model from a previously created `SBC_generator_brms`
 #' object.
 #'
 #' @export
-brms_SBC_backend_from_generator <- function(generator, ...) {
-  stopifnot(inherits(generator, "brms_SBC_generator"))
-  validate_brms_SBC_backend_args(list(...))
+SBC_backend_brms_from_generator <- function(generator, ...) {
+  stopifnot(inherits(generator, "SBC_generator_brms"))
+  validate_SBC_backend_brms_args(list(...))
 
   args <- combine_args(generator$args, list(...))
 
@@ -316,11 +316,11 @@ brms_SBC_backend_from_generator <- function(generator, ...) {
     stop("Algorithms other than sampling not supported yet")
   }
 
-  new_brms_SBC_backend(generator$compiled_model, args)
+  new_SBC_backend_brms(generator$compiled_model, args)
 }
 
 #' @export
-SBC_fit.brms_SBC_backend <- function(backend, generated, cores) {
+SBC_fit.SBC_backend_brms <- function(backend, generated, cores) {
   args_with_data <- backend$args
   args_with_data$data <- generated
 
