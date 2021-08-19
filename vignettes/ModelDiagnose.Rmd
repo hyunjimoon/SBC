@@ -10,6 +10,18 @@ vignette: >
 ---
 ```{r setup, include = FALSE}
 library(SBC);
+use_cmdstanr <- TRUE # Set to false to use rstan instead
+
+# Enable parallel processing
+library(future)
+plan(multisession)
+
+# The fits are relatively fast,
+# so we force a minimum chunk size to reduce overhead of
+# paralellization and decrease computation time.
+options(SBC.min_chunk_size = 5)
+
+
 ```
 # SBC
 ## Introduction
@@ -34,6 +46,7 @@ In this vignette we will demonstrate how the `api` interface is used with a simp
 
 ### API Example - Model Setup
 We will be running SBC against a model that defines `y ~ Poisson(lambda)`, where `lambda ~ Gamma(15, 5)`. We will be using `cmdstanr` as the backend with the following model code:
+
 ```{r, include = TRUE}
 stan_code <- "
 data{
@@ -48,13 +61,19 @@ model{
   y ~ poisson(lambda);
 }
 "
-cmdstan_model <- cmdstanr::cmdstan_model(cmdstanr::write_stan_file(stan_code))
+
+if(use_cmdstanr) {
+  cmdstan_model <- cmdstanr::cmdstan_model(cmdstanr::write_stan_file(stan_code))
+} else {
+  rstan_model <- rstan::stan_model(model_code = stan_code)
+}
 
 ```
 
 ### API Example - Generator
 
-Once we bave defied the moddel, we can create a Generator function which will generate prior and data samples:
+Once we have defined the model, we can create a Generator function which will generate prior and data samples:
+
 ```{r}
 # A generator function should return a named list containing elements "parameters" and "generated"
 
@@ -73,9 +92,12 @@ poisson_generator_single <- function(N){  # N is the number of data points we ar
 }
 ```
 
-As you can see, the `Generator` returns a named list containing randomly samples from the prior and generated data realized from the prior samples.
+As you can see, the `Generator` returns a named list containing random samples from the prior and generated data realized from the prior samples.
+The `$generated` member will be passed as-is to our sampling algorithm, so here we have a format that Stan will accept, but when using models from other
+packages, the format needs to conform to what the packages expect.
 
 ### API Example - Create `SBC_Datasets` from Generator
+
 `SBC` provides helper functions `function_SBC_generator` and `generate_datasets` which takes a Generator function and creates a benign `SBC_datasets' object. 
 
 ```{r}
@@ -87,26 +109,36 @@ poisson_dataset <- generate_datasets(
   n_datasets)
 ```
 
-
 ### API Example - Defining `Backend`
+
 Once we have the model compiled we'll create a `Backend` object from the model. `SBC` includes pre-defined `Backend` objects for HMC sampling with `cmdstan` and `rstan`. In addition, it also provides generator function and Backend for `brms` based models. 
 
 Note that you can create your own `Backend` if you wish to use a different sampling/optimization platform, such as variational inference or JAGS. For further information on `Backend` specifications, please refer to here.
 
 Here we'll just use the pre-defined cmdstan Backend, in which we pass our compiled model and any additional arguments we would like to pass over to `cmdstanr::sampling`:
+
 ```{r}
-poisson_backend <- cmdstan_sample_SBC_backend(
-    cmdstan_model, iter_warmup = 1000, iter_sampling = 1000)
+if(use_cmdstanr) {
+  poisson_backend <- cmdstan_sample_SBC_backend(
+      cmdstan_model, iter_warmup = 1000, iter_sampling = 1000)
+} else {
+  poisson_backend <- rstan_sample_SBC_backend(
+      rstan_model, iter = 2000, warmup = 1000)
+}
 ```
 
 ### API Example - Computing Ranks
+
 we can then use `compute_results` to fit our datasets with the backend:
+
 ```{r, results=FALSE}
 results <- compute_results(poisson_dataset, poisson_backend)
 ```
 
 ### API Example - Viewing Results
+
 We can now inspect the results to see if there were any errors and check individual stats:
+
 ```{r}
 results$stats
 ```
