@@ -300,10 +300,10 @@ compute_results <- function(datasets, backend,
   n_errors <- 0
   max_errors_to_show <- 5
   for(i in 1:length(datasets)) {
+    if(!is.null(results_raw[[i]]$fit)) {
+      fits[[i]] <- results_raw[[i]]$fit
+    }
     if(is.null(results_raw[[i]]$error)) {
-      if(!is.null(results_raw[[i]]$fit)) {
-        fits[[i]] <- results_raw[[i]]$fit
-      }
       stats_list[[i]] <- results_raw[[i]]$stats
       stats_list[[i]]$dataset_id <- i
       backend_diagnostics_list[[i]] <- results_raw[[i]]$backend_diagnostics
@@ -311,23 +311,30 @@ compute_results <- function(datasets, backend,
     }
     else {
       if(n_errors < max_errors_to_show) {
-        message("Dataset ", i, " resulted in error when fitting.\n")
-        message(results_raw[[i]]$error, "\n")
-        if(!is.null(results_raw[[i]]$warnings)) {
-          message(" --- Warnings for fit ", i, " ----")
-          message(paste0(results_raw[[i]]$warnings, collapse = "\n"))
-        }
-        if(!is.null(results_raw[[i]]$messages)) {
-          message(" --- Messages for fit ", i, " ----")
-          message(paste0(results_raw[[i]]$messages, collapse = "\n"))
-        }
-        if(is.null(results_raw[[i]]$output)) {
-          message(" --- Nothing in stdout ---")
+        if(is.null(results_raw[[i]]$fit)) {
+          message("Dataset ", i, " resulted in error when fitting.\n")
+          message(results_raw[[i]]$error, "\n")
+          if(!is.null(results_raw[[i]]$warnings)) {
+            message(" --- Warnings for fit ", i, " ----")
+            message(paste0(results_raw[[i]]$warnings, collapse = "\n"))
+          }
+          if(!is.null(results_raw[[i]]$messages)) {
+            message(" --- Messages for fit ", i, " ----")
+            message(paste0(results_raw[[i]]$messages, collapse = "\n"))
+          }
+          if(is.null(results_raw[[i]]$output)) {
+            message(" --- Nothing in stdout ---")
+          } else {
+            message(" ---- Model output ----")
+            cat(paste0(results_raw[[i]]$output, collapse = "\n"))
+          }
+          message("\n ---- End of output for dataset ", i, " -----")
         } else {
-          message(" ---- Model output ----")
-          cat(paste0(results_raw[[i]]$output, collapse = "\n"))
+          message("Dataset ", i, " resulted in error when post-processing the fit.\n",
+                  "Calling `recompute_statistics` after you've found and fixed the problem could ",
+                  "let you move further without refitting")
+          message(results_raw[[i]]$error, "\n")
         }
-        message("\n ---- End of output for dataset ", i, " -----")
 
       } else if(n_errors == max_errors_to_show) {
         message("Too many datasets produced errors. Further error messages not shown.\n")
@@ -461,7 +468,7 @@ compute_results_single <- function(params_and_generated, backend, cores,
     error_stats <- tryCatch( {
       res$stats <- SBC::statistics_from_single_fit(res$fit, parameters = parameters, thin_ranks = thin_ranks,
                                                    generated = generated, gen_quants = gen_quants)
-      res$backend_diagnostics <-SBC::SBC_fit_to_diagnostics(fit, res$outuput, res$messages, res$warnings)
+      res$backend_diagnostics <- SBC::SBC_fit_to_diagnostics(fit, res$outuput, res$messages, res$warnings)
       NULL
     }, error = identity)
     if(!is.null(error_stats)) {
@@ -623,13 +630,10 @@ recompute_statistics <- function(old_results, datasets, thin_ranks = 10, gen_qua
 
   new_results <- old_results
   missing_fits <- purrr::map_lgl(old_results$fits, is.null)
-  errors <- ! purrr::map_lgl(old_results$errors, is.null)
-  if(all(errors)) {
-    stop("All fits resulted in an error, cannot recompute")
-  }
-  else if(all(missing_fits)) {
-    stop("No raw fits preserved, cannot recompute. Maybe the results were computed with keep_fits = FALSE?")
-  } else if(any(missing_fits & !errors)) {
+  if(all(missing_fits)) {
+    stop("No raw fits preserved, cannot recompute. ",
+         "Either all datasets produced errors or the results were computed with keep_fits = FALSE")
+  } else if(any(missing_fits)) {
     warning("Some raw fits not available. Those fits will be ignored when recomputing statistics")
   }
 
