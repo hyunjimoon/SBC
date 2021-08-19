@@ -1,6 +1,6 @@
 Package: SBC
 Title: Simulation Based Calibration for rstan/cmdstanr models
-Version: 0.0.0.9000
+Version: 0.0.1.9000
 Authors@R: 
     c(person(given = "Shinyoung",
            family = "Kim",
@@ -11,8 +11,13 @@ Authors@R:
            family = "Moon",
            role = c("aut", "cre"),
            email = "hyunjimoon@gmail.com",
+           comment = c()),
+    person(given = "Martin",
+           family = "Modrák",
+           role = c("aut"),
+           email = "martin.modrak@biomed.cas.cz",
            comment = c()))
-Description: SBC helps perform Simulation Based Calibration on cmdstanr or rstan models.
+Description: SBC helps perform Simulation Based Calibration on models using Stan or brms.
   It contains various classes and functions to extract samples from models, calculate SBC metrics and visualize utility plots.
 License: MIT + file LICENSE
 Encoding: UTF-8
