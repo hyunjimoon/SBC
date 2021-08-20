@@ -325,7 +325,17 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
 
 }
 
+#' @export
 draws_rvars_to_standata <- function(x) {
+  res <- list()
+  for(i in 1:posterior::ndraws(x)) {
+    res[[i]] <- draws_rvars_to_standata_single(posterior::subset_draws(x, draw = i))
+  }
+  res
+}
+
+#' @export
+draws_rvars_to_standata_single <- function(x) {
   stopifnot(posterior::ndraws(x) == 1)
   lapply(x, FUN = function(x_rvar) {
     res <- draws_of(x_rvar, with_chains = FALSE)

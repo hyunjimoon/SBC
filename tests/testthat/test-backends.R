@@ -12,6 +12,6 @@ test_that("draws_rvars_to_standata converts properly", {
                             vector_var = posterior::rvar(array(vector_var, dim = c(1, dim(vector_var))), dim = dim(vector_var)),
                             matrix_var = posterior::rvar(array(matrix_var, dim = c(1, dim(matrix_var))), dim = dim(matrix_var)))
 
-    expect_equal(draws_rvars_to_standata(rvar_val), list_val)
+    expect_equal(draws_rvars_to_standata_single(rvar_val), list_val)
 })
 
