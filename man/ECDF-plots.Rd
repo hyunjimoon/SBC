@@ -44,7 +44,13 @@ ranks per parameter and the maximum rank.}
 \item{size}{size passed to \code{\link[ggplot2:geom_ribbon]{ggplot2::geom_ribbon()}} for the confidence band}
 
 \item{alpha}{alpha level of the confidence band}
+
+\item{...}{additional arguments passed to \code{\link[=data_for_ecdf_plots]{data_for_ecdf_plots()}}.
+Most notably, if \code{x} is matrix, a \code{max_rank} parameter needs to be given.}
 }
 \description{
+See the methods for \code{\link[=data_for_ecdf_plots]{data_for_ecdf_plots()}} for available data formats.
+}
+\details{
 \href{https://arxiv.org/abs/1903.08008}{arxiv::1903.08008} by A. Vehtari et al.
 }

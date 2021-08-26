@@ -281,24 +281,6 @@ data_for_ecdf_plots.data.frame <- function(x, parameters = NULL,
                       gamma = gamma, K = K)
 }
 
-data_for_ecdf_plots.SBCWorkflow <- function(
-  x, parameters = NULL,
-  prob = 0.95,
-  gamma = NULL,
-  K = NULL
-) {
-  sbc_workflow_obj <- x
-  if(is.null(sbc_workflow_obj$calculated_ranks)){
-    stop("No rank data is available. Please run SBCWorkflow$calculate_rank first.")
-  }
-
-  data_for_ecdf_plots(sbc_workflow_obj$calculated_ranks,
-                      max_rank = posterior::niterations(sbc_workflow_obj$posterior_samples),
-                          gamma = gamma, K = K, prob = prob)
-
-
-}
-
 data_for_ecdf_plots.matrix <- function(x,
                                                max_rank,
                                        parameters = NULL,
