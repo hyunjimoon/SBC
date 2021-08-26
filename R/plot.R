@@ -90,6 +90,8 @@ guess_bins <- function(max_rank, N) {
 #' Plot the ECDF-based plots.
 #'
 #'
+#' See the methods for [data_for_ecdf_plots()] for available data formats.
+#'
 #' \href{https://arxiv.org/abs/1903.08008}{arxiv::1903.08008} by A. Vehtari et al.
 #' @export
 #' @rdname ECDF-plots
@@ -103,6 +105,8 @@ guess_bins <- function(max_rank, N) {
 #'   the granularity of the plot and can significantly speed up the computation
 #'   of the simultaneous confidence bands. Defaults to the smaller of number of
 #'   ranks per parameter and the maximum rank.
+#' @param ... additional arguments passed to [data_for_ecdf_plots()].
+#' Most notably, if `x` is matrix, a `max_rank` parameter needs to be given.
 #' @import ggplot2
 plot_ecdf <- function(x,
                       parameters = NULL,
@@ -297,6 +301,7 @@ data_for_ecdf_plots.SBCWorkflow <- function(
 
 data_for_ecdf_plots.matrix <- function(x,
                                                max_rank,
+                                       parameters = NULL,
                                                  prob = 0.95,
                                                  gamma = NULL,
                                                  K = NULL,
@@ -306,6 +311,11 @@ data_for_ecdf_plots.matrix <- function(x,
   if(any(!is.finite(ranks_matrix))) {
     stop("Ranks may only contain finite values")
   }
+
+  if(!is.null(parameters)) {
+    ranks_matrix <- ranks_matrix[, parameters]
+  }
+
   pit <- ranks_to_empirical_pit(ranks_matrix, max_rank)
   N <- nrow(pit)
   if (is.null(K)) {

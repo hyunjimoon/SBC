@@ -35,7 +35,7 @@ rank2unif <- function(results, par, bins = 20){
 #' @param par names of parameter to summarize
 #' @param bins number of bins for prior and post density
 #' @export
-#' #TODO debug wasserstein, max difference
+# TODO debug wasserstein, max difference
 set2set <- function(priors, posteriors, par, bins = 20){
   priors <- draws_of(priors[[par]])
   posteriors <- draws_of(posteriors[[par]])
@@ -65,7 +65,7 @@ max_diff <- function(x, y){
 ##' @param ... unused
 ##' @return distance value based on max difference
 ##' @export
-##' TODO need testing
+# TODO need testing
 wasserstein <- function(x, y){
   tempf <- Vectorize(function(i) abs((x[i]/sum(x)  - y[i]/sum(y)))) # expected sums = 1
   val <- integrate(tempf,1,bins, rel.tol=.Machine$double.eps^.05)$value
