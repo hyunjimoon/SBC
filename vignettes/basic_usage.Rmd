@@ -1,0 +1,163 @@
+---
+title: "SBC Interface Introduction"
+author: "Hyunji Moon, Martin Modrák, Shinyoung Kim"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{SBC Basic}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# SBC
+
+## Introduction
+SBC aims to extend `rstan::sbc()` to include support for new Simulation Based Calibration algorithms without the user having to hassle with
+sampling or standardizing input/output. It provides utility functions which can ease sampling prior/posterior predictive distributions, along with
+generic SBC plots, experimental features such as bootstrap/jacknife sampling, and integral probability metric based tests. 
+
+This vignette will demonstrate how the basic package interface can be used to generate multiple SBC samples to calculate ranks.
+
+## Overview of the Architecture
+
+The package is largely split into two components, `SBC_datasets` and `Backend` objects. `SBC_datasets` objects hold the simulated prior and data samples, which are then used during SBC to fit the model. Instead of directly creating a dataset object, users may define a `Generator` function that returns the parameters and simulated data for a single iteration. `SBC` can take the function and generate a dataset object for you through repeated calls of the `Generator`. Please refer to here for detailed specifications of `SBC_datasets` and `Generator` functions.
+
+![Overview of the package structure](overview.png)
+
+Once the `SBC_datasets` is prepared and loaded with the true prior and simulated data samples, `SBC` uses a `Backend` object to actually fit the model to the simulated data and generate posterior samples. In short, `Backend` bunches together the desired platform in which inference is ran(`cmdstanr`, `rstan`, `brms`, `pymc`, etc.), the model, and additional platform-specific inference parameters which are necessary to run inference for the model-platform combination (e.g. number of iterations, initial values, ...).
+
+Once the `SBC_datasets` and `Backend` objects are set up, running SBC and viewing results becomes as simple as a few function calls, greatly reducing the hassle with having to deal with extracting posterior draws and calculating results. Additionally, the results are stored in `posterior::rvars` format, which allows for easy manipulation and rapid calculation of additional metrics of interest.
+
+## Simple Poisson Regression
+In this vignette we will demonstrate how the interface is used with a simple poisson regression model. First we'll
+setup and configure our environment.
+
+```{r setup}
+library(SBC);
+
+use_cmdstanr <- TRUE # Set to false to use rstan instead
+
+if(use_cmdstanr) {
+  library(cmdstanr)
+} else {
+  library(rstan)
+}
+
+options(mc.cores = parallel::detectCores())
+
+# Enabling parallel processing via future
+library(future)
+plan(multisession)
+
+# The fits are very fast,
+# so we force a minimum chunk size to reduce overhead of
+# paralellization and decrease computation time.
+options(SBC.min_chunk_size = 5)
+
+```
+
+### Model Setup
+We will be running SBC against a model that defines `y ~ Poisson(lambda)`, where `lambda ~ Gamma(15, 5)`. We will be using `cmdstanr` as the backend with the following model code:
+
+```{r, include = TRUE}
+stan_code <- "
+data{
+  int N;
+  int y[N];
+}
+parameters{
+  real<lower = 0> lambda;
+}
+model{
+  lambda ~ gamma(15, 5);
+  y ~ poisson(lambda);
+}
+"
+
+if(use_cmdstanr) {
+  cmdstan_model <- cmdstanr::cmdstan_model(cmdstanr::write_stan_file(stan_code))
+} else {
+  rstan_model <- rstan::stan_model(model_code = stan_code)
+}
+
+```
+
+### Generator
+
+Once we bave defied the moddel, we can create a Generator function which will generate prior and data samples:
+
+```{r}
+# A generator function should return a named list containing elements "parameters" and "generated"
+
+poisson_generator_single <- function(N){  # N is the number of data points we are generating
+  lambda <- rgamma(n = 1, shape = 15, rate = 5)
+  y <- rpois(n = N, lambda = lambda)
+  list(
+    parameters = list(
+      lambda = lambda
+    ),
+    generated = list(
+      N = N,
+      y = y
+    )
+  )
+}
+```
+
+As you can see, the `Generator` returns a named list containing randomly samples from the prior and generated data realized from the prior samples.
+
+### Create `SBC_Datasets` from Generator
+`SBC` provides helper functions `SBC_generator_function` and `generate_datasets` which takes a Generator function and creates a benign `SBC_datasets' object. 
+
+```{r}
+n_datasets <- 100  # Number of SBC iterations to run
+
+poisson_generator <- SBC_generator_function(poisson_generator_single, N = 40)
+poisson_dataset <- generate_datasets(
+  poisson_generator, 
+  n_datasets)
+```
+
+
+### Defining `Backend`
+Once we have the model compiled we'll create a `Backend` object from the model. `SBC` includes pre-defined `Backend` objects for HMC sampling with `cmdstan` and `rstan`. In addition, it also provides generator function and Backend for `brms` based models. 
+
+Note that you can create your own `Backend` if you wish to use a different sampling/optimization platform, such as variational inference or JAGS. For further information on `Backend` specifications, please refer to here.
+
+Here we'll just use the pre-defined cmdstan Backend, in which we pass our compiled model and any additional arguments we would like to pass over to `cmdstanr::sampling`:
+```{r}
+if(use_cmdstanr) {
+  poisson_backend <- SBC_backend_cmdstan_sample(
+    cmdstan_model, iter_warmup = 1000, iter_sampling = 1000, chains = 2)
+} else {
+  poisson_backend <- SBC_backend_rstan_sample(
+    rstan_model, iter = 2000, warmup = 1000, chains = 2)  
+}
+```
+
+### Computing Ranks
+we can then use `compute_results` to fit our datasets with the backend:
+```{r, results=FALSE}
+results <- compute_results(poisson_dataset, poisson_backend)
+```
+
+### Viewing Results
+We can now inspect the results to see if there were any errors and check individual stats:
+
+```{r}
+results$stats
+```
+### Plots
+And finally, we can plot the rank distribution to check if the ranks are uniformly distributed. We can check the rank histogram and ECDF plots:
+
+```{r}
+plot_rank_hist(results)
+```
+
+```{r}
+plot_ecdf(results)
+```
+```{r}
+plot_ecdf_diff(results)
+```
+Since our simulator and model do match, we see that the plots don't show any violation.
