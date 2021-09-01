@@ -4,7 +4,29 @@
 \alias{plot_sim_estimated}
 \title{Plot the simulated "true" values versus posterior estimates}
 \usage{
-plot_sim_estimated(x, parameters = NULL, estimate = "mean", alpha = 0.8)
+plot_sim_estimated(
+  x,
+  parameters = NULL,
+  estimate = "mean",
+  uncertainty = c("q5", "q95"),
+  alpha = 0.8
+)
+}
+\arguments{
+\item{x}{object containing results (a data.frame or \code{\link[=SBC_results]{SBC_results()}} object).}
+
+\item{parameters}{parameters to show in the plot or \code{NULL} to show all}
+
+\item{estimate}{which estimate to use for the central tendency,
+must correspond a field already computed in the results (most likely \code{"mean"} and \code{"median"}).}
+
+\item{uncertainty}{which estimates to use for uncertainty (a character vector of length 2)
+must correspond a field already computed in the results. Pass \code{NULL} to avoid showing uncertainty at all.}
+
+\item{alpha}{the alpha for the points and uncertainty intervals}
+}
+\value{
+a ggplot2 plot object
 }
 \description{
 Plot the simulated "true" values versus posterior estimates

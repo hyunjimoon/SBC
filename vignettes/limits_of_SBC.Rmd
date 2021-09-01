@@ -243,6 +243,13 @@ plot_contraction(results_missing, prior_sd)
 We see that the contraction centers around 0 (no contraction) with some deviation (as expected due to stochasticity of the estimate), which means that the model learns
 nothing useful on average about `mu`.
 
+Another plot that can show a similar problem is the `plot_sim_estimated` showing that the posterior credible intervals don't really change with changes to `simulated_value`.
+
+```{r}
+plot_sim_estimated(results_missing, alpha = 0.5)
+```
+
+
 There is however even more powerful method - and that is to include the likelihood in the SBC.
 This is most easily done by adding a "generated quantity" to the SBC results - this is a function
 that is evaluated within the context of the parameters AND data.
@@ -316,6 +323,12 @@ The contraction plot would not show anything suspicious - we get decent contract
 ```{r}
 plot_contraction(results_missing_2, prior_sd, parameters = "mu")
 ```
+Similarly, our posterior estimates now cluster around the true values.
+
+```{r}
+plot_sim_estimated(results_missing_2, parameters = "mu", alpha = 0.5)
+```
+
 
 Now contraction is pretty high, and `mu` is behavign well, but our `log_lik` generated quantity shows a clear problem
 

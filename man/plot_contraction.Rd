@@ -2,10 +2,28 @@
 % Please edit documentation in R/plot.R
 \name{plot_contraction}
 \alias{plot_contraction}
-\title{Prior/posterior contraction plot}
+\title{Prior/posterior contraction plot.}
 \usage{
 plot_contraction(x, prior_sd, parameters = NULL, scale = "sd", alpha = 0.8)
 }
+\arguments{
+\item{x}{object containing results (a data.frame or \code{\link[=SBC_results]{SBC_results()}} object).}
+
+\item{prior_sd}{a named vector of prior standard deviations for your parameters.
+Either pass in analytically obtained values or use \code{\link[=calculate_prior_sd]{calculate_prior_sd()}} to get an empirical estimate from
+an \code{SBC_datasets} object.}
+
+\item{parameters}{parameters to show in the plot or \code{NULL} to show all
+must correspond a field already computed in the results (most likely \code{"mean"} and \code{"median"}).}
+
+\item{scale}{which scale of variability you want to see - either \code{"sd"} for standard deviation
+or \code{"var"} for variance.}
+
+\item{alpha}{the alpha for the points}
+}
+\value{
+a ggplot2 plot object
+}
 \description{
-Prior/posterior contraction plot
+Prior/posterior contraction plot.
 }

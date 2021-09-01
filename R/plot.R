@@ -330,9 +330,20 @@ data_for_ecdf_plots.matrix <- function(x,
 }
 
 
-#' Prior/posterior contraction plot
+#' Prior/posterior contraction plot.
 #'
-#' @export
+#'
+#' @param x object containing results (a data.frame or [SBC_results()] object).
+#' @param prior_sd a named vector of prior standard deviations for your parameters.
+#' Either pass in analytically obtained values or use [calculate_prior_sd()] to get an empirical estimate from
+#' an `SBC_datasets` object.
+#' @param parameters parameters to show in the plot or `NULL` to show all
+#' must correspond a field already computed in the results (most likely `"mean"` and `"median"`).
+#' @param scale which scale of variability you want to see - either `"sd"` for standard deviation
+#' or `"var"` for variance.
+#' @param alpha the alpha for the points
+#' @return a ggplot2 plot object
+#' @export#' @export
 plot_contraction <- function(x, prior_sd, parameters = NULL, scale = "sd", alpha = 0.8) {
   UseMethod("plot_contraction")
 }
@@ -386,6 +397,14 @@ plot_contraction.data.frame <- function(x, prior_sd, parameters = NULL, scale = 
 
 #' Plot the simulated "true" values versus posterior estimates
 #'
+#' @param x object containing results (a data.frame or [SBC_results()] object).
+#' @param parameters parameters to show in the plot or `NULL` to show all
+#' @param estimate which estimate to use for the central tendency,
+#' must correspond a field already computed in the results (most likely `"mean"` and `"median"`).
+#' @param uncertainty which estimates to use for uncertainty (a character vector of length 2)
+#' must correspond a field already computed in the results. Pass `NULL` to avoid showing uncertainty at all.
+#' @param alpha the alpha for the points and uncertainty intervals
+#' @return a ggplot2 plot object
 #' @export
 plot_sim_estimated <- function(x, parameters = NULL, estimate = "mean",
                                uncertainty = c("q5", "q95"),
