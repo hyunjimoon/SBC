@@ -4,7 +4,8 @@ output: html_notebook
 ---
 
 ```{r setup, include = FALSE}
-library(SBC); 
+library(SBC)
+library(ggplot2)
 use_cmdstanr <- TRUE # Set to false to use rstan instead
 
 if(use_cmdstanr) {
@@ -27,9 +28,140 @@ options(SBC.min_chunk_size = 5)
 ```
 
 
-# Minor changes and prior mismatches
+# SBC and minor changes to model
 
-SBC requires _a lot_ of iterations to discover small problems.
+SBC requires _a lot_ of iterations to discover problems that are subtle.
+
+To demonstrate this, we will fit a simple model with a normal likelihood, but use Student's t distribution with 5 degrees of freedom to generate the data.
+
+
+To see the difference we'll show the two densities
+
+```{r}
+x <- seq(-5, 5, length.out = 100)
+dens_data <- rbind(
+  data.frame(x = x, density = dnorm(x, log = FALSE), 
+             log_density = dnorm(x, log = TRUE), type = "normal()"),
+  data.frame(x = x, density = dt(x, df = 5, log = FALSE), 
+             log_density = dt(x, df = 5, log = TRUE), type = "t(5)")) 
+
+ggplot(dens_data, aes(x = x, y = density, color = type)) +
+  geom_line(size = 2)
+```
+As expected the t distribution has fatter tails, which is even better visible when looking at the logarithm of the density.
+
+```{r}
+ggplot(dens_data, aes(x = x, y = log_density, color = type)) +
+  geom_line(size = 2)
+```
+Here is our Stan code for the simple normal model.
+
+```{r}
+model_code_minor <- "
+data {
+  int<lower=0> N;
+  vector[N] y;
+}
+
+parameters {
+  real mu;
+  real<lower=0> sigma;
+}
+
+model {
+  target += normal_lpdf(mu | 0, 1);
+  target += normal_lpdf(sigma | 0, 1);
+  target += normal_lpdf(y | mu, sigma);
+}
+"
+
+iter_warmup <- 300
+iter_sampling <- 1000
+
+if(use_cmdstanr) {
+  model_minor <- cmdstan_model(write_stan_file(model_code_minor))
+
+  backend_minor <- SBC_backend_cmdstan_sample(
+    model_minor, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 1)
+} else {
+  model_minor <- stan_model(model_code = model_code_minor)
+
+  backend_minor <- SBC_backend_rstan_sample(
+    model_minor, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 1)
+}
+```
+
+And here we simulate from a student's t distribution. We scale the distribution so that the `sigma` parameter
+is the standard deviation of the distribution.
+
+```{r}
+single_dataset_minor <- function(N) {
+  mu <- rnorm(n = 1, mean = 0, sd = 1)
+  sigma <- abs(rnorm(n = 1, mean = 0, sd = 1))
+  nu <- 5
+  student_scale <- sigma / sqrt(nu / (nu - 2))
+  y <- mu + student_scale * rt(N, df = nu)
+  
+  list(
+    parameters = list(mu = mu, sigma = sigma),
+    generated = list(N = N, y = y)
+  )
+}
+
+set.seed(51336848)
+generator_minor <- SBC_generator_function(single_dataset_minor, N = 10)
+datasets_minor <- generate_datasets(generator_minor, n_datasets = 200)
+```
+
+Can we see something by looking at the results of just the first 10 datasets? (note that `SBC_datasets` objects support subsetting).
+
+```{r}
+results_minor_10 <- compute_results(datasets_minor[1:10], backend_minor)
+```
+
+Not really...
+
+```{r}
+plot_ecdf_diff(results_minor_10)
+```
+Will we have better luck with 100 datasets? (Note that we can use `bind_results` to combine multiple results,
+letting us start small, but not throw away the computation spent for the initial SBC runs)
+
+```{r}
+results_minor_100 <- bind_results(
+  results_minor_10,
+  compute_results(datasets_minor[11:100], backend_minor)
+)
+```
+Here we see something suspicios with the `sigma` parameter, but it is not very convincing.
+
+```{r}
+plot_ecdf_diff(results_minor_100)
+```
+So let's do additional 100 SBC steps
+
+```{r}
+results_minor_200 <- bind_results(
+  results_minor_100,
+  compute_results(datasets_minor[101:200], backend_minor)
+)
+```
+OK, so this looks at least a bit conclusive, but still, the violation of uniformity is not very big.
+
+```{r}
+plot_ecdf_diff(results_minor_200)
+```
+If we used more data points per simulation (here we simulated just 10), the problem would likely show faster.
+In any case, we need a relatively large number of runs to identify small discrepancies with high probability.
+
+But it is also the case that the estimates are not completely meaningless (as the distributions are quite close). One way to look into this is to plot the posterior mean + central 90% interval against the simulated value via `plot_sim_estimated`. The estimates should cluster around the y=x line (blue), which they mostly do.
+
+```{r}
+plot_sim_estimated(results_minor_200, alpha = 0.5)
+```
+
+
+# Prior mismatch
 
 Especially when those affect only prior as SBC is based on fitted posterior - so
 if prior does not influence posterior very much...

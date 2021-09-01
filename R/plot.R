@@ -382,3 +382,59 @@ plot_contraction.data.frame <- function(x, prior_sd, parameters = NULL, scale = 
     expand_limits(x = c(0,1)) +
     facet_wrap(~parameter)
 }
+
+
+#' Plot the simulated "true" values versus posterior estimates
+#'
+#' @export
+plot_sim_estimated <- function(x, parameters = NULL, estimate = "mean",
+                               uncertainty = c("q5", "q95"),
+                               alpha = 0.8) {
+  UseMethod("plot_sim_estimated")
+}
+
+#' @export
+plot_sim_estimated.SBC_results <- function(x, parameters = NULL, estimate = "mean",
+                                           uncertainty = c("q5", "q95"),
+                                           alpha = 0.8) {
+  plot_sim_estimated(x$stats, parameters = parameters, estimate = estimate,
+                     uncertainty = uncertainty, alpha = alpha)
+}
+
+#' @export
+plot_sim_estimated.data.frame <- function(x, parameters = NULL, estimate = "mean",
+                                          uncertainty = c("q5", "q95"),
+                                          alpha = 0.8) {
+  if(!all(c("parameter", estimate, uncertainty) %in% names(x))) {
+    stop("The data.frame needs a 'parameter' and '", estimate, "' columns")
+  }
+
+  if(!is.null(parameters)) {
+    x <- dplyr::filter(x, parameter %in% parameters)
+  }
+
+  x$estimate__ <- x[[estimate]]
+
+  if(!is.null(uncertainty)) {
+    if(length(uncertainty) != 2) {
+      stop("'uncertainty' has to be null or a character vector of length 2")
+    }
+    x$low__ <- x[[uncertainty[1]]]
+    x$high__ <- x[[uncertainty[2]]]
+    all_aes <- aes(x = simulated_value, y = estimate__, ymin = low__, ymax = high__)
+    main_geom <- geom_pointrange(alpha = alpha, fatten = 1.5)
+  } else {
+    main_geom <- geom_point(alpha = alpha)
+    all_aes <- aes(x = simulated_value, y = estimate__)
+  }
+
+  if(nrow(x) == 0) {
+    stop("No data to plot.")
+  }
+
+  ggplot2::ggplot(x, all_aes) +
+    geom_abline(intercept = 0, slope = 1, color = "skyblue1", size = 2) +
+    main_geom +
+    scale_y_continuous(estimate) +
+    facet_wrap(~parameter, scales = "free")
+}
