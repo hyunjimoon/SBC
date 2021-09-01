@@ -343,7 +343,7 @@ data_for_ecdf_plots.matrix <- function(x,
 #' or `"var"` for variance.
 #' @param alpha the alpha for the points
 #' @return a ggplot2 plot object
-#' @export#' @export
+#' @export
 plot_contraction <- function(x, prior_sd, parameters = NULL, scale = "sd", alpha = 0.8) {
   UseMethod("plot_contraction")
 }

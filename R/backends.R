@@ -94,7 +94,11 @@ summary.SBC_nuts_diagnostics <- function(diagnostics) {
   }
 
   if(!is.null(diagnostics$n_failed_chains)) {
-    summ$has_failed_chains = sum(diagnostics$n_failed_chains > 0)
+    if(any(is.na(diagnostics$n_failed_chains))) {
+      problematic_fit_ids <- paste0(which(is.na(diagnostics$n_failed_chains)), collapse = ", ")
+      warning("Fits for datasets ", problematic_fit_ids, " had NA for n_failed_chains.")
+    }
+    summ$has_failed_chains = sum(is.na(diagnostics$n_failed_chains) | diagnostics$n_failed_chains > 0)
   }
 
   structure(summ, class = "SBC_nuts_diagnostics_summary")
