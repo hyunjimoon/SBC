@@ -239,7 +239,7 @@ length.SBC_results <- function(x) {
 #'    enough that a single batch takes at least several seconds, i.e. for small models,
 #'    you can often reduce computation time noticeably by increasing this value.
 #'    You can use `options(SBC.min_chunk_size = value)` to set a minimum chunk size globally.
-#'    See documentation of `future.chunk.size` argument for `future_lapply()` for more details.
+#'    See documentation of `future.chunk.size` argument for `future.apply::future_lapply()` for more details.
 #' @return An object of class `SBC_results` that holds:
 #'   - `$stats` statistics for all parameters and fits (one row per parameter-fit combination)
 #'   - `$fits`  the raw fits (unless `keep_fits = FALSE`) or `NULL` if the fit failed
@@ -677,6 +677,8 @@ rdunif <- function(n, a, b) {
 
 #' Calculate ranks given parameter values within a posterior distribution.
 #'
+#' When there are ties (e.g. for discrete parameters), the rank is currently drawn stochastically
+#' among the ties.
 #' @param params a vector of values to check
 #' @param dm draws_matrix of the fit (assumed to be already thinned if that was necessary)
 #' @export

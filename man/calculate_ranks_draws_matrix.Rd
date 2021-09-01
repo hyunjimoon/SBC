@@ -12,5 +12,6 @@ calculate_ranks_draws_matrix(params, dm)
 \item{dm}{draws_matrix of the fit (assumed to be already thinned if that was necessary)}
 }
 \description{
-Calculate ranks given parameter values within a posterior distribution.
+When there are ties (e.g. for discrete parameters), the rank is currently drawn stochastically
+among the ties.
 }
