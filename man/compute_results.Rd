@@ -18,7 +18,7 @@ compute_results(
 \item{datasets}{an object of class \code{SBC_datasets}}
 
 \item{backend}{the model + sampling algorithm. The built-in backends can be constructed
-using \code{SBC_backend_cmdstan_sample()}, \code{SBC_backend_rstan_sample()} and \code{SBC_backend_brms()}.
+using \code{SBC_backend_cmdstan_sample()}, \code{SBC_backend_cmdstan_optimize()}, \code{SBC_backend_rstan_sample()} and \code{SBC_backend_brms()}.
 (more to come). The backend is an S3 class supporting at least the \code{SBC_fit},
 \code{SBC_fit_to_draws_matrix} methods.}
 
@@ -44,7 +44,7 @@ the work may be distributed less equally across workers. We recommend setting th
 enough that a single batch takes at least several seconds, i.e. for small models,
 you can often reduce computation time noticeably by increasing this value.
 You can use \code{options(SBC.min_chunk_size = value)} to set a minimum chunk size globally.
-See documentation of \code{future.chunk.size} argument for \code{future_lapply()} for more details.}
+See documentation of \code{future.chunk.size} argument for \code{future.apply::future_lapply()} for more details.}
 }
 \value{
 An object of class \code{SBC_results} that holds:
