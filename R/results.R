@@ -271,7 +271,6 @@ compute_results <- function(datasets, backend,
       generated = datasets$generated[[i]]
     )
   }
-
   if(is.null(gen_quants)) {
     future.globals <- FALSE
   } else {
@@ -288,6 +287,7 @@ compute_results <- function(datasets, backend,
     future.globals = future.globals,
     future.chunk.size = chunk_size)
 
+  print("reached1")
 
   # Combine, check and summarise
   fits <- rep(list(NULL), length(datasets))
@@ -306,8 +306,11 @@ compute_results <- function(datasets, backend,
     if(is.null(results_raw[[i]]$error)) {
       stats_list[[i]] <- results_raw[[i]]$stats
       stats_list[[i]]$dataset_id <- i
+      print(results_raw[[i]]$backend_diagnostics)
       backend_diagnostics_list[[i]] <- results_raw[[i]]$backend_diagnostics
-      backend_diagnostics_list[[i]]$dataset_id <- i
+      if(!is.null(results_raw[[i]]$backend_diagnostics)){
+        backend_diagnostics_list[[i]]$dataset_id <- i
+      }
     }
     else {
       if(n_errors < max_errors_to_show) {

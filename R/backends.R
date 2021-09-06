@@ -294,8 +294,7 @@ SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
   fit <- do.call(backend$model$variational,
                  combine_args(backend$args,
                               list(
-                                data = generated,
-                                parallel_chains = cores)))
+                                data = generated)))
 
   if(all(fit$return_codes() != 0)) {
     stop("No chains finished succesfully")
@@ -307,6 +306,7 @@ SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
 #' @export
 SBC_fit_to_draws_matrix.CmdStanVB <- function(fit) {
   fit$draws(format = "draws_matrix")
+
 }
 
 #' Backend based on optimize approximation via `cmdstanr`.
@@ -317,6 +317,7 @@ SBC_fit_to_draws_matrix.CmdStanVB <- function(fit) {
 #'   package.
 #' @export
 SBC_backend_cmdstan_optimize <- function(model, ...) {
+  stop("The optimize method is currently not supported.")
   stopifnot(inherits(model, "CmdStanModel"))
   if(length(model$exe_file()) == 0) {
     stop("The model has to be already compiled, call $compile() first.")
@@ -334,14 +335,13 @@ SBC_backend_cmdstan_optimize <- function(model, ...) {
 SBC_fit.SBC_backend_cmdstan_optimize <- function(backend, generated, cores) {
   fit <- do.call(backend$model$optimize,
                  combine_args(backend$args,
-                              list(
-                                data = generated)))
+                              list(data = generated)))
 
-                 if(all(fit$return_codes() != 0)) {
-                   stop("Point optimization failed!")
-                 }
+   if(all(fit$return_codes() != 0)) {
+     stop("Point optimization failed!")
+   }
 
-                 fit
+   fit
 }
 #' @export
 SBC_fit_to_draws_matrix.CmdStanMLE <- function(fit) {

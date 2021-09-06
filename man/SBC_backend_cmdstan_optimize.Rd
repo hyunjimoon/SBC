@@ -9,7 +9,7 @@ SBC_backend_cmdstan_optimize(model, ...)
 \arguments{
 \item{model}{an object of class \code{CmdStanModel} (as created by \code{cmdstanr::cmdstan_model})}
 
-\item{...}{other arguments passed to the \verb{$variational()} method of the model. The \code{data} and
+\item{...}{other arguments passed to the \verb{$optimize()} method of the model. The \code{data} and
 \code{parallel_chains} arguments cannot be set this way as they need to be controlled by the SBC
 package.}
 }
