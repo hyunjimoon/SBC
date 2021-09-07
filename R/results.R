@@ -452,6 +452,9 @@ compute_results_single <- function(params_and_generated, backend, cores,
   parameters <- params_and_generated$parameters
   generated <- params_and_generated$generated
 
+  # Note: explicitly referencing functions from the SBC package is needed
+  # here as the function might be run in a separate R session that does not
+  # have SBC imported.
   result_with_output <- SBC:::capture_all_outputs({
     res <- tryCatch({
       fit <- SBC_fit(backend, generated, cores = cores)

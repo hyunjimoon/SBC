@@ -2,9 +2,11 @@ test_that("Generating datasets via functions", {
   list_function <- function(N) {
     mu <- rnorm(1)
     sigma <- abs(rnorm(1))
+    beta <- matrix(1:6, nrow = 3, ncol = 2)
+    gamma <- array(1:12, dim = c(2,3,2))
     y1 <- rnorm(N, mu, sigma)
     y2 <- rnorm(2 * N, mu + 5, sigma)
-    list(parameters = list(mu = mu, sigma = sigma),
+    list(parameters = list(mu = mu, sigma = sigma, beta = beta, gamma = gamma),
          generated = list(y1 = y1, y2 = y2))
   }
 
@@ -14,7 +16,10 @@ test_that("Generating datasets via functions", {
 
   expect_true(length(res) == 7)
 
-  expect_identical(posterior::variables(res$parameters), c("mu", "sigma"))
+  beta_vars <- paste0("beta[", rep(1:3, times = 2), ",", rep(1:2, each = 3), "]")
+  gamma_vars <- paste0("gamma[", rep(1:2, times = 6), ",", rep(rep(1:3, each = 2), times = 2),
+                       ",", rep(1:2, each = 6), "]")
+  expect_identical(posterior::variables(res$parameters), c("mu", "sigma", beta_vars, gamma_vars))
   expect_identical(names(res$generated[[1]]), c("y1", "y2"))
 
   expect_equal(posterior::ndraws(res$parameters), 7)
@@ -32,6 +37,36 @@ test_that("Generating datasets via functions", {
 
   expect_identical(res[c(1,2,3,1,2)], res_direct2)
 
+})
+
+test_that("Generating datasets via functions - exceptions", {
+  missing_gen_function <- function() {
+    list(parameters = list(mu = 1),
+         not_generated = 1)
+  }
+
+  expect_error(generate_datasets(
+    SBC_generator_function(missing_gen_function),
+    n_datasets = 1), class = "SBC_datasets_error")
+
+  missing_par_function <- function() {
+    list(not_parameters = list(mu = 1),
+         generated = 1)
+  }
+
+  expect_error(generate_datasets(
+    SBC_generator_function(missing_par_function),
+    n_datasets = 1), class = "SBC_datasets_error")
+
+
+  missing_names_function <- function() {
+    list(parameters = list(mu = 1, 5),
+         generated = 1)
+  }
+
+  expect_error(generate_datasets(
+    SBC_generator_function(missing_names_function),
+    n_datasets = 1), class = "SBC_datasets_error")
 })
 
 test_that("subsetting datasets", {
