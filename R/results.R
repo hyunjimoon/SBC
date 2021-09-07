@@ -212,13 +212,13 @@ length.SBC_results <- function(x) {
 #'
 #' Parallel processing is supported via the `future` package, for most uses, it is most sensible
 #'  to just call `plan(multisession)` once in your R session and  all
-#'  cores your computer will be used. For more details refer to the documentation
+#'  cores your computer has will be used. For more details refer to the documentation
 #'  of the `future` package.
 #'
 #' @param datasets an object of class `SBC_datasets`
 #' @param backend the model + sampling algorithm. The built-in backends can be constructed
-#'   using `SBC_backend_cmdstan_sample()`, `SBC_backend_cmdstan_variational()`, `SBC_backend_rstan_sample()` and `SBC_backend_brms()`.
-#'   (more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the `SBC_fit`,
+#'   using `SBC_backend_cmdstan_sample()`, `SBC_backend_cmdstan_variational()`,`SBC_backend_cmdstan_optimize()`, `SBC_backend_rstan_sample()` and `SBC_backend_brms()`.
+#'   (more to come). The backend is an S3 class supporting at least the `SBC_fit`,
 #'   `SBC_fit_to_draws_matrix` methods.
 #' @param cores_per_fit how many cores should the backend be allowed to use for a single fit?
 #'    Defaults to the maximum number that does not produce more parallel chains
