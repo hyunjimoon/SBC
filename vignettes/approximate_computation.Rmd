@@ -1,0 +1,121 @@
+---
+title: "approximate_compuation"
+output: html_document
+author: Hyunji Moon
+---
+
+```{r setup, include=FALSE}
+library(SBC) #devtools::install_github("hyunjimoon/SBC")
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(future)
+options(mc.cores = parallel::detectCores())
+plan(multisession)
+options(SBC.min_chunk_size = 5)
+set.seed(1984)
+```
+
+# 1. Intro.
+HMC can be slow either from large data or difficult geometry, where approximate computations such as variational inference are helpful. SBC provides one standard to test this replacement. Modularized replacement of this inferencce engine is possible through SBC's `backend` component and first example is on ADVI. Hyperparameters of each engine greatly affect its performance and we recommended users to supply customized argument as will shown below.
+
+# 2. Comparing HMC and ADVI 
+Simple model with location and scale parameter for normal distirbution is used and coded into generator and backend (stan file).
+
+```{R generator and backend}
+generator <- function(hyperparam, param, predictor = NULL){
+  # hyperparamter
+  N = hyperparam$N
+  prior_width = hyperparam$prior_width
+  # paramter
+  loc = param$loc
+  scale = param$scale
+  # predictor
+  # generate
+  S = ndraws(param[[1]])
+  y <- rfun(rnorm) (n = N, mean = loc, sd = scale) 
+  gen_rvars <- draws_rvars(N = N, y = y, prior_width = prior_width)
+  # SBC-type reshape e.g. loc rvar<S>[1] distributed to each parallel simulation as rvar<1>[1]
+  SBC_datasets(
+    parameters = as_draws_matrix(param), 
+    generated = draws_rvars_to_standata(gen_rvars)
+  )
+}
+
+tn <- "
+data {
+  int N;
+  vector[N] y;
+  real<lower=0> prior_width;
+}
+
+parameters {
+  real loc;
+  real <lower = 0> scale;
+}
+
+model {
+  loc ~ normal(0, prior_width);
+  scale ~ lognormal(0, prior_width);
+  y ~ normal(loc, scale);
+}
+"
+mod_two_norm = cmdstanr::cmdstan_model(stan_file = write_stan_file(tn))
+```
+
+Comparing SBC with two different backends (HMC and ADVI), the latter is around five times faster (3 and 0.6 min.) for (S, M) = (1000, 100) where `S` is the number of initial parameter values (datasets) and `M` is posterior samples. Current Stan ADVI implelmentation samples from iid normal which explains the difference in `s_thin_ranks` and `v_thin_ranks` as 10 and 1. If certian correlation is detected, thinning is possible with `recompute_statistics` function without refitting. See appendix for instructions on VI variants aiming for first or higher order corrections.
+
+The following messages is ADVI-specific and explains how ELBO value and its gradient evolved with the heuristically set stepsize `eta`. For further ADVI diagnostics, see [this](https://mc-stan.org/docs/2_27/reference-manual/stochastic-gradient-ascent.html) Stan manual. 
+```
+Iteration:   1 / 250 [  0%]  (Adaptation) 
+Iteration:  50 / 250 [ 20%]  (Adaptation) 
+Iteration: 100 / 250 [ 40%]  (Adaptation) 
+Success! Found best value [eta = 100] earlier than expected. 
+Begin stochastic gradient ascent. 
+  iter             ELBO   delta_ELBO_mean   delta_ELBO_med   notes  
+   100          -57.517             1.000            1.000 
+   200         -528.092             0.946            1.000 
+   300         -239.071             1.033            1.000 
+```
+
+```{R}
+S = 1000
+N = 5
+M = 100
+s_thin_ranks = 10
+v_thin_ranks = 1
+chains = 4
+backend_tn <- SBC_backend_cmdstan_sample(mod_two_norm, chains = chains, iter_sampling = M * s_thin_ranks / chains)
+backend_tn_vb <- SBC_backend_cmdstan_variational(mod_two_norm)
+prior_width = 1
+datasets_tn <- generator(
+  hyperparam = list(prior_width = prior_width, N = N),
+  param = draws_rvars(loc = rvar(rnorm(S, 0, prior_width)), scale = rvar(exp(rnorm(S, 0, prior_width))))
+)
+result_tn <- compute_results(datasets_tn, backend_tn)
+result_tn_vb <- compute_results(datasets_tn, backend_tn_vb, thin_ranks = v_thin_ranks)
+```
+
+Rank results for HMC is acceptable while for ADVI indicates under-dispersion. Variational inference that measures the divergence based on the true distribution (e.g. KL(approx.||true)) is known for its compactness (Turner, 2010) and therefore have tendency to be under-dispersed. However, Yao et al. (2018) notes VI posteriors can be both over-dispersed and under-dispersed, on which parameter region SBC is exploring. Rank plot indicates that ADVI for this problem setting could be inappropriate i.e. the three components, given parameter values, outcome model, and inference engine are not self-consistent. Adjusting the computation algorithm via hyperparameters that determine convergence standards can be one solution. 
+
+```{R}
+plot_rank_hist(result_tn)
+plot_rank_hist(result_tn_vb)
+```
+
+# 3. Adjusting algorithm hyperparameters
+One ADVI hyperparater is `tol_rel_obj` which is a convergence tolerance on the relative norm of the objective. Stan's default is 0.001 so decreasing it to 0.0001 takes longer (fifth power didn't end) but provides better rank plots.
+
+```{R}
+backend_tn_vb_dot1pw4tol <- SBC_backend_cmdstan_variational(mod_two_norm, tol_rel_obj = 0.0001)
+result_tn_vb_dot1pw4tol <- compute_results(datasets_tn, backend_tn_vb_dot1pw4tol)
+plot_rank_hist(result_tn_vb_dot1pw4tol)
+```
+
+# Notes on VI variants
+If importance resampling is used to reduce the bias of ADVI, there is dependency, as some original draws can be drawn many times. Instead of thinning, a specific type of stratified importance resampling could be used to produce a sample that has ESS close to the nominal size. Base on experiments if ESS is within +-10% of the nominal size, bias in extreme ranks is already quite small which is why ESS for several quantiles needs checking. For instance, ESS for mean can be much higher than ESS for tails and the final ESS is recommended to target for the worst performing statistics (i.e. ranks computable variables).
+
+# Reference
+- Turner and Sahani (2010) http://www.gatsby.ucl.ac.uk/~maneesh/papers/turner-sahani-2010-ildn.pdf
+- Yao et al. (2018) http://proceedings.mlr.press/v80/yao18a/yao18a.pdf
