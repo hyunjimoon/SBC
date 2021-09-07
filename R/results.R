@@ -212,13 +212,13 @@ length.SBC_results <- function(x) {
 #'
 #' Parallel processing is supported via the `future` package, for most uses, it is most sensible
 #'  to just call `plan(multisession)` once in your R session and  all
-#'  cores your computer has will be used. For more details refer to the documentation
+#'  cores your computer will be used. For more details refer to the documentation
 #'  of the `future` package.
 #'
 #' @param datasets an object of class `SBC_datasets`
 #' @param backend the model + sampling algorithm. The built-in backends can be constructed
-#'   using `SBC_backend_cmdstan_sample()`, `SBC_backend_rstan_sample()` and `SBC_backend_brms()`.
-#'   (more to come). The backend is an S3 class supporting at least the `SBC_fit`,
+#'   using `SBC_backend_cmdstan_sample()`, `SBC_backend_cmdstan_variational()`, `SBC_backend_rstan_sample()` and `SBC_backend_brms()`.
+#'   (more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the `SBC_fit`,
 #'   `SBC_fit_to_draws_matrix` methods.
 #' @param cores_per_fit how many cores should the backend be allowed to use for a single fit?
 #'    Defaults to the maximum number that does not produce more parallel chains
@@ -271,7 +271,6 @@ compute_results <- function(datasets, backend,
       generated = datasets$generated[[i]]
     )
   }
-
   if(is.null(gen_quants)) {
     future.globals <- FALSE
   } else {
@@ -287,7 +286,6 @@ compute_results <- function(datasets, backend,
     future.seed = TRUE,
     future.globals = future.globals,
     future.chunk.size = chunk_size)
-
 
   # Combine, check and summarise
   fits <- rep(list(NULL), length(datasets))
@@ -307,7 +305,9 @@ compute_results <- function(datasets, backend,
       stats_list[[i]] <- results_raw[[i]]$stats
       stats_list[[i]]$dataset_id <- i
       backend_diagnostics_list[[i]] <- results_raw[[i]]$backend_diagnostics
-      backend_diagnostics_list[[i]]$dataset_id <- i
+      if(!is.null(results_raw[[i]]$backend_diagnostics)){
+        backend_diagnostics_list[[i]]$dataset_id <- i
+      }
     }
     else {
       if(n_errors < max_errors_to_show) {

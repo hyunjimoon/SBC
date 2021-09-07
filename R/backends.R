@@ -267,6 +267,48 @@ SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages, fi
   res
 }
 
+#' Backend based on variational approximation via `cmdstanr`.
+#'
+#' @param model an object of class `CmdStanModel` (as created by `cmdstanr::cmdstan_model`)
+#' @param ... other arguments passed to the `$variational()` method of the model. The `data` and
+#'   `parallel_chains` arguments cannot be set this way as they need to be controlled by the SBC
+#'   package.
+#' @export
+SBC_backend_cmdstan_variational <- function(model, ...) {
+  stopifnot(inherits(model, "CmdStanModel"))
+  if(length(model$exe_file()) == 0) {
+    stop("The model has to be already compiled, call $compile() first.")
+  }
+  args <- list(...)
+  unacceptable_params <- c("data")
+  if(any(names(args) %in% unacceptable_params)) {
+    stop(paste0("Parameters ", paste0("'", unacceptable_params, "'", collapse = ", "),
+                " cannot be provided when defining a backend as they need to be set ",
+                "by the SBC package"))
+  }
+  structure(list(model = model, args = args), class = "SBC_backend_cmdstan_variational")
+}
+
+#' @export
+SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
+  fit <- do.call(backend$model$variational,
+                 combine_args(backend$args,
+                              list(
+                                data = generated)))
+
+  if(all(fit$return_codes() != 0)) {
+    stop("Variational inference did not finish succesfully")
+  }
+
+  fit
+}
+
+#' @export
+SBC_fit_to_draws_matrix.CmdStanVB <- function(fit) {
+  fit$draws(format = "draws_matrix")
+
+}
+
 # For internal use, creates brms backend.
 new_SBC_backend_brms <- function(compiled_model,
   args
