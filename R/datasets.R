@@ -72,7 +72,7 @@ bind_datasets <- function(...) {
   parameters_list <- purrr::map(args, function(x) x$parameters)
   generated_list <- purrr::map(args, function(x) x$generated)
 
-  new_SBC_datasets(do.call(posterior::bind_draws, parameters_list),
+  new_SBC_datasets(do.call(posterior::bind_draws, c(parameters_list, list(along = "draw"))),
                    do.call(c, generated_list))
 }
 
@@ -123,11 +123,23 @@ generate_datasets.SBC_generator_function <- function(generator, n_datasets) {
     # on generated data.
 
     # Directly converting to draws_matrix does not preserve arrays
+    guess_dims <- function(x) {
+      if(!is.null(dim(x))) {
+        dim(x)
+      } else {
+        if(length(x) > 1) {
+          length(x)
+        } else {
+          NULL
+        }
+      }
+    }
+
     params_rvars <-
       do.call(
       posterior::draws_rvars,
       purrr::map(generator_output$parameters,
-                 ~ posterior::rvar(array(.x, dim = c(1, dim(.x))))
+                 ~ posterior::rvar(array(.x, dim = c(1, guess_dims(.x))))
                  )
       )
     parameters_list[[iter]] <- posterior::as_draws_matrix(params_rvars)
@@ -351,7 +363,7 @@ draws_rvars_to_standata <- function(x) {
 draws_rvars_to_standata_single <- function(x) {
   stopifnot(posterior::ndraws(x) == 1)
   lapply(x, FUN = function(x_rvar) {
-    res <- draws_of(x_rvar, with_chains = FALSE)
+    res <- posterior::draws_of(x_rvar, with_chains = FALSE)
     #TODO figure out how to distinguish between scalar and array of size 1
     if(identical(dim(x_rvar), 1L)) {
       as.numeric(res[1,])
