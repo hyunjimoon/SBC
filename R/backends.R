@@ -216,6 +216,16 @@ print.SBC_nuts_diagnostics_summary <- function(x) {
 #'   package.
 #' @export
 SBC_backend_cmdstan_sample <- function(model, ...) {
+  if(!requireNamespace("cmdstanr", quietly = TRUE)) {
+    stop("Using cmdstan backend requires the 'cmdstanr' package")
+  }
+  # Cannot use `versionCheck` of `requireNamespace` as that doesn't work when
+  # the package is already loaded. Note that `packageVersion` and `package_version`
+  # are completely different methods
+  if(packageVersion("cmdstanr") < package_version("0.4.0")) {
+    stop("SBC requires cmdstanr version >= 0.4.0, please update your cmdstanr.")
+  }
+
   stopifnot(inherits(model, "CmdStanModel"))
   if(length(model$exe_file()) == 0) {
     stop("The model has to be already compiled, call $compile() first.")

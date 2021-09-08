@@ -26,7 +26,7 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports:
     R6,
-    posterior,
+    posterior (>= 1.0.0),
     ggplot2,
     stats,
     stringi,
@@ -38,7 +38,7 @@ Imports:
     purrr
 Suggests: 
     testthat,
-    cmdstanr,
+    cmdstanr (>= 0.4.0),
     rstan,
     knitr,
     rmarkdown,
