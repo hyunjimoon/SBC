@@ -263,6 +263,8 @@ Note: it turns out that extending the model to more components becomes somewhat 
 
 ## Beta regression component
 
+Maybe treating this as a logistic regression component would have been wiser. But since I actually realized that only after spending some time with the beta regression task, I am gonna keep it in - it just demonstrates that a real workflow can be messy.
+
 ```{r}
 model_beta_first <- cmdstan_model("small_model_workflow/beta_first.stan")
 backend_beta_first <- SBC_backend_cmdstan_sample(model_beta_first) 
@@ -345,6 +347,10 @@ We can even understand the reason for the positive correlation - it is because m
 
 We can also decide whether to keep the full flexibility and allow predictors for precision.
 
+### Parametrizing the beta distribution via mean
+
+This also makes much more sense for the bigger task - combining with the mixture component.
+
 ```{r}
 model_beta_precision <- cmdstan_model("small_model_workflow/beta_precision.stan")
 backend_beta_precision <- SBC_backend_cmdstan_sample(model_beta_precision) 
@@ -424,6 +430,8 @@ Missing prior!
 
 This type of problem is often not very well visible from SBC (see the `limits_of_SBC` vignette for more detailed discussion)
 
+### Adding missing prior
+
 ```{r}
 model_beta_precision_fixed_prior <- cmdstan_model("small_model_workflow/beta_precision_fixed_prior.stan")
 backend_beta_precision_fixed_prior <- SBC_backend_cmdstan_sample(model_beta_precision_fixed_prior) 
@@ -449,4 +457,160 @@ plot_ecdf_diff(results_beta_precision_fixed_prior_200)
 
 ## Putting it together
 
-TODO: idexing error
+
+```{r}
+model_combined <- cmdstan_model("small_model_workflow/combined_first.stan")
+backend_combined <- SBC_backend_cmdstan_sample(model_combined)
+```
+
+
+```{r}
+generator_func_combined <- function(N_obs, N_predictors) {
+  # If the priors for all components of an ordered vector are the same
+  # then just sorting the result of a generator is enough to create
+  # a valid sample from the ordered vector
+  mu <- sort(rnorm(2, 3, 1)) 
+  
+  beta <- rnorm(N_predictors, 0, 1)
+
+  x <- matrix(rnorm(N_predictors * N_obs, 0, 1), nrow = N_predictors, ncol = N_obs)
+  x[1, ] <- 1 # Intercept
+
+  y <- array(NA_real_, N_obs)
+
+  for(n in 1:N_obs) {
+    linpred <- 0
+    for(p in 1:N_predictors) {
+      linpred <- linpred + x[p, n] * beta[p]
+    }
+    theta <- plogis(linpred)
+    
+    if(runif(1) < theta) {
+      y[n] <- rpois(1, exp(mu[1]))
+    } else {
+      y[n] <- rpois(1, exp(mu[2]))
+    }
+    
+  }
+
+
+  list(
+    parameters = list(
+      beta = beta,
+      mu = mu
+    ),
+    generated = list(
+      N_obs = N_obs,
+      N_predictors = N_predictors,
+      y = y,
+      x = x
+    )
+  )
+}
+
+generator_combined <- SBC_generator_function(generator_func_combined, N_obs = 50, N_predictors = 3)
+```
+
+```{r}
+set.seed(5749955)
+dataset_combined <- generate_datasets(generator_combined, 200)
+```
+
+```{r}
+results_combined <- compute_results(dataset_combined, backend_combined)
+```
+
+```{r}
+plot_ecdf_diff(results_combined)
+```
+
+### Adding rejection sampling
+
+```{r}
+fanos <- vapply(dataset_combined$generated, function(dataset) { var(dataset$y) / mean(dataset$y) }, FUN.VALUE = 0)
+plot(fanos, results_combined$backend_diagnostics$n_divergent)
+hist(fanos[results_combined$backend_diagnostics$n_divergent > 0])
+```
+
+
+```{r}
+generator_func_combined_reject <- function(N_obs, N_predictors) {
+  if(N_obs < 5) {
+    stop("Too low N_obs for this simulator")
+  }
+  repeat {
+    # If the priors for all components of an ordered vector are the same
+    # then just sorting the result of a generator is enough to create
+    # a valid sample from the ordered vector
+    mu <- sort(rnorm(2, 3, 1)) 
+    
+    beta <- rnorm(N_predictors, 0, 1)
+
+    x <- matrix(rnorm(N_predictors * N_obs, 0, 1), nrow = N_predictors, ncol = N_obs)
+    x[1, ] <- 1 # Intercept
+  
+    y <- array(NA_real_, N_obs)
+
+    for(n in 1:N_obs) {
+      linpred <- 0
+      for(p in 1:N_predictors) {
+        linpred <- linpred + x[p, n] * beta[p]
+      }
+      theta <- plogis(linpred)
+      
+      if(runif(1) < theta) {
+        y[n] <- rpois(1, exp(mu[1]))
+      } else {
+        y[n] <- rpois(1, exp(mu[2]))
+      }
+      
+    }
+    if(var(y) / mean(y) > 1.5) {
+      break;
+    }
+  }
+    
+  list(
+    parameters = list(
+      beta = beta,
+      mu = mu
+    ),
+    generated = list(
+      N_obs = N_obs,
+      N_predictors = N_predictors,
+      y = y,
+      x = x
+    )
+  )
+}
+
+generator_combined_reject <- SBC_generator_function(generator_func_combined_reject, N_obs = 50, N_predictors = 3)
+```
+
+```{r}
+set.seed(44685226)
+dataset_combined_reject <- generate_datasets(generator_combined_reject, 200)
+```
+
+
+
+```{r}
+results_combined_reject <- compute_results(dataset_combined_reject, backend_combined)
+```
+
+```{r}
+plot_ecdf_diff(results_combined_reject)
+```
+
+
+```{r}
+set.seed(1395367854)
+dataset_combined_reject_more <- generate_datasets(generator_combined_reject, 300) 
+results_combined_reject_more <- bind_results(
+  results_combined_reject,
+  compute_results(dataset_combined_reject_more, backend_combined)
+)
+
+plot_ecdf_diff(results_combined_reject_more)
+```
+

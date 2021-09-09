@@ -1,3 +1,9 @@
+#' Use backend to fit a model to data.
+#'
+#' S3 generic, needs to be implemented by all backends.
+#' All implementations have to return an object for which you can safely
+#' call [SBC_fit_to_draws_matrix()] and get some draws.
+#' If that's not possible an error should be raised.
 #' @export
 SBC_fit <- function(backend, generated, cores) {
   UseMethod("SBC_fit")
