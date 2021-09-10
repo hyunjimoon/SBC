@@ -4,7 +4,7 @@ author: "Hyunji Moon, Martin Modrák, Shinyoung Kim"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{SBC Basic}
+  %\VignetteIndexEntry{SBC Interface Introduction}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

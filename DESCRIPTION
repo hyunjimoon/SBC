@@ -10,7 +10,7 @@ Authors@R:
     person(given = "Hyunji",
            family = "Moon",
            role = c("aut", "cre"),
-           email = "hyunjimoon@gmail.com",
+           email = "h.moon@columbia.edu",
            comment = c()),
     person(given = "Martin",
            family = "Modrák",
