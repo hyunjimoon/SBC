@@ -7,10 +7,11 @@ author: Hyunji Moon
 ```{r setup, include=FALSE}
 library(SBC) #devtools::install_github("hyunjimoon/SBC")
 library(cmdstanr)
-library(parallel)
 library(bayesplot)
 library(posterior)
 library(future)
+library(ggplot2)
+
 options(mc.cores = parallel::detectCores())
 plan(multisession)
 options(SBC.min_chunk_size = 5)
@@ -64,7 +65,7 @@ model {
 mod_two_norm = cmdstanr::cmdstan_model(stan_file = write_stan_file(tn))
 ```
 
-Comparing SBC with two different backends (HMC and ADVI), the latter is around five times faster (3 and 0.6 min.) for (S, M) = (1000, 100) where `S` is the number of initial parameter values (datasets) and `M` is posterior samples. Current Stan ADVI implelmentation samples from iid normal which explains the difference in `s_thin_ranks` and `v_thin_ranks` as 10 and 1. If certian correlation is detected, thinning is possible with `recompute_statistics` function without refitting. See appendix for instructions on VI variants aiming for first or higher order corrections.
+Comparing SBC with two different backends (HMC and ADVI), the latter is around five times faster (3 and 0.6 min.) for (S, M) = (1000, 100) where `S` is the number of initial parameter values (datasets) and `M` is posterior samples. Current Stan ADVI implementation samples from iid normal which explains the difference in `s_thin_ranks` and `v_thin_ranks` as 10 and 1. If certian correlation is detected, thinning is possible with `recompute_statistics` function without refitting. See appendix for instructions on VI variants aiming for first or higher order corrections.
 
 The following messages is ADVI-specific and explains how ELBO value and its gradient evolved with the heuristically set stepsize `eta`. For further ADVI diagnostics, see [this](https://mc-stan.org/docs/2_27/reference-manual/stochastic-gradient-ascent.html) Stan manual. 
 ```
@@ -81,13 +82,13 @@ Begin stochastic gradient ascent.
 
 ```{R}
 S = 1000
-N = 5
+N = 20
 M = 100
 s_thin_ranks = 10
 v_thin_ranks = 1
 chains = 4
 backend_tn <- SBC_backend_cmdstan_sample(mod_two_norm, chains = chains, iter_sampling = M * s_thin_ranks / chains)
-backend_tn_vb <- SBC_backend_cmdstan_variational(mod_two_norm)
+backend_tn_vb <- SBC_backend_cmdstan_variational(mod_two_norm, grad_samples = 200, init = 0.5)
 prior_width = 1
 datasets_tn <- generator(
   hyperparam = list(prior_width = prior_width, N = N),
@@ -99,18 +100,21 @@ result_tn_vb <- compute_results(datasets_tn, backend_tn_vb, thin_ranks = v_thin_
 
 Rank results for HMC is acceptable while for ADVI indicates under-dispersion. Variational inference that measures the divergence based on the true distribution (e.g. KL(approx.||true)) is known for its compactness (Turner, 2010) and therefore have tendency to be under-dispersed. However, Yao et al. (2018) notes VI posteriors can be both over-dispersed and under-dispersed, on which parameter region SBC is exploring. Rank plot indicates that ADVI for this problem setting could be inappropriate i.e. the three components, given parameter values, outcome model, and inference engine are not self-consistent. Adjusting the computation algorithm via hyperparameters that determine convergence standards can be one solution. 
 
-```{R}
-plot_rank_hist(result_tn)
-plot_rank_hist(result_tn_vb)
+```{r}
+plot_rank_hist(result_tn) + ggtitle("HMC")
+plot_ecdf_diff(result_tn) + ggtitle("HMC")
+plot_rank_hist(result_tn_vb) + ggtitle("Variational - meanfield")
+plot_ecdf_diff(result_tn_vb) + ggtitle("Variational - meanfield")
 ```
 
 # 3. Adjusting algorithm hyperparameters
 One ADVI hyperparater is `tol_rel_obj` which is a convergence tolerance on the relative norm of the objective. Stan's default is 0.001 so decreasing it to 0.0001 takes longer (fifth power didn't end) but provides better rank plots.
 
 ```{R}
-backend_tn_vb_dot1pw4tol <- SBC_backend_cmdstan_variational(mod_two_norm, tol_rel_obj = 0.0001)
+backend_tn_vb_dot1pw4tol <- SBC_backend_cmdstan_variational(mod_two_norm, tol_rel_obj = 0.0001, grad_samples = 200, init = 0.5)
 result_tn_vb_dot1pw4tol <- compute_results(datasets_tn, backend_tn_vb_dot1pw4tol)
 plot_rank_hist(result_tn_vb_dot1pw4tol)
+plot_ecdf_diff(result_tn_vb_dot1pw4tol)
 ```
 
 # Notes on VI variants

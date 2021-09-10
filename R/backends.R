@@ -30,6 +30,25 @@ SBC_fit_to_diagnostics.default <- function(fit, fit_output, fit_messages, fit_wa
   NULL
 }
 
+#' S3 generic to get backend-specific default thinning for rank computation.
+#'
+#' Some backends (e.g. MCMC) require us to thin posterior samples before computing
+#' ranks to remove autocorrelation. Other backends (e.g. ADVI/optimizing) already
+#' produce independent samples, so need no thinning. Such backends can implement this
+#' method to alter the default of `thin_ranks` argument for [compute_results()].
+#'
+#' The default implementation plays it relatively safe and returns 10.
+#'
+#' @export
+default_thin_ranks <- function(backend) {
+  UseMethod("default_thin_ranks")
+}
+
+#'@export
+default_thin_ranks.default <- function(backend) {
+  10
+}
+
 #' SBC backend using the `sampling` method from `rstan`.
 #'
 #' @param model a `stanmodel` object (created via `rstan::stan_model`)
@@ -307,6 +326,10 @@ SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
 SBC_fit_to_draws_matrix.CmdStanVB <- function(fit) {
   fit$draws(format = "draws_matrix")
 
+}
+
+default_thin_ranks.SBC_backend_cmdstan_variational <- function(backend) {
+  1
 }
 
 #' Backend based on optimize approximation via `cmdstanr`.

@@ -9,7 +9,7 @@ compute_results(
   backend,
   cores_per_fit = default_cores_per_fit(length(datasets)),
   keep_fits = TRUE,
-  thin_ranks = 10,
+  thin_ranks = default_thin_ranks(backend),
   chunk_size = default_chunk_size(length(datasets)),
   gen_quants = NULL
 )
