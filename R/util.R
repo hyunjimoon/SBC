@@ -13,3 +13,12 @@ combine_args <- function(args1, args2) {
     c(args1, args2[!(names(args2) %in% shared)])
   }
 }
+
+
+SBC_error <- function(subclass, message, call = sys.call(-1), ...) {
+  structure(
+    class = c(subclass, "error", "condition"),
+    list(message = message, call = call),
+    ...
+  )
+}

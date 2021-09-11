@@ -1,3 +1,9 @@
+#' Use backend to fit a model to data.
+#'
+#' S3 generic, needs to be implemented by all backends.
+#' All implementations have to return an object for which you can safely
+#' call [SBC_fit_to_draws_matrix()] and get some draws.
+#' If that's not possible an error should be raised.
 #' @export
 SBC_fit <- function(backend, generated, cores) {
   UseMethod("SBC_fit")
@@ -84,7 +90,9 @@ summary.SBC_nuts_diagnostics <- function(diagnostics) {
     n_fits = nrow(diagnostics),
     max_chain_time = max(diagnostics$max_chain_time),
     has_divergent = sum(diagnostics$n_divergent > 0),
+    max_divergent = max(diagnostics$n_divergent),
     has_treedepth = sum(diagnostics$n_max_treedepth > 0),
+    max_max_treedepth = max(diagnostics$n_max_treedepth),
     has_rejects = sum(diagnostics$n_rejects > 0),
     max_rejects = max(diagnostics$n_rejects)
   )
@@ -161,7 +169,9 @@ get_diagnostics_messages.SBC_nuts_diagnostics_summary <- function(x) {
   }
 
   if(x$has_divergent > 0) {
-    msg <- paste0(x$has_divergent, " (", round(100 * x$has_divergent / x$n_fits), "%) fits had divergent transitions.")
+    msg <- paste0(x$has_divergent, " (", round(100 * x$has_divergent / x$n_fits),
+                  "%) fits had divergent transitions. Maximum number of divergences was ",
+                  x$max_divergent, ".")
     message_list[[i]] <- data.frame(ok = FALSE, message = msg)
   } else {
     message_list[[i]] <- data.frame(ok = TRUE, message = "No fits had divergent transitions.")
@@ -169,7 +179,9 @@ get_diagnostics_messages.SBC_nuts_diagnostics_summary <- function(x) {
   i <- i + 1
 
   if(x$has_treedepth > 0) {
-    msg <- paste0(x$has_treedepth, " (", round(100 * x$has_treedepth / x$n_fits), "%) fits had iterations that saturated max treedepth.")
+    msg <- paste0(x$has_treedepth, " (", round(100 * x$has_treedepth / x$n_fits),
+                  "%) fits had iterations that saturated max treedepth. Maximum number of max treedepth was ",
+                  x$max_max_treedepth, ".")
     message_list[[i]] <- data.frame(ok = FALSE, message = msg)
   } else {
     message_list[[i]] <- data.frame(ok = TRUE, message = "No fits had iterations that saturated max treedepth.")
@@ -216,6 +228,16 @@ print.SBC_nuts_diagnostics_summary <- function(x) {
 #'   package.
 #' @export
 SBC_backend_cmdstan_sample <- function(model, ...) {
+  if(!requireNamespace("cmdstanr", quietly = TRUE)) {
+    stop("Using cmdstan backend requires the 'cmdstanr' package")
+  }
+  # Cannot use `versionCheck` of `requireNamespace` as that doesn't work when
+  # the package is already loaded. Note that `packageVersion` and `package_version`
+  # are completely different methods
+  if(packageVersion("cmdstanr") < package_version("0.4.0")) {
+    stop("SBC requires cmdstanr version >= 0.4.0, please update your cmdstanr.")
+  }
+
   stopifnot(inherits(model, "CmdStanModel"))
   if(length(model$exe_file()) == 0) {
     stop("The model has to be already compiled, call $compile() first.")
@@ -265,6 +287,48 @@ SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages, fi
   ) # TODO: add min_bfmi once https://github.com/stan-dev/cmdstanr/pull/500/ is merged
   class(res) <- c("SBC_nuts_diagnostics", class(res))
   res
+}
+
+#' Backend based on variational approximation via `cmdstanr`.
+#'
+#' @param model an object of class `CmdStanModel` (as created by `cmdstanr::cmdstan_model`)
+#' @param ... other arguments passed to the `$variational()` method of the model. The `data` and
+#'   `parallel_chains` arguments cannot be set this way as they need to be controlled by the SBC
+#'   package.
+#' @export
+SBC_backend_cmdstan_variational <- function(model, ...) {
+  stopifnot(inherits(model, "CmdStanModel"))
+  if(length(model$exe_file()) == 0) {
+    stop("The model has to be already compiled, call $compile() first.")
+  }
+  args <- list(...)
+  unacceptable_params <- c("data")
+  if(any(names(args) %in% unacceptable_params)) {
+    stop(paste0("Parameters ", paste0("'", unacceptable_params, "'", collapse = ", "),
+                " cannot be provided when defining a backend as they need to be set ",
+                "by the SBC package"))
+  }
+  structure(list(model = model, args = args), class = "SBC_backend_cmdstan_variational")
+}
+
+#' @export
+SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
+  fit <- do.call(backend$model$variational,
+                 combine_args(backend$args,
+                              list(
+                                data = generated)))
+
+  if(all(fit$return_codes() != 0)) {
+    stop("Variational inference did not finish succesfully")
+  }
+
+  fit
+}
+
+#' @export
+SBC_fit_to_draws_matrix.CmdStanVB <- function(fit) {
+  fit$draws(format = "draws_matrix")
+
 }
 
 # For internal use, creates brms backend.

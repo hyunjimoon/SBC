@@ -268,7 +268,7 @@ data_for_ecdf_plots.data.frame <- function(x, parameters = NULL,
 
   summ <- dplyr::summarise(dplyr::group_by(stats, parameter), count = dplyr::n(), .groups = "drop")
   if(length(unique(summ$count)) > 1) {
-    stop("Not all varaibles have the same number of ranks")
+    stop("Not all variables have the same number of simulations.")
   }
 
   rank <- dplyr::select(stats, dataset_id, parameter, rank)
