@@ -11,4 +11,5 @@ An S3 object of class \code{SBC_results} with updated \verb{$stats} and \verb{$d
 }
 \description{
 Useful for example to recompute SBC ranks with a different choice of \code{thin_ranks}
+or added generated quantities.
 }

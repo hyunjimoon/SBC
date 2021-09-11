@@ -621,6 +621,7 @@ compute_gen_quants <- function(draws, generated, gen_quants) {
 #' Recompute SBC statistics without refitting models.
 #'
 #' Useful for example to recompute SBC ranks with a different choice of `thin_ranks`
+#' or added generated quantities.
 #' @return An S3 object of class `SBC_results` with updated `$stats` and `$default_diagnostics` fields.
 #' @export
 recompute_statistics <- function(old_results, datasets, thin_ranks = 10, gen_quants = NULL) {

@@ -1,6 +1,14 @@
 ---
 title: "Limits of SBC"
-output: html_notebook
+author: "Martin Modrák"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: yes
+vignette: >
+  %\VignetteIndexEntry{Limits of SBC}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
 ---
 
 ```{r setup, include = FALSE}
@@ -48,12 +56,14 @@ dens_data <- rbind(
 ggplot(dens_data, aes(x = x, y = density, color = type)) +
   geom_line(size = 2)
 ```
+
 As expected the t distribution has fatter tails, which is even better visible when looking at the logarithm of the density.
 
 ```{r}
 ggplot(dens_data, aes(x = x, y = log_density, color = type)) +
   geom_line(size = 2)
 ```
+
 Here is our Stan code for the simple normal model.
 
 ```{r}
@@ -124,6 +134,7 @@ Not really...
 ```{r}
 plot_ecdf_diff(results_minor_10)
 ```
+
 Will we have better luck with 100 datasets? (Note that we can use `bind_results` to combine multiple results,
 letting us start small, but not throw away the computation spent for the initial SBC runs)
 
@@ -133,11 +144,13 @@ results_minor_100 <- bind_results(
   compute_results(datasets_minor[11:100], backend_minor)
 )
 ```
+
 Here we see something suspicios with the `sigma` parameter, but it is not very convincing.
 
 ```{r}
 plot_ecdf_diff(results_minor_100)
 ```
+
 So let's do additional 100 SBC steps
 
 ```{r}
@@ -146,11 +159,13 @@ results_minor_200 <- bind_results(
   compute_results(datasets_minor[101:200], backend_minor)
 )
 ```
+
 OK, so this looks at least a bit conclusive, but still, the violation of uniformity is not very big.
 
 ```{r}
 plot_ecdf_diff(results_minor_200)
 ```
+
 If we used more data points per simulation (here we simulated just 10), the problem would likely show faster.
 In any case, we need a relatively large number of runs to identify small discrepancies with high probability.
 
@@ -221,6 +236,8 @@ if(use_cmdstanr) {
 }
 
 ```
+
+
 ```{r}
 results_missing <- compute_results(datasets_missing, backend_missing)
 ```
@@ -240,6 +257,7 @@ prior_sd <- c("mu" = 1)
 #prior_sd <- calculate_prior_sd(generate_datasets(generator_missing, 1000))
 plot_contraction(results_missing, prior_sd)
 ```
+
 We see that the contraction centers around 0 (no contraction) with some deviation (as expected due to stochasticity of the estimate), which means that the model learns
 nothing useful on average about `mu`.
 
@@ -323,6 +341,7 @@ The contraction plot would not show anything suspicious - we get decent contract
 ```{r}
 plot_contraction(results_missing_2, prior_sd, parameters = "mu")
 ```
+
 Similarly, our posterior estimates now cluster around the true values.
 
 ```{r}
@@ -330,7 +349,7 @@ plot_sim_estimated(results_missing_2, parameters = "mu", alpha = 0.5)
 ```
 
 
-Now contraction is pretty high, and `mu` is behavign well, but our `log_lik` generated quantity shows a clear problem
+Now contraction is pretty high, and `mu` is behaving well, but our `log_lik` generated quantity shows a clear problem
 
 ```{r}
 plot_ecdf_diff(results_missing_2)
