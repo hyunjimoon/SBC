@@ -12,8 +12,8 @@
 <!-- jquery -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
 <!-- Bootstrap -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/cosmo/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous" />
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script>
 
@@ -42,7 +42,7 @@
 <meta property="og:title" content="Fit datasets and evaluate diagnostics and SBC metrics. — compute_results" />
 <meta property="og:description" content="Parallel processing is supported via the future package, for most uses, it is most sensible
 to just call plan(multisession) once in your R session and  all
-cores your computer has will be used. For more details refer to the documentation
+cores your computer will be used. For more details refer to the documentation
 of the future package." />
 
 
@@ -82,50 +82,73 @@ of the future package." />
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
-  <a href="../index.html">
-    <span class="fas fa fas fa-home fa-lg"></span>
-     
-  </a>
+  <a href="../articles/index.html">Vignettes</a>
 </li>
 <li>
-  <a href="../reference/index.html">Reference</a>
+  <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Articles
+    Other Packages
      
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu">
     <li>
-      <a href="../articles/bad_parametrization.html">Discovering bad parametrization with SBC</a>
+      <a href="http://mc-stan.org/rstan">rstan</a>
     </li>
     <li>
-      <a href="../articles/basic_usage.html">SBC Interface Introduction</a>
+      <a href="https://mc-stan.org/cmdstanr">cmdstanr</a>
     </li>
     <li>
-      <a href="../articles/brms.html">SBC for brms models</a>
+      <a href="http://paul-buerkner.github.io/brms/">brms</a>
     </li>
     <li>
-      <a href="../articles/discrete_params.html">SBC with discrete parameters</a>
+      <a href="http://mc-stan.org/rstanarm">rstanarm</a>
     </li>
     <li>
-      <a href="../articles/indexing.html">Discovering indexing errors with SBC</a>
+      <a href="http://mc-stan.org/bayesplot">bayesplot</a>
     </li>
     <li>
-      <a href="../articles/limits_of_SBC.html">Limits of SBC</a>
+      <a href="http://mc-stan.org/shinystan">shinystan</a>
     </li>
     <li>
-      <a href="../articles/rejection_sampling.html">UNKNOWN TITLE</a>
+      <a href="http://mc-stan.org/loo">loo</a>
     </li>
     <li>
-      <a href="../articles/small_model_workflow.html">Small model workflow</a>
+      <a href="http://mc-stan.org/projpred">projpred</a>
+    </li>
+    <li>
+      <a href="http://mc-stan.org/rstantools">rstantools</a>
+    </li>
+    <li>
+      <a href="https://mc-stan.org/posterior">posterior</a>
     </li>
   </ul>
 </li>
+<li>
+  <a href="http://mc-stan.org">Stan</a>
+</li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://twitter.com/mcmc_stan">
+    <span class="fa fa-twitter"></span>
+     
+  </a>
+</li>
+<li>
+  <a href="https://github.com/hyunjimoon/SBC">
+    <span class="fa fa-github"></span>
+     
+  </a>
+</li>
+<li>
+  <a href="http://discourse.mc-stan.org/">
+    <span class="fa fa-users"></span>
+     
+  </a>
+</li>
       </ul>
       
     </div><!--/.nav-collapse -->
@@ -147,7 +170,7 @@ of the future package." />
     <div class="ref-description">
     <p>Parallel processing is supported via the <code>future</code> package, for most uses, it is most sensible
 to just call <code>plan(multisession)</code> once in your R session and  all
-cores your computer has will be used. For more details refer to the documentation
+cores your computer will be used. For more details refer to the documentation
 of the <code>future</code> package.</p>
     </div>
 
@@ -171,8 +194,8 @@ of the <code>future</code> package.</p>
     <tr>
       <th>backend</th>
       <td><p>the model + sampling algorithm. The built-in backends can be constructed
-using <code><a href='SBC_backend_cmdstan_sample.html'>SBC_backend_cmdstan_sample()</a></code>, <code><a href='SBC_backend_rstan_sample.html'>SBC_backend_rstan_sample()</a></code> and <code><a href='SBC_backend_brms.html'>SBC_backend_brms()</a></code>.
-(more to come). The backend is an S3 class supporting at least the <code>SBC_fit</code>,
+using <code><a href='SBC_backend_cmdstan_sample.html'>SBC_backend_cmdstan_sample()</a></code>, <code><a href='SBC_backend_cmdstan_variational.html'>SBC_backend_cmdstan_variational()</a></code>, <code><a href='SBC_backend_rstan_sample.html'>SBC_backend_rstan_sample()</a></code> and <code><a href='SBC_backend_brms.html'>SBC_backend_brms()</a></code>.
+(more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the <code>SBC_fit</code>,
 <code>SBC_fit_to_draws_matrix</code> methods.</p></td>
     </tr>
     <tr>
@@ -205,7 +228,7 @@ the work may be distributed less equally across workers. We recommend setting th
 enough that a single batch takes at least several seconds, i.e. for small models,
 you can often reduce computation time noticeably by increasing this value.
 You can use <code><a href='https://rdrr.io/r/base/options.html'>options(SBC.min_chunk_size = value)</a></code> to set a minimum chunk size globally.
-See documentation of <code>future.chunk.size</code> argument for <code>future_lapply()</code> for more details.</p></td>
+See documentation of <code>future.chunk.size</code> argument for <code><a href='https://rdrr.io/pkg/future.apply/man/future_lapply.html'>future.apply::future_lapply()</a></code> for more details.</p></td>
     </tr>
     </table>
 

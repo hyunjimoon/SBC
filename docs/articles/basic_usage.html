@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBC Interface Introduction • SBC</title>
-<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous">
+<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/cosmo/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
@@ -38,49 +38,74 @@
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
 <li>
-  <a href="../index.html">
-    <span class="fas fa fas fa-home fa-lg"></span>
-     
-  </a>
+  <a href="../articles/index.html">Vignettes</a>
 </li>
 <li>
-  <a href="../reference/index.html">Reference</a>
+  <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Articles
+    Other Packages
      
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="../articles/bad_parametrization.html">Discovering bad parametrization with SBC</a>
+      <a href="http://mc-stan.org/rstan">rstan</a>
     </li>
     <li>
-      <a href="../articles/basic_usage.html">SBC Interface Introduction</a>
+      <a href="https://mc-stan.org/cmdstanr">cmdstanr</a>
     </li>
     <li>
-      <a href="../articles/brms.html">SBC for brms models</a>
+      <a href="http://paul-buerkner.github.io/brms/">brms</a>
     </li>
     <li>
-      <a href="../articles/discrete_params.html">SBC with discrete parameters</a>
+      <a href="http://mc-stan.org/rstanarm">rstanarm</a>
     </li>
     <li>
-      <a href="../articles/indexing.html">Discovering indexing errors with SBC</a>
+      <a href="http://mc-stan.org/bayesplot">bayesplot</a>
     </li>
     <li>
-      <a href="../articles/limits_of_SBC.html">Limits of SBC</a>
+      <a href="http://mc-stan.org/shinystan">shinystan</a>
     </li>
     <li>
-      <a href="../articles/rejection_sampling.html">UNKNOWN TITLE</a>
+      <a href="http://mc-stan.org/loo">loo</a>
     </li>
     <li>
-      <a href="../articles/small_model_workflow.html">Small model workflow</a>
+      <a href="http://mc-stan.org/projpred">projpred</a>
+    </li>
+    <li>
+      <a href="http://mc-stan.org/rstantools">rstantools</a>
+    </li>
+    <li>
+      <a href="https://mc-stan.org/posterior">posterior</a>
     </li>
   </ul>
 </li>
+<li>
+  <a href="http://mc-stan.org">Stan</a>
+</li>
       </ul>
-<ul class="nav navbar-nav navbar-right"></ul>
+<ul class="nav navbar-nav navbar-right">
+<li>
+  <a href="https://twitter.com/mcmc_stan">
+    <span class="fa fa-twitter"></span>
+     
+  </a>
+</li>
+<li>
+  <a href="https://github.com/hyunjimoon/SBC">
+    <span class="fa fa-github"></span>
+     
+  </a>
+</li>
+<li>
+  <a href="http://discourse.mc-stan.org/">
+    <span class="fa fa-users"></span>
+     
+  </a>
+</li>
+      </ul>
 </div>
 <!--/.nav-collapse -->
   </div>
@@ -90,14 +115,13 @@
 
       
 
-      </header><script src="basic_usage_files/header-attrs-2.5/header-attrs.js"></script><link href="basic_usage_files/anchor-sections-1.0/anchor-sections.css" rel="stylesheet">
-<script src="basic_usage_files/anchor-sections-1.0/anchor-sections.js"></script><div class="row">
+      </header><script src="basic_usage_files/header-attrs-2.9/header-attrs.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>SBC Interface Introduction</h1>
                         <h4 class="author">Hyunji Moon, Martin Modrák, Shinyoung Kim</h4>
             
-            <h4 class="date">2021-09-06</h4>
+            <h4 class="date">2021-09-11</h4>
       
       
       <div class="hidden name"><code>basic_usage.Rmd</code></div>
@@ -137,11 +161,11 @@
 <span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr">cmdstanr</a></span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan">rstan</a></span><span class="op">)</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/">rstan</a></span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <pre><code>## This is cmdstanr version 0.4.0.9000</code></pre>
 <pre><code>## - Online documentation and vignettes at mc-stan.org/cmdstanr</code></pre>
-<pre><code>## - CmdStan path set to: /home/dashadower/.cmdstan/cmdstan-rvi_faso_upgrade_2</code></pre>
+<pre><code>## - CmdStan path set to: C:/Users/Martin/Documents/.cmdstanr/cmdstan-2.27.0</code></pre>
 <pre><code>## - Use set_cmdstan_path() to change the path</code></pre>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/options.html">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
@@ -235,7 +259,7 @@ model{
 <p>we can then use <code>compute_results</code> to fit our datasets with the backend:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">poisson_dataset</span>, <span class="va">poisson_backend</span><span class="op">)</span></code></pre></div>
-<pre><code>##  - 2 (2%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.013.</code></pre>
+<pre><code>##  - 1 (1%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.01.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 </div>
 <div id="viewing-results" class="section level3">
@@ -244,20 +268,20 @@ model{
 <p>We can now inspect the results to see if there were any errors and check individual stats:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results</span><span class="op">$</span><span class="va">stats</span></code></pre></div>
-<pre><code>## # A tibble: 100 × 15
+<pre><code>## # A tibble: 100 x 15
 ##    parameter simulated_value  rank z_score  mean median    sd   mad    q5   q95
 ##    &lt;chr&gt;               &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-##  1 lambda               2.74   140   0.477  2.63   2.62 0.244 0.235  2.24  3.03
-##  2 lambda               2.37    10  -1.55   2.75   2.75 0.250 0.248  2.36  3.18
-##  3 lambda               3.84    55  -0.764  4.08   4.08 0.305 0.311  3.58  4.59
-##  4 lambda               2.96    79  -0.428  3.07   3.06 0.261 0.252  2.65  3.51
-##  5 lambda               2.97    72  -0.334  3.05   3.04 0.263 0.269  2.64  3.51
-##  6 lambda               2.75    61  -0.379  2.85   2.84 0.257 0.253  2.44  3.30
-##  7 lambda               1.82    97  -0.223  1.87   1.86 0.192 0.194  1.57  2.20
-##  8 lambda               1.79     3  -2.26   2.28   2.27 0.218 0.206  1.93  2.64
-##  9 lambda               3.43   113   0.160  3.39   3.39 0.285 0.278  2.92  3.86
-## 10 lambda               3.52   152   0.790  3.31   3.31 0.266 0.281  2.89  3.75
-## # … with 90 more rows, and 5 more variables: rhat &lt;dbl&gt;, ess_bulk &lt;dbl&gt;,
+##  1 lambda               3.13    55 -0.543   3.28   3.28 0.275 0.274  2.82  3.74
+##  2 lambda               2.12   168  1.11    1.89   1.87 0.206 0.212  1.57  2.23
+##  3 lambda               3.67   170  1.04    3.38   3.37 0.277 0.276  2.95  3.85
+##  4 lambda               2.58    85 -0.438   2.69   2.68 0.255 0.255  2.29  3.12
+##  5 lambda               4.66    86 -0.189   4.72   4.70 0.330 0.328  4.21  5.29
+##  6 lambda               3.35    26 -1.20    3.69   3.68 0.283 0.285  3.24  4.16
+##  7 lambda               2.61    92 -0.145   2.65   2.64 0.247 0.251  2.26  3.05
+##  8 lambda               2.57    77 -0.260   2.64   2.63 0.243 0.240  2.24  3.04
+##  9 lambda               2.06   101  0.0127  2.06   2.06 0.210 0.223  1.72  2.42
+## 10 lambda               5.31   115  0.231   5.24   5.23 0.334 0.328  4.70  5.78
+## # ... with 90 more rows, and 5 more variables: rhat &lt;dbl&gt;, ess_bulk &lt;dbl&gt;,
 ## #   ess_tail &lt;dbl&gt;, max_rank &lt;int&gt;, dataset_id &lt;int&gt;</code></pre>
 </div>
 <div id="plots" class="section level3">

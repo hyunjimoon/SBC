@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Discovering bad parametrization with SBC • SBC</title>
-<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous">
+<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/cosmo/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
@@ -38,49 +38,74 @@
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
 <li>
-  <a href="../index.html">
-    <span class="fas fa fas fa-home fa-lg"></span>
-     
-  </a>
+  <a href="../articles/index.html">Vignettes</a>
 </li>
 <li>
-  <a href="../reference/index.html">Reference</a>
+  <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Articles
+    Other Packages
      
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="../articles/bad_parametrization.html">Discovering bad parametrization with SBC</a>
+      <a href="http://mc-stan.org/rstan">rstan</a>
     </li>
     <li>
-      <a href="../articles/basic_usage.html">SBC Interface Introduction</a>
+      <a href="https://mc-stan.org/cmdstanr">cmdstanr</a>
     </li>
     <li>
-      <a href="../articles/brms.html">SBC for brms models</a>
+      <a href="http://paul-buerkner.github.io/brms/">brms</a>
     </li>
     <li>
-      <a href="../articles/discrete_params.html">SBC with discrete parameters</a>
+      <a href="http://mc-stan.org/rstanarm">rstanarm</a>
     </li>
     <li>
-      <a href="../articles/indexing.html">Discovering indexing errors with SBC</a>
+      <a href="http://mc-stan.org/bayesplot">bayesplot</a>
     </li>
     <li>
-      <a href="../articles/limits_of_SBC.html">Limits of SBC</a>
+      <a href="http://mc-stan.org/shinystan">shinystan</a>
     </li>
     <li>
-      <a href="../articles/rejection_sampling.html">UNKNOWN TITLE</a>
+      <a href="http://mc-stan.org/loo">loo</a>
     </li>
     <li>
-      <a href="../articles/small_model_workflow.html">Small model workflow</a>
+      <a href="http://mc-stan.org/projpred">projpred</a>
+    </li>
+    <li>
+      <a href="http://mc-stan.org/rstantools">rstantools</a>
+    </li>
+    <li>
+      <a href="https://mc-stan.org/posterior">posterior</a>
     </li>
   </ul>
 </li>
+<li>
+  <a href="http://mc-stan.org">Stan</a>
+</li>
       </ul>
-<ul class="nav navbar-nav navbar-right"></ul>
+<ul class="nav navbar-nav navbar-right">
+<li>
+  <a href="https://twitter.com/mcmc_stan">
+    <span class="fa fa-twitter"></span>
+     
+  </a>
+</li>
+<li>
+  <a href="https://github.com/hyunjimoon/SBC">
+    <span class="fa fa-github"></span>
+     
+  </a>
+</li>
+<li>
+  <a href="http://discourse.mc-stan.org/">
+    <span class="fa fa-users"></span>
+     
+  </a>
+</li>
+      </ul>
 </div>
 <!--/.nav-collapse -->
   </div>
@@ -90,12 +115,13 @@
 
       
 
-      </header><script src="bad_parametrization_files/header-attrs-2.5/header-attrs.js"></script><link href="bad_parametrization_files/anchor-sections-1.0/anchor-sections.css" rel="stylesheet">
-<script src="bad_parametrization_files/anchor-sections-1.0/anchor-sections.js"></script><div class="row">
+      </header><script src="bad_parametrization_files/header-attrs-2.9/header-attrs.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Discovering bad parametrization with SBC</h1>
+                        <h4 class="author">Martin Modrák</h4>
             
+            <h4 class="date">2021-09-11</h4>
       
       
       <div class="hidden name"><code>bad_parametrization.Rmd</code></div>
@@ -166,7 +192,7 @@ model {
   <span class="va">n_datasets</span><span class="op">)</span></code></pre></div>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_gamma</span>, <span class="va">backend_gamma</span><span class="op">)</span></code></pre></div>
-<pre><code>##  - 9 (90%) fits had some steps rejected. Maximum number of rejections was 6.</code></pre>
+<pre><code>##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 5.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>10 simulations are enough to see something is wrong with the model. The problem is best seen on an <code>ecdf_diff</code> plot - we even see the issue is primarily with the <code>scale</code> parameter!</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
@@ -211,17 +237,16 @@ model {
 <span class="op">}</span></code></pre></div>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_gamma2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_gamma</span>, <span class="va">backend_gamma_2</span><span class="op">)</span></code></pre></div>
-<pre><code>##  - 2 (20%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.011.</code></pre>
-<pre><code>##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 6.</code></pre>
+<pre><code>##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 9.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>No obvious problems here, but if we wanted to be sure, we should have ran a lot more simulations.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_gamma2</span><span class="op">)</span></code></pre></div>
 <p><img src="bad_parametrization_files/figure-html/unnamed-chunk-8-1.png" width="700"></p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_gamma2</span>, bins <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></code></pre></div>
 <p><img src="bad_parametrization_files/figure-html/unnamed-chunk-8-2.png" width="700"></p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_gamma2</span><span class="op">)</span></code></pre></div>
 <p><img src="bad_parametrization_files/figure-html/unnamed-chunk-8-3.png" width="700"></p>
   </div>

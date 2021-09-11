@@ -12,8 +12,8 @@
 <!-- jquery -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
 <!-- Bootstrap -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/cosmo/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous" />
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script>
 
@@ -78,50 +78,73 @@
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
-  <a href="../index.html">
-    <span class="fas fa fas fa-home fa-lg"></span>
-     
-  </a>
+  <a href="../articles/index.html">Vignettes</a>
 </li>
 <li>
-  <a href="../reference/index.html">Reference</a>
+  <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Articles
+    Other Packages
      
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu">
     <li>
-      <a href="../articles/bad_parametrization.html">Discovering bad parametrization with SBC</a>
+      <a href="http://mc-stan.org/rstan">rstan</a>
     </li>
     <li>
-      <a href="../articles/basic_usage.html">SBC Interface Introduction</a>
+      <a href="https://mc-stan.org/cmdstanr">cmdstanr</a>
     </li>
     <li>
-      <a href="../articles/brms.html">SBC for brms models</a>
+      <a href="http://paul-buerkner.github.io/brms/">brms</a>
     </li>
     <li>
-      <a href="../articles/discrete_params.html">SBC with discrete parameters</a>
+      <a href="http://mc-stan.org/rstanarm">rstanarm</a>
     </li>
     <li>
-      <a href="../articles/indexing.html">Discovering indexing errors with SBC</a>
+      <a href="http://mc-stan.org/bayesplot">bayesplot</a>
     </li>
     <li>
-      <a href="../articles/limits_of_SBC.html">Limits of SBC</a>
+      <a href="http://mc-stan.org/shinystan">shinystan</a>
     </li>
     <li>
-      <a href="../articles/rejection_sampling.html">UNKNOWN TITLE</a>
+      <a href="http://mc-stan.org/loo">loo</a>
     </li>
     <li>
-      <a href="../articles/small_model_workflow.html">Small model workflow</a>
+      <a href="http://mc-stan.org/projpred">projpred</a>
+    </li>
+    <li>
+      <a href="http://mc-stan.org/rstantools">rstantools</a>
+    </li>
+    <li>
+      <a href="https://mc-stan.org/posterior">posterior</a>
     </li>
   </ul>
 </li>
+<li>
+  <a href="http://mc-stan.org">Stan</a>
+</li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://twitter.com/mcmc_stan">
+    <span class="fa fa-twitter"></span>
+     
+  </a>
+</li>
+<li>
+  <a href="https://github.com/hyunjimoon/SBC">
+    <span class="fa fa-github"></span>
+     
+  </a>
+</li>
+<li>
+  <a href="http://discourse.mc-stan.org/">
+    <span class="fa fa-users"></span>
+     
+  </a>
+</li>
       </ul>
       
     </div><!--/.nav-collapse -->
@@ -149,8 +172,8 @@
     <tbody>
       <tr>
         <th colspan="2">
-          <h2 id="section-all-functions" class="hasAnchor"><a href="#section-all-functions" class="anchor"></a>All functions</h2>
-          <p class="section-desc"></p>
+          <h2 id="section-datasets" class="hasAnchor"><a href="#section-datasets" class="anchor"></a>Datasets</h2>
+          <p class="section-desc"><p>Generating datasets ready for use with SBC and working with them.</p></p>
         </th>
       </tr>
       
@@ -161,34 +184,15 @@
       <tr>
         
         <td>
-          <p><code><a href="ECDF-plots.html">plot_ecdf()</a></code> <code><a href="ECDF-plots.html">plot_ecdf_diff()</a></code> </p>
+          <p><code><a href="bind_datasets.html">bind_datasets()</a></code> </p>
         </td>
-        <td><p>Plot the ECDF-based plots.</p></td>
+        <td><p>Combine multiple datasets together.</p></td>
       </tr><tr>
         
         <td>
-          <p><code><a href="SBC_backend_brms.html">SBC_backend_brms()</a></code> </p>
+          <p><code><a href="generate_datasets.html">generate_datasets()</a></code> </p>
         </td>
-        <td><p>Build a backend based on the <code>brms</code> package.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="SBC_backend_brms_from_generator.html">SBC_backend_brms_from_generator()</a></code> </p>
-        </td>
-        <td><p>Build a brms backend, reusing the compiled model from a previously created <code>SBC_generator_brms</code>
-object.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample()</a></code> </p>
-        </td>
-        <td><p>Backend based on sampling via <code>cmdstanr</code>.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="SBC_backend_rstan_sample.html">SBC_backend_rstan_sample()</a></code> </p>
-        </td>
-        <td><p>SBC backend using the <code>sampling</code> method from <code>rstan</code>.</p></td>
+        <td><p>Generate datasets.</p></td>
       </tr><tr>
         
         <td>
@@ -198,9 +202,9 @@ object.</p></td>
       </tr><tr>
         
         <td>
-          <p><code><a href="SBC_fit_to_diagnostics.html">SBC_fit_to_diagnostics()</a></code> </p>
+          <p><code><a href="sub-.SBC_datasets.html">`[`(<i>&lt;SBC_datasets&gt;</i>)</a></code> </p>
         </td>
-        <td><p>S3 generic to get backend-specific diagnostics.</p></td>
+        <td><p>Subset an <code>SBC_datasets</code> object.</p></td>
       </tr><tr>
         
         <td>
@@ -222,9 +226,102 @@ object.</p></td>
       </tr><tr>
         
         <td>
-          <p><code><a href="bind_datasets.html">bind_datasets()</a></code> </p>
+          <p><code><a href="calculate_prior_sd.html">calculate_prior_sd()</a></code> </p>
         </td>
-        <td><p>Combine multiple datasets together.</p></td>
+        <td><p>Calculate  prior standard deviation of a dataset</p></td>
+      </tr>
+    </tbody><tbody>
+      <tr>
+        <th colspan="2">
+          <h2 id="section-backends" class="hasAnchor"><a href="#section-backends" class="anchor"></a>Backends</h2>
+          <p class="section-desc"><p>Represent various inference engines you can use with SBC.</p></p>
+        </th>
+      </tr>
+      
+      
+    </tbody><tbody>
+      
+      
+      <tr>
+        
+        <td>
+          <p><code><a href="SBC_backend_brms.html">SBC_backend_brms()</a></code> </p>
+        </td>
+        <td><p>Build a backend based on the <code>brms</code> package.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="SBC_backend_brms_from_generator.html">SBC_backend_brms_from_generator()</a></code> </p>
+        </td>
+        <td><p>Build a brms backend, reusing the compiled model from a previously created <code>SBC_generator_brms</code>
+object.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample()</a></code> </p>
+        </td>
+        <td><p>Backend based on sampling via <code>cmdstanr</code>.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational()</a></code> </p>
+        </td>
+        <td><p>Backend based on variational approximation via <code>cmdstanr</code>.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="SBC_backend_rstan_sample.html">SBC_backend_rstan_sample()</a></code> </p>
+        </td>
+        <td><p>SBC backend using the <code>sampling</code> method from <code>rstan</code>.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="SBC_fit.html">SBC_fit()</a></code> </p>
+        </td>
+        <td><p>Use backend to fit a model to data.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="SBC_fit_to_diagnostics.html">SBC_fit_to_diagnostics()</a></code> </p>
+        </td>
+        <td><p>S3 generic to get backend-specific diagnostics.</p></td>
+      </tr>
+    </tbody><tbody>
+      <tr>
+        <th colspan="2">
+          <h2 id="section-computation-results" class="hasAnchor"><a href="#section-computation-results" class="anchor"></a>Computation &amp; results</h2>
+          <p class="section-desc"><p>Functions related to running the SBC computation and handling the results.</p></p>
+        </th>
+      </tr>
+      
+      
+    </tbody><tbody>
+      
+      
+      <tr>
+        
+        <td>
+          <p><code><a href="compute_results.html">compute_results()</a></code> </p>
+        </td>
+        <td><p>Fit datasets and evaluate diagnostics and SBC metrics.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="generated_quantities.html">generated_quantities()</a></code> </p>
+        </td>
+        <td><p>Create a definition of generated quantities evaluated in R.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="statistics_from_single_fit.html">statistics_from_single_fit()</a></code> </p>
+        </td>
+        <td><p>Recompute SBC statistics given a single fit.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="recompute_statistics.html">recompute_statistics()</a></code> </p>
+        </td>
+        <td><p>Recompute SBC statistics without refitting models.</p></td>
       </tr><tr>
         
         <td>
@@ -234,9 +331,15 @@ object.</p></td>
       </tr><tr>
         
         <td>
-          <p><code><a href="calculate_prior_sd.html">calculate_prior_sd()</a></code> </p>
+          <p><code><a href="check_all_SBC_diagnostics.html">check_all_SBC_diagnostics()</a></code> </p>
         </td>
-        <td><p>Calculate  prior standard deviation of a dataset</p></td>
+        <td><p>Check diagnostics and issue warnings when those fail.</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="sub-.SBC_results.html">`[`(<i>&lt;SBC_results&gt;</i>)</a></code> </p>
+        </td>
+        <td><p>Subset the results.</p></td>
       </tr><tr>
         
         <td>
@@ -246,34 +349,15 @@ object.</p></td>
       </tr><tr>
         
         <td>
-          <p><code><a href="check_all_SBC_diagnostics.html">check_all_SBC_diagnostics()</a></code> </p>
+          <p><code><a href="get_diagnostics_messages.html">get_diagnostics_messages()</a></code> </p>
         </td>
-        <td><p>Check diagnostics and issue warnings when those fail.</p></td>
+        <td><p>Get diagnostic messages for <code>SBC_results</code> or other objects.</p></td>
       </tr><tr>
         
         <td>
-          <p><code><a href="cjs_dist.html">cjs_dist()</a></code> </p>
+          <p><code><a href="SBC_fit_to_diagnostics.html">SBC_fit_to_diagnostics()</a></code> </p>
         </td>
-        <td><p>Cumulative Jensen-Shannon divergence</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="combine_args.html">combine_args()</a></code> </p>
-        </td>
-        <td><p>Combine two named lists and overwrite elements with the same name
-using the value from args2</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="compute_results.html">compute_results()</a></code> </p>
-        </td>
-        <td><p>Fit datasets and evaluate diagnostics and SBC metrics.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots()</a></code> </p>
-        </td>
-        <td><p>Maybe not export in the end? Useful for debugging</p></td>
+        <td><p>S3 generic to get backend-specific diagnostics.</p></td>
       </tr><tr>
         
         <td>
@@ -286,36 +370,31 @@ using the value from args2</p></td>
           <p><code><a href="default_cores_per_fit.html">default_cores_per_fit()</a></code> </p>
         </td>
         <td><p>Determines the default cores per single fit.</p></td>
+      </tr>
+    </tbody><tbody>
+      <tr>
+        <th colspan="2">
+          <h2 id="section-plotting" class="hasAnchor"><a href="#section-plotting" class="anchor"></a>Plotting</h2>
+          <p class="section-desc"><p>Plotting results</p></p>
+        </th>
+      </tr>
+      
+      
+    </tbody><tbody>
+      
+      
+      <tr>
+        
+        <td>
+          <p><code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots()</a></code> </p>
+        </td>
+        <td><p>Maybe not export in the end? Useful for debugging</p></td>
       </tr><tr>
         
         <td>
-          <p><code><a href="generate_datasets.html">generate_datasets()</a></code> </p>
+          <p><code><a href="ECDF-plots.html">plot_ecdf()</a></code> <code><a href="ECDF-plots.html">plot_ecdf_diff()</a></code> </p>
         </td>
-        <td><p>Generate datasets.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="generated_quantities.html">generated_quantities()</a></code> </p>
-        </td>
-        <td><p>Create a definition of generated quantities evaluated in R.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="get_diagnostics_messages.html">get_diagnostics_messages()</a></code> </p>
-        </td>
-        <td><p>Get diagnostic messages for <code>SBC_results</code> or other objects.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="guess_bins.html">guess_bins()</a></code> </p>
-        </td>
-        <td><p>Guess the number of bins for <code>plot_rank_hist()</code>.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="max_diff.html">max_diff()</a></code> </p>
-        </td>
-        <td><p>Max difference between binned samples with the same length</p></td>
+        <td><p>Plot the ECDF-based plots.</p></td>
       </tr><tr>
         
         <td>
@@ -337,51 +416,59 @@ using the value from args2</p></td>
       </tr><tr>
         
         <td>
+          <p><code><a href="guess_bins.html">guess_bins()</a></code> </p>
+        </td>
+        <td><p>Guess the number of bins for <code>plot_rank_hist()</code>.</p></td>
+      </tr>
+    </tbody><tbody>
+      <tr>
+        <th colspan="2">
+          <h2 id="section-miscellaneous" class="hasAnchor"><a href="#section-miscellaneous" class="anchor"></a>Miscellaneous</h2>
+          <p class="section-desc"></p>
+        </th>
+      </tr>
+      
+      
+    </tbody><tbody>
+      
+      
+      <tr>
+        
+        <td>
+          <p><code><a href="wasserstein.html">wasserstein()</a></code> </p>
+        </td>
+        <td><p>wasserstein distance between binned samples</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="cjs_dist.html">cjs_dist()</a></code> </p>
+        </td>
+        <td><p>Cumulative Jensen-Shannon divergence</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="combine_args.html">combine_args()</a></code> </p>
+        </td>
+        <td><p>Combine two named lists and overwrite elements with the same name
+using the value from args2</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="max_diff.html">max_diff()</a></code> </p>
+        </td>
+        <td><p>Max difference between binned samples with the same length</p></td>
+      </tr><tr>
+        
+        <td>
           <p><code><a href="rank2unif.html">rank2unif()</a></code> </p>
         </td>
         <td><p>Distance between binned samples (rank for SBC) and discrete uniform</p></td>
       </tr><tr>
         
         <td>
-          <p><code><a href="rdunif.html">rdunif()</a></code> </p>
-        </td>
-        <td><p>Discrete uniform distribution allowing for varying lower and upper bounds.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="recompute_statistics.html">recompute_statistics()</a></code> </p>
-        </td>
-        <td><p>Recompute SBC statistics without refitting models.</p></td>
-      </tr><tr>
-        
-        <td>
           <p><code><a href="set2set.html">set2set()</a></code> </p>
         </td>
         <td><p>Summarize relational property of overall prior and posterior samples</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="statistics_from_single_fit.html">statistics_from_single_fit()</a></code> </p>
-        </td>
-        <td><p>Recompute SBC statistics given a single fit.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="sub-.SBC_datasets.html">`[`(<i>&lt;SBC_datasets&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>Subset an <code>SBC_datasets</code> object.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="sub-.SBC_results.html">`[`(<i>&lt;SBC_results&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>Subset the results.</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="wasserstein.html">wasserstein()</a></code> </p>
-        </td>
-        <td><p>wasserstein distance between binned samples</p></td>
       </tr>
     </tbody>
     </table>
