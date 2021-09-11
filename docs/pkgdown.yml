@@ -1,0 +1,14 @@
+pandoc: 2.11.4
+pkgdown: 1.6.1
+pkgdown_sha: ~
+articles:
+  bad_parametrization: bad_parametrization.html
+  basic_usage: basic_usage.html
+  brms: brms.html
+  discrete_params: discrete_params.html
+  indexing: indexing.html
+  limits_of_SBC: limits_of_SBC.html
+  rejection_sampling: rejection_sampling.html
+  small_model_workflow: small_model_workflow.html
+last_built: 2021-09-11T17:11Z
+
