@@ -1,6 +1,14 @@
 ---
 title: "SBC with discrete parameters"
-output: html_notebook
+author: "Martin Modrák"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: yes
+vignette: >
+  %\VignetteIndexEntry{SBC with discrete parameters}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
 ---
 
 ```{r setup, include = FALSE}

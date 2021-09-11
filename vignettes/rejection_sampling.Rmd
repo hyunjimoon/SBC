@@ -1,3 +1,17 @@
+---
+title: Rejection sampling in dataset generation
+author: "Martin Modrák"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: yes
+vignette: >
+  %\VignetteIndexEntry{Rejection sampling in dataset generation}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+
 
 ```{r setup}
 library(SBC)

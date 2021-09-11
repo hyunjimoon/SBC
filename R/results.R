@@ -675,6 +675,7 @@ recompute_statistics <- function(old_results, datasets, thin_ranks = 10, gen_qua
 #'
 #' Internal, should not be exported.
 #' Based on https://stats.stackexchange.com/a/3939/73129
+#' @keywords internal
 rdunif <- function(n, a, b) {
   ceiling(runif(n, min = a - 1, max= b))
 }
