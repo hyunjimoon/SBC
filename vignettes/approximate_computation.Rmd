@@ -10,11 +10,23 @@ library(cmdstanr)
 library(parallel)
 library(bayesplot)
 library(posterior)
+library(dplyr)
 library(future)
+library(ggpubr)
 options(mc.cores = parallel::detectCores())
 plan(multisession)
 options(SBC.min_chunk_size = 5)
 set.seed(1984)
+devtools::load_all()
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(
+  include = TRUE,  cache = FALSE,  collapse = TRUE,  echo = TRUE,
+  message = FALSE, tidy = FALSE,  warning = FALSE,   comment = "  ",
+  dev = "png", dev.args = list(bg = '#FFFFF8'), dpi = 300,
+  fig.align = "center",  fig.width = 7,  fig.asp = 0.618,  fig.show = "hold",
+  out.width = "90%")
 ```
 
 # 1. Intro.
@@ -23,7 +35,7 @@ HMC can be slow either from large data or difficult geometry, where approximate 
 # 2. Comparing HMC and ADVI 
 Simple model with location and scale parameter for normal distirbution is used and coded into generator and backend (stan file).
 
-```{R generator and backend}
+```{r  warning=FALSE}
 generator <- function(hyperparam, param, predictor = NULL){
   # hyperparamter
   N = hyperparam$N
@@ -42,29 +54,11 @@ generator <- function(hyperparam, param, predictor = NULL){
     generated = draws_rvars_to_standata(gen_rvars)
   )
 }
-
-tn <- "
-data {
-  int N;
-  vector[N] y;
-  real<lower=0> prior_width;
-}
-
-parameters {
-  real loc;
-  real <lower = 0> scale;
-}
-
-model {
-  loc ~ normal(0, prior_width);
-  scale ~ lognormal(0, prior_width);
-  y ~ normal(loc, scale);
-}
-"
-mod_two_norm = cmdstanr::cmdstan_model(stan_file = write_stan_file(tn))
+mod_two_norm = set_get_Dir("two_normal")$mod
+mod_two_norm
 ```
 
-Comparing SBC with two different backends (HMC and ADVI), the latter is around five times faster (3 and 0.6 min.) for (S, M) = (1000, 100) where `S` is the number of initial parameter values (datasets) and `M` is posterior samples. Current Stan ADVI implelmentation samples from iid normal which explains the difference in `s_thin_ranks` and `v_thin_ranks` as 10 and 1. If certian correlation is detected, thinning is possible with `recompute_statistics` function without refitting. See appendix for instructions on VI variants aiming for first or higher order corrections.
+Comparing SBC with two different backends (HMC and ADVI), the latter is around five times faster (3 and 0.6 min.) for (S, M) = (1000, 100) where `S` is the number of initial parameter values (datasets) and `M` is posterior samples. Current Stan ADVI implelmentation samples from iid normal which explains the difference in `thin_ranks_s` and `thin_ranks_v` as 10 and 1. If certian correlation is detected, thinning is possible with `recompute_statistics` function without refitting. See appendix for instructions on VI variants aiming for first or higher order corrections.
 
 The following messages is ADVI-specific and explains how ELBO value and its gradient evolved with the heuristically set stepsize `eta`. For further ADVI diagnostics, see [this](https://mc-stan.org/docs/2_27/reference-manual/stochastic-gradient-ascent.html) Stan manual. 
 ```
@@ -79,38 +73,85 @@ Begin stochastic gradient ascent.
    300         -239.071             1.033            1.000 
 ```
 
-```{R}
+```{r  warning=FALSE}
 S = 1000
 N = 5
 M = 100
-s_thin_ranks = 10
-v_thin_ranks = 1
+thin_ranks_s = 10
 chains = 4
-backend_tn <- SBC_backend_cmdstan_sample(mod_two_norm, chains = chains, iter_sampling = M * s_thin_ranks / chains)
-backend_tn_vb <- SBC_backend_cmdstan_variational(mod_two_norm)
+thin_ranks_v = 1
+backend <- SBC_backend_cmdstan_sample(mod_two_norm, chains = chains, iter_sampling = M * thin_ranks_s / chains)
+backend_vi <- SBC_backend_cmdstan_variational(mod_two_norm, output_samples = M * thin_ranks_v)
 prior_width = 1
-datasets_tn <- generator(
+datasets <- generator(
   hyperparam = list(prior_width = prior_width, N = N),
   param = draws_rvars(loc = rvar(rnorm(S, 0, prior_width)), scale = rvar(exp(rnorm(S, 0, prior_width))))
 )
-result_tn <- compute_results(datasets_tn, backend_tn)
-result_tn_vb <- compute_results(datasets_tn, backend_tn_vb, thin_ranks = v_thin_ranks)
+result <- compute_results(datasets, backend, thin_ranks = thin_ranks_s)
+result_vi <- compute_results(datasets, backend_vi, thin_ranks = thin_ranks_v)
 ```
 
 Rank results for HMC is acceptable while for ADVI indicates under-dispersion. Variational inference that measures the divergence based on the true distribution (e.g. KL(approx.||true)) is known for its compactness (Turner, 2010) and therefore have tendency to be under-dispersed. However, Yao et al. (2018) notes VI posteriors can be both over-dispersed and under-dispersed, on which parameter region SBC is exploring. Rank plot indicates that ADVI for this problem setting could be inappropriate i.e. the three components, given parameter values, outcome model, and inference engine are not self-consistent. Adjusting the computation algorithm via hyperparameters that determine convergence standards can be one solution. 
 
 ```{R}
-plot_rank_hist(result_tn)
-plot_rank_hist(result_tn_vb)
+plot_rank_hist(result)
+plot_rank_hist(result_vi)
 ```
 
 # 3. Adjusting algorithm hyperparameters
 One ADVI hyperparater is `tol_rel_obj` which is a convergence tolerance on the relative norm of the objective. Stan's default is 0.001 so decreasing it to 0.0001 takes longer (fifth power didn't end) but provides better rank plots.
 
-```{R}
-backend_tn_vb_dot1pw4tol <- SBC_backend_cmdstan_variational(mod_two_norm, tol_rel_obj = 0.0001)
-result_tn_vb_dot1pw4tol <- compute_results(datasets_tn, backend_tn_vb_dot1pw4tol)
-plot_rank_hist(result_tn_vb_dot1pw4tol)
+```{r warning=FALSE}
+backend_vi_dot1pw4tol <- SBC_backend_cmdstan_variational(mod_two_norm, tol_rel_obj = 0.0001)
+result_vi_dot1pw4tol <- compute_results(datasets, backend_vi_dot1pw4tol)
+plot_rank_hist(result_vi_dot1pw4tol)
+```
+
+# 4. Self-calibration via iteration
+
+Another rememdy is SBC iteration: using posterior subsamples as the next prior samples. As samples are iid and from normal distribution, the number of posterior samples needed for rank plots could be set smaller than that of Monte Carlo case (stochastic approximation).
+```{r warning=FALSE}
+# target calibration
+tv = c("loc", "scale")
+S = 450 #1000
+M = 100
+thin_ranks_v = 1
+hyperparam = list(prior_width = 1, N = 5)
+backend_vi <- SBC_backend_cmdstan_variational(mod_two_norm, output_samples = M * thin_ranks_v)
+datasets  <- generator(
+  hyperparam = hyperparam,
+  param = draws_rvars(loc = rvar(rnorm(S, 0, hyperparam$prior_width)), scale = rvar(exp(rnorm(S, 0, hyperparam$prior_width))))
+)
+delivDir <- set_get_Dir("two_normal")$delivDir # plot log for iteration update
+result_init <- compute_results(datasets, backend_vi, thin_ranks = 1) 
+plot_rank_hist(result_init)
+param_init <- as_draws_rvars(subset_draws(datasets$parameters, variable = tv))
+#target calibration
+evolve_df <- list()
+evolve_df$dpp_init <- NA
+for (v in tv){
+ evolve_df[[v]] <- list(median = rep(NA,1), sd = rep(NA,1), dpp = NA) 
+}
+param_sc <- self_calib(generator, hyperparam, param_init, predictor, backend_vi, tv, thin_ranks_v, 0, evolve_df, delivDir)
+# test self-consistency for parameters_sc
+datasets_sc <- generator(
+  hyperparam = hyperparam,
+  param = param_sc
+)
+result_sc <- compute_results(datasets_sc, backend_vi, thin_ranks = thin_ranks_v) 
+# before after compare with ecdf and rank summary
+# graphical inspection
+g <- plot_rank_hist(result_init)
+g_sc <- plot_rank_hist(result_sc)
+# numeric inspection
+next_param_init <- update_param(param_init, result_init, tv, cnt = 0, thin =1, delivDir) 
+next_param_sc <- update_param(param_sc, result_sc, tv, cnt = 0, thin =1, delivDir)
+print(set2set(param_init, next_param_init, "loc")$CJS)
+print(set2set(param_init, next_param_init, "scale")$CJS)
+print(set2set(param_sc, next_param_sc, "loc")$CJS)  
+print(set2set(param_sc, next_param_sc, "scale")$CJS)
+ggsave(g, file =  file.path(delivDir, paste0(paste0(paste0(tv, "_"), "bfCalib_ecdf.png"), sep = "")))
+ggsave(g_sc, file =  file.path(delivDir, paste0(paste0(paste0(tv, "_"), "afCalib_ecdf.png"), sep = "")))
 ```
 
 # Notes on VI variants
