@@ -135,11 +135,21 @@ generate_datasets.SBC_generator_function <- function(generator, n_datasets) {
       }
     }
 
+    guess_dimnames <- function(x) {
+      if(!is.null(dimnames(x))) {
+        dimnames(x)
+      } else if(!is.null(names(x))) {
+        list(names(x))
+      } else {
+        NULL
+      }
+    }
+
     params_rvars <-
       do.call(
       posterior::draws_rvars,
       purrr::map(generator_output$parameters,
-                 ~ posterior::rvar(array(.x, dim = c(1, guess_dims(.x))))
+                 ~ posterior::rvar(array(.x, dim = c(1, guess_dims(.x))), dimnames = guess_dimnames(.x))
                  )
       )
     parameters_list[[iter]] <- posterior::as_draws_matrix(params_rvars)
@@ -208,6 +218,8 @@ generate_datasets.SBC_generator_custom <- function(generator, n_datasets) {
 #' but improves sensitivity of the SBC process.
 #' @export
 SBC_generator_brms <- function(..., generate_lp = TRUE) {
+  require_brms_version("brms generator")
+
   model_data <- brms::make_standata(..., sample_prior = "only")
   class(model_data) <- NULL
 
@@ -318,7 +330,7 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
 
     ## Compute the likelihoods (observation model)
     if(generator$generate_lp) {
-      ll <- log_lik(prior_fit_brms, newdata = new_dataset, subset = i, cores = 1)
+      ll <- log_lik(prior_fit_brms, newdata = new_dataset, draw_ids = i, cores = 1)
       log_likelihoods[i] <- sum(ll)
     }
   }

@@ -228,15 +228,7 @@ print.SBC_nuts_diagnostics_summary <- function(x) {
 #'   package.
 #' @export
 SBC_backend_cmdstan_sample <- function(model, ...) {
-  if(!requireNamespace("cmdstanr", quietly = TRUE)) {
-    stop("Using cmdstan backend requires the 'cmdstanr' package")
-  }
-  # Cannot use `versionCheck` of `requireNamespace` as that doesn't work when
-  # the package is already loaded. Note that `packageVersion` and `package_version`
-  # are completely different methods
-  if(packageVersion("cmdstanr") < package_version("0.4.0")) {
-    stop("SBC requires cmdstanr version >= 0.4.0, please update your cmdstanr.")
-  }
+  require_cmdstanr_version("cmdstan backend")
 
   stopifnot(inherits(model, "CmdStanModel"))
   if(length(model$exe_file()) == 0) {
@@ -297,6 +289,8 @@ SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages, fi
 #'   package.
 #' @export
 SBC_backend_cmdstan_variational <- function(model, ...) {
+  require_cmdstanr_version("cmdstan backend")
+
   stopifnot(inherits(model, "CmdStanModel"))
   if(length(model$exe_file()) == 0) {
     stop("The model has to be already compiled, call $compile() first.")
@@ -331,10 +325,12 @@ SBC_fit_to_draws_matrix.CmdStanVB <- function(fit) {
 
 }
 
+
 # For internal use, creates brms backend.
 new_SBC_backend_brms <- function(compiled_model,
   args
 ) {
+  require_brms_version("brms backend")
 
   arg_names_for_stan <- c("chains", "inits", "iter", "warmup", "thin")
   args_for_stan <- args[intersect(names(args), arg_names_for_stan)]
