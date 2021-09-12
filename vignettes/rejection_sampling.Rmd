@@ -11,9 +11,13 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
+How does rejection sampling when generating datasets affect the validity of SBC?
+
+TODO: copy math and ideas from
+https://discourse.mc-stan.org/t/using-narrower-priors-for-sbc/21709/6?u=martinmodrak
 
 
-```{r setup}
+```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 
 # use_cmdstanr <- TRUE # Set to false to use rstan instead
@@ -34,10 +38,6 @@ options(SBC.min_chunk_size = 10)
 
 ```
 
-How does rejection sampling affect the validity of SBC?
-
-TODO: copy math and ideas from
-https://discourse.mc-stan.org/t/using-narrower-priors-for-sbc/21709/6?u=martinmodrak
 
 We'll use a very simple model throughout this vignette:
 
@@ -61,10 +61,13 @@ model {
 
 backend <- SBC_backend_cmdstan_sample(cmdstan_model(write_stan_file(stan_code)), iter_warmup = 800, iter_sampling = 800)
 ```
-And use a matching generator.
+
+# No rejections
+
+First, we'll use a generator that matches the model exactly.
 
 ```{r}
-N <- 30
+N <- 10
 generator <- SBC_generator_function(function() {
    mu <- rnorm(1, 0, 2)
    list(
@@ -82,16 +85,19 @@ datasets <- generate_datasets(generator, 1000)
 ```
 
 ```{r}
-results <- compute_results(datasets, backend)
+results <- compute_results(datasets, backend, keep_fits = FALSE)
 ```
 
 ```{r}
 plot_ecdf_diff(results)
+plot_rank_hist(results)
 ```
 
 Indeed, all looks good.
 
-Now let us modify the generator to reject based on parameter values. This should fail.
+# Rejection based on parameter values
+
+Now let us modify the generator to reject based on parameter values. 
 
 ```{r}
 generator_reject_param <- SBC_generator_function(function() {
@@ -108,19 +114,25 @@ generator_reject_param <- SBC_generator_function(function() {
 })
 ```
 
+We don't even need to run very many fits to see the problem.
+
 ```{r}
 set.seed(21455)
-datasets_reject_param <- generate_datasets(generator_reject_param, 1000)
+datasets_reject_param <- generate_datasets(generator_reject_param, 200)
 ```
 
 ```{r}
-results_reject_param <- compute_results(datasets_reject_param, backend)
+results_reject_param <- compute_results(datasets_reject_param, backend, keep_fits = FALSE)
 ```
 
 ```{r}
 plot_ecdf_diff(results_reject_param)
+plot_rank_hist(results_reject_param)
 ```
+
 Indeed, we see a clear failure.
+
+# Rejecting based on data
 
 But what if we reject based on the values of data? This should in theory result in just
 a constant change in posterior density and not affect SBC. (SBC will however then check only the 
@@ -148,7 +160,7 @@ datasets_reject_y <- generate_datasets(generator_reject_y, 1000)
 ```
 
 ```{r}
-results_reject_y <- compute_results(datasets_reject_y, backend)
+results_reject_y <- compute_results(datasets_reject_y, backend, keep_fits = FALSE)
 ```
 
 ```{r}
@@ -156,3 +168,12 @@ plot_ecdf_diff(results_reject_y)
 ```
 
 We see that even with quite heavy rejection based on y, SBC to a high resolution passes.
+
+# Take home message
+
+If our priors can sometimes generate datasets that are unrealistic, but we are unable to 
+specify a better prior directly (e.g. because we would need to define some sort of joint prior),
+we can use rejection sampling to prune unrealistic datasets as long as we only filter by the observed
+data and don't directly use any unobserved parameter values. Notably, filtering based on divergences or other
+fitting issues is also just a function of data and thus permissible. The resulting SBC will however provide guarantees
+only for datasets that would not be rejected by the same criteria.

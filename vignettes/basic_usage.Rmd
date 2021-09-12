@@ -22,7 +22,7 @@ This vignette will demonstrate how the basic package interface can be used to ge
 
 The package is largely split into two components, `SBC_datasets` and `Backend` objects. `SBC_datasets` objects hold the simulated prior and data samples, which are then used during SBC to fit the model. Instead of directly creating a dataset object, users may define a `Generator` function that returns the parameters and simulated data for a single iteration. `SBC` can take the function and generate a dataset object for you through repeated calls of the `Generator`. Please refer to here for detailed specifications of `SBC_datasets` and `Generator` functions.
 
-![Overview of the package structure](overview.png)
+![Overview of the package structure](overview_wide.png)
 
 Once the `SBC_datasets` is prepared and loaded with the true prior and simulated data samples, `SBC` uses a `Backend` object to actually fit the model to the simulated data and generate posterior samples. In short, `Backend` bunches together the desired platform in which inference is ran(`cmdstanr`, `rstan`, `brms`, `pymc`, etc.), the model, and additional platform-specific inference parameters which are necessary to run inference for the model-platform combination (e.g. number of iterations, initial values, ...).
 
@@ -32,7 +32,7 @@ Once the `SBC_datasets` and `Backend` objects are set up, running SBC and viewin
 In this vignette we will demonstrate how the interface is used with a simple poisson regression model. First we'll
 setup and configure our environment.
 
-```{r setup}
+```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC);
 
 use_cmdstanr <- TRUE # Set to false to use rstan instead
@@ -84,7 +84,7 @@ if(use_cmdstanr) {
 
 ### Generator
 
-Once we bave defied the moddel, we can create a Generator function which will generate prior and data samples:
+Once we have defined the model, we can create a Generator function which will generate prior and data samples:
 
 ```{r}
 # A generator function should return a named list containing elements "parameters" and "generated"
@@ -160,4 +160,5 @@ plot_ecdf(results)
 ```{r}
 plot_ecdf_diff(results)
 ```
+
 Since our simulator and model do match, we see that the plots don't show any violation.

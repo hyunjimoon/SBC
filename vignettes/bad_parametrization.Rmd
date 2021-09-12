@@ -11,7 +11,13 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
-```{r setup, include = FALSE}
+
+This vignette provides the example used as Exercise 2 of the [SBC tutorial](https://www.martinmodrak.cz/post/2021-sbc_tutorial/)
+presented at SBC StanConnect. Feel free to head to the tutorial website to get an interactive version and solve the problems yourself.
+
+Let's setup the environment:
+
+```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC); 
 use_cmdstanr <- TRUE # Set to false to use rstan instead
 
@@ -32,13 +38,11 @@ options(mc.cores = parallel::detectCores())
 
 ```
 
+Premise: we mistakenly assume that Stan does parametrize the Gamma distribution
+via shape and scale, when in fact Stan uses the shape and rate parametrization 
+(see [Gamma distribution](https://en.wikipedia.org/wiki/Gamma_distribution) on Wikipedia 
+for details on the parametrizations.
 
-Premise: we mistakenly assume that Stan does parametrize the normal distribution
-via mean and precision (like JAGS or INLA do). Since we want to put prior on the 
-standard deviation (as is suggested on the prior choice wiki), we take standard deviation as the parameter and transform to precision $\tau = \frac{1}{\sigma^2}$.
-
-
-TODO maybe start with prior predictive check to tune priors?
 
 ```{r}
 stan_code_1 <- "
@@ -116,6 +120,7 @@ results_gamma <- compute_results(datasets_gamma, backend_gamma)
 ```{r}
 plot_ecdf_diff(results_gamma)
 ```
+
 However, we can use the rank histogram (with suitable number of bins) and the `ecdf` plot to show different visualisations of the same problem. The rank histogram often tends to be intuitively more understandable than the `ecdf` plots, but tweaking the number of bins is often necessary and the confidence interval is only approximate and has decreased sensitivity.
 
 ```{r}

@@ -3,7 +3,15 @@ title: "Small model workflow"
 output: html_notebook
 ---
 
-```{r setup}
+Workflow for small models - the texts are still somewhat incomplete.
+
+"Small" means that the model is fast to fit and we don't have to worry about computation too much.
+Once running ~100 fits of the model becomes too costly, there are additional tricks and considerations
+that we hope to delve into in a "Complex model workflow" vignette (which currently doesn't exist).
+
+Still many of the approaches here also apply to complex models (especially starting small and building each component separately)
+
+```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 
 # use_cmdstanr <- TRUE # Set to false to use rstan instead
@@ -183,6 +191,7 @@ results_fixed_ordered <- compute_results(datasets_ordered_10, backend_fixed_orde
 ```{r}
 results_fixed_ordered$stats
 ```
+
 There are fits with high R-hats and low ESS. Let's look at the pairs plot:
 
 ```{r}

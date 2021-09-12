@@ -11,7 +11,9 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
-```{r setup, include = FALSE}
+Here, we'll walk through some problems that are hard/impossible to diagnose with SBC.
+
+```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 library(ggplot2)
 use_cmdstanr <- TRUE # Set to false to use rstan instead

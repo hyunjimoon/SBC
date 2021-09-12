@@ -47,6 +47,26 @@ home:
   - text: Ask a question
     href: http://discourse.mc-stan.org/
 
+articles:
+  - title: "Getting started"
+    desc: >
+      Understanding the basic usage and philosophy of the package
+    contents:
+      - basic_usage
+  - title: "Using SBC for debugging/validating Stan models"
+    desc: >
+      Case studies showing how problems in a Stan model can be discovered with SBC.
+    contents:
+      - bad_parametrization
+      - indexing
+      - small_model_workflow
+  - title: "Additional use cases and advanced topics"
+    contents:
+      - limits_of_SBC
+      - brms
+      - discrete_params
+      - rejection_sampling
+
 reference:
 - title: Datasets
   desc:  Generating datasets ready for use with SBC and working with them.

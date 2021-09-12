@@ -11,7 +11,12 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
-```{r setup, include = FALSE}
+This vignette provides the example used as Exercise 3 of the [SBC tutorial](https://www.martinmodrak.cz/post/2021-sbc_tutorial/)
+presented at SBC StanConnect. Feel free to head to the tutorial website to get an interactive version and solve the problems yourself.
+
+Let's setup the environment.
+
+```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC); 
 library(ggplot2)
 

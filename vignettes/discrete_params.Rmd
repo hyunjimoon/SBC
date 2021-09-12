@@ -11,7 +11,11 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
-```{r setup, include = FALSE}
+SBC was primarily designed for continuous parameters, but can be used
+with models that have discrete parameters - whether the parameters
+are directly represented (e.g. in JAGS) or marginalized out (as is usual in Stan).
+
+```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC); 
 library(ggplot2)
 
@@ -86,6 +90,9 @@ if(use_cmdstanr) {
 
 
 ```
+
+Now, let's generate data from the model.
+
 ```{r}
 generate_single_dataset_1 <- function(T, r_e, r_l) {
   e <- rexp(1, r_e)
@@ -127,6 +134,8 @@ datasets_1 <- generate_datasets(generator_1, 30)
 ```{r}
 results_1 <- compute_results(datasets_1, backend_1)
 ```
+
+
 TODO the diagnostics are false positives, because Rhat and ESS don't work very well for discrete parameters.
 We need to figure out how to handle this better.
 
