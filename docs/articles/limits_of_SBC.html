@@ -130,13 +130,34 @@
 
     
     
+<p>Here, we’ll walk through some problems that are hard/impossible to diagnose with SBC.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">SBC</span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org">ggplot2</a></span><span class="op">)</span>
+<span class="va">use_cmdstanr</span> <span class="op">&lt;-</span> <span class="cn">TRUE</span> <span class="co"># Set to false to use rstan instead</span>
+
+<span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr">cmdstanr</a></span><span class="op">)</span>
+<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/">rstan</a></span><span class="op">)</span>
+<span class="op">}</span>
+
+<span class="fu"><a href="https://rdrr.io/r/base/options.html">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/HenrikBengtsson/future">future</a></span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/pkg/future/man/plan.html">plan</a></span><span class="op">(</span><span class="va">multisession</span><span class="op">)</span>
+
+<span class="co"># The fits are very fast,</span>
+<span class="co"># so we force a minimum chunk size to reduce overhead of</span>
+<span class="co"># paralellization and decrease computation time.</span>
+<span class="fu"><a href="https://rdrr.io/r/base/options.html">options</a></span><span class="op">(</span>SBC.min_chunk_size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></code></pre></div>
 <div id="sbc-and-minor-changes-to-model" class="section level1">
 <h1 class="hasAnchor">
 <a href="#sbc-and-minor-changes-to-model" class="anchor"></a>SBC and minor changes to model</h1>
 <p>SBC requires <em>a lot</em> of iterations to discover problems that are subtle.</p>
 <p>To demonstrate this, we will fit a simple model with a normal likelihood, but use Student’s t distribution with 5 degrees of freedom to generate the data.</p>
 <p>To see the difference we’ll show the two densities</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5</span>, <span class="fl">5</span>, length.out <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>
 <span class="va">dens_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">rbind</a></span><span class="op">(</span>
   <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, density <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">dnorm</a></span><span class="op">(</span><span class="va">x</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, 
@@ -148,12 +169,12 @@
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-1-1.png" width="700"></p>
 <p>As expected the t distribution has fatter tails, which is even better visible when looking at the logarithm of the density.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="va">dens_data</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">log_density</span>, color <span class="op">=</span> <span class="va">type</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-2-1.png" width="700"></p>
 <p>Here is our Stan code for the simple normal model.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">model_code_minor</span> <span class="op">&lt;-</span> <span class="st">"
 data {
   int&lt;lower=0&gt; N;
@@ -187,7 +208,7 @@ model {
     <span class="va">model_minor</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>And here we simulate from a student’s t distribution. We scale the distribution so that the <code>sigma</code> parameter is the standard deviation of the distribution.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">single_dataset_minor</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
   <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span>
@@ -205,17 +226,17 @@ model {
 <span class="va">generator_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_dataset_minor</span>, N <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
 <span class="va">datasets_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_minor</span>, n_datasets <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></code></pre></div>
 <p>Can we see something by looking at the results of just the first 10 datasets? (note that <code>SBC_datasets</code> objects support subsetting).</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_minor_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span>, <span class="va">backend_minor</span><span class="op">)</span></code></pre></div>
 <pre><code>##  - 1 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.024.</code></pre>
 <pre><code>##  - 2 (20%) fits had some steps rejected. Maximum number of rejections was 1.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>Not really…</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_minor_10</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-6-1.png" width="700"></p>
 <p>Will we have better luck with 100 datasets? (Note that we can use <code>bind_results</code> to combine multiple results, letting us start small, but not throw away the computation spent for the initial SBC runs)</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_minor_100</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span>
   <span class="va">results_minor_10</span>,
   <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">11</span><span class="op">:</span><span class="fl">100</span><span class="op">]</span>, <span class="va">backend_minor</span><span class="op">)</span>
@@ -224,11 +245,11 @@ model {
 <pre><code>##  - 16 (18%) fits had some steps rejected. Maximum number of rejections was 1.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>Here we see something suspicios with the <code>sigma</code> parameter, but it is not very convincing.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_minor_100</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-8-1.png" width="700"></p>
 <p>So let’s do additional 100 SBC steps</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_minor_200</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span>
   <span class="va">results_minor_100</span>,
   <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">101</span><span class="op">:</span><span class="fl">200</span><span class="op">]</span>, <span class="va">backend_minor</span><span class="op">)</span>
@@ -237,12 +258,12 @@ model {
 <pre><code>##  - 13 (13%) fits had some steps rejected. Maximum number of rejections was 2.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>OK, so this looks at least a bit conclusive, but still, the violation of uniformity is not very big.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_minor_200</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-10-1.png" width="700"></p>
 <p>If we used more data points per simulation (here we simulated just 10), the problem would likely show faster. In any case, we need a relatively large number of runs to identify small discrepancies with high probability.</p>
 <p>But it is also the case that the estimates are not completely meaningless (as the distributions are quite close). One way to look into this is to plot the posterior mean + central 90% interval against the simulated value via <code>plot_sim_estimated</code>. The estimates should cluster around the y=x line (blue), which they mostly do.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">results_minor_200</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-11-1.png" width="700"></p>
 </div>
@@ -256,7 +277,7 @@ model {
 <h1 class="hasAnchor">
 <a href="#missing-likelihood" class="anchor"></a>Missing likelihood</h1>
 <p>SBC will not notice if you completely omit likelihood from your Stan model!</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">single_dataset_missing</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
   <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="va">N</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
@@ -270,7 +291,7 @@ model {
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">25746223</span><span class="op">)</span>
 <span class="va">generator_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_dataset_missing</span>, N <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
 <span class="va">datasets_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_missing</span>, n_datasets <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">model_code_missing</span> <span class="op">&lt;-</span> <span class="st">"
 data {
   int&lt;lower=0&gt; N;
@@ -300,29 +321,29 @@ model {
   <span class="va">backend_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
     <span class="va">model_missing</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_missing</span>, <span class="va">backend_missing</span><span class="op">)</span></code></pre></div>
 <pre><code>##  - 16 (8%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.027.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-15-1.png" width="700"></p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_missing</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-15-2.png" width="700"></p>
 <p>Can be noticed by prior/posterior contraction plot. For this model, we can get the prior sd directly, but one can also use a (preferably large) <code>SBC_datasets</code> object to estimate it empirically for more complex models.</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">prior_sd</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"mu"</span> <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="co">#prior_sd &lt;- calculate_prior_sd(generate_datasets(generator_missing, 1000))</span>
 <span class="fu"><a href="../reference/plot_contraction.html">plot_contraction</a></span><span class="op">(</span><span class="va">results_missing</span>, <span class="va">prior_sd</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-16-1.png" width="700"></p>
 <p>We see that the contraction centers around 0 (no contraction) with some deviation (as expected due to stochasticity of the estimate), which means that the model learns nothing useful on average about <code>mu</code>.</p>
 <p>Another plot that can show a similar problem is the <code>plot_sim_estimated</code> showing that the posterior credible intervals don’t really change with changes to <code>simulated_value</code>.</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">results_missing</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-17-1.png" width="700"></p>
 <p>There is however even more powerful method - and that is to include the likelihood in the SBC. This is most easily done by adding a “generated quantity” to the SBC results - this is a function that is evaluated within the context of the parameters AND data.</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">normal_lpdf</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">y</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">dnorm</a></span><span class="op">(</span><span class="va">y</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="va">sigma</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span>
@@ -333,10 +354,10 @@ model {
                                              gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span><span class="op">)</span></code></pre></div>
 <pre><code>##  - 19 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.027.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing_gq</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-19-1.png" width="700"></p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_missing_gq</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-19-2.png" width="700"></p>
 </div>
@@ -344,7 +365,7 @@ model {
 <h1 class="hasAnchor">
 <a href="#partially-missing-likelihood" class="anchor"></a>Partially missing likelihood</h1>
 <p>A more complicated case is when the likelihood is only slightly wrong (and missing something) - e.g. due to an indexing error. Turns out missing just one data point needs a lot of steps, so we’ll miss 3 in our likelihood.</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">model_code_missing_2</span> <span class="op">&lt;-</span> <span class="st">"
 data {
   int&lt;lower=0&gt; N;
@@ -378,23 +399,23 @@ model {
   <span class="va">backend_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
     <span class="va">model_missing_2</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_missing</span>, <span class="va">backend_missing_2</span>, gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span><span class="op">)</span></code></pre></div>
 <pre><code>##  - 20 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.031.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>The contraction plot would not show anything suspicious - we get decent contraction</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_contraction.html">plot_contraction</a></span><span class="op">(</span><span class="va">results_missing_2</span>, <span class="va">prior_sd</span>, parameters <span class="op">=</span> <span class="st">"mu"</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-22-1.png" width="700"></p>
 <p>Similarly, our posterior estimates now cluster around the true values.</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">results_missing_2</span>, parameters <span class="op">=</span> <span class="st">"mu"</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-23-1.png" width="700"></p>
 <p>Now contraction is pretty high, and <code>mu</code> is behaving well, but our <code>log_lik</code> generated quantity shows a clear problem</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing_2</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-24-1.png" width="700"></p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_missing_2</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/unnamed-chunk-24-2.png" width="700"></p>
 <p>We could definitely find even smaller deviations than omitting half the data points, that would however require more SBC steps. This boils down to the earlier discussion on small changes to the model - omitting a few data points does not change the posterior very much and thus is harder to detect by SBC - but it is possible.</p>

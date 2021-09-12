@@ -144,7 +144,7 @@
 <a href="#overview-of-the-architecture" class="anchor"></a>Overview of the Architecture</h2>
 <p>The package is largely split into two components, <code>SBC_datasets</code> and <code>Backend</code> objects. <code>SBC_datasets</code> objects hold the simulated prior and data samples, which are then used during SBC to fit the model. Instead of directly creating a dataset object, users may define a <code>Generator</code> function that returns the parameters and simulated data for a single iteration. <code>SBC</code> can take the function and generate a dataset object for you through repeated calls of the <code>Generator</code>. Please refer to here for detailed specifications of <code>SBC_datasets</code> and <code>Generator</code> functions.</p>
 <div class="figure">
-<img src="overview.png" alt=""><p class="caption">Overview of the package structure</p>
+<img src="overview_wide.png" alt=""><p class="caption">Overview of the package structure</p>
 </div>
 <p>Once the <code>SBC_datasets</code> is prepared and loaded with the true prior and simulated data samples, <code>SBC</code> uses a <code>Backend</code> object to actually fit the model to the simulated data and generate posterior samples. In short, <code>Backend</code> bunches together the desired platform in which inference is ran(<code>cmdstanr</code>, <code>rstan</code>, <code>brms</code>, <code>pymc</code>, etc.), the model, and additional platform-specific inference parameters which are necessary to run inference for the model-platform combination (e.g. number of iterations, initial values, …).</p>
 <p>Once the <code>SBC_datasets</code> and <code>Backend</code> objects are set up, running SBC and viewing results becomes as simple as a few function calls, greatly reducing the hassle with having to deal with extracting posterior draws and calculating results. Additionally, the results are stored in <code>posterior::rvars</code> format, which allows for easy manipulation and rapid calculation of additional metrics of interest.</p>
@@ -162,13 +162,9 @@
   <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr">cmdstanr</a></span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
   <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/">rstan</a></span><span class="op">)</span>
-<span class="op">}</span></code></pre></div>
-<pre><code>## This is cmdstanr version 0.4.0.9000</code></pre>
-<pre><code>## - Online documentation and vignettes at mc-stan.org/cmdstanr</code></pre>
-<pre><code>## - CmdStan path set to: C:/Users/Martin/Documents/.cmdstanr/cmdstan-2.27.0</code></pre>
-<pre><code>## - Use set_cmdstan_path() to change the path</code></pre>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/options.html">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+<span class="op">}</span>
+
+<span class="fu"><a href="https://rdrr.io/r/base/options.html">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
 
 <span class="co"># Enabling parallel processing via future</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/HenrikBengtsson/future">future</a></span><span class="op">)</span>
@@ -182,7 +178,7 @@
 <h3 class="hasAnchor">
 <a href="#model-setup" class="anchor"></a>Model Setup</h3>
 <p>We will be running SBC against a model that defines <code>y ~ Poisson(lambda)</code>, where <code>lambda ~ Gamma(15, 5)</code>. We will be using <code>cmdstanr</code> as the backend with the following model code:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">stan_code</span> <span class="op">&lt;-</span> <span class="st">"
 data{
   int N;
@@ -206,8 +202,8 @@ model{
 <div id="generator" class="section level3">
 <h3 class="hasAnchor">
 <a href="#generator" class="anchor"></a>Generator</h3>
-<p>Once we bave defied the moddel, we can create a Generator function which will generate prior and data samples:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<p>Once we have defined the model, we can create a Generator function which will generate prior and data samples:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># A generator function should return a named list containing elements "parameters" and "generated"</span>
 
 <span class="va">poisson_generator_single</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">{</span>  <span class="co"># N is the number of data points we are generating</span>
@@ -229,7 +225,7 @@ model{
 <h3 class="hasAnchor">
 <a href="#create-sbc_datasets-from-generator" class="anchor"></a>Create <code>SBC_Datasets</code> from Generator</h3>
 <p><code>SBC</code> provides helper functions <code>SBC_generator_function</code> and <code>generate_datasets</code> which takes a Generator function and creates a benign `SBC_datasets’ object.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">n_datasets</span> <span class="op">&lt;-</span> <span class="fl">100</span>  <span class="co"># Number of SBC iterations to run</span>
 
 <span class="va">poisson_generator</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">poisson_generator_single</span>, N <span class="op">=</span> <span class="fl">40</span><span class="op">)</span>
@@ -244,7 +240,7 @@ model{
 <p>Once we have the model compiled we’ll create a <code>Backend</code> object from the model. <code>SBC</code> includes pre-defined <code>Backend</code> objects for HMC sampling with <code>cmdstan</code> and <code>rstan</code>. In addition, it also provides generator function and Backend for <code>brms</code> based models.</p>
 <p>Note that you can create your own <code>Backend</code> if you wish to use a different sampling/optimization platform, such as variational inference or JAGS. For further information on <code>Backend</code> specifications, please refer to here.</p>
 <p>Here we’ll just use the pre-defined cmdstan Backend, in which we pass our compiled model and any additional arguments we would like to pass over to <code>cmdstanr::sampling</code>:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">poisson_backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span>
     <span class="va">cmdstan_model</span>, iter_warmup <span class="op">=</span> <span class="fl">1000</span>, iter_sampling <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>
@@ -257,30 +253,28 @@ model{
 <h3 class="hasAnchor">
 <a href="#computing-ranks" class="anchor"></a>Computing Ranks</h3>
 <p>we can then use <code>compute_results</code> to fit our datasets with the backend:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">poisson_dataset</span>, <span class="va">poisson_backend</span><span class="op">)</span></code></pre></div>
-<pre><code>##  - 1 (1%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.01.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 </div>
 <div id="viewing-results" class="section level3">
 <h3 class="hasAnchor">
 <a href="#viewing-results" class="anchor"></a>Viewing Results</h3>
 <p>We can now inspect the results to see if there were any errors and check individual stats:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results</span><span class="op">$</span><span class="va">stats</span></code></pre></div>
 <pre><code>## # A tibble: 100 x 15
 ##    parameter simulated_value  rank z_score  mean median    sd   mad    q5   q95
 ##    &lt;chr&gt;               &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-##  1 lambda               3.13    55 -0.543   3.28   3.28 0.275 0.274  2.82  3.74
-##  2 lambda               2.12   168  1.11    1.89   1.87 0.206 0.212  1.57  2.23
-##  3 lambda               3.67   170  1.04    3.38   3.37 0.277 0.276  2.95  3.85
-##  4 lambda               2.58    85 -0.438   2.69   2.68 0.255 0.255  2.29  3.12
-##  5 lambda               4.66    86 -0.189   4.72   4.70 0.330 0.328  4.21  5.29
-##  6 lambda               3.35    26 -1.20    3.69   3.68 0.283 0.285  3.24  4.16
-##  7 lambda               2.61    92 -0.145   2.65   2.64 0.247 0.251  2.26  3.05
-##  8 lambda               2.57    77 -0.260   2.64   2.63 0.243 0.240  2.24  3.04
-##  9 lambda               2.06   101  0.0127  2.06   2.06 0.210 0.223  1.72  2.42
-## 10 lambda               5.31   115  0.231   5.24   5.23 0.334 0.328  4.70  5.78
+##  1 lambda               3.98   168  1.02    3.68   3.67 0.292 0.301  3.21  4.16
+##  2 lambda               4.40   198  2.09    3.78   3.78 0.298 0.312  3.29  4.27
+##  3 lambda               2.82    19 -1.28    3.17   3.16 0.268 0.263  2.73  3.61
+##  4 lambda               2.31     0 -3.25    3.18   3.17 0.267 0.266  2.74  3.63
+##  5 lambda               3.85   143  0.521   3.70   3.68 0.291 0.283  3.23  4.19
+##  6 lambda               2.23    43 -0.770   2.41   2.40 0.228 0.237  2.05  2.79
+##  7 lambda               2.43   139  0.427   2.33   2.33 0.231 0.239  1.95  2.71
+##  8 lambda               3.94   173  0.999   3.66   3.66 0.280 0.285  3.21  4.14
+##  9 lambda               2.65   110 -0.0302  2.66   2.65 0.242 0.237  2.27  3.08
+## 10 lambda               2.62    25 -1.14    2.91   2.90 0.253 0.256  2.51  3.32
 ## # ... with 90 more rows, and 5 more variables: rhat &lt;dbl&gt;, ess_bulk &lt;dbl&gt;,
 ## #   ess_tail &lt;dbl&gt;, max_rank &lt;int&gt;, dataset_id &lt;int&gt;</code></pre>
 </div>
@@ -288,15 +282,16 @@ model{
 <h3 class="hasAnchor">
 <a href="#plots" class="anchor"></a>Plots</h3>
 <p>And finally, we can plot the rank distribution to check if the ranks are uniformly distributed. We can check the rank histogram and ECDF plots:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></code></pre></div>
 <p><img src="basic_usage_files/figure-html/unnamed-chunk-7-1.png" width="700"></p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></code></pre></div>
 <p><img src="basic_usage_files/figure-html/unnamed-chunk-8-1.png" width="700"></p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></code></pre></div>
-<p><img src="basic_usage_files/figure-html/unnamed-chunk-9-1.png" width="700"> Since our simulator and model do match, we see that the plots don’t show any violation.</p>
+<p><img src="basic_usage_files/figure-html/unnamed-chunk-9-1.png" width="700"></p>
+<p>Since our simulator and model do match, we see that the plots don’t show any violation.</p>
 </div>
 </div>
 </div>

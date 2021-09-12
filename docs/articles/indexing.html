@@ -130,8 +130,21 @@
 
     
     
-<p>Below are three different Stan codes for implementing a simple linear regression. Not all of them are correct - can you see which are wrong?</p>
+<p>This vignette provides the example used as Exercise 3 of the <a href="https://www.martinmodrak.cz/post/2021-sbc_tutorial/">SBC tutorial</a> presented at SBC StanConnect. Feel free to head to the tutorial website to get an interactive version and solve the problems yourself.</p>
+<p>Let’s setup the environment.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">SBC</span><span class="op">)</span>; 
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org">ggplot2</a></span><span class="op">)</span>
+
+<span class="va">use_cmdstanr</span> <span class="op">&lt;-</span> <span class="cn">TRUE</span> <span class="co"># Set to false to use rstan instead</span>
+
+<span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr">cmdstanr</a></span><span class="op">)</span>
+<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/">rstan</a></span><span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p>Below are three different Stan codes for implementing a simple linear regression. Not all of them are correct - can you see which are wrong?</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">stan_code_1</span> <span class="op">&lt;-</span> <span class="st">"
 data {
   int&lt;lower=0&gt; N;   // number of data items
@@ -206,7 +219,7 @@ model {
 "</span></code></pre></div>
 <p>If you can, good for you! If not, don’t worry, SBC can help you spot coding problems, so let’s simulate data and test all three models against simulated data.</p>
 <p>First we’ll build backends using the individual models.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">model_regression_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/write_stan_file.html">write_stan_file</a></span><span class="op">(</span><span class="va">stan_code_1</span><span class="op">)</span><span class="op">)</span>
   <span class="va">model_regression_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/write_stan_file.html">write_stan_file</a></span><span class="op">(</span><span class="va">stan_code_2</span><span class="op">)</span><span class="op">)</span>
@@ -226,7 +239,7 @@ model {
   <span class="va">backend_regression_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span><span class="va">model_regression_3</span>, iter <span class="op">=</span> <span class="fl">900</span>, warmup <span class="op">=</span> <span class="fl">400</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>Then we’ll write a function that generates data. We write it in the most simple way to reduce the possibility that we make an error. We also don’t really need to worry about performance here.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">single_dataset_regression</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span>, <span class="va">K</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="va">N</span> <span class="op">*</span> <span class="va">K</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="va">N</span>, ncol <span class="op">=</span> <span class="va">K</span><span class="op">)</span>
   <span class="va">alpha</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
@@ -255,40 +268,40 @@ model {
   
 <span class="op">}</span></code></pre></div>
 <p>We’ll start with just 10 datasets to get a quick computation - this will still let us see big problems (but not subtle issues)</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">5666024</span><span class="op">)</span>
 <span class="va">datasets_regression</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_dataset_regression</span>, N <span class="op">=</span> <span class="fl">100</span>, K <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>, <span class="fl">10</span><span class="op">)</span></code></pre></div>
 <p>Now we can use all of the backends to fit the generated datasets.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_regression_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_regression</span>, <span class="va">backend_regression_1</span><span class="op">)</span></code></pre></div>
 <pre><code>##  - 6 (60%) fits had some steps rejected. Maximum number of rejections was 4.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_regression_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_regression</span>, <span class="va">backend_regression_2</span><span class="op">)</span></code></pre></div>
 <pre><code>##  - 6 (60%) fits had some steps rejected. Maximum number of rejections was 4.
 ## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_regression_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_regression</span>, <span class="va">backend_regression_3</span><span class="op">)</span></code></pre></div>
 <pre><code>##  - 4 (40%) fits had some steps rejected. Maximum number of rejections was 3.
 ## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_regression_1</span><span class="op">)</span></code></pre></div>
 <p><img src="indexing_files/figure-html/unnamed-chunk-6-1.png" width="700"></p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_regression_1</span><span class="op">)</span></code></pre></div>
 <p><img src="indexing_files/figure-html/unnamed-chunk-6-2.png" width="700"></p>
 <p>As far as a quick SBC can see the first code is OK. You could verify further with more iterations but we tested the model for you and it is OK (although the implementation is not the best one).</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_regression_2</span><span class="op">)</span></code></pre></div>
 <p><img src="indexing_files/figure-html/unnamed-chunk-7-1.png" width="700"></p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_regression_2</span><span class="op">)</span></code></pre></div>
 <p><img src="indexing_files/figure-html/unnamed-chunk-7-2.png" width="700"></p>
 <p>But the second model is actually not looking good. In fact there is an indexing bug. The problem is the line <code>mu[i] += beta[j] * x[j, j];</code> which should have <code>x[i, j]</code> instead. We see that this propagates most strongly to the <code>sigma</code> parameter (reusing the same <code>x</code> element leads to more similar predictions for each row, so <code>sigma</code> needs to be inflated to accommodate this)</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_regression_3</span><span class="op">)</span></code></pre></div>
 <p><img src="indexing_files/figure-html/unnamed-chunk-8-1.png" width="700"></p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_regression_3</span><span class="op">)</span></code></pre></div>
 <p><img src="indexing_files/figure-html/unnamed-chunk-8-2.png" width="700"></p>
 <p>And the third model looks OK once again - and in fact we are pretty sure it is also completely correct.</p>
