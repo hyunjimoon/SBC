@@ -13,6 +13,7 @@ library(posterior)
 library(dplyr)
 library(future)
 library(ggpubr)
+library(KernSmooth)
 options(mc.cores = parallel::detectCores())
 plan(multisession)
 options(SBC.min_chunk_size = 5)
@@ -74,9 +75,10 @@ Begin stochastic gradient ascent.
 ```
 
 ```{r  warning=FALSE}
-S = 1000
-N = 5
-M = 100
+S = 100
+N = 50
+hyperparam = list(prior_width = 1, N = N)
+M = 1000
 thin_ranks_s = 10
 chains = 4
 thin_ranks_v = 1
@@ -84,10 +86,12 @@ backend <- SBC_backend_cmdstan_sample(mod_two_norm, chains = chains, iter_sampli
 backend_vi <- SBC_backend_cmdstan_variational(mod_two_norm, output_samples = M * thin_ranks_v)
 prior_width = 1
 datasets <- generator(
-  hyperparam = list(prior_width = prior_width, N = N),
+  hyperparam = hyperparam,
   param = draws_rvars(loc = rvar(rnorm(S, 0, prior_width)), scale = rvar(exp(rnorm(S, 0, prior_width))))
 )
 result <- compute_results(datasets, backend, thin_ranks = thin_ranks_s)
+
+
 result_vi <- compute_results(datasets, backend_vi, thin_ranks = thin_ranks_v)
 ```
 
@@ -111,43 +115,51 @@ plot_rank_hist(result_vi_dot1pw4tol)
 
 Another rememdy is SBC iteration: using posterior subsamples as the next prior samples. As samples are iid and from normal distribution, the number of posterior samples needed for rank plots could be set smaller than that of Monte Carlo case (stochastic approximation).
 ```{r warning=FALSE}
+delivDir = set_get_Dir("two_normal")$delivDir
 # target calibration
 tv = c("loc", "scale")
-S = 450 #1000
-M = 100
+S = 10 #1000
+N = 10
+M = 1000
 thin_ranks_v = 1
-hyperparam = list(prior_width = 1, N = 5)
-backend_vi <- SBC_backend_cmdstan_variational(mod_two_norm, output_samples = M * thin_ranks_v)
+hyperparam = list(prior_width = 1, N = N)
+predictor = NULL
 datasets  <- generator(
   hyperparam = hyperparam,
   param = draws_rvars(loc = rvar(rnorm(S, 0, hyperparam$prior_width)), scale = rvar(exp(rnorm(S, 0, hyperparam$prior_width))))
 )
-delivDir <- set_get_Dir("two_normal")$delivDir # plot log for iteration update
-result_init <- compute_results(datasets, backend_vi, thin_ranks = 1) 
-plot_rank_hist(result_init)
-param_init <- as_draws_rvars(subset_draws(datasets$parameters, variable = tv))
+backend_vi_mf <- SBC_backend_cmdstan_variational(mod_two_norm, output_samples = M * thin_ranks_v)
+backend_vi_full <- SBC_backend_cmdstan_variational(mod_two_norm, output_samples = M * thin_ranks_v, algorithm = "fullrank")
+result_0_mf <- compute_results(datasets, backend_vi_mf, thin_ranks_v) 
+result_0_full <- compute_results(datasets, backend_vi_full, thin_ranks_v) 
+plot_rank_hist(result_0_mf)
+plot_rank_hist(result_0_full)
+param_0 <- as_draws_rvars(subset_draws(datasets$parameters, variable = tv))
+param_1 <- prop_param(param_0, result_0_full, thin_ranks_v, 0, delivDir)
 #target calibration
 evolve_df <- list()
-evolve_df$dpp_init <- NA
 for (v in tv){
- evolve_df[[v]] <- list(median = rep(NA,1), sd = rep(NA,1), dpp = NA) 
+ evolve_df[[v]] <- list(median = rep(NA,1), sd = rep(NA,1), scm = NA, scm_init = NA) 
 }
-param_sc <- self_calib(generator, hyperparam, param_init, predictor, backend_vi, tv, thin_ranks_v, 0, evolve_df, delivDir)
+param_sc_mf <- self_calib(generator, hyperparam, param_1, predictor, backend_vi_mf, tv, thin_ranks_v, 0, evolve_df, delivDir)
+param_sc_full <- self_calib(generator, hyperparam, param_1, predictor, backend_vi_full, tv, thin_ranks_v, 0, evolve_df, delivDir)
+
 # test self-consistency for parameters_sc
 datasets_sc <- generator(
   hyperparam = hyperparam,
   param = param_sc
 )
-result_sc <- compute_results(datasets_sc, backend_vi, thin_ranks = thin_ranks_v) 
+result_sc <- compute_results(datasets_sc, backend_vi_full, thin_ranks_v) 
 # before after compare with ecdf and rank summary
 # graphical inspection
-g <- plot_rank_hist(result_init)
+result_0 = result_0_full
+g <- plot_rank_hist(result_0)
 g_sc <- plot_rank_hist(result_sc)
 # numeric inspection
-next_param_init <- update_param(param_init, result_init, tv, cnt = 0, thin =1, delivDir) 
-next_param_sc <- update_param(param_sc, result_sc, tv, cnt = 0, thin =1, delivDir)
-print(set2set(param_init, next_param_init, "loc")$CJS)
-print(set2set(param_init, next_param_init, "scale")$CJS)
+next_param_0 <- prop_param(param_0, result_0, tv, cnt = 0, thin =1, delivDir) 
+next_param_sc <- prop_param(param_sc, result_sc, tv, cnt = 0, thin =1, delivDir)
+print(set2set(param_0, next_param_0, "loc")$CJS)
+print(set2set(param_0, next_param_0, "scale")$CJS)
 print(set2set(param_sc, next_param_sc, "loc")$CJS)  
 print(set2set(param_sc, next_param_sc, "scale")$CJS)
 ggsave(g, file =  file.path(delivDir, paste0(paste0(paste0(tv, "_"), "bfCalib_ecdf.png"), sep = "")))
