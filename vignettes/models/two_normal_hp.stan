@@ -1,7 +1,6 @@
 data {
   // hyperparams
   int N;
-  // params
   real loc_mu;
   real loc_sd;
   real scale_mu;
