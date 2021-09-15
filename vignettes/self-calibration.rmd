@@ -1,0 +1,85 @@
+---
+title: "self-calibration"
+output: html_document
+author: Hyunji Moon, Shinyoung Kim
+---
+
+```{r setup, include=FALSE}
+library(SBC) #devtools::install_github("hyunjimoon/SBC")
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(dplyr)
+library(future)
+library(ggpubr)
+options(mc.cores = parallel::detectCores())
+plan(multisession)
+options(SBC.min_chunk_size = 5)
+set.seed(1984)
+devtools::load_all()
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(
+  include = TRUE,  cache = FALSE,  collapse = TRUE,  echo = TRUE,
+  message = FALSE, tidy = FALSE,  warning = FALSE,   comment = "  ",
+  dev = "png", dev.args = list(bg = '#FFFFF8'), dpi = 300,
+  fig.align = "center",  fig.width = 7,  fig.asp = 0.618,  fig.show = "hold",
+  out.width = "90%")
+```
+
+```{r  warning=FALSE}
+generator <- function(hyperparam, param, predictor = NULL){
+  # hyperparamter
+  alpha = hyperparam$alpha
+  # paramter
+  beta0 = param$beta0
+  beta1 = param$beta1
+  # predictor
+  x = predictor$x
+  # generate
+  S = ndraws(param[[1]])
+  mean = exp(beta0 + beta1 * x)
+  y <- rfun(rgamma) (n = N, shape = alpha, rate = shape/mean) #k/theta = mean
+  gen_rvars <- draws_rvars(N = N, y = y)
+  # SBC reshape rvar<S>[1] distributed to each parallel simulation as rvar<1>[1]
+  SBC_datasets(
+    parameters = as_draws_matrix(param), 
+    generated = draws_rvars_to_standata(gen_rvars)
+  )
+}
+mod_gr = set_get_Dir("gamma-reg")$mod
+```
+
+```{r  warning=FALSE}
+S = 100
+N = 5
+M = 100
+chains = 4
+hyperparam = list(alpha = rvar(rgamma(1, shape = .01, rate =.01)))
+predictor = draws_rvars(x = rfun(rnorm, ndraws = 1) (n = S, 0, 2))
+backend <- SBC_backend_cmdstan_sample(mod_gr, chains = chains, iter_sampling = M * 10 / chains)
+backend_vi <- SBC_backend_cmdstan_variational(mod_gr, output_samples = M * 1)
+datasets_25 <- generator(
+  hyperparam = hyperparam,
+  param = draws_rvars(beta0 = rvar(rnorm(S, 2, 5)), beta1 = rvar(rnorm(S, 0, 1))),
+  predictor =  predictor
+)
+result <- compute_results(datasets_25, backend)
+result_vi <- compute_results(datasets_25, backend_vi, thin_ranks = 1)
+plot_rank_hist(result)
+plot_rank_hist(result_vi)
+```
+
+```{r  warning=FALSE}
+datasets_22 <- generator(
+  hyperparam = hyperparam,
+  param = draws_rvars(beta0 = rvar(rnorm(S, 2, 2)), beta1 = rvar(rnorm(S, 0, 1))),
+  predictor = predictor
+)
+result <- compute_results(datasets_22, backend)
+result_vi <- compute_results(datasets_22, backend_vi, thin_ranks = 1)
+plot_rank_hist(result)
+plot_rank_hist(result_vi)
+```
