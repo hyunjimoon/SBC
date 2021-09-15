@@ -47,6 +47,14 @@ enough that a single batch takes at least several seconds, i.e. for small models
 you can often reduce computation time noticeably by increasing this value.
 You can use \code{options(SBC.min_chunk_size = value)} to set a minimum chunk size globally.
 See documentation of \code{future.chunk.size} argument for \code{future.apply::future_lapply()} for more details.}
+
+\item{cache_location}{The filesystem location of cache. For \code{cache_type = "results"}
+this should be a name of a single file. If the file name does not end with
+\code{.rds}, this extension is appended.}
+
+\item{cache_type}{Type of caching of results, currently the only supported modes are
+\code{"none"} (do not cache) and \code{"results"} where the whole results object is stored
+and recomputed only when the hash of the backend or dataset changes.}
 }
 \value{
 An object of class \code{SBC_results} that holds:

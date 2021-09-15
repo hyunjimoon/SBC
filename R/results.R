@@ -240,6 +240,12 @@ length.SBC_results <- function(x) {
 #'    you can often reduce computation time noticeably by increasing this value.
 #'    You can use `options(SBC.min_chunk_size = value)` to set a minimum chunk size globally.
 #'    See documentation of `future.chunk.size` argument for `future.apply::future_lapply()` for more details.
+#' @param cache_type Type of caching of results, currently the only supported modes are
+#'    `"none"` (do not cache) and `"results"` where the whole results object is stored
+#'    and recomputed only when the hash of the backend or dataset changes.
+#' @param cache_location The filesystem location of cache. For `cache_type = "results"`
+#'    this should be a name of a single file. If the file name does not end with
+#'    `.rds`, this extension is appended.
 #' @return An object of class `SBC_results` that holds:
 #'   - `$stats` statistics for all parameters and fits (one row per parameter-fit combination)
 #'   - `$fits`  the raw fits (unless `keep_fits = FALSE`) or `NULL` if the fit failed
