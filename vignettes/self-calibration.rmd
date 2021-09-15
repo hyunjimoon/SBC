@@ -59,17 +59,14 @@ M = 100
 chains = 4
 hyperparam = list(alpha = rvar(rgamma(1, shape = .01, rate =.01)))
 predictor = draws_rvars(x = rfun(rnorm, ndraws = 1) (n = S, 0, 2))
-backend <- SBC_backend_cmdstan_sample(mod_gr, chains = chains, iter_sampling = M * 10 / chains)
-backend_vi <- SBC_backend_cmdstan_variational(mod_gr, output_samples = M * 1)
+backend_hmc <- SBC_backend_cmdstan_sample(mod_gr, chains = chains, iter_sampling = M * 10 / chains)
 datasets_25 <- generator(
   hyperparam = hyperparam,
   param = draws_rvars(beta0 = rvar(rnorm(S, 2, 5)), beta1 = rvar(rnorm(S, 0, 1))),
   predictor =  predictor
 )
-result <- compute_results(datasets_25, backend)
-result_vi <- compute_results(datasets_25, backend_vi, thin_ranks = 1)
-plot_rank_hist(result)
-plot_rank_hist(result_vi)
+result_25 <- compute_results(datasets_25, backend_hmc)
+plot_rank_hist(result_25)
 ```
 
 ```{r  warning=FALSE}
@@ -78,8 +75,66 @@ datasets_22 <- generator(
   param = draws_rvars(beta0 = rvar(rnorm(S, 2, 2)), beta1 = rvar(rnorm(S, 0, 1))),
   predictor = predictor
 )
-result <- compute_results(datasets_22, backend)
-result_vi <- compute_results(datasets_22, backend_vi, thin_ranks = 1)
-plot_rank_hist(result)
+result_22 <- compute_results(datasets_22, backend_hmc)
+plot_rank_hist(result_22)
+```
+
+```{r warning=FALSE}
+delivDir = set_get_Dir("gamma-reg")$delivDir
+# target calibration
+tv = c("beta0", "beta1")
+param_0 <- as_draws_rvars(subset_draws(datasets_22$parameters, variable = tv))
+#target calibration
+evolve_df <- list()
+for (v in tv){
+ evolve_df[[v]] <- list(median = rep(NA,1), sd = rep(NA,1), scm = NA, scm_init = NA) 
+}
+param_sc_hmc <- self_calib(generator, hyperparam, param_0, predictor, backend_hmc, tv, 10, 0, evolve_df, delivDir)
+
+# test self-consistency for parameters_sc
+datasets_sc <- generator(
+  hyperparam = hyperparam,
+  param = param_sc_hmc,
+  predictor = predictor
+)
+result_sc <- compute_results(datasets_sc, backend_hmc) 
+# before after compare with ecdf and rank summary
+# graphical inspection
+plot_rank_hist(result_25)
+plot_rank_hist(result_sc)
+```
+
+```{r}
+thin_ranks_v = 1
+backend_vi <- SBC_backend_cmdstan_variational(mod_gr, output_samples = M, algorithm = "fullrank")
+result_25_vi <- compute_results(datasets_25, backend_vi, thin_ranks = thin_ranks_v)
 plot_rank_hist(result_vi)
+result_22_vi <- compute_results(datasets_22, backend_vi, thin_ranks = thin_ranks_v)
+plot_rank_hist(result_vi)
+param_0 <- as_draws_rvars(subset_draws(datasets_22$parameters, variable = tv))
+#target calibration
+evolve_df <- list()
+for (v in tv){
+ evolve_df[[v]] <- list(median = rep(NA,1), sd = rep(NA,1), scm = NA, scm_init = NA) 
+}
+param_sc_vi <- self_calib(generator, hyperparam, param_0, predictor, backend_vi, tv, thin_ranks_v, 0, evolve_df, delivDir)
+
+# test self-consistency for parameters_sc
+datasets_sc_vi <- generator(
+  hyperparam = hyperparam,
+  param = param_sc_vi,
+  predictor = predictor
+)
+result_sc_vi <- compute_results(datasets_sc_vi, backend_vi, thin_ranks = thin_ranks_v) 
+
+# test self-consistency for parameters_sc
+datasets_sc_vi <- generator(
+  hyperparam = hyperparam,
+  param = param_sc_vi,
+  predictor = predictor
+)
+# before after compare with ecdf and rank summary
+# graphical inspection
+plot_rank_hist(result_25_vi)
+plot_rank_hist(result_sc_vi)
 ```
