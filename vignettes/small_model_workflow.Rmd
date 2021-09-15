@@ -1,21 +1,74 @@
 ---
-title: "Small model workflow"
-output: html_notebook
+title: "Building a small model"
+author: "Martin Modrák"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: yes
+vignette: >
+  %\VignetteIndexEntry{Building a small model}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
 ---
 
-Workflow for small models - the texts are still somewhat incomplete.
+Here we describe a complete process to iteratively build and validate the _implementation_ 
+of a non-trivial, but still relatively small model. 
+This is not a full [Bayesian Workflow](https://arxiv.org/abs/2011.01808), instead
+the process described here can be thought of as a subroutine in the full workflow:
+here we take a relatively precise description of a model as input and try to produce
+a Stan program that implements this model. Once we have a Stan program we trust, 
+it is still necessary to validate its fit to actual data and other properties,
+which may trigger a need to change the model. At this point you may want to
+go back to simulations and make sure the modified model is implemented correctly.
 
-"Small" means that the model is fast to fit and we don't have to worry about computation too much.
+The workflow described here focuses on small models. 
+"Small" means that the model is relatively fast to fit and we don't have to worry about computation too much.
 Once running ~100 fits of the model becomes too costly, there are additional tricks and considerations
-that we hope to delve into in a "Complex model workflow" vignette (which currently doesn't exist).
-
+that we hope to delve into in a "Building a complex model" vignette (which currently doesn't exist).
 Still many of the approaches here also apply to complex models (especially starting small and building each component separately)
+
+We expect the reader to be familiar with basics of the package. If not,
+check out the "basic_usage" vignette.
+
+## Our goal
+
+The example we'll investigate is building a two-component Poisson mixture,
+where the mixing ratio is allowed to vary with some predictors while the means
+of the components are the same for all observations.  
+A somewhat contrived real world situation where this could arise would be that
+we observe the number of daily calls to a support team from a factory, where we know 
+that the only determinant of the number of calls is whether manager A or manager
+B is in charge that day in the factory. We don't directly observe which manager is 
+in charge, but observe some covariates that we expect to predict the presence of either
+manager.
+
+## Big picture
+
+This model naturally decomposes into two components: 
+
+1) the mixture component where the mixing ratio is the same
+for all variables
+
+2) a beta regression where we take covariates and make a prediction of a probability,
+assuming we (noisily) observe the probability.
+
+It is good practice to start small and implement and validate each of those 
+components separately and then put them together and validate the bigger model.
+This makes is substantially easier to locate bugs. 
+You'll notice that the process ends up involving a lot of steps, 
+but the fact is that we still ignore all the completely invalid models (typos, compile errors, dimension mismatches, ...). Developing models you
+can trust is hard work. More experienced users can definitely make bigger steps at once,
+but we strongly discourage anyone from writing a big model in one go. 
+My experience is that whenever I try to do this, the model breaks, is impossible
+to debug and then I end up breaking it down anyway.
+
+Let's setup and get our hands dirty:
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 
-# use_cmdstanr <- TRUE # Set to false to use rstan instead
-# 
+use_cmdstanr <- TRUE # Set to false to use rstan instead
+
 # if(use_cmdstanr) {
 #   library(cmdstanr)
 # } else {
@@ -30,13 +83,21 @@ plan(multisession)
 
 options(SBC.min_chunk_size = 5)
 
+# Setup caching of results
+cache_dir <- "./small_model_worklow_SBC_cache"
+if(!dir.exists(cache_dir)) {
+  dir.create(cache_dir)
+}
+
 ```
 
-- Mixture with predictors for ratios
-
-A lot of steps, but I still ignore all the completely invalid models (typos, compile errors, dimension mismatches, ...)
-
 ## Mixture component
+
+
+```{r, echo = FALSE, comment = ""}
+cat(readLines("small_model_workflow/mixture_first.stan"), sep = "\n")
+```
+
 
 ```{r}
 model_first <- cmdstan_model("small_model_workflow/mixture_first.stan")
@@ -80,7 +141,9 @@ datasets_first <- generate_datasets(generator_first, 1)
 ```
 
 ```{r}
-results_first <- compute_results(datasets_first, backend_first)
+results_first <- compute_results(datasets_first, backend_first, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "mixture_first"))
 ```
 
 We have convergence problems, let us examine the pairs plots
@@ -96,13 +159,19 @@ This might be puzzling but relates to bad usage of `log_mix` (TODO explain)
 
 ### Fixing mixture
 
+```{r, echo = FALSE, comment = "", results ='asis'}
+cat(readLines("small_model_workflow/mixture_fixed_log_mix.stan"), sep = "\n")
+```
+
 ```{r}
 model_fixed_log_mix <- cmdstan_model("small_model_workflow/mixture_fixed_log_mix.stan")
 backend_fixed_log_mix <- SBC_backend_cmdstan_sample(model_fixed_log_mix)
 ```
 
 ```{r}
-results_fixed_log_mix <- compute_results(datasets_first, backend_fixed_log_mix)
+results_fixed_log_mix <- compute_results(datasets_first, backend_fixed_log_mix, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "mixture_fixed_log_mix"))
 ```
 
 We see nothing obviously wrong, let's run a few more iterations.
@@ -110,14 +179,19 @@ We see nothing obviously wrong, let's run a few more iterations.
 ```{r}
 results_fixed_log_mix$stats
 ```
+
+
 ```{r}
 set.seed(8314566)
 datasets_first_10 <- generate_datasets(generator_first, 10)
 ```
 
 ```{r}
-results_fixed_log_mix_2 <- compute_results(datasets_first_10, backend_fixed_log_mix)
+results_fixed_log_mix_2 <- compute_results(datasets_first_10, backend_fixed_log_mix, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "mixture_fixed_log_mix_2"))
 ```
+
 So there are some problems.
 
 ```{r}
@@ -184,7 +258,9 @@ datasets_ordered_10 <- generate_datasets(generator_ordered, 10)
 
 
 ```{r}
-results_fixed_ordered <- compute_results(datasets_ordered_10, backend_fixed_ordered)
+results_fixed_ordered <- compute_results(datasets_ordered_10, backend_fixed_ordered, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "mixture_fixed_ordered"))
 ```
 
 
@@ -239,8 +315,11 @@ plot_ecdf_diff(results_fixed_ordered_subset)
 So we can run for more iterations:
 
 ```{r}
+set.seed(54987622)
 datasets_ordered_100 <- generate_datasets(generator_ordered, 100)
-results_fixed_ordered_100 <- compute_results(datasets_ordered_100, backend_fixed_ordered)
+results_fixed_ordered_100 <- compute_results(datasets_ordered_100, backend_fixed_ordered, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "mixture_fixed_ordered_100"))
 ```
 
 Once again we subset to keep only non-divergent fits
@@ -329,7 +408,9 @@ datasets_beta_first <- generate_datasets(generator_beta_first, 10)
 
 
 ```{r}
-results_beta_first_10 <- compute_results(datasets_beta_first, backend_beta_first)
+results_beta_first_10 <- compute_results(datasets_beta_first, backend_beta_first, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "beta_first_10"))
 ```
 ```{r}
 plot_ecdf_diff(results_beta_first_10)
@@ -416,7 +497,9 @@ datasets_beta_precision_10 <- generate_datasets(generator_beta_precision, 10)
 
 
 ```{r}
-results_beta_precision_10 <- compute_results(datasets_beta_precision_10, backend_beta_precision)
+results_beta_precision_10 <- compute_results(datasets_beta_precision_10, backend_beta_precision, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "beta_precision_10"))
 ```
 
 ```{r}
@@ -424,11 +507,14 @@ plot_ecdf_diff(results_beta_precision_10)
 ```
 
 ```{r}
+set.seed(2136468)
 datasets_beta_precision_90 <- generate_datasets(generator_beta_precision, 90)
 results_beta_precision_100 <-
   bind_results(
     results_beta_precision_10,
-    compute_results(datasets_beta_precision_90, backend_beta_precision))
+    compute_results(datasets_beta_precision_90, backend_beta_precision, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "beta_precision_90")))
 
 datasets_beta_precision_100 <- bind_datasets(datasets_beta_precision_10, datasets_beta_precision_90)
 plot_ecdf_diff(results_beta_precision_100)
@@ -447,17 +533,23 @@ backend_beta_precision_fixed_prior <- SBC_backend_cmdstan_sample(model_beta_prec
 
 ```
 ```{r}
-results_beta_precision_fixed_prior <- compute_results(datasets_beta_precision_100, backend_beta_precision_fixed_prior)
+results_beta_precision_fixed_prior <- 
+  compute_results(datasets_beta_precision_100, backend_beta_precision_fixed_prior, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "beta_precision_fixed_prior"))
 
 plot_ecdf_diff(results_beta_precision_fixed_prior)
 ```
 
 ```{r}
+set.seed(1233845)
 datasets_beta_precision_100b <- generate_datasets(generator_beta_precision, 100)
 results_beta_precision_fixed_prior_200 <-
   bind_results(
     results_beta_precision_fixed_prior,
-    compute_results(datasets_beta_precision_100b, backend_beta_precision_fixed_prior))
+    compute_results(datasets_beta_precision_100b, backend_beta_precision_fixed_prior, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "beta_precision_fixed_prior_2")))
 
 plot_ecdf_diff(results_beta_precision_fixed_prior_200)
 
@@ -526,7 +618,9 @@ dataset_combined <- generate_datasets(generator_combined, 200)
 ```
 
 ```{r}
-results_combined <- compute_results(dataset_combined, backend_combined)
+results_combined <- compute_results(dataset_combined, backend_combined, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "combined"))
 ```
 
 ```{r}
@@ -604,7 +698,9 @@ dataset_combined_reject <- generate_datasets(generator_combined_reject, 200)
 
 
 ```{r}
-results_combined_reject <- compute_results(dataset_combined_reject, backend_combined)
+results_combined_reject <- compute_results(dataset_combined_reject, backend_combined, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "combined_reject"))
 ```
 
 ```{r}
@@ -617,7 +713,9 @@ set.seed(1395367854)
 dataset_combined_reject_more <- generate_datasets(generator_combined_reject, 300) 
 results_combined_reject_more <- bind_results(
   results_combined_reject,
-  compute_results(dataset_combined_reject_more, backend_combined)
+  compute_results(dataset_combined_reject_more, backend_combined, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "combined_reject_more"))
 )
 
 plot_ecdf_diff(results_combined_reject_more)

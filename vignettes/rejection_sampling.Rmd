@@ -36,6 +36,12 @@ plan(multisession)
 
 options(SBC.min_chunk_size = 10)
 
+# Setup caching of results
+cache_dir <- "./rejection_sampling_SBC_cache"
+if(!dir.exists(cache_dir)) {
+  dir.create(cache_dir)
+}
+
 ```
 
 
@@ -85,7 +91,9 @@ datasets <- generate_datasets(generator, 1000)
 ```
 
 ```{r}
-results <- compute_results(datasets, backend, keep_fits = FALSE)
+results <- compute_results(datasets, backend, keep_fits = FALSE, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "no_rejections"))
 ```
 
 ```{r}
@@ -122,7 +130,9 @@ datasets_reject_param <- generate_datasets(generator_reject_param, 200)
 ```
 
 ```{r}
-results_reject_param <- compute_results(datasets_reject_param, backend, keep_fits = FALSE)
+results_reject_param <- compute_results(datasets_reject_param, backend, keep_fits = FALSE, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "reject_param"))
 ```
 
 ```{r}
@@ -160,7 +170,9 @@ datasets_reject_y <- generate_datasets(generator_reject_y, 1000)
 ```
 
 ```{r}
-results_reject_y <- compute_results(datasets_reject_y, backend, keep_fits = FALSE)
+results_reject_y <- compute_results(datasets_reject_y, backend, keep_fits = FALSE, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "reject_y"))
 ```
 
 ```{r}

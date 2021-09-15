@@ -240,10 +240,10 @@ length.SBC_results <- function(x) {
 #'    you can often reduce computation time noticeably by increasing this value.
 #'    You can use `options(SBC.min_chunk_size = value)` to set a minimum chunk size globally.
 #'    See documentation of `future.chunk.size` argument for `future.apply::future_lapply()` for more details.
-#' @param cache_type Type of caching of results, currently the only supported modes are
+#' @param cache_mode Type of caching of results, currently the only supported modes are
 #'    `"none"` (do not cache) and `"results"` where the whole results object is stored
 #'    and recomputed only when the hash of the backend or dataset changes.
-#' @param cache_location The filesystem location of cache. For `cache_type = "results"`
+#' @param cache_location The filesystem location of cache. For `cache_mode = "results"`
 #'    this should be a name of a single file. If the file name does not end with
 #'    `.rds`, this extension is appended.
 #' @return An object of class `SBC_results` that holds:
@@ -292,9 +292,9 @@ compute_results <- function(datasets, backend,
            %in% names(results_from_cache))) {
         warning("Cache file exists but is in invalid format. Will recompute.")
       } else if(results_from_cache$backend_hash != backend_hash) {
-        warning("Cache file exists but the backend hash differs. Will recompute.")
+        message("Cache file exists but the backend hash differs. Will recompute.")
       } else if(results_from_cache$data_hash != data_hash) {
-        warning("Cache file exists but the datasets hash differs. Will recompute.")
+        message("Cache file exists but the datasets hash differs. Will recompute.")
       } else {
         result <- tryCatch(validate_SBC_results(results_from_cache$result),
                            error = function(e) { NULL })
@@ -303,16 +303,18 @@ compute_results <- function(datasets, backend,
         } else if(results_from_cache$thin_ranks != thin_ranks ||
                   !identical(results_from_cache$gen_quants, gen_quants))  {
           if(!results_from_cache$keep_fits) {
-            warning("Cache file exists, but was computed with different thin_ranks/gen_quants and keep_fits == FALSE. Will recompute.")
+            message("Cache file exists, but was computed with different thin_ranks/gen_quants and keep_fits == FALSE. Will recompute.")
           } else {
             message(paste0("Results loaded from cache file '", cache_basename,
                            "' but it was computed with different thin_ranks/gen_quants.\n",
-                           "Calling recompute_statistics"))
+                           "Calling recompute_statistics."))
             return(recompute_statistics(old_results = result, datasets = datasets,
                                         thin_ranks = thin_ranks, gen_quants = gen_quants))
           }
         } else {
           message(paste0("Results loaded from cache file '", cache_basename, "'"))
+          check_all_SBC_diagnostics(result)
+
           return(result)
         }
       }

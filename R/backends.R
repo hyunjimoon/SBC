@@ -101,7 +101,7 @@ SBC_fit_to_diagnostics.stanfit <- function(fit, fit_output, fit_messages, fit_wa
 
 #' @export
 SBC_backend_hash_for_cache.SBC_backend_rstan_sample <- function(backend) {
-  rlang::hash(backend$model@model_code)
+  rlang::hash(list(model = backend$model@model_code, args = backend$args))
 }
 
 #' @export
@@ -281,7 +281,7 @@ SBC_fit.SBC_backend_cmdstan_sample <- function(backend, generated, cores) {
 
 #' @export
 SBC_backend_hash_for_cache.SBC_backend_cmdstan_sample <- function(backend) {
-  rlang::hash(backend$model$code())
+  rlang::hash(list(model = backend$model$code(), args = backend$args))
 }
 
 

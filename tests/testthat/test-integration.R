@@ -64,7 +64,7 @@ test_that("Result caching", {
   # Change datasets
   datasets_changed <- datasets
   datasets_changed[[3]] <- "a"
-  expect_warning(
+  expect_message(
     compute_results(datasets_changed, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
     "datasets.*differ.*recompute"
     )
@@ -78,7 +78,7 @@ test_that("Result caching", {
   # Change backend
   backend_changed <- backend
   backend_changed$result[5, "a"] <- 0
-  expect_warning(
+  expect_message(
     compute_results(datasets_changed, backend_changed, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
     "backend.*differ.*recompute"
   )
