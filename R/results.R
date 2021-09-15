@@ -363,7 +363,7 @@ compute_results <- function(datasets, backend,
   backend_diagnostics <- do.call(rbind, backend_diagnostics_list)
 
   if(!is.null(stats)) {
-    check_stats(stats, datasets)
+    check_stats(stats, datasets, thin_ranks)
   } else {
     # Return dummy stats that let the rest of the code work.
     stats <- data.frame(dataset_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
@@ -466,6 +466,7 @@ compute_results_single <- function(params_and_generated, backend, cores,
 
   res$output <- result_with_output$output
   res$messages <- result_with_output$messages
+  res$warnings <- result_with_output$warnings
 
   if(is.null(res$error)) {
     error_stats <- tryCatch( {
@@ -543,7 +544,7 @@ statistics_from_single_fit <- function(fit, parameters, generated,
 }
 
 # check that the computed stats data frame hs problems
-check_stats <- function(stats, datasets) {
+check_stats <- function(stats, datasets, thin_ranks) {
   unique_max_ranks <- unique(stats$max_rank)
   if(length(unique_max_ranks) != 1) {
     warning("Differening max_rank across fits")
@@ -656,7 +657,7 @@ recompute_statistics <- function(old_results, datasets, thin_ranks = 10, gen_qua
   }
 
   new_stats <- do.call(rbind, new_stats_list)
-  check_stats(new_stats, datasets)
+  check_stats(new_stats, datasets, thin_ranks)
 
   new_results$stats <- new_stats
 

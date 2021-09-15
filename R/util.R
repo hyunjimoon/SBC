@@ -17,7 +17,7 @@ combine_args <- function(args1, args2) {
 
 SBC_error <- function(subclass, message, call = sys.call(-1), ...) {
   structure(
-    class = c(subclass, "error", "condition"),
+    class = c(subclass, "SBC_error", "error", "condition"),
     list(message = message, call = call),
     ...
   )
