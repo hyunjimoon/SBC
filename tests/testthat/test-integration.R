@@ -36,3 +36,52 @@ test_that("Integration test with mock backend", {
   expect_equal(res2_with_outputs$warnings, "All datasets produced error when fitting")
 
 })
+
+
+test_that("Result caching", {
+  set.seed(1521336)
+  N_sims <- 10
+  a_vals <- rnorm(N_sims)
+  fit_result <- posterior::draws_matrix(a = a_vals)
+
+  backend <- SBC_backend_mock(result = fit_result)
+  datasets <- SBC_datasets(fit_result, generated = rep(list(NULL), N_sims))
+
+
+  cache_file <- tempfile(fileext = ".rds")
+
+  res_first <- SBC:::capture_all_outputs(
+    compute_results(datasets, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file))
+
+  expect_false(any(grepl("cache",  c(res_first$output, res_first$messages, res_first$warnings))))
+
+  # Succesful load from cache
+  expect_message(
+    compute_results(datasets, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
+    "loaded from cache"
+    )
+
+  # Change datasets
+  datasets_changed <- datasets
+  datasets_changed[[3]] <- "a"
+  expect_warning(
+    compute_results(datasets_changed, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
+    "datasets.*differ.*recompute"
+    )
+
+  # Now should be succesful
+  expect_message(
+    compute_results(datasets_changed, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
+    "loaded from cache"
+  )
+
+  # Change backend
+  backend_changed <- backend
+  backend_changed$result[5, "a"] <- 0
+  expect_warning(
+    compute_results(datasets_changed, backend_changed, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
+    "backend.*differ.*recompute"
+  )
+
+
+})

@@ -11,7 +11,9 @@ compute_results(
   keep_fits = TRUE,
   thin_ranks = 10,
   chunk_size = default_chunk_size(length(datasets)),
-  gen_quants = NULL
+  gen_quants = NULL,
+  cache_mode = "none",
+  cache_location = NULL
 )
 }
 \arguments{

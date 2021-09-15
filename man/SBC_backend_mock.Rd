@@ -4,7 +4,13 @@
 \alias{SBC_backend_mock}
 \title{A mock backend.}
 \usage{
-SBC_backend_mock(result)
+SBC_backend_mock(
+  result,
+  output = NULL,
+  message = NULL,
+  warning = NULL,
+  error = NULL
+)
 }
 \arguments{
 \item{result}{a \code{draws_matrix} that will be returned regardless of the data}

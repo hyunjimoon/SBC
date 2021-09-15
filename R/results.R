@@ -254,13 +254,68 @@ compute_results <- function(datasets, backend,
                             keep_fits = TRUE,
                             thin_ranks = 10,
                             chunk_size = default_chunk_size(length(datasets)),
-                            gen_quants = NULL) {
+                            gen_quants = NULL,
+                            cache_mode = "none",
+                            cache_location = NULL) {
   stopifnot(length(datasets) > 0)
 
   datasets <- validate_SBC_datasets(datasets)
   if(!is.null(gen_quants)) {
     gen_quants <- validate_generated_quantities(gen_quants)
   }
+
+  ## Handle caching
+  if(cache_mode == "results") {
+    if(is.null(cache_location) || !dir.exists(dirname(cache_location))) {
+      stop(SBC_error("SBC_invalid_argument_error",
+                     "When using cache_mode == 'results', the cache_location argument must provide a filename in an existing directory"))
+    }
+    cache_basename <- basename(cache_location)
+    if(!endsWith(cache_basename, ".rds")) {
+      cache_location <- file.path(dirname(cache_location), paste0(cache_basename, ".rds"))
+    }
+
+    backend_hash <- SBC_backend_hash_for_cache(backend)
+    data_hash <- rlang::hash(datasets)
+
+    if(file.exists(cache_location)) {
+      results_from_cache <- readRDS(cache_location)
+      if(!is.list(results_from_cache) ||
+         !all(
+           c("result", "backend_hash", "data_hash", "thin_ranks", "gen_quants","keep_fits")
+           %in% names(results_from_cache))) {
+        warning("Cache file exists but is in invalid format. Will recompute.")
+      } else if(results_from_cache$backend_hash != backend_hash) {
+        warning("Cache file exists but the backend hash differs. Will recompute.")
+      } else if(results_from_cache$data_hash != data_hash) {
+        warning("Cache file exists but the datasets hash differs. Will recompute.")
+      } else {
+        result <- tryCatch(validate_SBC_results(results_from_cache$result),
+                           error = function(e) { NULL })
+        if(is.null(result)) {
+          warning("Cache file contains invalid SBC_results object. Will recompute.")
+        } else if(results_from_cache$thin_ranks != thin_ranks ||
+                  !identical(results_from_cache$gen_quants, gen_quants))  {
+          if(!results_from_cache$keep_fits) {
+            warning("Cache file exists, but was computed with different thin_ranks/gen_quants and keep_fits == FALSE. Will recompute.")
+          } else {
+            message(paste0("Results loaded from cache file '", cache_basename,
+                           "' but it was computed with different thin_ranks/gen_quants.\n",
+                           "Calling recompute_statistics"))
+            return(recompute_statistics(old_results = result, datasets = datasets,
+                                        thin_ranks = thin_ranks, gen_quants = gen_quants))
+          }
+        } else {
+          message(paste0("Results loaded from cache file '", cache_basename, "'"))
+          return(result)
+        }
+      }
+    }
+  } else if(cache_mode != "none") {
+    stop(SBC_error("SBC_invalid_argument_error", "Unrecognized cache mode"))
+  }
+  ## End of caching
+
 
   # Create combined data for computation
   params_and_generated_list <- list()
@@ -382,6 +437,14 @@ compute_results <- function(datasets, backend,
                      backend_diagnostics = backend_diagnostics,
                      default_diagnostics = default_diagnostics,
                      errors = errors)
+
+  if(cache_mode == "results") {
+    results_for_cache <- list(result = res, backend_hash = backend_hash,
+                              data_hash = data_hash, thin_ranks = thin_ranks,
+                              gen_quants = gen_quants, keep_fits = keep_fits)
+    tryCatch(saveRDS(results_for_cache, file = cache_location),
+             error = function(e) { warning("Error when saving cache file: ", e) })
+  }
 
   check_all_SBC_diagnostics(res)
 
