@@ -16,14 +16,17 @@
 
 self_calib <- function(generator, hyperparam, param, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir){
   S = niterations(param[[1]])
+  beta0_loc <- mean(param[["beta0"]])
+  beta0_scale <- sd(param[["beta0"]])
+  beta1_loc <- mean(param[["beta1"]])
+  beta1_scale <- sd(param[["beta1"]])
+  param = draws_rvars(beta0 = rvar(rnorm(S, beta0_loc, beta0_scale)), beta0 = rvar(rnorm(S, beta1_loc, beta1_scale))),
   # generate-inference p_post(theta) = f(theta'|y) * p(y|theta)
   result <- compute_results(generator(hyperparam, param, predictor), backend, thin)
   # proposal
   prop <- prop_param(param, result, thin, cnt, delivDir)
   # accept-reject
   param_next <- prop #ar_param(param, prop)
-  print(param)
-  print(param_next)
   summ <- summarise_draws(param, median, sd) %>% filter(variable == target_vars)
   # save
   for (tv in target_vars){
