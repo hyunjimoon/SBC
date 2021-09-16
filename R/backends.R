@@ -65,7 +65,9 @@ SBC_fit.SBC_backend_rstan_sample <- function(backend, generated, cores) {
   do.call(rstan::sampling,
           combine_args(list(object = backend$model,
                  data = generated,
-                 cores = cores),
+                 ## TODO: Forcing a single core until we can capture output with multiple cores
+                 ## https://discourse.mc-stan.org/t/capturing-warnings-rejects-from-rstan-with-multiple-cores/23976
+                 cores = 1),
             backend$args
             ))
 }
