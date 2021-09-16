@@ -14,12 +14,13 @@
 ##' @return  next param values summarized from `S` * `M` posterior samples
 ##' @export
 
-self_calib <- function(generator, hyperparam, param, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir){
+self_calib <- function(generator, hyperparam, param, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir, type = "all"){
+  message(paste("self_calib iter", cnt))
   S = niterations(param[[1]])
   # generate-inference p_post(theta) = f(theta'|y) * p(y|theta)
   result <- compute_results(generator(hyperparam, param, predictor), backend, thin_ranks = thin)
   # proposal
-  prop <- prop_param(param, result, thin, type = "all", cnt, delivDir)
+  prop <- prop_param(param, result, thin, type = type, cnt, delivDir)
   # accept-reject
   param_next <- prop #ar_param(param, prop)
   summ <- summarise_draws(param, median, sd) %>% filter(variable == target_vars)
@@ -28,16 +29,17 @@ self_calib <- function(generator, hyperparam, param, predictor, backend, target_
     evolve_df[[tv]]$median[cnt] <- filter(summ, variable == tv)["median"]
     evolve_df[[tv]]$sd[cnt] <-  filter(summ, variable == tv)["sd"]
     evolve_df[[tv]]$scm <- cjs_dist(param[[tv]], param_next[[tv]])
+    print(paste(tv, evolve_df[[tv]]$median[cnt]))
     if(cnt == 0){evolve_df[[tv]]$scm_init <- evolve_df[[tv]]$scm}
   }
-  pp_overlay_save(param, param_next, cnt)
+  pp_overlay_save(param, param_next, cnt, delivDir)
   # terminate
   if(iter_stop(param, param_next, target_vars, lapply(evolve_df, '[[', 'scm'))){ # S-S > S-4000S (stable compare)
     csv_save(evolve_df, delivDir, type = "evolve")
     return (param_next)
   }
   cnt = cnt + 1
-  return(self_calib(generator, hyperparam, param_next, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir))
+  return(self_calib(generator, hyperparam, param_next, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir, type = type))
 }
 
 ##' Judge whether the SBC iteration have converged
@@ -62,7 +64,8 @@ iter_stop <- function(param, param_next, target_vars, scm_init){
 
 ##' @return resampled posterior with prior information
 ##' @export
-prop_param <-function(param, result, thin, cnt, delivDir, target_vars = names(param), type = "bin"){
+prop_param <-function(param, result, thin, cnt, delivDir, target_vars = names(param), type = "bin", kde_bandwidth=0.5){
+  print(type)
   S <- niterations(param[[1]])
   tf <- list()
   post <- list()
@@ -76,7 +79,7 @@ prop_param <-function(param, result, thin, cnt, delivDir, target_vars = names(pa
     if(all(post[[tv]] >0)){if(all(post[[tv]] < 1)){tf[[tv]] = "logit"} else{tf[[tv]] = "log"}}
   }
   SM <- length(post[[1]])
-  post <-  as_tibble(post)
+  post <- tibble::as_tibble(post)
   if (type == "all"){
       return(as_draws_rvars(post[sample(1:SM, S),]))
   }else if (type == "bin"){
@@ -101,7 +104,29 @@ prop_param <-function(param, result, thin, cnt, delivDir, target_vars = names(pa
     return (rvar(draws_of(resample_draws(as_draws(rvar(param_ord)),
                                          tabulate(ecdf(param_ord)(post) * S, nbins = S))[[1]])))
   }
+  else if(type == "kde"){
+    rvar_list <- list()
+    for(tv in target_vars){
+      #prop_param(param, result, thin, type = "all", cnt, delivDir)
+      rvar_list[[tv]] <- rvar(sample_kde(dplyr::pull(post, tv), bandwidth = kde_bandwidth, n_samples = S))
+      print(as_draws_rvars(rvar_list))
+      print(as_draws_rvars(rvar_list)[[tv]])
+      #return(rvar(sample_kde(post)))
+    }
+    return(as_draws_rvars(rvar_list))
+  }
+
 }
+
+
+sample_kde <- function(x, bandwidth, n_samples){
+  kde <- density(x, bw=bandwidth)
+  bw <- kde$bw
+  draws <- sample(x, n_samples, replace = TRUE)
+  rnorm(n_samples, draws, bw) # sample(x) + normal(0, bandwidth)
+}
+
+
 
 ar_param <- function(target_ftn = cjs_dist, prop, param, evolve_df, cnt){
   param_next <- param

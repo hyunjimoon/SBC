@@ -50,12 +50,12 @@ csv_save <- function(res, delivDir, type){
   }
 }
 
-pp_overlay_save <- function(param, param_next, cnt = 0){
+pp_overlay_save <- function(param, param_next, cnt = 0, delivDir){
   g <- list()
   plotlist <- list()
   for (v in names(param)){
-    g[[v]] <- ppc_dens_overlay(c(draws_of(param[[v]])), matrix(draws_of(param_next[[v]]), ncol = niterations(param[[v]])))
+    g[[v]] <- bayesplot::ppc_dens_overlay(c(draws_of(param[[v]])), matrix(draws_of(param_next[[v]]), ncol = niterations(param[[v]])))
   }
-  ggarrange(g[["loc"]], g[["scale"]], nrow =length(names(param))) #TODO
-  ggsave(file = file.path(delivDir, paste0(paste0(paste0(names(param), collapse = "", sep = "_"), cnt, "_"), "pp.png")),  bg = "white")
+  ggpubr::ggarrange(g[["loc"]], g[["scale"]], nrow =length(names(param))) #TODO
+  ggplot2::ggsave(file = file.path(delivDir, paste0(paste0(paste0(names(param), collapse = "", sep = "_"), cnt, "_"), "pp.png")),  bg = "white")
 }
