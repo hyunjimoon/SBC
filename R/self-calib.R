@@ -16,15 +16,10 @@
 
 self_calib <- function(generator, hyperparam, param, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir){
   S = niterations(param[[1]])
-  beta0_loc <- mean(param[["beta0"]])
-  beta0_scale <- sd(param[["beta0"]])
-  beta1_loc <- mean(param[["beta1"]])
-  beta1_scale <- sd(param[["beta1"]])
-  param = draws_rvars(beta0 = rvar(rnorm(S, beta0_loc, beta0_scale)), beta0 = rvar(rnorm(S, beta1_loc, beta1_scale))),
   # generate-inference p_post(theta) = f(theta'|y) * p(y|theta)
-  result <- compute_results(generator(hyperparam, param, predictor), backend, thin)
+  result <- compute_results(generator(hyperparam, param, predictor), backend, thin_ranks = thin)
   # proposal
-  prop <- prop_param(param, result, thin, cnt, delivDir)
+  prop <- prop_param(param, result, thin, type = "all", cnt, delivDir)
   # accept-reject
   param_next <- prop #ar_param(param, prop)
   summ <- summarise_draws(param, median, sd) %>% filter(variable == target_vars)
@@ -42,8 +37,7 @@ self_calib <- function(generator, hyperparam, param, predictor, backend, target_
     return (param_next)
   }
   cnt = cnt + 1
-  return(self_calib(generator, hyperparam, param_next, predictor, backend, target_vars,
-                            thin, cnt, evolve_df, delivDir))
+  return(self_calib(generator, hyperparam, param_next, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir))
 }
 
 ##' Judge whether the SBC iteration have converged
@@ -79,29 +73,19 @@ prop_param <-function(param, result, thin, cnt, delivDir, target_vars = names(pa
         return (thin_draws(subset_draws(SBC_fit_to_draws_matrix(result$fits[[s]]), variable = tv), thin))}
     }
     post[[tv]] <- unlist(lapply(seq(1: S), agg_post)) # can reject/thin unideal nrow = S, ncol = M
-    if(all(post[[tv]] >0)){if(all(post[[tv]] < 1)){tf[[tv]] = "logit"}else{tf[[tv]] = "log"}}
+    if(all(post[[tv]] >0)){if(all(post[[tv]] < 1)){tf[[tv]] = "logit"} else{tf[[tv]] = "log"}}
   }
-  if (type == "bin"){
-    post_tf = as_tibble(post)
-    post_tf <- post_tf[(post_tf$loc < quantile(post_tf$loc, 0.9)) & (post_tf$loc > quantile(post_tf$loc, 0.1)) &
-                         (post_tf$scale < quantile(post_tf$scale, 0.9)) & (post_tf$scale > quantile(post_tf$scale, 0.1)),]
+  SM <- length(post[[1]])
+  post <-  as_tibble(post)
+  if (type == "all"){
+      return(as_draws_rvars(post[sample(1:SM, S),]))
+  }else if (type == "bin"){
     for(tv in target_vars){
       if(is.null(tf[[tv]])){break} #2.6e+64 for median 0.9 -> cutoff .01
       if(tf[[tv]] == "log"){post_tf[[tv]] = log(post_tf[[tv]])}
       if(tf[[tv]] == "logit"){post_tf[[tv]] = lapply(post_tf[[tv]], FUN = function(p){log(p/(1-p))})}
     }
-    x <- cbind(post_tf[["loc"]], post_tf[["scale"]])
-    #optimal bandwidet
-    bw_loc = 1.06 * sd(post_tf[["loc"]]) * dim(post_tf)[1] **(-.2)
-    bw_scale = 1.06 * sd(post_tf[["scale"]]) * dim(post_tf)[1] **(-.2)
-    est <- bkde2D(x, bandwidth=as.numeric(c(bw_loc, bw_scale)))
-    est$prob <- est$fhat/sum(est$fhat)
-    loc_mean = sum(est$x1 * rowSums(est$prob)) # (1, 51) * (51,1) #rowSums(est$prob): loc
-    loc_sd = sqrt(sum((est$x1)**2 * rowSums(est$prob)) - loc_mean**2)
-    scale_mean = sum(est$x2 * colSums(est$prob)) # (1, 51) * (51,1)
-    scale_sd = sqrt(sum((est$x2)**2 * colSums(est$prob)) - scale_mean**2)
-    prop_tf[["loc"]] = rnorm(S, loc_mean, loc_sd)
-    prop_tf[["scale"]] = rnorm(S, scale_mean, scale_sd)
+
     prop <- prop_tf # template
     for(tv in target_vars){
       if(is.null(tf[[tv]])){prop[[tv]] = prop_tf[[tv]]
@@ -109,9 +93,6 @@ prop_param <-function(param, result, thin, cnt, delivDir, target_vars = names(pa
       }else if(tf[[tv]] == "logit"){prop[[tv]] = lapply(prop_tf[[tv]], FUN = function(x){exp(x)/(1+exp(x))})
       }
     }
-    #contour(est$x1, est$x2, est$prob) # no unique way for plot? unknown correlation.
-    #png(file.path(delivDir, paste0(paste0(paste0(names(param), collapse = "", sep = "_"), cnt, "_"), "jt.png")))
-    #dev.off()
     return(as_draws_rvars(prop))
   }else if(type == "filter"){
     # F_{post}^{-1}*F_{prior}(param) #TODO loo_subsample.R
