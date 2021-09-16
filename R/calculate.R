@@ -153,3 +153,40 @@ empirical_pit <- function(y, yrep) {
 ranks_to_empirical_pit <- function(ranks, n_posterior_samples){
   (1 + ranks) / (1 + n_posterior_samples)
 }
+
+
+#' @export
+observed_coverage <- function(stats, coverage, ci_width = 0.95) {
+  if(!all(c("parameter", "rank", "max_rank") %in% names(stats))) {
+    stop(SBC_error("SBC_invalid_argument_error",
+                   "The stats data.frame needs a 'parameter', 'rank' and 'max_rank' columns"))
+  }
+
+  long <- tidyr::crossing(stats, data.frame(coverage = coverage))
+  long <- dplyr::mutate(long,
+                       n_ranks_covered = round((max_rank + 1) * coverage),
+                       low_rank = round(max_rank / 2 - n_ranks_covered / 2),
+                       high_rank = low_rank + n_ranks_covered - 1,
+                       coverage_represented =  (high_rank - low_rank + 1) / (max_rank + 1),
+                       is_covered = rank >= low_rank & rank <= high_rank)
+
+   summ <- dplyr::summarise(
+     dplyr::group_by(long, parameter, coverage),
+     post_alpha = sum(is_covered) + 1,
+     post_beta = dplyr::n() - sum(is_covered) + 1,
+     coverage_represented = unique(coverage_represented),
+     # Special handling if coverage_represented is either 0 or 1 as in such case,
+     # the result can never be different from 0 / 1 and so the CI should collapse to a point
+     representable = coverage_represented > 0 & coverage_represented < 1,
+     ci_low =  dplyr::if_else(representable,
+                              qbeta(0.5 - ci_width / 2, post_alpha, post_beta),
+                              coverage_represented),
+     estimate = sum(is_covered) / dplyr::n(),
+     ci_high = dplyr::if_else(representable,
+                              qbeta(0.5 + ci_width / 2, post_alpha, post_beta),
+                              coverage_represented),
+     .groups = "drop"
+   )
+
+   dplyr::select(summ, -post_alpha, -post_beta, -representable)
+}

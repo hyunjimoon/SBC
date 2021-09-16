@@ -206,6 +206,7 @@ Why does that happen? The key to the answer is in the simulated values for the c
 ```{r}
 subset_draws(datasets_ordered_10$parameters, draw = problematic_fit_id)
 ```
+
 We were unlucky enough to simulate a dataset where both components have almost the same mean and thus we are actually looking at a dataset that is not really a mixture. Mixture models can misbehave badly in such cases (see once again the https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html#5_singular_components_and_computational_issues) for a bit more detailed dive into this particular problem.
 
 ### Fixing degenerate components?
@@ -236,6 +237,13 @@ This gives us no obvious problems.
 ```{r}
 plot_ecdf_diff(results_fixed_ordered_subset)
 ```
+
+```{r}
+plot_coverage(results_fixed_ordered_subset)
+
+```
+
+
 So we can run for more iterations:
 
 ```{r}

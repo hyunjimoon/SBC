@@ -177,6 +177,10 @@ But it is also the case that the estimates are not completely meaningless (as th
 plot_sim_estimated(results_minor_200, alpha = 0.5)
 ```
 
+```{r}
+plot_coverage(results_minor_200)
+```
+
 
 # Prior mismatch
 

@@ -457,3 +457,47 @@ plot_sim_estimated.data.frame <- function(x, parameters = NULL, estimate = "mean
     scale_y_continuous(estimate) +
     facet_wrap(~parameter, scales = "free")
 }
+
+
+#' Plot the observed coverage and its uncertainty
+#'
+#' @param x object containing results (a data.frame or [SBC_results()] object).
+#' @param parameters parameters to show in the plot or `NULL` to show all
+#' @param prob the with of the uncertainty interval to be shown
+#' @return a ggplot2 plot object
+#' @export
+plot_coverage <- function(x, parameters = NULL, prob = 0.95 ) {
+  UseMethod("plot_coverage")
+}
+
+#' @export
+plot_coverage.SBC_results <- function(x, parameters = NULL, prob = 0.95) {
+  plot_coverage(x$stats, parameters = parameters, prob = prob)
+}
+
+#' @export
+plot_coverage.data.frame <- function(x, parameters = NULL, prob = 0.95) {
+  if(!all(c("parameter", "rank", "max_rank") %in% names(x))) {
+    stop(SBC_error("SBC_invalid_argument_error",
+                   "The stats data.frame needs a 'parameter', 'rank' and 'max_rank' columns"))
+  }
+
+  if(!is.null(parameters)) {
+    x <- dplyr::filter(x, parameter %in% parameters)
+  }
+
+  max_max_rank <- max(x$max_rank)
+  coverage <- observed_coverage(x, (0:max_max_rank) / (max_max_rank + 1), ci_width = prob)
+
+  ggplot2::ggplot(coverage, aes(x = coverage_represented, y = estimate,
+                                ymin = ci_low, ymax = ci_high)) +
+    geom_ribbon(fill = "black", alpha = 0.33) +
+    geom_segment(x = 0, y = 0, xend = 1, yend = 1, color = "skyblue1", size = 2) +
+    #geom_abline(intercept = 0, slope = 1, color = "skyblue1", size = 2) +
+    geom_line() +
+    scale_x_continuous("Central interval coverage") +
+    scale_y_continuous("Observed coverage") +
+    facet_wrap(~parameter)
+
+
+}
