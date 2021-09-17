@@ -115,13 +115,13 @@
 
       
 
-      </header><script src="bad_parametrization_files/header-attrs-2.9/header-attrs.js"></script><div class="row">
+      </header><script src="bad_parametrization_files/header-attrs-2.10/header-attrs.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Discovering bad parametrization with SBC</h1>
                         <h4 class="author">Martin Modrák</h4>
             
-            <h4 class="date">2021-09-11</h4>
+            <h4 class="date">2021-09-17</h4>
       
       
       <div class="hidden name"><code>bad_parametrization.Rmd</code></div>
@@ -149,42 +149,49 @@
 <span class="co"># is usually not worth the overhead.</span>
 
 <span class="co"># library(future)</span>
-<span class="co"># plan(multisession)</span></code></pre></div>
+<span class="co"># plan(multisession)</span>
+
+
+<span class="co"># Setup caching of results</span>
+<span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./bad_parametrization_SBC_cache"</span>
+<span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>
+<span class="op">}</span></code></pre></div>
 <p>Premise: we mistakenly assume that Stan does parametrize the Gamma distribution via shape and scale, when in fact Stan uses the shape and rate parametrization (see <a href="https://en.wikipedia.org/wiki/Gamma_distribution">Gamma distribution</a> on Wikipedia for details on the parametrizations.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">stan_code_1</span> <span class="op">&lt;-</span> <span class="st">"
-data {
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html">readLines</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization1.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
+<pre><code>data {
   int N;
   vector&lt;lower=0&gt;[N] y;
 }
 
 parameters {
   real&lt;lower = 0&gt; shape;
-  real&lt;lower = 0&gt; scale;  
+  real&lt;lower = 0&gt; scale;
 }
 
 model {
   y ~ gamma(shape, scale);
   shape ~ lognormal(0, 1);
   scale ~ lognormal(0, 1.5);
-}
-"</span>
-<span class="va">iter_warmup</span> <span class="op">&lt;-</span> <span class="fl">1000</span>
+}</code></pre>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">iter_warmup</span> <span class="op">&lt;-</span> <span class="fl">1000</span>
 <span class="va">iter_sampling</span> <span class="op">&lt;-</span> <span class="fl">1000</span>
 
 <span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">model_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/write_stan_file.html">write_stan_file</a></span><span class="op">(</span><span class="va">stan_code_1</span><span class="op">)</span><span class="op">)</span>
+  <span class="va">model_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization1.stan"</span><span class="op">)</span>
 
   <span class="va">backend_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span>
     <span class="va">model_gamma</span>, iter_warmup <span class="op">=</span> <span class="va">iter_warmup</span>, iter_sampling <span class="op">=</span> <span class="va">iter_sampling</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="va">model_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html">stan_model</a></span><span class="op">(</span>model_code <span class="op">=</span> <span class="va">stan_code_1</span><span class="op">)</span>
+  <span class="va">model_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html">stan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization1.stan"</span><span class="op">)</span>
 
   <span class="va">backend_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
     <span class="va">model_gamma</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>Build a generator to create simulated datasets.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">21448857</span><span class="op">)</span>
 <span class="va">n_datasets</span> <span class="op">&lt;-</span> <span class="fl">10</span>
 
@@ -209,66 +216,75 @@ model {
 <span class="va">datasets_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span>
   <span class="va">generator_gamma</span>, 
   <span class="va">n_datasets</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">results_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_gamma</span>, <span class="va">backend_gamma</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">results_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_gamma</span>, <span class="va">backend_gamma</span>, 
+                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
+                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model1"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code>## Results loaded from cache file 'model1'</code></pre>
 <pre><code>##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 5.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<p>Here we also use the caching feature to avoid recomputing the fits when recompiling this vignette. In practice, caching is not necessary but is often useful.</p>
 <p>10 simulations are enough to see something is wrong with the model. The problem is best seen on an <code>ecdf_diff</code> plot - we even see the issue is primarily with the <code>scale</code> parameter!</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_gamma</span><span class="op">)</span></code></pre></div>
-<p><img src="bad_parametrization_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
-<p>However, we can use the rank histogram (with suitable number of bins) and the <code>ecdf</code> plot to show different visualisations of the same problem. The rank histogram often tends to be intuitively more understandable than the <code>ecdf</code> plots, but tweaking the number of bins is often necessary and the confidence interval is only approximate and has decreased sensitivity.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_gamma</span>, bins <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></code></pre></div>
-<p><img src="bad_parametrization_files/figure-html/unnamed-chunk-5-1.png" width="700"></p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_gamma</span><span class="op">)</span></code></pre></div>
-<p><img src="bad_parametrization_files/figure-html/unnamed-chunk-5-2.png" width="700"></p>
-<p>So we see that the simulation does not match the model. In practice, the problem may lie with the simulation, with the model or both. Here, we’ll assume that the simulation is correct - we really wanted to work with scale and fix the model to match. I.e. we still represent scale in our model, but invert it to get rate before using Stan’s <code>gamma</code> distribution:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">stan_code_2</span> <span class="op">&lt;-</span> <span class="st">"
-data {
+<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_gamma</span><span class="op">)</span></code></pre></div>
+<p><img src="bad_parametrization_files/figure-html/results1_ecdf_diff-1.png" width="700"></p>
+<p>However, we can use the rank histogram (with suitable number of bins) and the <code>ecdf</code> plot to show different visualisations of the same problem. The rank histogram often tends to be intuitively more understandable than the <code>ecdf</code> plots, but tweaking the number of bins is often necessary and the confidence interval is only approximate and has decreased sensitivity.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_gamma</span>, bins <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></code></pre></div>
+<p><img src="bad_parametrization_files/figure-html/results1_other-1.png" width="700"></p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_gamma</span><span class="op">)</span></code></pre></div>
+<p><img src="bad_parametrization_files/figure-html/results1_other-2.png" width="700"></p>
+<p>So we see that the simulation does not match the model. In practice, the problem may lie with the simulation, with the model or both. Here, we’ll assume that the simulation is correct - we really wanted to work with scale and fix the model to match. I.e. we still represent scale in our model, but invert it to get rate before using Stan’s <code>gamma</code> distribution:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html">readLines</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization2.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
+<pre><code>data {
   int N;
   vector&lt;lower=0&gt;[N] y;
 }
 
 parameters {
   real&lt;lower = 0&gt; shape;
-  real&lt;lower = 0&gt; scale;  
+  real&lt;lower = 0&gt; scale;
 }
 
 model {
   y ~ gamma(shape, inv(scale));
   shape ~ lognormal(0, 1);
   scale ~ lognormal(0, 1.5);
-}
+}</code></pre>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">stan_code_2</span> <span class="op">&lt;-</span> <span class="st">"
 "</span>
 
 <span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">model_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/write_stan_file.html">write_stan_file</a></span><span class="op">(</span><span class="va">stan_code_2</span><span class="op">)</span><span class="op">)</span>
+  <span class="va">model_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization2.stan"</span><span class="op">)</span>
 
   <span class="va">backend_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span>
     <span class="va">model_gamma_2</span>, iter_warmup <span class="op">=</span> <span class="va">iter_warmup</span>, iter_sampling <span class="op">=</span> <span class="va">iter_sampling</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="va">model_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html">stan_model</a></span><span class="op">(</span>model_code <span class="op">=</span> <span class="va">stan_code_2</span><span class="op">)</span>
+  <span class="va">model_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html">stan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization2.stan"</span><span class="op">)</span>
 
   <span class="va">backend_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
     <span class="va">model_gamma_2</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">results_gamma2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_gamma</span>, <span class="va">backend_gamma_2</span><span class="op">)</span></code></pre></div>
-<pre><code>##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 9.</code></pre>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">results_gamma2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_gamma</span>, <span class="va">backend_gamma_2</span>, 
+                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
+                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model2"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code>## Results loaded from cache file 'model2'</code></pre>
+<pre><code>##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 5.</code></pre>
 <pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>No obvious problems here, but if we wanted to be sure, we should have ran a lot more simulations.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_gamma2</span><span class="op">)</span></code></pre></div>
-<p><img src="bad_parametrization_files/figure-html/unnamed-chunk-8-1.png" width="700"></p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<p><img src="bad_parametrization_files/figure-html/results2_plots-1.png" width="700"></p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_gamma2</span>, bins <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></code></pre></div>
-<p><img src="bad_parametrization_files/figure-html/unnamed-chunk-8-2.png" width="700"></p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<p><img src="bad_parametrization_files/figure-html/results2_plots-2.png" width="700"></p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_gamma2</span><span class="op">)</span></code></pre></div>
-<p><img src="bad_parametrization_files/figure-html/unnamed-chunk-8-3.png" width="700"></p>
+<p><img src="bad_parametrization_files/figure-html/results2_plots-3.png" width="700"></p>
   </div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

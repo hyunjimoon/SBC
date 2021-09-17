@@ -181,7 +181,9 @@ of the <code>future</code> package.</p>
   keep_fits <span class='op'>=</span> <span class='cn'>TRUE</span>,
   thin_ranks <span class='op'>=</span> <span class='fl'>10</span>,
   chunk_size <span class='op'>=</span> <span class='fu'><a href='default_chunk_size.html'>default_chunk_size</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/length.html'>length</a></span><span class='op'>(</span><span class='va'>datasets</span><span class='op'>)</span><span class='op'>)</span>,
-  gen_quants <span class='op'>=</span> <span class='cn'>NULL</span>
+  gen_quants <span class='op'>=</span> <span class='cn'>NULL</span>,
+  cache_mode <span class='op'>=</span> <span class='st'>"none"</span>,
+  cache_location <span class='op'>=</span> <span class='cn'>NULL</span>
 <span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
@@ -195,8 +197,8 @@ of the <code>future</code> package.</p>
       <th>backend</th>
       <td><p>the model + sampling algorithm. The built-in backends can be constructed
 using <code><a href='SBC_backend_cmdstan_sample.html'>SBC_backend_cmdstan_sample()</a></code>, <code><a href='SBC_backend_cmdstan_variational.html'>SBC_backend_cmdstan_variational()</a></code>, <code><a href='SBC_backend_rstan_sample.html'>SBC_backend_rstan_sample()</a></code> and <code><a href='SBC_backend_brms.html'>SBC_backend_brms()</a></code>.
-(more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the <code>SBC_fit</code>,
-<code>SBC_fit_to_draws_matrix</code> methods.</p></td>
+(more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the <code><a href='SBC_fit.html'>SBC_fit()</a></code>,
+<code>SBC_fit_to_draws_matrix()</code> methods.</p></td>
     </tr>
     <tr>
       <th>cores_per_fit</th>
@@ -228,21 +230,25 @@ the work may be distributed less equally across workers. We recommend setting th
 enough that a single batch takes at least several seconds, i.e. for small models,
 you can often reduce computation time noticeably by increasing this value.
 You can use <code><a href='https://rdrr.io/r/base/options.html'>options(SBC.min_chunk_size = value)</a></code> to set a minimum chunk size globally.
-See documentation of <code>future.chunk.size</code> argument for <code><a href='https://rdrr.io/pkg/future.apply/man/future_lapply.html'>future.apply::future_lapply()</a></code> for more details.</p></td>
+See documentation of <code>future.chunk.size</code> argument for <code><a href='https://future.apply.futureverse.org/reference/future_lapply.html'>future.apply::future_lapply()</a></code> for more details.</p></td>
+    </tr>
+    <tr>
+      <th>cache_mode</th>
+      <td><p>Type of caching of results, currently the only supported modes are
+<code>"none"</code> (do not cache) and <code>"results"</code> where the whole results object is stored
+and recomputed only when the hash of the backend or dataset changes.</p></td>
+    </tr>
+    <tr>
+      <th>cache_location</th>
+      <td><p>The filesystem location of cache. For <code>cache_mode = "results"</code>
+this should be a name of a single file. If the file name does not end with
+<code>.rds</code>, this extension is appended.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>An object of class <code>SBC_results</code> that holds:</p><ul>
-<li><p><code>$stats</code> statistics for all parameters and fits (one row per parameter-fit combination)</p></li>
-<li><p><code>$fits</code>  the raw fits (unless <code>keep_fits = FALSE</code>) or <code>NULL</code> if the fit failed</p></li>
-<li><p><code>$errors</code> error messages that caused fit failures</p></li>
-<li><p><code>$outputs</code>, <code>$messages</code>, <code>$warnings</code> the outputs/messages/warnings written by fits</p></li>
-<li><p><code>$default_diagnostics</code> a data frame of default convergence/correctness diagnostics (one row per fit)</p></li>
-<li><p><code>$backend_diagnostics</code> a data frame of backend-specific diagnostics (one row per fit)</p></li>
-</ul>
-
+    <p>An object of class <code><a href='SBC_results.html'>SBC_results()</a></code>.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
