@@ -20,17 +20,17 @@ compute_results(
 \item{datasets}{an object of class \code{SBC_datasets}}
 
 \item{backend}{the model + sampling algorithm. The built-in backends can be constructed
-using \code{SBC_backend_cmdstan_sample()}, \code{SBC_backend_cmdstan_variational()}, \code{SBC_backend_rstan_sample()} and \code{SBC_backend_brms()}.
-(more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the \code{SBC_fit},
-\code{SBC_fit_to_draws_matrix} methods.}
+using \code{\link[=SBC_backend_cmdstan_sample]{SBC_backend_cmdstan_sample()}}, \code{\link[=SBC_backend_cmdstan_variational]{SBC_backend_cmdstan_variational()}}, \code{\link[=SBC_backend_rstan_sample]{SBC_backend_rstan_sample()}} and \code{\link[=SBC_backend_brms]{SBC_backend_brms()}}.
+(more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the \code{\link[=SBC_fit]{SBC_fit()}},
+\code{\link[=SBC_fit_to_draws_matrix]{SBC_fit_to_draws_matrix()}} methods.}
 
 \item{cores_per_fit}{how many cores should the backend be allowed to use for a single fit?
 Defaults to the maximum number that does not produce more parallel chains
-than you have cores. See \code{default_cores_per_fit()}.}
+than you have cores. See \code{\link[=default_cores_per_fit]{default_cores_per_fit()}}.}
 
 \item{keep_fits}{boolean, when \code{FALSE} full fits are discarded from memory -
 reduces memory consumption and increases speed (when processing in parallel), but
-prevents you from inspecting the fits and using \code{recompute_statistics()}.
+prevents you from inspecting the fits and using \code{\link[=recompute_statistics]{recompute_statistics()}}.
 We recommend to set to \code{TRUE} in early phases of workflow, when you run just a few fits.
 Once the model is stable and you want to run a lot of iterations, we recommend setting
 to \code{FALSE} (even for quite a simple model, 1000 fits can easily exhaust 32GB of RAM).}
@@ -46,26 +46,18 @@ the work may be distributed less equally across workers. We recommend setting th
 enough that a single batch takes at least several seconds, i.e. for small models,
 you can often reduce computation time noticeably by increasing this value.
 You can use \code{options(SBC.min_chunk_size = value)} to set a minimum chunk size globally.
-See documentation of \code{future.chunk.size} argument for \code{future.apply::future_lapply()} for more details.}
+See documentation of \code{future.chunk.size} argument for \code{\link[future.apply:future_lapply]{future.apply::future_lapply()}} for more details.}
 
-\item{cache_location}{The filesystem location of cache. For \code{cache_type = "results"}
-this should be a name of a single file. If the file name does not end with
-\code{.rds}, this extension is appended.}
-
-\item{cache_type}{Type of caching of results, currently the only supported modes are
+\item{cache_mode}{Type of caching of results, currently the only supported modes are
 \code{"none"} (do not cache) and \code{"results"} where the whole results object is stored
 and recomputed only when the hash of the backend or dataset changes.}
+
+\item{cache_location}{The filesystem location of cache. For \code{cache_mode = "results"}
+this should be a name of a single file. If the file name does not end with
+\code{.rds}, this extension is appended.}
 }
 \value{
-An object of class \code{SBC_results} that holds:
-\itemize{
-\item \verb{$stats} statistics for all parameters and fits (one row per parameter-fit combination)
-\item \verb{$fits}  the raw fits (unless \code{keep_fits = FALSE}) or \code{NULL} if the fit failed
-\item \verb{$errors} error messages that caused fit failures
-\item \verb{$outputs}, \verb{$messages}, \verb{$warnings} the outputs/messages/warnings written by fits
-\item \verb{$default_diagnostics} a data frame of default convergence/correctness diagnostics (one row per fit)
-\item \verb{$backend_diagnostics} a data frame of backend-specific diagnostics (one row per fit)
-}
+An object of class \code{\link[=SBC_results]{SBC_results()}}.
 }
 \description{
 Parallel processing is supported via the \code{future} package, for most uses, it is most sensible
