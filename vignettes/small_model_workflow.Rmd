@@ -322,7 +322,9 @@ For more details see the [`rejection_sampling`](https://hyunjimoon.github.io/SBC
 So let us subset the results to avoid divergences:
 
 ```{r}
-dataset_ids_to_keep <- results_fixed_ordered$backend_diagnostics$dataset_id[results_fixed_ordered$backend_diagnostics$n_divergent == 0]
+dataset_ids_to_keep <- 
+  results_fixed_ordered$backend_diagnostics$dataset_id[
+    results_fixed_ordered$backend_diagnostics$n_divergent == 0]
 
 # Equivalent tidy version if you prefer
 # dataset_ids_to_keep <- results_fixed_ordered$backend_diagnostics %>% 
@@ -356,20 +358,23 @@ We can clearly see that while there are no terrible errors, a quite big miscalib
 consistent with the SBC results so far.
 
 
-So we can run for more iterations:
+So we can run for more iterations - to reduce memory consumption, we set `keep_fits = FALSE`.
+You generally don't want to do this unless you are really short on memory, as it makes you unable to inspect any problems in your fits:
 
 ```{r}
 set.seed(54987622)
 datasets_ordered_100 <- generate_datasets(generator_ordered, 100)
 results_fixed_ordered_100 <- compute_results(datasets_ordered_100, backend_fixed_ordered, 
-                    cache_mode = "results", 
+                    keep_fits = FALSE, cache_mode = "results", 
                     cache_location = file.path(cache_dir, "mixture_fixed_ordered_100"))
 ```
 
 Once again we subset to keep only non-divergent fits - this also removes all the problematic Rhats and ESS.
 
 ```{r}
-dataset_ids_to_keep <- results_fixed_ordered_100$backend_diagnostics$dataset_id[results_fixed_ordered_100$backend_diagnostics$n_divergent == 0]
+dataset_ids_to_keep <- 
+  results_fixed_ordered_100$backend_diagnostics$dataset_id[
+    results_fixed_ordered_100$backend_diagnostics$n_divergent == 0]
 
 # Equivalent tidy version
 # dataset_ids_to_keep <- results_fixed_ordered_100$backend_diagnostics %>% 
@@ -385,7 +390,8 @@ summary(results_fixed_ordered_100_subset)
 And we can use `bind_results` to combine the new results with the previous fits to not waste our computational effort.
 
 ```{r results_fixed_ordered_combined_results}
-results_fixed_ordered_combined <- bind_results(results_fixed_ordered_subset, results_fixed_ordered_100_subset)
+results_fixed_ordered_combined <- bind_results(
+  results_fixed_ordered_subset, results_fixed_ordered_100_subset)
 
 plot_rank_hist(results_fixed_ordered_combined)
 plot_ecdf_diff(results_fixed_ordered_combined)
@@ -562,7 +568,8 @@ generator_func_beta_precision <- function(N_obs, N_predictors) {
   )
 }
 
-generator_beta_precision <- SBC_generator_function(generator_func_beta_precision, N_obs = 50, N_predictors = 3)
+generator_beta_precision <- 
+  SBC_generator_function(generator_func_beta_precision, N_obs = 50, N_predictors = 3)
 ```
 
 
@@ -595,7 +602,7 @@ set.seed(2136468)
 datasets_beta_precision_90 <- generate_datasets(generator_beta_precision, 90)
 results_beta_precision_90 <- compute_results(
   datasets_beta_precision_90, backend_beta_precision,
-  cache_mode = "results", 
+  keep_fits = FALSE, cache_mode = "results", 
   cache_location = file.path(cache_dir, "beta_precision_90"))
 
 
@@ -627,7 +634,8 @@ cat(readLines("small_model_workflow/beta_precision_fixed_prior.stan"), sep = "\n
 ```
 
 ```{r}
-model_beta_precision_fixed_prior <- cmdstan_model("small_model_workflow/beta_precision_fixed_prior.stan")
+model_beta_precision_fixed_prior <-
+  cmdstan_model("small_model_workflow/beta_precision_fixed_prior.stan")
 backend_beta_precision_fixed_prior <- SBC_backend_cmdstan_sample(model_beta_precision_fixed_prior) 
 ```
 
@@ -636,7 +644,7 @@ And recompute for all 100 datasets at once (as we don't expect adding prior to i
 ```{r}
 results_beta_precision_fixed_prior <- 
   compute_results(datasets_beta_precision_100, backend_beta_precision_fixed_prior, 
-                    cache_mode = "results", 
+                    keep_fits = FALSE, cache_mode = "results", 
                     cache_location = file.path(cache_dir, "beta_precision_fixed_prior"))
 ```
 
@@ -655,7 +663,7 @@ results_beta_precision_fixed_prior_200 <-
   bind_results(
     results_beta_precision_fixed_prior,
     compute_results(datasets_beta_precision_100b, backend_beta_precision_fixed_prior, 
-                    cache_mode = "results", 
+                    keep_fits = FALSE, cache_mode = "results", 
                     cache_location = file.path(cache_dir, "beta_precision_fixed_prior_2")))
 ```
 
@@ -743,7 +751,7 @@ dataset_combined <- generate_datasets(generator_combined, 200)
 
 ```{r}
 results_combined <- compute_results(dataset_combined, backend_combined, 
-                    cache_mode = "results", 
+                    keep_fits = FALSE, cache_mode = "results", 
                     cache_location = file.path(cache_dir, "combined"))
 ```
 We get some amount of divergent transitions, but the ranks look pretty good:
@@ -770,7 +778,9 @@ How to build such a criterion here? We'll note that for Poisson-distributed vari
 Below is a plot of fano factors versus the number of divergences we've seen:
 
 ```{r combined_fanos}
-fanos <- vapply(dataset_combined$generated, function(dataset) { var(dataset$y) / mean(dataset$y) }, FUN.VALUE = 0)
+fanos <- vapply(dataset_combined$generated, 
+                function(dataset) { var(dataset$y) / mean(dataset$y) }, 
+                FUN.VALUE = 0)
 plot(fanos, results_combined$backend_diagnostics$n_divergent)
 ```
 All the divergence are for low fano factors - this is the histogram of Fano factor for diverging fits:
@@ -831,7 +841,8 @@ generator_func_combined_reject <- function(N_obs, N_predictors) {
   )
 }
 
-generator_combined_reject <- SBC_generator_function(generator_func_combined_reject, N_obs = 50, N_predictors = 3)
+generator_combined_reject <- 
+  SBC_generator_function(generator_func_combined_reject, N_obs = 50, N_predictors = 3)
 ```
 
 We'll once again fit our model to 200 datasets:
@@ -907,14 +918,16 @@ Still, this might warrant further investigation if small discrepancies in `mu` a
 
 Finally, we can also use this simulation exercise to understand what would we be likely to learn from an experiment matching the simulations (50 observations, 3 predictors) and plot the true values against estimated mean + 90% posterior credible interval:
 
-```{r}
+```{r sim_estimated_final}
 plot_sim_estimated(results_combined_reject_more, alpha = 0.2)
 ```
 We see that we get very precise information about `mu` and a decent picture about all `beta` elements, but the reamining uncertainty is large. We could for example compute the probability
 that the posterior 90% interval for `beta[1]` excludes zero, i.e. that we learn something about the sign of `beta[1]` and it is close to 50%:
 
 ```{r}
-stats_beta1 <- results_combined_reject_more$stats[results_combined_reject_more$stats$parameter == "beta[1]",]
+stats_beta1 <- 
+  results_combined_reject_more$stats[
+    results_combined_reject_more$stats$parameter == "beta[1]",]
 
 mean(sign(stats_beta1$q5) == sign(stats_beta1$q95))
 ```
