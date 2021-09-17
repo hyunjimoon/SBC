@@ -370,9 +370,11 @@ compute_results <- function(datasets, backend,
     if(is.null(results_raw[[i]]$error)) {
       stats_list[[i]] <- results_raw[[i]]$stats
       stats_list[[i]]$dataset_id <- i
+      stats_list[[i]] <- dplyr::select(stats_list[[i]], dataset_id, tidyselect::everything())
       backend_diagnostics_list[[i]] <- results_raw[[i]]$backend_diagnostics
       if(!is.null(results_raw[[i]]$backend_diagnostics)){
         backend_diagnostics_list[[i]]$dataset_id <- i
+        backend_diagnostics_list[[i]] <- dplyr::select(backend_diagnostics_list[[i]], dataset_id, tidyselect::everything())
       }
     }
     else {
@@ -726,6 +728,7 @@ recompute_statistics <- function(old_results, datasets, thin_ranks = 10, gen_qua
                                                         thin_ranks = thin_ranks,
                                                         gen_quants = gen_quants)
       new_stats_list[[i]]$dataset_id <- i
+      new_stats_list[[i]] <- dplyr::select(new_stats_list[[i]], dataset_id, tidyselect::everything())
 
     }
   }

@@ -288,13 +288,13 @@ results_fixed_ordered <- compute_results(datasets_ordered_10, backend_fixed_orde
                     cache_location = file.path(cache_dir, "mixture_fixed_ordered"))
 ```
 
-Now some fits still produce problematic Rhats or divergent transitions, let's brows the full statistics to 
+Now some fits still produce problematic Rhats or divergent transitions, let's browse the `$backend_diagnostics` (which contain Stan-specific diagnostic values) to see which datasets are causing problems:
 
 ```{r}
 results_fixed_ordered$backend_diagnostics
 ```
 
-There are fits with high R-hats and low ESS. Let's look at the pairs plot:
+There are fits with high R-hats and low ESS. Let's look at the pairs plot for one of those:
 
 ```{r mixture_fixed_ordered_pairs}
 problematic_fit_id <- 2
@@ -309,7 +309,7 @@ Why does that happen? The key to the answer is in the simulated values for the c
 subset_draws(datasets_ordered_10$parameters, draw = problematic_fit_id)
 ```
 
-We were unlucky enough to simulate a dataset where both components have almost the same mean and thus we are actually looking at a dataset that is not really a mixture. Mixture models can misbehave badly in such cases (see once again the https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html#5_singular_components_and_computational_issues) for a bit more detailed dive into this particular problem.
+We were unlucky enough to simulate a dataset where both components have almost the same mean and thus we are actually looking at a dataset that is not really a mixture. Mixture models can misbehave badly in such cases (see once again the [case study by Mike Betancourt](https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html#5_singular_components_and_computational_issues) for a bit more detailed dive into this particular problem).
 
 ### Fixing degenerate components?
 
@@ -317,9 +317,9 @@ What to do about this? Fixing the model to handle such cases gracefully is hard.
 
 This can definitely be done. But another way is to just ignore the datasets that had divergences for SBC calculations. It turns out that if we remove datasets in a way that only depends on the observed data (and not on unobserved parameters), the SBC identity is preserved and we can use SBC without modifications. The resulting check is however telling us something only for datasets that were not rejected. In this case this is not a big issue: if a fit had divergent transitions, we would not trust it anyway, so removing fits with divergent transitions is not such a big deal.
 
-For more details see the `rejection_sampling` vignette.
+For more details see the [`rejection_sampling`](https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html) vignette.
 
-So let us subset the results:
+So let us subset the results to avoid divergences:
 
 ```{r}
 dataset_ids_to_keep <- results_fixed_ordered$backend_diagnostics$dataset_id[results_fixed_ordered$backend_diagnostics$n_divergent == 0]
@@ -341,14 +341,11 @@ plot_rank_hist(results_fixed_ordered_subset)
 plot_ecdf_diff(results_fixed_ordered_subset)
 ```
 
-But we are still left with a huge uncertainty about the actual coverage of our posterior 
-intervals - we can see that in a plot:
+Since we now have only `r length(results_fixed_ordered_subset)` simulations, it is not surprising that we are still left with a huge uncertainty about the actual coverage of our posterior intervals - we can see that in a plot (showing observed coverage of central posterior intervals of varying width):
 
 ```{r mixture_fixed_ordered_subset_coverage}
 plot_coverage(results_fixed_ordered_subset)
 ```
-
-
 Or investigate numerically.
 
 ```{r}
@@ -369,7 +366,7 @@ results_fixed_ordered_100 <- compute_results(datasets_ordered_100, backend_fixed
                     cache_location = file.path(cache_dir, "mixture_fixed_ordered_100"))
 ```
 
-Once again we subset to keep only non-divergent fits
+Once again we subset to keep only non-divergent fits - this also removes all the problematic Rhats and ESS.
 
 ```{r}
 dataset_ids_to_keep <- results_fixed_ordered_100$backend_diagnostics$dataset_id[results_fixed_ordered_100$backend_diagnostics$n_divergent == 0]
@@ -385,7 +382,7 @@ summary(results_fixed_ordered_100_subset)
 ```
 
 
-And combine with the previous fits to not waste our computational effort.
+And we can use `bind_results` to combine the new results with the previous fits to not waste our computational effort.
 
 ```{r results_fixed_ordered_combined_results}
 results_fixed_ordered_combined <- bind_results(results_fixed_ordered_subset, results_fixed_ordered_100_subset)
@@ -394,13 +391,23 @@ plot_rank_hist(results_fixed_ordered_combined)
 plot_ecdf_diff(results_fixed_ordered_combined)
 ```
 
-Seems fairly well within the expected bounds. We could definitely run more iterations if we wanted to have a more strict check, but for now, we are happy.
+Seems fairly well within the expected bounds. We could definitely run more iterations if we wanted to have a more strict check, but for now, we are happy and the remaining uncertainty about the coverage of our posterior intervals is no longer huge, so it is highly unlikely there is some big bug lurking down there. While we see a potential problem where the coverage for `mu[1]` and `mu[2]` is no longer consistent with perfect calibration, the `ecdf_diff` plot takes precedence as the uncertainty in the coverage plot is only approximate and we thus cannot take it too seriously (see `help("empirical_coverage")` for some more details).
 
-Note: it turns out that extending the model to more components becomes somewhat tricky as the model can become sensitive to initialization and the problem of data that can be explained by fewer components than the model has becomes more prevalent.
+
+```{r results_fixed_ordered_combined_results_coverage}
+plot_coverage(results_fixed_ordered_combined)
+```
+
+
+Note: it turns out that extending the model to more components becomes somewhat tricky as the model can become sensitive to initialization. Also the problems with data that can be explained by fewer components than the model assumes become more prevalent.
 
 ## Beta regression component
 
-Maybe treating this as a logistic regression component would have been wiser. But since I actually realized that only after spending some time with the beta regression task, I am gonna keep it in - it just demonstrates that a real workflow can be messy.
+Let's move to the beta regression component of our model. After spending a bunch of time
+implementing this, I realized, that maybe treating this as a logistic regression component would have been wiser (and sufficient). But I am gonna keep it in - it just demonstrates that a real workflow can be messy and let's us show some additional classes of problems and how they manifest in SBC.
+
+
+Checking the wiki page for Beta distribution, we notice that it has two parameters, both bounded to be positive. So our first attempt at beta regression just creates two linear predictors - one for each parameter of the distribution, exponentiates to make them positive and we have a model:
 
 ```{r, comment = ""}
 cat(readLines("small_model_workflow/beta_first.stan"), sep = "\n")
@@ -409,8 +416,9 @@ cat(readLines("small_model_workflow/beta_first.stan"), sep = "\n")
 ```{r}
 model_beta_first <- cmdstan_model("small_model_workflow/beta_first.stan")
 backend_beta_first <- SBC_backend_cmdstan_sample(model_beta_first) 
-
 ```
+
+We also write a matching generator (microoptimization tip: I usually write Stan models first so that I can work on the generator code while the Stan model compiles):
 
 ```{r}
 generator_func_beta_first <- function(N_obs, N_predictors) {
@@ -452,6 +460,7 @@ generator_func_beta_first <- function(N_obs, N_predictors) {
 generator_beta_first <- SBC_generator_function(generator_func_beta_first, N_obs = 50, N_predictors = 3)
 ```
 
+We'll start with 10 datasets once again.
 
 ```{r}
 set.seed(3325488)
@@ -465,35 +474,43 @@ results_beta_first_10 <- compute_results(datasets_beta_first, backend_beta_first
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "beta_first_10"))
 ```
+We get a single fit with divergent transitions and the ranks look mostly OK:
+
 ```{r beta_first_results}
 plot_rank_hist(results_beta_first_10)
 plot_ecdf_diff(results_beta_first_10)
 ```
 
+Let's inspect the pairs plot for the offending fit:
 
 ```{r beta_first_10_pairs}
 mcmc_pairs(results_beta_first_10$fits[[3]]$draws())
 ```
 
-This is a very ugly plot, but we see some correlations between the corresponding beta, let's have a closer look.
+This is a very ugly plot, but we see some correlations between the corresponding beta elements (e.g. `beta[1,1]` and `beta[2,1]`), let's have a closer look and show the same pairs plot for five of our fits:
 
 ```{r beta_first_10_pairs_subset}
 for(i in 1:5) {
   fit <- results_beta_first_10$fits[[i]]
-  print(mcmc_pairs(fit$draws(), pars = c("beta[1,1]", "beta[2,1]","beta[1,2]", "beta[2,2]"), np = nuts_params(fit)))
+  print(mcmc_pairs(fit$draws(), pars = c("beta[1,1]", "beta[2,1]","beta[1,2]", "beta[2,2]")))
 }
 ```
 
-Turns out the correlations are in all fits, althoug sometimes they are relatively weak and the sampler is able to handle the posterior, it is potentially troubling. The main issue is that we plan to integrate this model with other components and problems that can be tolerated in a single component might interact with other components and become problematic.
+Turns out the correlations are in all fits, although sometimes they are relatively weak and the sampler is able to handle the posterior, it is potentially troubling. The main issue is that we plan to integrate this model with other components and problems that can be tolerated in a single component might interact with other components and make the model intractable.
 
 
-We can even understand the reason for the positive correlation - it is because mean of beta distribution is $\frac{\alpha}{\alpha + \beta}$...
+We can even understand the reason for the positive correlation - it is because mean of our response beta distribution is `exp(linpred[1,]) / ( exp(linpred[1,]) + exp(linpred[2,]))`,
+so increasing both linear predictors at the same time results in the same mean (but different variance). Since mean is usually more constrained than variance of the response, we get this
+ridge.
 
-We can also decide whether to keep the full flexibility and allow predictors for precision.
 
 ### Parametrizing the beta distribution via mean
 
-This also makes much more sense for the bigger task - combining with the mixture component.
+The simplest way to resolve the issue with the correlations is to explicitly parametrize the beta distribution by its mean ($0 < \mu < 1$). The more common parametrization than adds a precision parameter ($\phi > 0$), so we then have $y \sim \mathrm{Beta}(\mu \phi, (1 - \mu) \phi)$
+
+This also makes much more sense for the bigger task - combining with the mixture component, as we really want to predict just a single probability. So we'll rewrite our predictors to predict only the logit of the mean (as in logistic regression) and keep the precision as a constant between observations. We could definitely also decide whether to keep the full flexibility and allow predictors for precision, we just don't do it here.
+
+This is then our updated model:
 
 ```{r, comment = ""}
 cat(readLines("small_model_workflow/beta_precision.stan"), sep = "\n")
@@ -504,6 +521,8 @@ model_beta_precision <- cmdstan_model("small_model_workflow/beta_precision.stan"
 backend_beta_precision <- SBC_backend_cmdstan_sample(model_beta_precision) 
 
 ```
+
+And we need to update the generator to match:
 
 ```{r}
 generator_func_beta_precision <- function(N_obs, N_predictors) {
@@ -547,6 +566,8 @@ generator_beta_precision <- SBC_generator_function(generator_func_beta_precision
 ```
 
 
+Starting with 10 datasets:
+
 ```{r}
 set.seed(46988234)
 datasets_beta_precision_10 <- generate_datasets(generator_beta_precision, 10)
@@ -560,34 +581,46 @@ results_beta_precision_10 <- compute_results(datasets_beta_precision_10, backend
                     cache_location = file.path(cache_dir, "beta_precision_10"))
 ```
 
+No big problems from the fit and the plots:
+
 ```{r results_beta_precision_10_plots}
 plot_rank_hist(results_beta_precision_10)
 plot_ecdf_diff(results_beta_precision_10)
 ```
 
+So we'll run 90 more iterations and combine them with the previous results:
+
 ```{r}
 set.seed(2136468)
 datasets_beta_precision_90 <- generate_datasets(generator_beta_precision, 90)
+results_beta_precision_90 <- compute_results(
+  datasets_beta_precision_90, backend_beta_precision,
+  cache_mode = "results", 
+  cache_location = file.path(cache_dir, "beta_precision_90"))
+
+
 results_beta_precision_100 <-
   bind_results(
     results_beta_precision_10,
-    compute_results(datasets_beta_precision_90, backend_beta_precision, 
-                    cache_mode = "results", 
-                    cache_location = file.path(cache_dir, "beta_precision_90")))
+    results_beta_precision_90
+    )
 
 datasets_beta_precision_100 <- bind_datasets(datasets_beta_precision_10, datasets_beta_precision_90)
 ```
+
+
 ```{r results_beta_precision_100_plots}
 plot_rank_hist(results_beta_precision_100)
 plot_ecdf_diff(results_beta_precision_100)
 ```
+The plots don't look terrible, but the `beta[2]` and especially the `phi` parameter show slight problems.
 
-
-Missing prior!
-
-This type of problem is often not very well visible from SBC (see the `limits_of_SBC` vignette for more detailed discussion)
+So we look back at our model code and note that we forgot to put any prior on `phi`!
+Mismatches in priors between the model and the simulator are unfortunately often not very well visible for SBC and can require a lot of simulations to discover (see the [`limits_of_SBC`](https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html) vignette for more detailed discussion)
 
 ### Adding missing prior
+
+So we add the missing prior to the model:
 
 ```{r, comment = ""}
 cat(readLines("small_model_workflow/beta_precision_fixed_prior.stan"), sep = "\n")
@@ -596,8 +629,10 @@ cat(readLines("small_model_workflow/beta_precision_fixed_prior.stan"), sep = "\n
 ```{r}
 model_beta_precision_fixed_prior <- cmdstan_model("small_model_workflow/beta_precision_fixed_prior.stan")
 backend_beta_precision_fixed_prior <- SBC_backend_cmdstan_sample(model_beta_precision_fixed_prior) 
-
 ```
+
+And recompute for all 100 datasets at once (as we don't expect adding prior to introduce huge problems).
+
 ```{r}
 results_beta_precision_fixed_prior <- 
   compute_results(datasets_beta_precision_100, backend_beta_precision_fixed_prior, 
@@ -610,6 +645,8 @@ plot_rank_hist(results_beta_precision_fixed_prior)
 plot_ecdf_diff(results_beta_precision_fixed_prior)
 ```
 
+Diagnostic plots are looking good! So we add 100 more datasets:
+
 
 ```{r}
 set.seed(1233845)
@@ -621,18 +658,23 @@ results_beta_precision_fixed_prior_200 <-
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "beta_precision_fixed_prior_2")))
 ```
+
 ```{r results_beta_precision_fixed_prior_200_plots}
 plot_rank_hist(results_beta_precision_fixed_prior_200)
 plot_ecdf_diff(results_beta_precision_fixed_prior_200)
-
 ```
+
+Yeah, still looking good. And we can see that the empirical coverage of our central intervals
+is in quite tight agreement with theory:
 
 ```{r results_beta_precision_fixed_prior_200_coverage}
 plot_coverage(results_beta_precision_fixed_prior_200)
 ```
-
+So for now we are also happy about the beta regression component.
 
 ## Putting it together
+
+We are finally ready to make a first attempt at the full model:
 
 ```{r, comment = ""}
 cat(readLines("small_model_workflow/combined_first.stan"), sep = "\n")
@@ -643,6 +685,7 @@ model_combined <- cmdstan_model("small_model_workflow/combined_first.stan")
 backend_combined <- SBC_backend_cmdstan_sample(model_combined)
 ```
 
+And this is our generator for the full model:
 
 ```{r}
 generator_func_combined <- function(N_obs, N_predictors) {
@@ -691,6 +734,8 @@ generator_func_combined <- function(N_obs, N_predictors) {
 generator_combined <- SBC_generator_function(generator_func_combined, N_obs = 50, N_predictors = 3)
 ```
 
+We are confident (and the fits are fast anyway), so we start with 200 simulations:
+
 ```{r}
 set.seed(5749955)
 dataset_combined <- generate_datasets(generator_combined, 200)
@@ -701,20 +746,39 @@ results_combined <- compute_results(dataset_combined, backend_combined,
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "combined"))
 ```
+We get some amount of divergent transitions, but the ranks look pretty good:
 
 ```{r results_combined_plots}
 plot_rank_hist(results_combined)
 plot_ecdf_diff(results_combined)
 ```
 
+Indeed it seems the model works pretty well.
+
 ### Adding rejection sampling
+
+As done previously, we could just exclude the fits that had divergences, but just to complete our tour of possibilities, we'll show one more option to dealing with this type of problem.
+
+The general idea is that although we might not want to/be able to express our prior belief about the model (here that the two mixture components are distinct) by priors on model parameters, we still may be able to express our prior belief about the data itself.
+
+And it turns out that if we remove datasets that don't meet a certain condition imposed on the observed data, the implied prior on parameters becomes an additive constant and we can use exactly the same model to fit only the non-rejected datasets. Note that this does not hold if the we rejected datasets based on their parameter values - for more details see the [`rejection_sampling`](https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html) vignette.
+
+The main advantage is that if we can do this, we can avoid wasting computation on fitting datasets that would likely produce divergences anyway. The downside is that it means we no longer have a guarantee the model works for non-rejected datasets, so we need to check if the data we want to analyze would not be rejected by our criterion.
+
+How to build such a criterion here? We'll note that for Poisson-distributed variables the ratio of mean to variance (a.k.a the Fano factor) is always 1. So if the components are too similar, the data should resemble a Poisson distribution and have Fano factor of 1, while if the components are distinct the Fano factor will be larger. 
+
+Below is a plot of fano factors versus the number of divergences we've seen:
 
 ```{r combined_fanos}
 fanos <- vapply(dataset_combined$generated, function(dataset) { var(dataset$y) / mean(dataset$y) }, FUN.VALUE = 0)
 plot(fanos, results_combined$backend_diagnostics$n_divergent)
+```
+All the divergence are for low fano factors - this is the histogram of Fano factor for diverging fits:
+
+```{r}
 hist(fanos[results_combined$backend_diagnostics$n_divergent > 0])
 ```
-
+So what we'll do is that we'll reject any dataset with Fano factor < 1.5. In practice a simple way to implement this is to wrap our generator code in a loop and break from the loop only when the generated dataset meets our criteria (i.e. is not rejected). This is our code:
 
 ```{r}
 generator_func_combined_reject <- function(N_obs, N_predictors) {
@@ -770,6 +834,8 @@ generator_func_combined_reject <- function(N_obs, N_predictors) {
 generator_combined_reject <- SBC_generator_function(generator_func_combined_reject, N_obs = 50, N_predictors = 3)
 ```
 
+We'll once again fit our model to 200 datasets:
+
 ```{r}
 set.seed(44685226)
 dataset_combined_reject <- generate_datasets(generator_combined_reject, 200)
@@ -779,25 +845,32 @@ dataset_combined_reject <- generate_datasets(generator_combined_reject, 200)
 
 ```{r}
 results_combined_reject <- compute_results(dataset_combined_reject, backend_combined, 
-                    cache_mode = "results", 
+                    keep_fits = FALSE, cache_mode = "results", 
                     cache_location = file.path(cache_dir, "combined_reject"))
 ```
+
+No more divergences! And the ranks look nice.
 
 ```{r combined_reject_plots}
 plot_rank_hist(results_combined_reject)
 plot_ecdf_diff(results_combined_reject)
 ```
 
+And our coverage is pretty tight:
+
 ```{r}
 plot_coverage(results_combined_reject)
 ```
+Here is the uncertainty shown numerically for two parameters and some widths of central posterior intervals:
 
 ```{r results_combined_reject_coverage}
 stats_subset <- results_combined_reject$stats[
   results_combined_reject$stats$parameter %in% c("beta[1]", "mu[1]"),]
+
 empirical_coverage(stats_subset, c(0.25,0.5,0.9,0.95))
 ```
 
+Maybe we think the remaining uncertainty is too big, so we'll run 300 more simulations, just to be sure:
 
 ```{r}
 set.seed(1395367854)
@@ -805,10 +878,13 @@ dataset_combined_reject_more <- generate_datasets(generator_combined_reject, 300
 results_combined_reject_more <- bind_results(
   results_combined_reject,
   compute_results(dataset_combined_reject_more, backend_combined, 
-                    cache_mode = "results", 
+                    keep_fits = FALSE, cache_mode = "results", 
                     cache_location = file.path(cache_dir, "combined_reject_more"))
 )
 ```
+We get some very small number of problematic fits, which we can ignore in this volume (but probably more aggresive rejection sampling would remove those as well).
+
+Our plots and coverage are now pretty decent:
 
 ```{r results_combined_reject_more_plots}
 plot_rank_hist(results_combined_reject_more)
@@ -824,8 +900,27 @@ stats_subset <- results_combined_reject_more$stats[
   results_combined_reject_more$stats$parameter %in% c("beta[1]", "mu[2]"),]
 empirical_coverage(stats_subset, c(0.25,0.5,0.9,0.95))
 ```
-This actually shows a limitation of the coverage results - for `mu[2]` the approximate CI for coverage excludes exact calibration for a bunch of intervals, but above we see that the more trustworthy `plot_ecdf_diff` is not showing a problem (although there is some tendency).
 
-This might need further investigation if discrepancies in `mu` are considered important, if we are interested only in the `beta` coefficients, we are assured that their calibration is pretty good.
+This actually shows a limitation of the coverage results - for `mu[2]` the approximate CI for coverage excludes exact calibration for a bunch of intervals, but above we see that the more trustworthy `plot_ecdf_diff` is not showing a problem (although there is some tendency towards slight underdispersion).
+
+Still, this might warrant further investigation if small discrepancies in `mu` are considered important, if we are interested only in the `beta` coefficients, we can stay assured that their calibration is pretty good. We give you our word that we ran additional simulations and the discrepance disappears.
+
+Finally, we can also use this simulation exercise to understand what would we be likely to learn from an experiment matching the simulations (50 observations, 3 predictors) and plot the true values against estimated mean + 90% posterior credible interval:
+
+```{r}
+plot_sim_estimated(results_combined_reject_more, alpha = 0.2)
+```
+We see that we get very precise information about `mu` and a decent picture about all `beta` elements, but the reamining uncertainty is large. We could for example compute the probability
+that the posterior 90% interval for `beta[1]` excludes zero, i.e. that we learn something about the sign of `beta[1]` and it is close to 50%:
+
+```{r}
+stats_beta1 <- results_combined_reject_more$stats[results_combined_reject_more$stats$parameter == "beta[1]",]
+
+mean(sign(stats_beta1$q5) == sign(stats_beta1$q95))
+```
+Depending on your aims, this might be a reason to plan for a larger sample size!
 
 And that's it for this vignette, thanks for staying until the end and hope the workflow ideas will be useful for you!
+
+
+
