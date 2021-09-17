@@ -184,7 +184,9 @@ Looks good, so let us add some more SBC steps to make sure the model behaves wel
 ```{r}
 set.seed(54321488)
 datasets_3 <- generate_datasets(generator_2, 100)
-results_3 <- compute_results(datasets_3, backend_1)
+results_3 <- compute_results(datasets_3, backend_1, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "model3"))
 
 results_all <- bind_results(results_2, results_3)
 ```
