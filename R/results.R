@@ -1,3 +1,13 @@
+#' SBC_results objects.
+#'
+#'
+#' The `SBC_results` contains the following fields:
+#'   - `$stats` statistics for all parameters and fits (one row per parameter-fit combination)
+#'   - `$fits`  the raw fits (unless `keep_fits = FALSE`) or `NULL` if the fit failed
+#'   - `$errors` error messages that caused fit failures
+#'   - `$outputs`, `$messages`, `$warnings` the outputs/messages/warnings written by fits
+#'   - `$default_diagnostics` a data frame of default convergence/correctness diagnostics (one row per fit)
+#'   - `$backend_diagnostics` a data frame of backend-specific diagnostics (one row per fit)
 #' @export
 SBC_results <- function(stats,
                         fits,
@@ -217,15 +227,15 @@ length.SBC_results <- function(x) {
 #'
 #' @param datasets an object of class `SBC_datasets`
 #' @param backend the model + sampling algorithm. The built-in backends can be constructed
-#'   using `SBC_backend_cmdstan_sample()`, `SBC_backend_cmdstan_variational()`, `SBC_backend_rstan_sample()` and `SBC_backend_brms()`.
-#'   (more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the `SBC_fit`,
-#'   `SBC_fit_to_draws_matrix` methods.
+#'   using [SBC_backend_cmdstan_sample()], [SBC_backend_cmdstan_variational()], [SBC_backend_rstan_sample()] and [SBC_backend_brms()].
+#'   (more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the [SBC_fit()],
+#'   [SBC_fit_to_draws_matrix()] methods.
 #' @param cores_per_fit how many cores should the backend be allowed to use for a single fit?
 #'    Defaults to the maximum number that does not produce more parallel chains
-#'    than you have cores. See `default_cores_per_fit()`.
+#'    than you have cores. See [default_cores_per_fit()].
 #' @param keep_fits boolean, when `FALSE` full fits are discarded from memory -
 #'    reduces memory consumption and increases speed (when processing in parallel), but
-#'    prevents you from inspecting the fits and using `recompute_statistics()`.
+#'    prevents you from inspecting the fits and using [recompute_statistics()].
 #'    We recommend to set to `TRUE` in early phases of workflow, when you run just a few fits.
 #'    Once the model is stable and you want to run a lot of iterations, we recommend setting
 #'    to `FALSE` (even for quite a simple model, 1000 fits can easily exhaust 32GB of RAM).
@@ -239,14 +249,8 @@ length.SBC_results <- function(x) {
 #'    enough that a single batch takes at least several seconds, i.e. for small models,
 #'    you can often reduce computation time noticeably by increasing this value.
 #'    You can use `options(SBC.min_chunk_size = value)` to set a minimum chunk size globally.
-#'    See documentation of `future.chunk.size` argument for `future.apply::future_lapply()` for more details.
-#' @return An object of class `SBC_results` that holds:
-#'   - `$stats` statistics for all parameters and fits (one row per parameter-fit combination)
-#'   - `$fits`  the raw fits (unless `keep_fits = FALSE`) or `NULL` if the fit failed
-#'   - `$errors` error messages that caused fit failures
-#'   - `$outputs`, `$messages`, `$warnings` the outputs/messages/warnings written by fits
-#'   - `$default_diagnostics` a data frame of default convergence/correctness diagnostics (one row per fit)
-#'   - `$backend_diagnostics` a data frame of backend-specific diagnostics (one row per fit)
+#'    See documentation of `future.chunk.size` argument for [future.apply::future_lapply()] for more details.
+#' @return An object of class [SBC_results()].
 #'
 #' @export
 compute_results <- function(datasets, backend,

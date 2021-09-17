@@ -2,9 +2,15 @@
 % Please edit documentation in R/plot.R
 \name{plot_coverage}
 \alias{plot_coverage}
+\alias{plot_coverage.SBC_results}
+\alias{plot_coverage.data.frame}
 \title{Plot the observed coverage and its uncertainty}
 \usage{
-plot_coverage(x, parameters = NULL, prob = 0.95)
+plot_coverage(x, parameters = NULL, prob = 0.95, interval_type = "central")
+
+\method{plot_coverage}{SBC_results}(x, parameters = NULL, prob = 0.95, interval_type = "central")
+
+\method{plot_coverage}{data.frame}(x, parameters = NULL, prob = 0.95, interval_type = "central")
 }
 \arguments{
 \item{x}{object containing results (a data.frame or \code{\link[=SBC_results]{SBC_results()}} object).}
@@ -17,5 +23,6 @@ plot_coverage(x, parameters = NULL, prob = 0.95)
 a ggplot2 plot object
 }
 \description{
-Plot the observed coverage and its uncertainty
+Please refer to \code{\link[=observed_coverage]{observed_coverage()}} for details on computation
+and limitations of this plot as well as details on the arguments.
 }

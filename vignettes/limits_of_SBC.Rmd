@@ -176,11 +176,25 @@ But it is also the case that the estimates are not completely meaningless (as th
 ```{r}
 plot_sim_estimated(results_minor_200, alpha = 0.5)
 ```
+Another way to investigate this is the coverage plot, showing the attained coverage of various central credible intervals. 
 
 ```{r}
 plot_coverage(results_minor_200)
 ```
 
+Or we can even directly inspect some intervals of interest:
+
+```{r}
+coverage <- observed_coverage(results_minor_200$stats, width = c(0.5,0.9,0.95))
+coverage
+
+sigma_90_coverage_string <- paste0(round(100 * as.numeric(
+  coverage[coverage$parameter == "sigma" & coverage$width == 0.9, c("ci_low","ci_high")])),
+  "%",
+  collapse = " - ")
+```
+
+where we see that for example for the 90% central credible interval of `sigma` we would expect the actual coverage to be  `r sigma_90_coverage_string`.
 
 # Prior mismatch
 
