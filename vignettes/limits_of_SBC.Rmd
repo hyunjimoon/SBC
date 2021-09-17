@@ -52,7 +52,7 @@ To demonstrate this, we will fit a simple model with a normal likelihood, but us
 
 To see the difference we'll show the two densities
 
-```{r}
+```{r dens_compare}
 x <- seq(-5, 5, length.out = 100)
 dens_data <- rbind(
   data.frame(x = x, density = dnorm(x, log = FALSE), 
@@ -66,42 +66,28 @@ ggplot(dens_data, aes(x = x, y = density, color = type)) +
 
 As expected the t distribution has fatter tails, which is even better visible when looking at the logarithm of the density.
 
-```{r}
+```{r log_dens_compare}
 ggplot(dens_data, aes(x = x, y = log_density, color = type)) +
   geom_line(size = 2)
 ```
 
 Here is our Stan code for the simple normal model.
 
+```{r, comment = ""}
+cat(readLines("stan/minor_discrepancy.stan"), sep = "\n")
+```
+
 ```{r}
-model_code_minor <- "
-data {
-  int<lower=0> N;
-  vector[N] y;
-}
-
-parameters {
-  real mu;
-  real<lower=0> sigma;
-}
-
-model {
-  target += normal_lpdf(mu | 0, 1);
-  target += normal_lpdf(sigma | 0, 1);
-  target += normal_lpdf(y | mu, sigma);
-}
-"
-
 iter_warmup <- 300
 iter_sampling <- 1000
 
 if(use_cmdstanr) {
-  model_minor <- cmdstan_model(write_stan_file(model_code_minor))
+  model_minor <- cmdstan_model("stan/minor_discrepancy.stan")
 
   backend_minor <- SBC_backend_cmdstan_sample(
     model_minor, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 1)
 } else {
-  model_minor <- stan_model(model_code = model_code_minor)
+  model_minor <- stan_model("stan/minor_discrepancy.stan")
 
   backend_minor <- SBC_backend_rstan_sample(
     model_minor, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 1)
@@ -200,7 +186,7 @@ plot_coverage(results_minor_200)
 Or we can even directly inspect some intervals of interest:
 
 ```{r}
-coverage <- observed_coverage(results_minor_200$stats, width = c(0.5,0.9,0.95))
+coverage <- empirical_coverage(results_minor_200$stats, width = c(0.5,0.9,0.95))
 coverage
 
 sigma_90_coverage_string <- paste0(round(100 * as.numeric(
@@ -239,32 +225,22 @@ datasets_missing <- generate_datasets(generator_missing, n_datasets = 200)
 ```
 
 
+```{r, comment = ""}
+cat(readLines("stan/missing_likelihood.stan"), sep = "\n")
+```
+
+
 ```{r}
-model_code_missing <- "
-data {
-  int<lower=0> N;
-  vector[N] y;
-}
-
-parameters {
-  real mu;
-}
-
-model {
-  target += normal_lpdf(mu | 0, 1);
-}
-"
-
 iter_warmup <- 300
 iter_sampling <- 1000
 
 if(use_cmdstanr) {
-  model_missing <- cmdstan_model(write_stan_file(model_code_missing))
+  model_missing <- cmdstan_model("stan/missing_likelihood.stan")
 
   backend_missing <- SBC_backend_cmdstan_sample(
     model_missing, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 1)
 } else {
-  model_missing <- stan_model(model_code = model_code_missing)
+  model_missing <- stan_model("stan/missing_likelihood.stan")
 
   backend_missing <- SBC_backend_rstan_sample(
     model_missing, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 1)
@@ -330,38 +306,20 @@ plot_rank_hist(results_missing_gq)
 # Partially missing likelihood
 
 A more complicated case is when the likelihood is only slightly wrong (and missing something) - e.g. due to an indexing error.
-Turns out missing just one data point needs a lot of steps, so we'll miss 3 in our likelihood.
+Turns out missing just one data point needs a lot of steps, so we'll miss a half of them in our likelihood.
+
+```{r, comment = ""}
+cat(readLines("stan/partially_missing_likelihood.stan"), sep = "\n")
+```
 
 ```{r}
-model_code_missing_2 <- "
-data {
-  int<lower=0> N;
-  vector[N] y;
-}
-
-transformed data {
-  int N2 = N / 2 + 1;
-}
-
-parameters {
-  real mu;
-}
-
-model {
-  target += normal_lpdf(mu | 0, 1);
-  for(n in 1:N2) {
-    target += normal_lpdf(y[n] | mu, 1);
-  }
-}
-"
-
 if(use_cmdstanr) {
-  model_missing_2 <- cmdstan_model(write_stan_file(model_code_missing_2))
+  model_missing_2 <- cmdstan_model("stan/partially_missing_likelihood.stan")
 
   backend_missing_2 <- SBC_backend_cmdstan_sample(
     model_missing_2, iter_warmup = iter_warmup, iter_sampling = iter_sampling, chains = 1)
 } else {
-  model_missing_2 <- stan_model(model_code = model_code_missing_2)
+  model_missing_2 <- stan_model("stan/partially_missing_likelihood.stan")
 
   backend_missing_2 <- SBC_backend_rstan_sample(
     model_missing_2, iter = iter_sampling + iter_warmup, warmup = iter_warmup, chains = 1)

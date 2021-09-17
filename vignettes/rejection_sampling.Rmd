@@ -47,25 +47,13 @@ if(!dir.exists(cache_dir)) {
 
 We'll use a very simple model throughout this vignette:
 
+
+```{r, comment = ""}
+cat(readLines("stan/rejection_sampling.stan"), sep = "\n")
+```
+
 ```{r}
-stan_code <- "
-data {
-   int<lower=0> N;
-   real y[N];
-}
-
-parameters {
-   real mu;
-}
-
-model {
-   mu ~ normal(0, 2);
-   y ~ normal(mu, 1);
-}
-
-"
-
-backend <- SBC_backend_cmdstan_sample(cmdstan_model(write_stan_file(stan_code)), iter_warmup = 800, iter_sampling = 800)
+backend <- SBC_backend_cmdstan_sample(cmdstan_model("stan/rejection_sampling.stan"), iter_warmup = 800, iter_sampling = 800)
 ```
 
 # No rejections
@@ -96,7 +84,7 @@ results <- compute_results(datasets, backend, keep_fits = FALSE,
                     cache_location = file.path(cache_dir, "no_rejections"))
 ```
 
-```{r}
+```{r results1_plots}
 plot_ecdf_diff(results)
 plot_rank_hist(results)
 ```
@@ -135,7 +123,7 @@ results_reject_param <- compute_results(datasets_reject_param, backend, keep_fit
                     cache_location = file.path(cache_dir, "reject_param"))
 ```
 
-```{r}
+```{r reject_param_plots}
 plot_ecdf_diff(results_reject_param)
 plot_rank_hist(results_reject_param)
 ```
@@ -175,7 +163,8 @@ results_reject_y <- compute_results(datasets_reject_y, backend, keep_fits = FALS
                     cache_location = file.path(cache_dir, "reject_y"))
 ```
 
-```{r}
+```{r reject_y_plot}
+plot_rank_hist(results_reject_y)
 plot_ecdf_diff(results_reject_y)
 ```
 

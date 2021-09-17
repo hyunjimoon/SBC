@@ -28,85 +28,29 @@ if(use_cmdstanr) {
   library(rstan)
 }
 
+# Setup caching of results
+cache_dir <- "./indexing_SBC_cache"
+if(!dir.exists(cache_dir)) {
+  dir.create(cache_dir)
+}
+
 ```
 
 Below are three different Stan codes for implementing a simple linear regression. Not all of them are correct - can you see which are wrong?
 
-```{r}
-stan_code_1 <- "
-data {
-  int<lower=0> N;   // number of data items
-  int<lower=0> K;   // number of predictors
-  matrix[N, K] x;   // predictor matrix
-  vector[N] y;      // outcome vector
-}
-parameters {
-  real alpha;           // intercept
-  vector[K] beta;       // coefficients for predictors
-  real<lower=0> sigma;  // error scale
-}
-model {
-  vector[N] mu = rep_vector(alpha, N);
-  for(i in 1:K) {
-    for(j in 1:N) {
-      mu[j] += beta[i] * x[j, i];
-    }
-  }
-  y ~ normal(mu, sigma);  // likelihood
-  alpha ~ normal(0, 5);
-  beta ~ normal(0, 1);
-  sigma ~ normal(0, 2);
-}
-"
-
-stan_code_2 <- "
-data {
-  int<lower=0> N;   // number of data items
-  int<lower=0> K;   // number of predictors
-  matrix[N, K] x;   // predictor matrix
-  vector[N] y;      // outcome vector
-}
-parameters {
-  real alpha;           // intercept
-  vector[K] beta;       // coefficients for predictors
-  real<lower=0> sigma;  // error scale
-}
-model {
-  vector[N] mu;
-  for(i in 1:N) {
-    mu[i] = alpha;
-    for(j in 1:K) {
-      mu[i] += beta[j] * x[j, j];
-    }
-  }
-  y ~ normal(mu, sigma);  // likelihood
-  alpha ~ normal(0, 5);
-  beta ~ normal(0, 1);
-  sigma ~ normal(0, 2);
-}
-"
-
-stan_code_3 <- "
-data {
-  int<lower=0> N;   // number of data items
-  int<lower=0> K;   // number of predictors
-  matrix[N, K] x;   // predictor matrix
-  vector[N] y;      // outcome vector
-}
-parameters {
-  real alpha;           // intercept
-  vector[K] beta;       // coefficients for predictors
-  real<lower=0> sigma;  // error scale
-}
-model {
-  y ~ normal(transpose(beta) * transpose(x) + alpha, sigma);  // likelihood
-  alpha ~ normal(0, 5);
-  beta ~ normal(0, 1);
-  sigma ~ normal(0, 2);
-}
-"
-
+```{r, comment = ""}
+cat(readLines("stan/regression1.stan"), sep = "\n")
 ```
+
+
+```{r, comment = ""}
+cat(readLines("stan/regression2.stan"), sep = "\n")
+```
+
+```{r, comment = ""}
+cat(readLines("stan/regression3.stan"), sep = "\n")
+```
+
 
 If you can, good for you! If not, don't worry, SBC can help you spot coding problems, so let's simulate
 data and test all three models against simulated data.
@@ -116,17 +60,17 @@ First we'll build backends using the individual models.
 
 ```{r}
 if(use_cmdstanr) {
-  model_regression_1 <- cmdstan_model(write_stan_file(stan_code_1))
-  model_regression_2 <- cmdstan_model(write_stan_file(stan_code_2))
-  model_regression_3 <- cmdstan_model(write_stan_file(stan_code_3))
+  model_regression_1 <- cmdstan_model("stan/regression1.stan")
+  model_regression_2 <- cmdstan_model("stan/regression2.stan")
+  model_regression_3 <- cmdstan_model("stan/regression3.stan")
 
   backend_regression_1 <- SBC_backend_cmdstan_sample(model_regression_1, iter_warmup = 400, iter_sampling = 500)
   backend_regression_2 <- SBC_backend_cmdstan_sample(model_regression_2, iter_warmup = 400, iter_sampling = 500)
   backend_regression_3 <- SBC_backend_cmdstan_sample(model_regression_3, iter_warmup = 400, iter_sampling = 500)
 } else {
-  model_regression_1 <- stan_model(model_code = stan_code_1)
-  model_regression_2 <- stan_model(model_code = stan_code_2)
-  model_regression_3 <- stan_model(model_code = stan_code_3)
+  model_regression_1 <- stan_model("stan/regression1.stan")
+  model_regression_2 <- stan_model("stan/regression2.stan")
+  model_regression_3 <- stan_model("stan/regression3.stan")
 
   
   backend_regression_1 <- SBC_backend_rstan_sample(model_regression_1, iter = 900, warmup = 400)
@@ -183,12 +127,21 @@ datasets_regression <- generate_datasets(SBC_generator_function(single_dataset_r
 Now we can use all of the backends to fit the generated datasets.
 
 ```{r}
-results_regression_1 <- compute_results(datasets_regression, backend_regression_1)
-results_regression_2 <- compute_results(datasets_regression, backend_regression_2)
-results_regression_3 <- compute_results(datasets_regression, backend_regression_3)
+results_regression_1 <- compute_results(datasets_regression, backend_regression_1, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "regression1"))
+results_regression_2 <- compute_results(datasets_regression, backend_regression_2, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "regression2"))
+results_regression_3 <- compute_results(datasets_regression, backend_regression_3, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "regression3"))
 ```
 
-```{r}
+Here we also use the caching feature to avoid recomputing the fits when recompiling this vignette. 
+In practice, caching is not necessary but is often useful.
+
+```{r plots_regression1}
 plot_ecdf_diff(results_regression_1)
 plot_rank_hist(results_regression_1)
 
@@ -198,7 +151,7 @@ As far as a quick SBC can see the first code is OK. You could verify further wit
 but we tested the model for you and it is OK (although the implementation is not the best one).
 
 
-```{r}
+```{r plots_regression2}
 plot_ecdf_diff(results_regression_2)
 plot_rank_hist(results_regression_2)
 
@@ -209,7 +162,7 @@ But the second model is actually not looking good.  In fact there is an indexing
 propagates most strongly to the `sigma` parameter (reusing the same `x` element leads to more similar predictions for each row, so `sigma` needs to be inflated to accommodate this)
 
 
-```{r}
+```{r plots_regression3}
 plot_ecdf_diff(results_regression_3)
 plot_rank_hist(results_regression_3)
 ```

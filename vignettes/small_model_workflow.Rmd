@@ -25,10 +25,11 @@ The workflow described here focuses on small models.
 "Small" means that the model is relatively fast to fit and we don't have to worry about computation too much.
 Once running ~100 fits of the model becomes too costly, there are additional tricks and considerations
 that we hope to delve into in a "Building a complex model" vignette (which currently doesn't exist).
-Still many of the approaches here also apply to complex models (especially starting small and building each component separately)
+Still many of the approaches here also apply to complex models (especially starting small and building each component separately), and with proper separation of the model into components,
+one can validate big chunks of Stan code while still working with small models.
 
 We expect the reader to be familiar with basics of the package. If not,
-check out the "basic_usage" vignette.
+check out the ["basic_usage" vignette](https://hyunjimoon.github.io/SBC/articles/basic_usage.html).
 
 ## Our goal
 
@@ -95,8 +96,14 @@ if(!dir.exists(cache_dir)) {
 
 ## Mixture component
 
+There is a good [guide to mixtures](https://mc-stan.org/docs/2_27/stan-users-guide/mixture-modeling-chapter.html) in the Stan user's guide.
+Following the user's guide would save us from a lot of mistakes, but for the sake of example, we will pretend we didn't really read it - and we'll see the problems can be discovered 
+via simulations.
 
-```{r, echo = FALSE, comment = ""}
+So this is our first try at implementing the mixture component:
+
+
+```{r, comment = ""}
 cat(readLines("small_model_workflow/mixture_first.stan"), sep = "\n")
 ```
 
@@ -105,6 +112,8 @@ cat(readLines("small_model_workflow/mixture_first.stan"), sep = "\n")
 model_first <- cmdstan_model("small_model_workflow/mixture_first.stan")
 backend_first <- SBC_backend_cmdstan_sample(model_first) 
 ```
+
+And this is our code to simulate data for this model:
 
 ```{r}
 generator_func_first <- function(N) {
@@ -137,6 +146,8 @@ generator_func_first <- function(N) {
 generator_first <- SBC_generator_function(generator_func_first, N = 50)
 ```
 
+Let's start with just a single dataset:
+
 ```{r}
 set.seed(68455554)
 datasets_first <- generate_datasets(generator_first, 1)
@@ -148,7 +159,7 @@ results_first <- compute_results(datasets_first, backend_first,
                     cache_location = file.path(cache_dir, "mixture_first"))
 ```
 
-We have convergence problems, let us examine the pairs plots
+Oh, we have convergence problems, let us examine the pairs plots
 
 ```{r mixture_first_convergence}
 results_first$stats
@@ -157,11 +168,15 @@ mcmc_pairs(results_first$fits[[1]]$draws())
 
 One thing that stands out is that either `mu1` is tightly determined and `mu2` is allowed the full prior range or the other way around. We also don't learn anything about theta.
 
-This might be puzzling but relates to bad usage of `log_mix` (TODO explain)
+This might be puzzling but relates to bad usage of `log_mix`. The thing is that  `poisson_log_lpmf(y | mu1)` returns a single number - the total log likelihood of all elements of `y` given `mu1`. And thus we are building a mixture where either all observations are from the first component or all are from the second component. To implement mixture where each observation is allowed to come from a different component, we need to loop over observations and do a separate `log_mix` call for each.
+
+More details on the mathematical background are explained in the ["Vectorizing mixtures"](https://mc-stan.org/docs/2_27/stan-users-guide/vectorizing-mixtures.html) section of Stan User's guide.
 
 ### Fixing mixture
 
-```{r, echo = FALSE, comment = "", results ='asis'}
+So we've fixed the `log_mix` problem and this is our new model:
+
+```{r, comment = ""}
 cat(readLines("small_model_workflow/mixture_fixed_log_mix.stan"), sep = "\n")
 ```
 
@@ -170,18 +185,21 @@ model_fixed_log_mix <- cmdstan_model("small_model_workflow/mixture_fixed_log_mix
 backend_fixed_log_mix <- SBC_backend_cmdstan_sample(model_fixed_log_mix)
 ```
 
+So let's try once again with just the same single dataset:
+
 ```{r}
 results_fixed_log_mix <- compute_results(datasets_first, backend_fixed_log_mix, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "mixture_fixed_log_mix"))
 ```
 
-We see nothing obviously wrong, let's run a few more iterations.
+We look at the statistics:
 
 ```{r}
 results_fixed_log_mix$stats
 ```
 
+We see nothing obviously wrong, no parameter is clearly ridiculously misfit no diagnostic problems, so let's run a few more iterations.
 
 ```{r}
 set.seed(8314566)
@@ -194,7 +212,7 @@ results_fixed_log_mix_2 <- compute_results(datasets_first_10, backend_fixed_log_
                     cache_location = file.path(cache_dir, "mixture_fixed_log_mix_2"))
 ```
 
-So there are some problems.
+So there are some problems - we have quite a bunch of high R-hat and low ESS values. This is the distribution of all rhats:
 
 ```{r mixture_fixed_log_mix_rhat}
 hist(results_fixed_log_mix_2$stats$rhat)
@@ -207,11 +225,16 @@ Let's examine a single pairs plot:
 mcmc_pairs(results_fixed_log_mix_2$fits[[1]]$draws())
 ```
 
-We clearly see two modes. And upon reflection, it is not a lot surprising why: swapping `mu1` with `mu2` while also changing `theta` for `1 - theta` gives _exactly_ the same likelihood - because the ordering does not matter. A more detailed explanation of this type of problem is at https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html
+We clearly see two modes in the posterior. And upon reflection, it is not a lot surprising why: swapping `mu1` with `mu2` while also changing `theta` for `1 - theta` gives _exactly_ the same likelihood - because the ordering does not matter. A more detailed explanation of this type of problem is at https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html
 
 ### Fixing ordering
 
 We can easily fix the ordering of the `mu`s by using the `ordered` built-in type.
+
+```{r, comment = ""}
+cat(readLines("small_model_workflow/mixture_fixed_ordered.stan"), sep = "\n")
+```
+
 
 ```{r}
 model_fixed_ordered <- cmdstan_model("small_model_workflow/mixture_fixed_ordered.stan")
@@ -265,9 +288,10 @@ results_fixed_ordered <- compute_results(datasets_ordered_10, backend_fixed_orde
                     cache_location = file.path(cache_dir, "mixture_fixed_ordered"))
 ```
 
+Now some fits still produce problematic Rhats or divergent transitions, let's brows the full statistics to 
 
 ```{r}
-results_fixed_ordered$stats
+results_fixed_ordered$backend_diagnostics
 ```
 
 There are fits with high R-hats and low ESS. Let's look at the pairs plot:
@@ -328,7 +352,7 @@ plot_coverage(results_fixed_ordered_subset)
 Or investigate numerically.
 
 ```{r}
-observed_coverage(results_fixed_ordered_subset$stats, width = c(0.5,0.9,0.95))
+empirical_coverage(results_fixed_ordered_subset$stats, width = c(0.5,0.9,0.95))
 ```
 
 We can clearly see that while there are no terrible errors, a quite big miscalibration is still
@@ -377,6 +401,10 @@ Note: it turns out that extending the model to more components becomes somewhat 
 ## Beta regression component
 
 Maybe treating this as a logistic regression component would have been wiser. But since I actually realized that only after spending some time with the beta regression task, I am gonna keep it in - it just demonstrates that a real workflow can be messy.
+
+```{r, comment = ""}
+cat(readLines("small_model_workflow/beta_first.stan"), sep = "\n")
+```
 
 ```{r}
 model_beta_first <- cmdstan_model("small_model_workflow/beta_first.stan")
@@ -466,6 +494,10 @@ We can also decide whether to keep the full flexibility and allow predictors for
 ### Parametrizing the beta distribution via mean
 
 This also makes much more sense for the bigger task - combining with the mixture component.
+
+```{r, comment = ""}
+cat(readLines("small_model_workflow/beta_precision.stan"), sep = "\n")
+```
 
 ```{r}
 model_beta_precision <- cmdstan_model("small_model_workflow/beta_precision.stan")
@@ -557,6 +589,10 @@ This type of problem is often not very well visible from SBC (see the `limits_of
 
 ### Adding missing prior
 
+```{r, comment = ""}
+cat(readLines("small_model_workflow/beta_precision_fixed_prior.stan"), sep = "\n")
+```
+
 ```{r}
 model_beta_precision_fixed_prior <- cmdstan_model("small_model_workflow/beta_precision_fixed_prior.stan")
 backend_beta_precision_fixed_prior <- SBC_backend_cmdstan_sample(model_beta_precision_fixed_prior) 
@@ -598,6 +634,9 @@ plot_coverage(results_beta_precision_fixed_prior_200)
 
 ## Putting it together
 
+```{r, comment = ""}
+cat(readLines("small_model_workflow/combined_first.stan"), sep = "\n")
+```
 
 ```{r}
 model_combined <- cmdstan_model("small_model_workflow/combined_first.stan")
@@ -748,13 +787,15 @@ results_combined_reject <- compute_results(dataset_combined_reject, backend_comb
 plot_rank_hist(results_combined_reject)
 plot_ecdf_diff(results_combined_reject)
 ```
+
 ```{r}
 plot_coverage(results_combined_reject)
 ```
-```{r}
+
+```{r results_combined_reject_coverage}
 stats_subset <- results_combined_reject$stats[
   results_combined_reject$stats$parameter %in% c("beta[1]", "mu[1]"),]
-observed_coverage(stats_subset, c(0.25,0.5,0.9,0.95))
+empirical_coverage(stats_subset, c(0.25,0.5,0.9,0.95))
 ```
 
 
@@ -781,7 +822,7 @@ plot_coverage(results_combined_reject_more)
 ```{r}
 stats_subset <- results_combined_reject_more$stats[
   results_combined_reject_more$stats$parameter %in% c("beta[1]", "mu[2]"),]
-observed_coverage(stats_subset, c(0.25,0.5,0.9,0.95))
+empirical_coverage(stats_subset, c(0.25,0.5,0.9,0.95))
 ```
 This actually shows a limitation of the coverage results - for `mu[2]` the approximate CI for coverage excludes exact calibration for a bunch of intervals, but above we see that the more trustworthy `plot_ecdf_diff` is not showing a problem (although there is some tendency).
 

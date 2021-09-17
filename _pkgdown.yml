@@ -90,11 +90,12 @@ reference:
   - calculate_ranks_draws_matrix
   - contains("diagnostics")
   - starts_with("default_")
-- title: Plotting
-  desc: Plotting results
+- title: Plotting & Summarising
+  desc: Plotting and summarising results
 - contents:
   - contains("plot")
   - guess_bins
+  - empirical_coverage
 - title: Miscellaneous
 - contents:
   - wasserstein
