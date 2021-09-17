@@ -54,3 +54,6 @@ See the methods for \code{\link[=data_for_ecdf_plots]{data_for_ecdf_plots()}} fo
 \details{
 \href{https://arxiv.org/abs/1903.08008}{arxiv::1903.08008} by A. Vehtari et al.
 }
+\seealso{
+\code{\link[=plot_coverage]{plot_coverage()}}
+}
