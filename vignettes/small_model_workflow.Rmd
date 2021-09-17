@@ -35,12 +35,14 @@ check out the "basic_usage" vignette.
 The example we'll investigate is building a two-component Poisson mixture,
 where the mixing ratio is allowed to vary with some predictors while the means
 of the components are the same for all observations.  
-A somewhat contrived real world situation where this could arise would be that
-we observe the number of daily calls to a support team from a factory, where we know 
-that the only determinant of the number of calls is whether manager A or manager
-B is in charge that day in the factory. We don't directly observe which manager is 
-in charge, but observe some covariates that we expect to predict the presence of either
-manager.
+A somewhat contrived real world situation where this could be a useful model:
+there are two sub-species of an animal that are hard to observe directly, but leave
+droppings (poop) behind, that we can find. Further, we know the subspecies differ in the 
+average number of droppings they leave at one place. So we can take the number of droppings as a noisy
+information about which subspecie was present at given location.
+We observe the number of droppings at multiple locations and record some environmental covariates about the locations
+(e.g. temperature, altitude) and want to learn something about the association between
+those covariates and the prevalence of either subspecie.
 
 ## Big picture
 
@@ -148,7 +150,7 @@ results_first <- compute_results(datasets_first, backend_first,
 
 We have convergence problems, let us examine the pairs plots
 
-```{r}
+```{r mixture_first_convergence}
 results_first$stats
 mcmc_pairs(results_first$fits[[1]]$draws())
 ```
@@ -194,14 +196,14 @@ results_fixed_log_mix_2 <- compute_results(datasets_first_10, backend_fixed_log_
 
 So there are some problems.
 
-```{r}
+```{r mixture_fixed_log_mix_rhat}
 hist(results_fixed_log_mix_2$stats$rhat)
 
 ```
 
 Let's examine a single pairs plot:
 
-```{r}
+```{r mixture_fixed_log_mix_pairs}
 mcmc_pairs(results_fixed_log_mix_2$fits[[1]]$draws())
 ```
 
@@ -270,7 +272,7 @@ results_fixed_ordered$stats
 
 There are fits with high R-hats and low ESS. Let's look at the pairs plot:
 
-```{r}
+```{r mixture_fixed_ordered_pairs}
 problematic_fit_id <- 2
 problematic_fit <- results_fixed_ordered$fits[[problematic_fit_id]]
 mcmc_pairs(problematic_fit$draws(), np = nuts_params(problematic_fit))
@@ -310,14 +312,15 @@ summary(results_fixed_ordered_subset)
 
 This gives us no obvious problems.
 
-```{r}
+```{r mixture_fixed_ordered_subset_results}
+plot_rank_hist(results_fixed_ordered_subset)
 plot_ecdf_diff(results_fixed_ordered_subset)
 ```
 
 But we are still left with a huge uncertainty about the actual coverage of our posterior 
 intervals - we can see that in a plot:
 
-```{r}
+```{r mixture_fixed_ordered_subset_coverage}
 plot_coverage(results_fixed_ordered_subset)
 ```
 
@@ -360,8 +363,10 @@ summary(results_fixed_ordered_100_subset)
 
 And combine with the previous fits to not waste our computational effort.
 
-```{r}
+```{r results_fixed_ordered_combined_results}
 results_fixed_ordered_combined <- bind_results(results_fixed_ordered_subset, results_fixed_ordered_100_subset)
+
+plot_rank_hist(results_fixed_ordered_combined)
 plot_ecdf_diff(results_fixed_ordered_combined)
 ```
 
@@ -432,18 +437,19 @@ results_beta_first_10 <- compute_results(datasets_beta_first, backend_beta_first
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "beta_first_10"))
 ```
-```{r}
+```{r beta_first_results}
+plot_rank_hist(results_beta_first_10)
 plot_ecdf_diff(results_beta_first_10)
 ```
 
 
-```{r}
+```{r beta_first_10_pairs}
 mcmc_pairs(results_beta_first_10$fits[[3]]$draws())
 ```
 
 This is a very ugly plot, but we see some correlations between the corresponding beta, let's have a closer look.
 
-```{r}
+```{r beta_first_10_pairs_subset}
 for(i in 1:5) {
   fit <- results_beta_first_10$fits[[i]]
   print(mcmc_pairs(fit$draws(), pars = c("beta[1,1]", "beta[2,1]","beta[1,2]", "beta[2,2]"), np = nuts_params(fit)))
@@ -522,7 +528,8 @@ results_beta_precision_10 <- compute_results(datasets_beta_precision_10, backend
                     cache_location = file.path(cache_dir, "beta_precision_10"))
 ```
 
-```{r}
+```{r results_beta_precision_10_plots}
+plot_rank_hist(results_beta_precision_10)
 plot_ecdf_diff(results_beta_precision_10)
 ```
 
@@ -537,6 +544,9 @@ results_beta_precision_100 <-
                     cache_location = file.path(cache_dir, "beta_precision_90")))
 
 datasets_beta_precision_100 <- bind_datasets(datasets_beta_precision_10, datasets_beta_precision_90)
+```
+```{r results_beta_precision_100_plots}
+plot_rank_hist(results_beta_precision_100)
 plot_ecdf_diff(results_beta_precision_100)
 ```
 
@@ -557,9 +567,13 @@ results_beta_precision_fixed_prior <-
   compute_results(datasets_beta_precision_100, backend_beta_precision_fixed_prior, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "beta_precision_fixed_prior"))
+```
 
+```{r results_beta_precision_fixed_prior_plots}
+plot_rank_hist(results_beta_precision_fixed_prior)
 plot_ecdf_diff(results_beta_precision_fixed_prior)
 ```
+
 
 ```{r}
 set.seed(1233845)
@@ -570,9 +584,15 @@ results_beta_precision_fixed_prior_200 <-
     compute_results(datasets_beta_precision_100b, backend_beta_precision_fixed_prior, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "beta_precision_fixed_prior_2")))
-
+```
+```{r results_beta_precision_fixed_prior_200_plots}
+plot_rank_hist(results_beta_precision_fixed_prior_200)
 plot_ecdf_diff(results_beta_precision_fixed_prior_200)
 
+```
+
+```{r results_beta_precision_fixed_prior_200_coverage}
+plot_coverage(results_beta_precision_fixed_prior_200)
 ```
 
 
@@ -643,13 +663,14 @@ results_combined <- compute_results(dataset_combined, backend_combined,
                     cache_location = file.path(cache_dir, "combined"))
 ```
 
-```{r}
+```{r results_combined_plots}
+plot_rank_hist(results_combined)
 plot_ecdf_diff(results_combined)
 ```
 
 ### Adding rejection sampling
 
-```{r}
+```{r combined_fanos}
 fanos <- vapply(dataset_combined$generated, function(dataset) { var(dataset$y) / mean(dataset$y) }, FUN.VALUE = 0)
 plot(fanos, results_combined$backend_diagnostics$n_divergent)
 hist(fanos[results_combined$backend_diagnostics$n_divergent > 0])
@@ -723,8 +744,17 @@ results_combined_reject <- compute_results(dataset_combined_reject, backend_comb
                     cache_location = file.path(cache_dir, "combined_reject"))
 ```
 
-```{r}
+```{r combined_reject_plots}
+plot_rank_hist(results_combined_reject)
 plot_ecdf_diff(results_combined_reject)
+```
+```{r}
+plot_coverage(results_combined_reject)
+```
+```{r}
+stats_subset <- results_combined_reject$stats[
+  results_combined_reject$stats$parameter %in% c("beta[1]", "mu[1]"),]
+observed_coverage(stats_subset, c(0.25,0.5,0.9,0.95))
 ```
 
 
@@ -737,7 +767,24 @@ results_combined_reject_more <- bind_results(
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "combined_reject_more"))
 )
+```
 
+```{r results_combined_reject_more_plots}
+plot_rank_hist(results_combined_reject_more)
 plot_ecdf_diff(results_combined_reject_more)
 ```
 
+```{r results_combined_reject_more_coverage}
+plot_coverage(results_combined_reject_more)
+```
+
+```{r}
+stats_subset <- results_combined_reject_more$stats[
+  results_combined_reject_more$stats$parameter %in% c("beta[1]", "mu[2]"),]
+observed_coverage(stats_subset, c(0.25,0.5,0.9,0.95))
+```
+This actually shows a limitation of the coverage results - for `mu[2]` the approximate CI for coverage excludes exact calibration for a bunch of intervals, but above we see that the more trustworthy `plot_ecdf_diff` is not showing a problem (although there is some tendency).
+
+This might need further investigation if discrepancies in `mu` are considered important, if we are interested only in the `beta` coefficients, we are assured that their calibration is pretty good.
+
+And that's it for this vignette, thanks for staying until the end and hope the workflow ideas will be useful for you!

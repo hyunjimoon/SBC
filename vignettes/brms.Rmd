@@ -27,6 +27,12 @@ plan(multisession)
 # paralellization and decrease computation time.
 options(SBC.min_chunk_size = 5)
 
+# Setup caching of results
+cache_dir <- "./brms_SBC_cache"
+if(!dir.exists(cache_dir)) {
+  dir.create(cache_dir)
+}
+
 ```
 
 Build a generator using brms and its `sample_prior = "only"` feature.
@@ -69,12 +75,15 @@ backend <- SBC_backend_brms_from_generator(generator, chains = 1, thin = 1,
 Compute the actual results
 
 ```{r}
-results <- compute_results(datasets, backend, thin_ranks = 10)
+results <- compute_results(datasets, backend, thin_ranks = 10, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "first"))
 ```
 
 And show ecdf_diff plot - there are no big problems at this resolution.
 
-```{r}
+```{r results_plots}
+plot_rank_hist(results)
 plot_ecdf_diff(results)
 ```
 
@@ -161,12 +170,16 @@ backend_func <- SBC_backend_brms(y ~ x + (1 | group),
 
 
 ```{r}
-results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10, gen_quants = log_lik_gq_func)
+results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10, 
+                                gen_quants = log_lik_gq_func, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "func"))
 ```
 
 
 
-```{r}
+```{r results_func_plots}
+plot_rank_hist(results_func)
 plot_ecdf_diff(results_func)
 ```
 
@@ -198,14 +211,18 @@ backend_func2 <- SBC_backend_brms(y ~ 0 + Intercept + x + (1 | group),
 Let's fit the same datasets with the new backend.
 
 ```{r}
-results_func2 <- compute_results(datasets_func, backend_func2, thin_ranks = 10, gen_quants = log_lik_gq_func)
+results_func2 <- compute_results(datasets_func, backend_func2, thin_ranks = 10, 
+                                 gen_quants = log_lik_gq_func, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "func2"))
 ```
 
 We see that this results in mostly non-problematic univariate checks.
 
 TODO: Figure out the source of divergences and check if they create the mismatch for some of the parameters.
 
-```{r}
+```{r results_func2_plots}
+plot_rank_hist(results_func2)
 plot_ecdf_diff(results_func2)
 ```
 
