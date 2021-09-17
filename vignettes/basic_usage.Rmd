@@ -29,6 +29,7 @@ Once the `SBC_datasets` is prepared and loaded with the true prior and simulated
 Once the `SBC_datasets` and `Backend` objects are set up, running SBC and viewing results becomes as simple as a few function calls, greatly reducing the hassle with having to deal with extracting posterior draws and calculating results. Additionally, the results are stored in `posterior::rvars` format, which allows for easy manipulation and rapid calculation of additional metrics of interest.
 
 ## Simple Poisson Regression
+
 In this vignette we will demonstrate how the interface is used with a simple poisson regression model. First we'll
 setup and configure our environment.
 
@@ -54,30 +55,27 @@ plan(multisession)
 # paralellization and decrease computation time.
 options(SBC.min_chunk_size = 5)
 
+# Setup caching of results
+cache_dir <- "./basic_usage_SBC_cache"
+if(!dir.exists(cache_dir)) {
+  dir.create(cache_dir)
+}
+
 ```
 
 ### Model Setup
+
 We will be running SBC against a model that defines `y ~ Poisson(lambda)`, where `lambda ~ Gamma(15, 5)`. We will be using `cmdstanr` as the backend with the following model code:
 
-```{r, include = TRUE}
-stan_code <- "
-data{
-  int N;
-  int y[N];
-}
-parameters{
-  real<lower = 0> lambda;
-}
-model{
-  lambda ~ gamma(15, 5);
-  y ~ poisson(lambda);
-}
-"
+```{r, comment = ""}
+cat(readLines("stan/poisson.stan"), sep = "\n")
+```
 
+```{r, include = TRUE}
 if(use_cmdstanr) {
-  cmdstan_model <- cmdstanr::cmdstan_model(cmdstanr::write_stan_file(stan_code))
+  cmdstan_model <- cmdstanr::cmdstan_model("stan/poisson.stan")
 } else {
-  rstan_model <- rstan::stan_model(model_code = stan_code)
+  rstan_model <- rstan::stan_model("stan/poisson.stan")
 }
 
 ```
@@ -107,6 +105,7 @@ poisson_generator_single <- function(N){  # N is the number of data points we ar
 As you can see, the `Generator` returns a named list containing randomly samples from the prior and generated data realized from the prior samples.
 
 ### Create `SBC_Datasets` from Generator
+
 `SBC` provides helper functions `SBC_generator_function` and `generate_datasets` which takes a Generator function and creates a benign `SBC_datasets' object. 
 
 ```{r}
@@ -120,11 +119,13 @@ poisson_dataset <- generate_datasets(
 
 
 ### Defining `Backend`
+
 Once we have the model compiled we'll create a `Backend` object from the model. `SBC` includes pre-defined `Backend` objects for HMC sampling with `cmdstan` and `rstan`. In addition, it also provides generator function and Backend for `brms` based models. 
 
 Note that you can create your own `Backend` if you wish to use a different sampling/optimization platform, such as variational inference or JAGS. For further information on `Backend` specifications, please refer to here.
 
 Here we'll just use the pre-defined cmdstan Backend, in which we pass our compiled model and any additional arguments we would like to pass over to `cmdstanr::sampling`:
+
 ```{r}
 if(use_cmdstanr) {
   poisson_backend <- SBC_backend_cmdstan_sample(
@@ -137,27 +138,36 @@ if(use_cmdstanr) {
 
 ### Computing Ranks
 we can then use `compute_results` to fit our datasets with the backend:
+
 ```{r, results=FALSE}
-results <- compute_results(poisson_dataset, poisson_backend)
+results <- compute_results(poisson_dataset, poisson_backend, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "results"))
 ```
 
+Here we also use the caching feature to avoid recomputing the fits when recompiling this vignette. 
+In practice, caching is not necessary but is often useful.
+
 ### Viewing Results
+
 We can now inspect the results to see if there were any errors and check individual stats:
 
 ```{r}
 results$stats
 ```
+
 ### Plots
 And finally, we can plot the rank distribution to check if the ranks are uniformly distributed. We can check the rank histogram and ECDF plots:
 
-```{r}
+```{r rank_hist}
 plot_rank_hist(results)
 ```
 
-```{r}
+```{r ecdf}
 plot_ecdf(results)
 ```
-```{r}
+
+```{r ecdf_diff}
 plot_ecdf_diff(results)
 ```
 

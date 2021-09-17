@@ -94,10 +94,10 @@ test_that("calculate_sds_draws_matrix", {
 
 test_that("statistics_from_single_fit", {
     params <- posterior::as_draws_matrix(
-        posterior::as_draws_rvars(list(
-            mu = 4,
-            tau = 4,
-            theta = seq(3.5, 6.5, length.out = 8))))
+        posterior::draws_rvars(
+            mu = posterior::rvar(4) ,
+            tau = posterior::rvar(4),
+            theta = posterior::rvar(array(seq(3.5, 6.5, length.out = 8), dim = c(1,8)))))
 
     # Can't really check correctness, only
     # testing that no error is thrown and structure is OK

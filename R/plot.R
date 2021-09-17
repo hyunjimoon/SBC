@@ -462,7 +462,7 @@ plot_sim_estimated.data.frame <- function(x, parameters = NULL, estimate = "mean
 
 #' Plot the observed coverage and its uncertainty
 #'
-#' Please refer to [observed_coverage()] for details on computation
+#' Please refer to [empirical_coverage()] for details on computation
 #' and limitations of this plot as well as details on the arguments.
 #'
 #' @param x object containing results (a data.frame or [SBC_results()] object).
@@ -496,7 +496,7 @@ plot_coverage.data.frame <- function(x, parameters = NULL, prob = 0.95,
   }
 
   max_max_rank <- max(x$max_rank)
-  coverage <- observed_coverage(x, (0:max_max_rank) / (max_max_rank + 1), prob = prob,
+  coverage <- empirical_coverage(x, (0:max_max_rank) / (max_max_rank + 1), prob = prob,
                                 interval_type = interval_type)
 
   ggplot2::ggplot(coverage, aes(x = width_represented, y = estimate,

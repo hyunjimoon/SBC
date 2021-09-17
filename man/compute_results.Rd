@@ -11,7 +11,9 @@ compute_results(
   keep_fits = TRUE,
   thin_ranks = 10,
   chunk_size = default_chunk_size(length(datasets)),
-  gen_quants = NULL
+  gen_quants = NULL,
+  cache_mode = "none",
+  cache_location = NULL
 )
 }
 \arguments{
@@ -45,6 +47,14 @@ enough that a single batch takes at least several seconds, i.e. for small models
 you can often reduce computation time noticeably by increasing this value.
 You can use \code{options(SBC.min_chunk_size = value)} to set a minimum chunk size globally.
 See documentation of \code{future.chunk.size} argument for \code{\link[future.apply:future_lapply]{future.apply::future_lapply()}} for more details.}
+
+\item{cache_mode}{Type of caching of results, currently the only supported modes are
+\code{"none"} (do not cache) and \code{"results"} where the whole results object is stored
+and recomputed only when the hash of the backend or dataset changes.}
+
+\item{cache_location}{The filesystem location of cache. For \code{cache_mode = "results"}
+this should be a name of a single file. If the file name does not end with
+\code{.rds}, this extension is appended.}
 }
 \value{
 An object of class \code{\link[=SBC_results]{SBC_results()}}.

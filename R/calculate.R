@@ -185,8 +185,9 @@ ranks_to_empirical_pit <- function(ranks, n_posterior_samples){
 #'   the ranks in the input (any discrepancy needs to be judged against this rather than `width`),
 #'   `estimate` - observed coverage for the interval, `ci_low`, `ci_high` the uncertainty
 #'   interval around `estimate` (width of the interval is given by the `prob` argument).
+#' @seealso [plot_coverage()]
 #' @export
-observed_coverage <- function(stats, width, prob = 0.95, interval_type = "central") {
+empirical_coverage <- function(stats, width, prob = 0.95, interval_type = "central") {
   if(!all(c("parameter", "rank", "max_rank") %in% names(stats))) {
     stop(SBC_error("SBC_invalid_argument_error",
                    "The stats data.frame needs a 'parameter', 'rank' and 'max_rank' columns"))

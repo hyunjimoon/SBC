@@ -36,6 +36,21 @@ SBC_fit_to_diagnostics.default <- function(fit, fit_output, fit_messages, fit_wa
   NULL
 }
 
+#' Get hash used to identify cached results.
+#'
+#' S3 generic that allows backends to override how a hash is computed. By default `rlang::hash()`
+#' is used.
+#'
+#' @export
+SBC_backend_hash_for_cache <- function(backend) {
+  UseMethod("SBC_backend_hash_for_cache")
+}
+
+#' @export
+SBC_backend_hash_for_cache.default <- function(backend) {
+  rlang::hash(backend)
+}
+
 #' SBC backend using the `sampling` method from `rstan`.
 #'
 #' @param model a `stanmodel` object (created via `rstan::stan_model`)
@@ -84,6 +99,11 @@ SBC_fit_to_diagnostics.stanfit <- function(fit, fit_output, fit_messages, fit_wa
 
   class(res) <- c("SBC_nuts_diagnostics", class(res))
   res
+}
+
+#' @export
+SBC_backend_hash_for_cache.SBC_backend_rstan_sample <- function(backend) {
+  rlang::hash(list(model = backend$model@model_code, args = backend$args))
 }
 
 #' @export
@@ -261,6 +281,10 @@ SBC_fit.SBC_backend_cmdstan_sample <- function(backend, generated, cores) {
   fit
 }
 
+#' @export
+SBC_backend_hash_for_cache.SBC_backend_cmdstan_sample <- function(backend) {
+  rlang::hash(list(model = backend$model$code(), args = backend$args))
+}
 
 
 #' @export

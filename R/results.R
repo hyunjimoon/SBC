@@ -250,21 +250,83 @@ length.SBC_results <- function(x) {
 #'    you can often reduce computation time noticeably by increasing this value.
 #'    You can use `options(SBC.min_chunk_size = value)` to set a minimum chunk size globally.
 #'    See documentation of `future.chunk.size` argument for [future.apply::future_lapply()] for more details.
+#' @param cache_mode Type of caching of results, currently the only supported modes are
+#'    `"none"` (do not cache) and `"results"` where the whole results object is stored
+#'    and recomputed only when the hash of the backend or dataset changes.
+#' @param cache_location The filesystem location of cache. For `cache_mode = "results"`
+#'    this should be a name of a single file. If the file name does not end with
+#'    `.rds`, this extension is appended.
 #' @return An object of class [SBC_results()].
-#'
 #' @export
 compute_results <- function(datasets, backend,
                             cores_per_fit = default_cores_per_fit(length(datasets)),
                             keep_fits = TRUE,
                             thin_ranks = 10,
                             chunk_size = default_chunk_size(length(datasets)),
-                            gen_quants = NULL) {
+                            gen_quants = NULL,
+                            cache_mode = "none",
+                            cache_location = NULL) {
   stopifnot(length(datasets) > 0)
 
   datasets <- validate_SBC_datasets(datasets)
   if(!is.null(gen_quants)) {
     gen_quants <- validate_generated_quantities(gen_quants)
   }
+
+  ## Handle caching
+  if(cache_mode == "results") {
+    if(is.null(cache_location) || !dir.exists(dirname(cache_location))) {
+      stop(SBC_error("SBC_invalid_argument_error",
+                     "When using cache_mode == 'results', the cache_location argument must provide a filename in an existing directory"))
+    }
+    cache_basename <- basename(cache_location)
+    if(!endsWith(cache_basename, ".rds")) {
+      cache_location <- file.path(dirname(cache_location), paste0(cache_basename, ".rds"))
+    }
+
+    backend_hash <- SBC_backend_hash_for_cache(backend)
+    data_hash <- rlang::hash(datasets)
+
+    if(file.exists(cache_location)) {
+      results_from_cache <- readRDS(cache_location)
+      if(!is.list(results_from_cache) ||
+         !all(
+           c("result", "backend_hash", "data_hash", "thin_ranks", "gen_quants","keep_fits")
+           %in% names(results_from_cache))) {
+        warning("Cache file exists but is in invalid format. Will recompute.")
+      } else if(results_from_cache$backend_hash != backend_hash) {
+        message("Cache file exists but the backend hash differs. Will recompute.")
+      } else if(results_from_cache$data_hash != data_hash) {
+        message("Cache file exists but the datasets hash differs. Will recompute.")
+      } else {
+        result <- tryCatch(validate_SBC_results(results_from_cache$result),
+                           error = function(e) { NULL })
+        if(is.null(result)) {
+          warning("Cache file contains invalid SBC_results object. Will recompute.")
+        } else if(results_from_cache$thin_ranks != thin_ranks ||
+                  !identical(results_from_cache$gen_quants, gen_quants))  {
+          if(!results_from_cache$keep_fits) {
+            message("Cache file exists, but was computed with different thin_ranks/gen_quants and keep_fits == FALSE. Will recompute.")
+          } else {
+            message(paste0("Results loaded from cache file '", cache_basename,
+                           "' but it was computed with different thin_ranks/gen_quants.\n",
+                           "Calling recompute_statistics."))
+            return(recompute_statistics(old_results = result, datasets = datasets,
+                                        thin_ranks = thin_ranks, gen_quants = gen_quants))
+          }
+        } else {
+          message(paste0("Results loaded from cache file '", cache_basename, "'"))
+          check_all_SBC_diagnostics(result)
+
+          return(result)
+        }
+      }
+    }
+  } else if(cache_mode != "none") {
+    stop(SBC_error("SBC_invalid_argument_error", "Unrecognized cache mode"))
+  }
+  ## End of caching
+
 
   # Create combined data for computation
   params_and_generated_list <- list()
@@ -308,9 +370,11 @@ compute_results <- function(datasets, backend,
     if(is.null(results_raw[[i]]$error)) {
       stats_list[[i]] <- results_raw[[i]]$stats
       stats_list[[i]]$dataset_id <- i
+      stats_list[[i]] <- dplyr::select(stats_list[[i]], dataset_id, tidyselect::everything())
       backend_diagnostics_list[[i]] <- results_raw[[i]]$backend_diagnostics
       if(!is.null(results_raw[[i]]$backend_diagnostics)){
         backend_diagnostics_list[[i]]$dataset_id <- i
+        backend_diagnostics_list[[i]] <- dplyr::select(backend_diagnostics_list[[i]], dataset_id, tidyselect::everything())
       }
     }
     else {
@@ -367,7 +431,7 @@ compute_results <- function(datasets, backend,
   backend_diagnostics <- do.call(rbind, backend_diagnostics_list)
 
   if(!is.null(stats)) {
-    check_stats(stats, datasets)
+    check_stats(stats, datasets, thin_ranks)
   } else {
     # Return dummy stats that let the rest of the code work.
     stats <- data.frame(dataset_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
@@ -386,6 +450,14 @@ compute_results <- function(datasets, backend,
                      backend_diagnostics = backend_diagnostics,
                      default_diagnostics = default_diagnostics,
                      errors = errors)
+
+  if(cache_mode == "results") {
+    results_for_cache <- list(result = res, backend_hash = backend_hash,
+                              data_hash = data_hash, thin_ranks = thin_ranks,
+                              gen_quants = gen_quants, keep_fits = keep_fits)
+    tryCatch(saveRDS(results_for_cache, file = cache_location),
+             error = function(e) { warning("Error when saving cache file: ", e) })
+  }
 
   check_all_SBC_diagnostics(res)
 
@@ -470,6 +542,7 @@ compute_results_single <- function(params_and_generated, backend, cores,
 
   res$output <- result_with_output$output
   res$messages <- result_with_output$messages
+  res$warnings <- result_with_output$warnings
 
   if(is.null(res$error)) {
     error_stats <- tryCatch( {
@@ -547,7 +620,7 @@ statistics_from_single_fit <- function(fit, parameters, generated,
 }
 
 # check that the computed stats data frame hs problems
-check_stats <- function(stats, datasets) {
+check_stats <- function(stats, datasets, thin_ranks) {
   unique_max_ranks <- unique(stats$max_rank)
   if(length(unique_max_ranks) != 1) {
     warning("Differening max_rank across fits")
@@ -655,12 +728,13 @@ recompute_statistics <- function(old_results, datasets, thin_ranks = 10, gen_qua
                                                         thin_ranks = thin_ranks,
                                                         gen_quants = gen_quants)
       new_stats_list[[i]]$dataset_id <- i
+      new_stats_list[[i]] <- dplyr::select(new_stats_list[[i]], dataset_id, tidyselect::everything())
 
     }
   }
 
   new_stats <- do.call(rbind, new_stats_list)
-  check_stats(new_stats, datasets)
+  check_stats(new_stats, datasets, thin_ranks)
 
   new_results$stats <- new_stats
 

@@ -23,6 +23,6 @@ plot_coverage(x, parameters = NULL, prob = 0.95, interval_type = "central")
 a ggplot2 plot object
 }
 \description{
-Please refer to \code{\link[=observed_coverage]{observed_coverage()}} for details on computation
+Please refer to \code{\link[=empirical_coverage]{empirical_coverage()}} for details on computation
 and limitations of this plot as well as details on the arguments.
 }
