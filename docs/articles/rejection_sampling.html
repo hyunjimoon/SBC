@@ -115,13 +115,13 @@
 
       
 
-      </header><script src="rejection_sampling_files/header-attrs-2.10/header-attrs.js"></script><div class="row">
+      </header><script src="rejection_sampling_files/header-attrs-2.11/header-attrs.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Rejection sampling in dataset generation</h1>
                         <h4 class="author">Martin Modrák</h4>
             
-            <h4 class="date">2021-09-17</h4>
+            <h4 class="date">2021-09-18</h4>
       
       
       <div class="hidden name"><code>rejection_sampling.Rmd</code></div>
@@ -130,19 +130,54 @@
 
     
     
-<p>How does rejection sampling when generating datasets affect the validity of SBC?</p>
-<p>TODO: copy math and ideas from <a href="https://discourse.mc-stan.org/t/using-narrower-priors-for-sbc/21709/6?u=martinmodrak" class="uri">https://discourse.mc-stan.org/t/using-narrower-priors-for-sbc/21709/6?u=martinmodrak</a></p>
+<p>In some cases, one may want to exclude extreme datasets from SBC (e.g. because those datasets create divergences). It is best to use prior predictive checks to examine your priors and change them to avoid the extreme datasets. In some cases, this may however be impractical/impossible to do via prior choice - one example are regression coefficients, where once we have many predictors, any independent prior that is not very strict will lead to unrealistic predictions. Joint priors are needed in such case, but those are not well understood and easy to use. See <a href="https://www.youtube.com/watch?v=SbgAMkN18dA&amp;t=2340s">Paul Bürkner’s talk on SBC StanConnect</a> for more context.</p>
+<p>An alternative is to use <em>rejection sampling</em> i.e. we repeatedly generate a dataset and only accept it as a dataset when it passes a certain condition we impose (e.g. that no observed count is larger than <span class="math inline">\(10^8\)</span>). But does rejection sampling when generating datasets affect the validity of SBC?</p>
+<p>Thanks to forum user Niko Huurre who derived the necessary math at <a href="https://discourse.mc-stan.org/t/using-narrower-priors-for-sbc/21709/6?u=martinmodrak">Stan Discourse discussion of the topic</a> we know exactly when it is OK. Briefly: for algorithms that only need to know the posterior density up to a constant (which includes Stan and many others), it is OK as long as the rejection criterion only uses observed data and not the unobserved parameters.</p>
+<p>We’ll first walk through the math and then show examples of both OK and problematic rejection sampling.</p>
+<div id="the-math" class="section level2">
+<h2 class="hasAnchor">
+<a href="#the-math" class="anchor"></a>The math</h2>
+<p>Let <span class="math inline">\(f\left(y\right)\)</span> be the probability that the simulated dataset <span class="math inline">\(y\)</span> is rejected (usually a 0-1 function if you have a clear idea what a “bad” dataset looks like, but could be probabilistic if you’re relying on finicky diagnostics). The important numbers are the probability of rejection for parameter <span class="math inline">\(\theta\)</span></p>
+<p><span class="math display">\[
+L\left(\theta\right)=\int f\left(y\right)\pi\left(y|\theta\right)\mathrm{d}y
+\]</span></p>
+<p>and the total rate of rejections from the prior</p>
+<p><span class="math display">\[
+R=\iint f\left(y\right)\pi\left(y|\theta\right)\pi\left(\theta\right)\mathrm{d}y\mathrm{d}\theta=\int L\left(\theta\right)\pi\left(\theta\right)\mathrm{d}\theta
+\]</span></p>
+<p>Rejecting the parameter draw when it generates a “bad” dataset effectively distorts the prior</p>
+<p><span class="math display">\[
+\pi\left(\theta\right)\to\frac{L\left(\theta\right)}{R}\pi\left(\theta\right)
+\]</span></p>
+<p>and of course rejections change the generating distribution</p>
+<p><span class="math display">\[
+\pi\left(y|\theta\right)\to\frac{f\left(y\right)}{L\left(\theta\right)}\pi\left(y|\theta\right)
+\]</span></p>
+<p>but crucially these changes cancel out when computing the posterior. Before rejections we have:</p>
+<p><span class="math display">\[
+\pi(\theta | y) \propto \pi(y | \theta) \pi(\theta)
+\]</span></p>
+<p>After rejections we have</p>
+<p><span class="math display">\[
+\pi(\theta | y) \propto \frac{L(\theta)}{R} \pi(y | \theta) \frac{f(y)}{L(\theta)} \pi(\theta) = \frac{f(y)}{R} \pi(y | \theta) \pi(\theta)
+\]</span></p>
+<p>And since <span class="math inline">\(\frac{f(y)}{R}\)</span> is a constant for any given dataset (and hence the fit), the overall posterior for Stan (and most other MCMC algorithms) is the same, because Stan only needs the posterior density up to a constant. So whether we take rejection into account or not, the model will match the generating process. However, if <span class="math inline">\(f\)</span> also depended on <span class="math inline">\(\theta\)</span>, it would no longer contribute a constant and we’ll get a mismatch between the generator and model.</p>
+</div>
+<div id="practical-examples" class="section level2">
+<h2 class="hasAnchor">
+<a href="#practical-examples" class="anchor"></a>Practical examples</h2>
+<p>So let’s see if that also happens in practice. Let’s setup our environment:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">SBC</span><span class="op">)</span>
 
-<span class="co"># use_cmdstanr &lt;- TRUE # Set to false to use rstan instead</span>
-<span class="co"># </span>
-<span class="co"># if(use_cmdstanr) {</span>
-<span class="co">#   library(cmdstanr)</span>
-<span class="co"># } else {</span>
-<span class="co">#   library(rstan)</span>
-<span class="co"># }</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr">cmdstanr</a></span><span class="op">)</span>
+<span class="va">use_cmdstanr</span> <span class="op">&lt;-</span> <span class="cn">TRUE</span> <span class="co"># Set to false to use rstan instead</span>
+
+<span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr">cmdstanr</a></span><span class="op">)</span>
+<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/">rstan</a></span><span class="op">)</span>
+<span class="op">}</span>
+
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/bayesplot/">bayesplot</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/posterior/">posterior</a></span><span class="op">)</span>
 
@@ -173,10 +208,14 @@ model {
    y ~ normal(mu, 1);
 }</code></pre>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/rejection_sampling.stan"</span><span class="op">)</span>, iter_warmup <span class="op">=</span> <span class="fl">800</span>, iter_sampling <span class="op">=</span> <span class="fl">800</span><span class="op">)</span></code></pre></div>
-<div id="no-rejections" class="section level1">
-<h1 class="hasAnchor">
-<a href="#no-rejections" class="anchor"></a>No rejections</h1>
+<code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/rejection_sampling.stan"</span><span class="op">)</span>, iter_warmup <span class="op">=</span> <span class="fl">800</span>, iter_sampling <span class="op">=</span> <span class="fl">800</span><span class="op">)</span>
+<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+  <span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html">stan_model</a></span><span class="op">(</span><span class="st">"stan/rejection_sampling.stan"</span><span class="op">)</span>, iter <span class="op">=</span> <span class="fl">1600</span>, warmup <span class="op">=</span> <span class="fl">800</span><span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<div id="no-rejections" class="section level3">
+<h3 class="hasAnchor">
+<a href="#no-rejections" class="anchor"></a>No rejections</h3>
 <p>First, we’ll use a generator that matches the model exactly.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">10</span>
@@ -197,7 +236,9 @@ model {
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"no_rejections"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## Results loaded from cache file 'no_rejections'</code></pre>
 <pre><code>##  - 1 (0%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.011.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/results1_plots-1.png" width="700"></p>
@@ -206,9 +247,9 @@ model {
 <p><img src="rejection_sampling_files/figure-html/results1_plots-2.png" width="700"></p>
 <p>Indeed, all looks good.</p>
 </div>
-<div id="rejection-based-on-parameter-values" class="section level1">
-<h1 class="hasAnchor">
-<a href="#rejection-based-on-parameter-values" class="anchor"></a>Rejection based on parameter values</h1>
+<div id="rejection-based-on-parameter-values" class="section level3">
+<h3 class="hasAnchor">
+<a href="#rejection-based-on-parameter-values" class="anchor"></a>Rejection based on parameter values</h3>
 <p>Now let us modify the generator to reject based on parameter values.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generator_reject_param</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
@@ -240,9 +281,9 @@ model {
 <p><img src="rejection_sampling_files/figure-html/reject_param_plots-2.png" width="700"></p>
 <p>Indeed, we see a clear failure.</p>
 </div>
-<div id="rejecting-based-on-data" class="section level1">
-<h1 class="hasAnchor">
-<a href="#rejecting-based-on-data" class="anchor"></a>Rejecting based on data</h1>
+<div id="rejecting-based-on-data" class="section level3">
+<h3 class="hasAnchor">
+<a href="#rejecting-based-on-data" class="anchor"></a>Rejecting based on data</h3>
 <p>But what if we reject based on the values of data? This should in theory result in just a constant change in posterior density and not affect SBC. (SBC will however then check only the non-rejected parts of the data space). We will do a relatively aggressive rejection scheme (reject more than 50% of datasets).</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generator_reject_y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
@@ -267,7 +308,9 @@ model {
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"reject_y"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## Results loaded from cache file 'reject_y'</code></pre>
 <pre><code>##  - 1 (0%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.01.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_reject_y</span><span class="op">)</span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/reject_y_plot-1.png" width="700"></p>
@@ -276,9 +319,10 @@ model {
 <p><img src="rejection_sampling_files/figure-html/reject_y_plot-2.png" width="700"></p>
 <p>We see that even with quite heavy rejection based on y, SBC to a high resolution passes.</p>
 </div>
-<div id="take-home-message" class="section level1">
-<h1 class="hasAnchor">
-<a href="#take-home-message" class="anchor"></a>Take home message</h1>
+</div>
+<div id="take-home-message" class="section level2">
+<h2 class="hasAnchor">
+<a href="#take-home-message" class="anchor"></a>Take home message</h2>
 <p>If our priors can sometimes generate datasets that are unrealistic, but we are unable to specify a better prior directly (e.g. because we would need to define some sort of joint prior), we can use rejection sampling to prune unrealistic datasets as long as we only filter by the observed data and don’t directly use any unobserved parameter values. Notably, filtering based on divergences or other fitting issues is also just a function of data and thus permissible. The resulting SBC will however provide guarantees only for datasets that would not be rejected by the same criteria.</p>
 </div>
   </div>

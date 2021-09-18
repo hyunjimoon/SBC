@@ -115,13 +115,13 @@
 
       
 
-      </header><script src="limits_of_SBC_files/header-attrs-2.10/header-attrs.js"></script><div class="row">
+      </header><script src="limits_of_SBC_files/header-attrs-2.11/header-attrs.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Limits of SBC</h1>
                         <h4 class="author">Martin Modrák</h4>
             
-            <h4 class="date">2021-09-17</h4>
+            <h4 class="date">2021-09-18</h4>
       
       
       <div class="hidden name"><code>limits_of_SBC.Rmd</code></div>
@@ -130,7 +130,7 @@
 
     
     
-<p>Here, we’ll walk through some problems that are hard/impossible to diagnose with SBC.</p>
+<p>Here, we’ll walk through some problems that are hard/impossible to diagnose with SBC. As usual the focus is on problems with models, assuming our inference algorithm is correct. But for each of those problems, one can imagine a corresponding failure in an algorithm — although some of those failures are quite unlikely for actual algorithms.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">SBC</span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org">ggplot2</a></span><span class="op">)</span>
@@ -160,7 +160,7 @@
 <div id="sbc-and-minor-changes-to-model" class="section level1">
 <h1 class="hasAnchor">
 <a href="#sbc-and-minor-changes-to-model" class="anchor"></a>SBC and minor changes to model</h1>
-<p>SBC requires <em>a lot</em> of iterations to discover problems that are subtle.</p>
+<p>SBC requires <em>a lot</em> of iterations to discover problems (either with model or the algorithm) that are subtle.</p>
 <p>To demonstrate this, we will fit a simple model with a normal likelihood, but use Student’s t distribution with 5 degrees of freedom to generate the data.</p>
 <p>To see the difference we’ll show the two densities</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
@@ -238,7 +238,9 @@ model {
 <pre><code>## Results loaded from cache file 'minor_10'</code></pre>
 <pre><code>##  - 1 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.024.</code></pre>
 <pre><code>##  - 2 (20%) fits had some steps rejected. Maximum number of rejections was 1.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>Not really…</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_minor_10</span><span class="op">)</span></code></pre></div>
@@ -257,7 +259,9 @@ model {
 <pre><code>## Results loaded from cache file 'minor_90'</code></pre>
 <pre><code>##  - 6 (7%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.02.</code></pre>
 <pre><code>##  - 16 (18%) fits had some steps rejected. Maximum number of rejections was 1.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>Here we see something suspicios with the <code>sigma</code> parameter, but it is not very convincing.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_minor_100</span><span class="op">)</span></code></pre></div>
@@ -276,7 +280,9 @@ model {
 <pre><code>## Results loaded from cache file 'minor_next_100'</code></pre>
 <pre><code>##  - 8 (8%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.019.</code></pre>
 <pre><code>##  - 13 (13%) fits had some steps rejected. Maximum number of rejections was 2.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>OK, so this looks at least a bit conclusive, but still, the violation of uniformity is not very big.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_minor_200</span><span class="op">)</span></code></pre></div>
@@ -323,6 +329,7 @@ model {
 <h1 class="hasAnchor">
 <a href="#missing-likelihood" class="anchor"></a>Missing likelihood</h1>
 <p>SBC will not notice if you completely omit likelihood from your Stan model!</p>
+<p>Here we have a generator for a very simple model with gaussian likelihood:</p>
 <div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">single_dataset_missing</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
@@ -337,6 +344,7 @@ model {
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">25746223</span><span class="op">)</span>
 <span class="va">generator_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_dataset_missing</span>, N <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
 <span class="va">datasets_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_missing</span>, n_datasets <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></code></pre></div>
+<p>And here is a model that just completely ignores the data, but has the right prior:</p>
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html">readLines</a></span><span class="op">(</span><span class="st">"stan/missing_likelihood.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
@@ -366,20 +374,25 @@ model {
   <span class="va">backend_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
     <span class="va">model_missing</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p>Now we’ll compute the results for 200 simulated datasets:</p>
 <div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_missing</span>, <span class="va">backend_missing</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"missing"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## Results loaded from cache file 'missing'</code></pre>
-<pre><code>##  - 15 (8%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.039.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>##  - 16 (8%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.027.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<p>And here are our rank plots:</p>
 <div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_missing</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_plots-1.png" width="700"></p>
 <div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_plots-2.png" width="700"></p>
-<p>Can be noticed by prior/posterior contraction plot. For this model, we can get the prior sd directly, but one can also use a (preferably large) <code>SBC_datasets</code> object to estimate it empirically for more complex models.</p>
+<p>It’s just nothing out of the ordinary.</p>
+<p>But we are not completely helpless: This specific type of problem can be noticed by prior/posterior contraction plot. In this plot we compare the prior and posterior standard deviation to get a measure of how much more we know about the parameter after fitting the model. For this model, we can get the prior sd directly, but one can also use a (preferably large) <code>SBC_datasets</code> object to estimate it empirically for more complex models.</p>
 <div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">prior_sd</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"mu"</span> <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="co">#prior_sd &lt;- calculate_prior_sd(generate_datasets(generator_missing, 1000))</span>
@@ -390,7 +403,7 @@ model {
 <div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">results_missing</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_sim_estimated-1.png" width="700"></p>
-<p>There is however even more powerful method - and that is to include the likelihood in the SBC. This is most easily done by adding a “generated quantity” to the SBC results - this is a function that is evaluated within the context of the parameters AND data.</p>
+<p>There is however even more powerful method - and that is to include the likelihood in the SBC. This is most easily done by adding a “generated quantity” to the SBC results - this is a function that is evaluated within the context of the parameters AND data. And it can be added without recomputing the fits!</p>
 <div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">normal_lpdf</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">y</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">dnorm</a></span><span class="op">(</span><span class="va">y</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="va">sigma</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>
@@ -400,8 +413,11 @@ model {
 
 <span class="va">results_missing_gq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/recompute_statistics.html">recompute_statistics</a></span><span class="op">(</span><span class="va">results_missing</span>, <span class="va">datasets_missing</span>, 
                                              gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span><span class="op">)</span></code></pre></div>
-<pre><code>##  - 19 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.039.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>##  - 19 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.027.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<p>The rank plots for the <code>log_lik</code> quantity immediately shows a severe problem:</p>
 <div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing_gq</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_gq_plots-1.png" width="700"></p>
@@ -412,7 +428,7 @@ model {
 <div id="partially-missing-likelihood" class="section level1">
 <h1 class="hasAnchor">
 <a href="#partially-missing-likelihood" class="anchor"></a>Partially missing likelihood</h1>
-<p>A more complicated case is when the likelihood is only slightly wrong (and missing something) - e.g. due to an indexing error. Turns out missing just one data point needs a lot of steps, so we’ll miss a half of them in our likelihood.</p>
+<p>A more complicated case is when the likelihood is only slightly wrong (and missing something) - e.g. due to an indexing error. Turns out missing just one data point needs a lot of simulations to see, so we’ll write a model that ignores a full half of the data points.</p>
 <div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html">readLines</a></span><span class="op">(</span><span class="st">"stan/partially_missing_likelihood.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
@@ -446,13 +462,16 @@ model {
   <span class="va">backend_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
     <span class="va">model_missing_2</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
+<p>Let us use this model for the same dataset.</p>
 <div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_missing</span>, <span class="va">backend_missing_2</span>, gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"missing_2"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## Results loaded from cache file 'missing_2'</code></pre>
-<pre><code>##  - 23 (12%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.054.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>##  - 20 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.031.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>The contraction plot would not show anything suspicious - we get decent contraction</p>
 <div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_contraction.html">plot_contraction</a></span><span class="op">(</span><span class="va">results_missing_2</span>, <span class="va">prior_sd</span>, parameters <span class="op">=</span> <span class="st">"mu"</span><span class="op">)</span></code></pre></div>
@@ -468,7 +487,7 @@ model {
 <div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_missing_2</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_2_plots-2.png" width="700"></p>
-<p>We could definitely find even smaller deviations than omitting half the data points, that would however require more SBC steps. This boils down to the earlier discussion on small changes to the model - omitting a few data points does not change the posterior very much and thus is harder to detect by SBC - but it is possible.</p>
+<p>We could definitely find even smaller deviations than omitting half the data points, that would however require more simulations for the SBC. This boils down to the earlier discussion on small changes to the model - omitting a few data points does not change the posterior very much in this case (as the model is simple and is already quite well informed by just a few data points) and thus it is harder to detect this problem by SBC - but it is possible.</p>
 </div>
   </div>
 

@@ -115,13 +115,13 @@
 
       
 
-      </header><script src="indexing_files/header-attrs-2.10/header-attrs.js"></script><div class="row">
+      </header><script src="indexing_files/header-attrs-2.11/header-attrs.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Discovering indexing errors with SBC</h1>
                         <h4 class="author">Martin Modrák</h4>
             
-            <h4 class="date">2021-09-17</h4>
+            <h4 class="date">2021-09-18</h4>
       
       
       <div class="hidden name"><code>indexing.Rmd</code></div>
@@ -273,7 +273,8 @@ model {
 <p>We’ll start with just 10 datasets to get a quick computation - this will still let us see big problems (but not subtle issues)</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">5666024</span><span class="op">)</span>
-<span class="va">datasets_regression</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_dataset_regression</span>, N <span class="op">=</span> <span class="fl">100</span>, K <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>, <span class="fl">10</span><span class="op">)</span></code></pre></div>
+<span class="va">datasets_regression</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span>
+  <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_dataset_regression</span>, N <span class="op">=</span> <span class="fl">100</span>, K <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>, <span class="fl">10</span><span class="op">)</span></code></pre></div>
 <p>Now we can use all of the backends to fit the generated datasets.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_regression_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_regression</span>, <span class="va">backend_regression_1</span>, 
@@ -281,21 +282,27 @@ model {
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"regression1"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## Results loaded from cache file 'regression1'</code></pre>
 <pre><code>##  - 6 (60%) fits had some steps rejected. Maximum number of rejections was 4.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_regression_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_regression</span>, <span class="va">backend_regression_2</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"regression2"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## Results loaded from cache file 'regression2'</code></pre>
 <pre><code>##  - 6 (60%) fits had some steps rejected. Maximum number of rejections was 4.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_regression_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_regression</span>, <span class="va">backend_regression_3</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"regression3"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## Results loaded from cache file 'regression3'</code></pre>
 <pre><code>##  - 4 (40%) fits had some steps rejected. Maximum number of rejections was 3.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>Here we also use the caching feature to avoid recomputing the fits when recompiling this vignette. In practice, caching is not necessary but is often useful.</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_regression_1</span><span class="op">)</span></code></pre></div>
