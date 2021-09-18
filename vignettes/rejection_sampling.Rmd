@@ -30,7 +30,8 @@ But does rejection sampling when generating datasets affect the validity of SBC?
 Thanks to forum user Niko Huurre who derived the necessary math
 at [Stan Discourse discussion of the topic](https://discourse.mc-stan.org/t/using-narrower-priors-for-sbc/21709/6?u=martinmodrak)
 we know exactly when it is OK. Briefly: for algorithms
-that only need to know the posterior density up to a constant,
+that only need to know the posterior density up to a constant (which includes Stan
+and many others),
 it is OK as long as the rejection criterion only
 uses observed data and not the unobserved parameters.
 

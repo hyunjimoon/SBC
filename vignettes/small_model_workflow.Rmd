@@ -800,7 +800,7 @@ plot(fanos, results_combined$backend_diagnostics$n_divergent)
 
 All the divergence are for low fano factors - this is the histogram of Fano factor for diverging fits:
 
-```{r}
+```{r fanos_divergent}
 hist(fanos[results_combined$backend_diagnostics$n_divergent > 0])
 ```
 
@@ -885,7 +885,7 @@ plot_ecdf_diff(results_combined_reject)
 
 And our coverage is pretty tight:
 
-```{r}
+```{r combined_reject_coverage}
 plot_coverage(results_combined_reject)
 ```
 
