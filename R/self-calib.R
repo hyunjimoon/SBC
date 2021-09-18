@@ -1,7 +1,7 @@
 ##' Auto calibrate the initial prior samples using SBC iteration
 ##'
 ##' @param generator function that generates datasets given each value in `param`
-##' @param hyperparam scalar hyperparameter values e.g. prior_width
+##' @param clamp_dist scalar clamp_disteter values e.g. prior_width
 ##' @param param rvars<S>[N] prior values i.e. parameter values to be tested "draws_rvars"
 ##' @param predictor rvars<N>[S] predictor values
 ##' @param backend stan_model that samples posterior with `datasets` simulated from the former two
@@ -14,17 +14,19 @@
 ##' @return  next param values summarized from `S` * `M` posterior samples
 ##' @export
 
-self_calib <- function(generator, hyperparam, param, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir, type = "all"){
+self_calib <- function(generator, clamp_val, clamp_dist, param, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir, type = type){
+  # adjust draws (='S') of clamp_dist and predictor to that of new param
+  S <- niterations(param[[1]])
+  clamp_dist <- subset_draws(clamp_dist, draw = 1:S)
+  predictor <- subset_draws(predictor, draw = 1:S)
   message(paste("self_calib iter", cnt))
-  S = niterations(param[[1]])
+  message(paste("S", S))
   # generate-inference p_post(theta) = f(theta'|y) * p(y|theta)
-  result <- compute_results(generator(hyperparam, param, predictor), backend, thin_ranks = thin)
-  # proposal
-  prop <- prop_param(param, result, thin, type = type, cnt, delivDir)
-  # accept-reject
-  param_next <- prop #ar_param(param, prop)
-  summ <- summarise_draws(param, median, sd) %>% filter(variable == target_vars)
+  result <- compute_results(generator(clamp_val, clamp_dist, param, predictor), backend, thin_ranks = thin)
+  # update
+  param_next <- update_param(param, result, thin, cnt, delivDir, type = type)
   # save
+  summ <- summarise_draws(param, median, sd) %>% filter(variable == target_vars)
   for (tv in target_vars){
     evolve_df[[tv]]$median[cnt] <- filter(summ, variable == tv)["median"]
     evolve_df[[tv]]$sd[cnt] <-  filter(summ, variable == tv)["sd"]
@@ -32,14 +34,14 @@ self_calib <- function(generator, hyperparam, param, predictor, backend, target_
     print(paste(tv, evolve_df[[tv]]$median[cnt]))
     if(cnt == 0){evolve_df[[tv]]$scm_init <- evolve_df[[tv]]$scm}
   }
-  pp_overlay_save(param, param_next, cnt, delivDir)
   # terminate
   if(iter_stop(param, param_next, target_vars, lapply(evolve_df, '[[', 'scm'))){ # S-S > S-4000S (stable compare)
     csv_save(evolve_df, delivDir, type = "evolve")
     return (param_next)
   }
   cnt = cnt + 1
-  return(self_calib(generator, hyperparam, param_next, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir, type = type))
+  print(param_next)
+  return(self_calib(generator, clamp_val, clamp_dist, param_next, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir, type = type))
 }
 
 ##' Judge whether the SBC iteration have converged
@@ -64,69 +66,60 @@ iter_stop <- function(param, param_next, target_vars, scm_init){
 
 ##' @return resampled posterior with prior information
 ##' @export
-prop_param <-function(param, result, thin, cnt, delivDir, target_vars = names(param), type = "bin", kde_bandwidth=0.5){
-  print(type)
-  S <- niterations(param[[1]])
+update_param <-function(theta_, result, thin, cnt, delivDir, target_vars = names(theta_), type = "kde", kde_bandwidth=0.5){
+  S <- niterations(theta_[[1]])
   tf <- list()
   post <- list()
-  prop_tf <- list()
+  theta <- list()
+  theta_tf <- list()
+  theta_tf_next <- list()
   for (tv in target_vars){
     agg_post <- function(s){
       if(!is.null(result$fits[[s]])){# ADVI fit can be NULL
         return (thin_draws(subset_draws(SBC_fit_to_draws_matrix(result$fits[[s]]), variable = tv), thin))}
     }
-    post[[tv]] <- unlist(lapply(seq(1: S), agg_post)) # can reject/thin unideal nrow = S, ncol = M
-    if(all(post[[tv]] >0)){if(all(post[[tv]] < 1)){tf[[tv]] = "logit"} else{tf[[tv]] = "log"}}
-  }
-  SM <- length(post[[1]])
-  post <- tibble::as_tibble(post)
-  if (type == "all"){
-      return(as_draws_rvars(post[sample(1:SM, S),]))
-  }else if (type == "bin"){
-    for(tv in target_vars){
-      if(is.null(tf[[tv]])){break} #2.6e+64 for median 0.9 -> cutoff .01
-      if(tf[[tv]] == "log"){post_tf[[tv]] = log(post_tf[[tv]])}
-      if(tf[[tv]] == "logit"){post_tf[[tv]] = lapply(post_tf[[tv]], FUN = function(p){log(p/(1-p))})}
-    }
-
-    prop <- prop_tf # template
-    for(tv in target_vars){
-      if(is.null(tf[[tv]])){prop[[tv]] = prop_tf[[tv]]
-      }else if(tf[[tv]] == "log"){prop[[tv]] = exp(prop_tf[[tv]])
-      }else if(tf[[tv]] == "logit"){prop[[tv]] = lapply(prop_tf[[tv]], FUN = function(x){exp(x)/(1+exp(x))})
+    for (s in 1:S){
+      if(tv == target_vars[1] & !is.null(result$fits[[s]])){
+        M <- length(agg_post(s))
       }
     }
-    return(as_draws_rvars(prop))
+    theta[[tv]] <- unlist(lapply(seq(1: S), agg_post)) # can reject/thin unideal nrow = S, ncol = M
+  }
+  S <- floor(length(theta[[1]])/M)
+  pp_overlay_save(theta_, as_draws_rvars(theta), cnt, delivDir)
+  out <- tf_param(theta)
+  theta_tf <-  tibble::as_tibble(out$param)
+  tf <- out$tf
+  # parameteric
+  if(type == "kde"){
+    sample_kde <- function(x, bandwidth, n_samples){
+      kde <- density(x, bw=bandwidth)
+      bw <- kde$bw
+      draws <- sample(x, n_samples, replace = TRUE)
+      rnorm(n_samples, draws, bw) # sample(x) + normal(0, bandwidth)
+    }
+    for(tv in target_vars){
+      theta_tf_next[[tv]] <- sample_kde(dplyr::pull(theta_tf, tv), bandwidth = kde_bandwidth, n_samples = S)
+    }
+  }else if (type == "sample"){
+    for(tv in target_vars){
+      theta_tf_next[[tv]] <- theta_tf[[tv]][unlist(lapply(c(1:S), FUN = function(i){sample(size = 1, 1:M) + (i - 1) * M}))]
+    }
+    # nonparameteric
+  }else if (type == "bin"){
+    # to be implemented
+    theta_tf <- theta_tf
   }else if(type == "filter"){
     # F_{post}^{-1}*F_{prior}(param) #TODO loo_subsample.R
-    S <-niterations(param[[1]])
-    param_ord <- sort(draws_of(param))
-    return (rvar(draws_of(resample_draws(as_draws(rvar(param_ord)),
-                                         tabulate(ecdf(param_ord)(post) * S, nbins = S))[[1]])))
-  }
-  else if(type == "kde"){
-    rvar_list <- list()
     for(tv in target_vars){
-      #prop_param(param, result, thin, type = "all", cnt, delivDir)
-      rvar_list[[tv]] <- rvar(sample_kde(dplyr::pull(post, tv), bandwidth = kde_bandwidth, n_samples = S))
-      print(as_draws_rvars(rvar_list))
-      print(as_draws_rvars(rvar_list)[[tv]])
-      #return(rvar(sample_kde(post)))
+      datagrid <- sort(draws_of(theta_[[tv]]))
+      theta_tf_next[[tv]] <- draws_of(resample_draws(as_draws(rvar(datagrid)),
+                                          tabulate(ecdf(datagrid)(theta[[tv]] ) * S, nbins = S))[[1]])
     }
-    return(as_draws_rvars(rvar_list))
   }
-
+  theta <- invtf_param(theta_tf_next, tf)
+  return (as_draws_rvars(theta))
 }
-
-
-sample_kde <- function(x, bandwidth, n_samples){
-  kde <- density(x, bw=bandwidth)
-  bw <- kde$bw
-  draws <- sample(x, n_samples, replace = TRUE)
-  rnorm(n_samples, draws, bw) # sample(x) + normal(0, bandwidth)
-}
-
-
 
 ar_param <- function(target_ftn = cjs_dist, prop, param, evolve_df, cnt){
   param_next <- param

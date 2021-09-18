@@ -14,6 +14,45 @@ combine_args <- function(args1, args2) {
   }
 }
 
+##' Transform parameters from constrained to uncontrained
+##'
+##' @param param `draws_rvars` type parameter values
+##' @return list of uncontrained parameters and transformation type
+##' @export
+tf_param <- function(param){
+  tf <- list()
+  for (tv in names(param)){
+    if(all(param[[tv]] > 0) & all(param[[tv]] < 1)){
+      tf[[tv]] <- "logit"
+      param[[tv]] <- gtools::logit(param[[tv]])
+    }else if(all(param[[tv]] > 0)){
+      tf[[tv]] <- "log"
+      param[[tv]] <- log(param[[tv]])
+    }
+  }
+  return (list(param = param, tf = tf))
+}
+
+##' Inverse transform parameters from uncontrained to constrained
+##'
+##' @param param uncontrained parameter `draws_rvars`
+##' @param tf list of transformation type
+##' @return contrained parameter `draws_rvars`
+##' @export
+invtf_param <- function(param, tf){
+  for (tv in names(param)){
+    if(is.null(tf[[tv]])){
+      param[[tv]] <- param[[tv]]
+    }
+    else if(tf[[tv]] == "logit"){
+      param[[tv]] <- gtools::inv.logit(param[[tv]])
+    }else if(tf[[tv]] == "log"){
+      param[[tv]] <- exp(param[[tv]])
+    }
+    return (param)
+  }
+}
+
 intv_plot_save <- function(evolve_df, delivDir){
   for (v in names(evolve_df)){
     evolve_df_v <- evolve_df[[v]]
@@ -56,6 +95,6 @@ pp_overlay_save <- function(param, param_next, cnt = 0, delivDir){
   for (v in names(param)){
     g[[v]] <- bayesplot::ppc_dens_overlay(c(draws_of(param[[v]])), matrix(draws_of(param_next[[v]]), ncol = niterations(param[[v]])))
   }
-  ggpubr::ggarrange(g[["loc"]], g[["scale"]], nrow =length(names(param))) #TODO
+  ggpubr::ggarrange(g[["a"]], nrow =length(names(param))) #TODO
   ggplot2::ggsave(file = file.path(delivDir, paste0(paste0(paste0(names(param), collapse = "", sep = "_"), cnt, "_"), "pp.png")),  bg = "white")
 }
