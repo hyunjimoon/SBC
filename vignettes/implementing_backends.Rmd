@@ -1,0 +1,151 @@
+---
+title: "Implementing a new backend"
+author: "Martin Modrák"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: yes
+vignette: >
+  %\VignetteIndexEntry{Implementing a new backend}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+Let's setup the environment.
+
+```{r setup, message=FALSE,warning=FALSE, results="hide"}
+library(SBC)
+library(ggplot2)
+
+# Setup caching of results
+cache_dir <- "./implementing_backends_SBC_cache"
+if(!dir.exists(cache_dir)) {
+  dir.create(cache_dir)
+}
+
+```
+
+```{r}
+SBC_backend_glm <- function(...) {
+    args = list(...)
+    if(any(names(args) == "data")) {
+      stop(paste0("Parameter 'data' cannot be provided when defining a backend",
+                  " as it needs to be set by the SBC package"))
+    }
+  
+    structure(list(args = args), class = "SBC_backend_glm")
+}
+
+SBC_fit.SBC_backend_glm <- function(backend, generated, cores) {
+  args_with_data <- backend$args
+  args_with_data$data <- generated
+  
+  do.call(glm, args_with_data)
+}
+
+SBC_fit_to_draws_matrix.glm <- function(fit) {
+  samp_matrix <- MASS::mvrnorm(n = 200, mu = coef(fit), Sigma = vcov(fit))
+  posterior::as_draws_matrix(samp_matrix)
+}
+```
+
+
+```{r}
+SBC_backend_iid_samples.SBC_backend_glm <- function(backend) {
+  TRUE
+}
+
+SBC_fit_to_diagnostics.glm <- function(fit, fit_output, fit_messages, fit_warnings) {
+  res <- data.frame(
+    perfect_separation = any(grepl("fitted probabilities numerically 0 or 1 occurred", fit_warnings)),
+    converged = fit$converged
+  )
+
+  class(res) <- c("SBC_glm_diagnostics", class(res))
+  res
+}
+
+get_diagnostic_messages.SBC_glm_diagnostics <- function(x) {
+  get_diagnostic_messages(summary(x))
+}
+
+summary.SBC_glm_diagnostics <- function(x) {
+  summ <- list(
+    n_fits = nrow(x),
+    n_perfect_separation = sum(x$perfect_separation),
+    n_not_converged = sum(!x$converged)
+  )
+
+  structure(summ, class = "SBC_glm_diagnostics_summary")  
+}
+
+get_diagnostic_messages.SBC_glm_diagnostics_summary <- function(x) {
+  message_list <- list()
+  
+  if(x$n_perfect_separation == 0) {
+    message_list[[1]] <- data.frame(ok = TRUE, message = "No fit had perfect separation.")
+  } else {
+    message_list[[1]] <- data.frame(ok = FALSE, message = paste0(x$n_perfect_separation, " (", round(100 * x$n_perfect_separation / x$n_fits), "%) of fits had perfect separation."))    
+  }
+  
+  if(x$n_not_converged == 0) {
+    message_list[[2]] <- data.frame(ok = TRUE, message = "All fits converged.")
+  } else {
+    message_list[[2]] <- data.frame(ok = FALSE, message = paste0(x$n_not_converged, " (", round(100 * x$n_not_converged / x$n_fits), "%) of fits did not converge."))    
+  }  
+  
+  SBC_diagnostic_messages(do.call(rbind, message_list))
+}
+```
+
+
+```{r}
+backend <- SBC_backend_glm(formula = y ~ x1 + x2, family = "binomial") 
+```
+
+
+```{r}
+generator_single_logistic <- function(N, 
+                                      N_predictors, 
+                                      intercept_prior_width = 2, 
+                                      predictor_prior_width = 1) {
+  
+  X_pred <- matrix(rnorm(N_predictors * N), nrow = N)
+  X <- cbind(rep(1, N), X_pred)
+  
+  coefs <- c(rnorm(1, 0, sd = intercept_prior_width),
+             rnorm(N_predictors, 0, sd = predictor_prior_width))
+  predictor_names <- paste0("x", 1:N_predictors)
+  names(coefs) <- c("(Intercept)", predictor_names)
+  
+  linpred <- X %*% coefs
+  probs <- plogis(linpred)
+  y <- rbinom(N, size = 1, prob = probs)
+  
+  all <- cbind(y, X_pred)
+  colnames(all) <- c("y", predictor_names)
+  
+  list(
+    parameters = as.list(coefs),
+    generated = as.data.frame(all)
+  ) 
+}
+
+datasets <- generate_datasets(SBC_generator_function(
+  generator_single_logistic, N = 500, N_predictors = 2),
+  n_datasets = 100) 
+```
+
+
+```{r}
+res <- compute_results(datasets, backend)
+```
+
+```{r}
+plot_rank_hist(res)
+plot_ecdf_diff(res)
+plot_sim_estimated(res)
+plot_coverage(res)
+```
+
+
