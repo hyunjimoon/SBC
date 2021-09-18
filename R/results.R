@@ -856,8 +856,8 @@ check_all_SBC_diagnostics.default <- function(x) {
 check_all_SBC_diagnostics.SBC_results <- function(x) {
   res <- NextMethod()
   if(!res) {
-    message("Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, ",
-    "$backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.")
+    message("Not all diagnostics are OK.\nYou can learn more by inspecting $default_diagnostics, ",
+            "$backend_diagnostics \nand/or investigating $outputs/$messages/$warnings for detailed output from the backend.")
   }
   res
 }
@@ -924,8 +924,8 @@ get_diagnostics_messages.SBC_results_summary <- function(x) {
 
   if(x$n_low_ess_to_rank > 0) {
     msg <- paste0(x$n_low_ess_to_rank, " (", round(100 * x$n_low_ess_to_rank / x$n_fits), "%) fits had tail ESS undefined or less than ",
-                  "half of the maximum rank, potentially skewing the rank statistics. The lowest tail ESS was ", round(x$min_min_ess_tail),
-                  ".\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_statistcs) or number of posterior samples (by refitting) might help.")
+                  "half of the maximum rank, potentially skewing \nthe rank statistics. The lowest tail ESS was ", round(x$min_min_ess_tail),
+                  ".\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_statistics) \nor number of posterior samples (by refitting) might help.")
     message_list[[i]] <- data.frame(ok = FALSE, message = msg)
   } else {
     message_list[[i]] <- data.frame(ok = TRUE, message = "All fits had tail ESS > half of the maximum rank.")
@@ -951,8 +951,8 @@ print.SBC_results_summary <- function(x) {
   print(msg)
 
   if(!all(msg$ok)) {
-    message("Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, ",
-            "$backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.")
+    message("Not all diagnostics are OK.\nYou can learn more by inspecting $default_diagnostics, ",
+            "$backend_diagnostics \nand/or investigating $outputs/$messages/$warnings for detailed output from the backend.")
   }
 
 

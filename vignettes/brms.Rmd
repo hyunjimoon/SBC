@@ -42,6 +42,7 @@ Build a generator using brms and its `sample_prior = "only"` feature.
 # The predictor (x) values will be used for data generation,
 # the response (y) values will be ignored, but need to be present and 
 # of the correct data type
+set.seed(213452)
 template_data = data.frame(y = rep(0, 15), x = rnorm(15))
 priors <- prior(normal(0,1), class = "b") +
   prior(normal(0,1), class = "Intercept") +

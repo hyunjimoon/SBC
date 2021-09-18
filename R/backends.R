@@ -401,10 +401,12 @@ SBC_backend_brms_from_generator <- function(generator, ...) {
   validate_SBC_backend_brms_args(list(...))
 
   args <- combine_args(generator$args, list(...))
+  args$data <- NULL
+  args$cores <- NULL
+  args$empty <- NULL
 
-  if(!is.null(args$algorithm) && args$algorithm != "sampling") {
-    stop("Algorithms other than sampling not supported yet")
-  }
+  validate_SBC_backend_brms_args(args)
+
 
   new_SBC_backend_brms(generator$compiled_model, args)
 }
@@ -432,3 +434,12 @@ SBC_fit_to_draws_matrix.brmsfit <- function(fit) {
 SBC_fit_to_diagnostics.brmsfit <- function(fit, fit_output, fit_messages, fit_warnings) {
   SBC_fit_to_diagnostics(fit$fit, fit_output, fit_messages, fit_warnings)
 }
+
+#' @export
+SBC_backend_hash_for_cache.SBC_backend_brms <- function(backend) {
+  object_for_hash <- list(args = backend$args,
+                          model_hash =
+                            SBC_backend_hash_for_cache(backend$stan_backend))
+  rlang::hash(object_for_hash)
+}
+

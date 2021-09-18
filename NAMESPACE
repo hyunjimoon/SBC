@@ -2,6 +2,7 @@
 
 S3method("[",SBC_datasets)
 S3method("[",SBC_results)
+S3method(SBC_backend_hash_for_cache,SBC_backend_brms)
 S3method(SBC_backend_hash_for_cache,SBC_backend_cmdstan_sample)
 S3method(SBC_backend_hash_for_cache,SBC_backend_rstan_sample)
 S3method(SBC_backend_hash_for_cache,default)

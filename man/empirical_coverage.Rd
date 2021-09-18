@@ -44,3 +44,6 @@ intervals should always be accompanied by checks with \code{\link[=plot_ecdf]{pl
 or by using \code{type = "leftmost"}, because if all leftmost credible intervals are well calibrated,
 then all intervals are well calibrated.
 }
+\seealso{
+\code{\link[=plot_coverage]{plot_coverage()}}
+}

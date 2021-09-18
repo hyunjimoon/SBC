@@ -109,6 +109,7 @@ As you can see, the `Generator` returns a named list containing randomly samples
 `SBC` provides helper functions `SBC_generator_function` and `generate_datasets` which takes a Generator function and creates a benign `SBC_datasets' object. 
 
 ```{r}
+set.seed(54882235)
 n_datasets <- 100  # Number of SBC iterations to run
 
 poisson_generator <- SBC_generator_function(poisson_generator_single, N = 40)

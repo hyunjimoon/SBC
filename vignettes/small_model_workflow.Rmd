@@ -921,6 +921,7 @@ Finally, we can also use this simulation exercise to understand what would we be
 ```{r sim_estimated_final}
 plot_sim_estimated(results_combined_reject_more, alpha = 0.2)
 ```
+
 We see that we get very precise information about `mu` and a decent picture about all `beta` elements, but the reamining uncertainty is large. We could for example compute the probability
 that the posterior 90% interval for `beta[1]` excludes zero, i.e. that we learn something about the sign of `beta[1]` and it is close to 50%:
 
@@ -931,7 +932,23 @@ stats_beta1 <-
 
 mean(sign(stats_beta1$q5) == sign(stats_beta1$q95))
 ```
+
 Depending on your aims, this might be a reason to plan for a larger sample size!
+
+## Take home message
+
+There are couple lessons I hope this exercise showed: First, building models 
+you can trust is hard work and it is very easy to make mistakes. Despite the
+models presented here being relatively simple, diagnosing the problems in them
+was not straightforward and required non-trivial background knowledge. For this
+reason, moving in small steps during model development is crucial and can save
+you time as diagnosing the same problems in a 300-line Stan model with 50 parameters 
+can be  basically impossible.
+
+We also hope we convinced you that the SBC package lets you get high-quality 
+information from your simulation efforts and not only diagnose problems but also 
+get some sort of assurance in the end that your model is at least pretty
+close to your simulator.
 
 And that's it for this vignette, thanks for staying until the end and hope the workflow ideas will be useful for you!
 
