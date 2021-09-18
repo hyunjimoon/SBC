@@ -120,7 +120,8 @@ let us see big problems (but not subtle issues)
 
 ```{r}
 set.seed(5666024)
-datasets_regression <- generate_datasets(SBC_generator_function(single_dataset_regression, N = 100, K = 2), 10)
+datasets_regression <- generate_datasets(
+  SBC_generator_function(single_dataset_regression, N = 100, K = 2), 10)
 ```
 
 

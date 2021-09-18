@@ -134,9 +134,6 @@ cat(readLines("stan/bad_parametrization2.stan"), sep = "\n")
 ```
 
 ```{r}
-stan_code_2 <- "
-"
-
 if(use_cmdstanr) {
   model_gamma_2 <- cmdstan_model("stan/bad_parametrization2.stan")
 

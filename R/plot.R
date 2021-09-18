@@ -333,6 +333,9 @@ data_for_ecdf_plots.matrix <- function(x,
 
 #' Prior/posterior contraction plot.
 #'
+#' The rationale for this plot and its interpretaion is explained in
+#' Mike Betancourt's
+#' [Towards A Principled Bayesian Workflow](https://betanalpha.github.io/assets/case_studies/principled_bayesian_workflow.html#132_A_Bayesian_Eye_Chart).
 #'
 #' @param x object containing results (a data.frame or [SBC_results()] object).
 #' @param prior_sd a named vector of prior standard deviations for your parameters.

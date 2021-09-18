@@ -11,6 +11,8 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
+This vignette shows how the SBC package supports `brms` models. 
+
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 library(brms)
@@ -35,7 +37,17 @@ if(!dir.exists(cache_dir)) {
 
 ```
 
-Build a generator using brms and its `sample_prior = "only"` feature.
+The `brms` package has a built-in feature to simulate from 
+prior corresponding to the model via the `sample_prior = "only"` option. 
+This is a bit less useful in model validation
+as bug in `brms` (or any mismatch between what `brms` does and what we _think_ it does)
+cannot be found as it will most likely affect the generator and the backend in the same way.
+Still this can be useful for validating `brms` itself - we'll get to validation
+with custom generators in a while. For now, we'll build a generator using `brms` directly.
+
+Generating datasets with this generator requires us to compile a Stan model 
+and may thus take a while. Also the exploration is often problematic, so 
+to avoid problems, we take a lot of samples and thin the resulting samples heavily.
 
 ```{r}
 # We need a "template dataset" to let brms build the model.
@@ -62,8 +74,10 @@ set.seed(22133548)
 datasets <- generate_datasets(generator, 100)
 ```
 
+Now we'll build a backend matching the generator (and reuse the compiled model from the
+generator)
+
 ```{r}
-# Reuse the compiled model and other info from the generator
 backend <- SBC_backend_brms_from_generator(generator, chains = 1, thin = 1,
                             init = 0.1)
 
@@ -81,7 +95,10 @@ results <- compute_results(datasets, backend, thin_ranks = 10,
                     cache_location = file.path(cache_dir, "first"))
 ```
 
-And show ecdf_diff plot - there are no big problems at this resolution.
+There are some problems, that we currently choose to ignore (the highest Rhat is barely above
+the 1.01 threshold, so it is probably just noise in Rhat computation).
+
+So we can inspect the rank plots. There are no big problems at this resolution.
 
 ```{r results_plots}
 plot_rank_hist(results)
@@ -97,11 +114,13 @@ This time we will not use the `brms` model to also simulate from prior, but
 simulate using an R function.
 
 This  allows us to have different covariate values for each dataset, potentially improving sensitivity.
+Additionally, we get to learn if `brms` does what we think it does!
 
 Let's take a Gaussian model with a single varying intercept.
 
-
-The data can be generated using the following code:
+The data can be generated using the following code - note that we
+need to be careful to match the parameter names as `brms` uses them. You
+can call `parnames` on a fit to see them.
 
 ```{r}
 one_dataset_generator <- function(N, K) {
@@ -138,11 +157,12 @@ one_dataset_generator <- function(N, K) {
   )
 }
 
-n_dataset_generator <- SBC_generator_function(one_dataset_generator, N = 25, K = 3)
+n_dataset_generator <- SBC_generator_function(one_dataset_generator, N = 18, K = 5)
 ```
 
 For increased sensitivity, we also add the log likelihood of the data given parameters
-as a generated quantity that we'll also monitor.
+as a generated quantity that we'll also monitor (see the [`limits_of_SBC`](https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html) 
+vignette for discussion on why this is useful).
 
 ```{r}
 log_lik_gq_func <- generated_quantities(
@@ -156,6 +176,10 @@ set.seed(12239755)
 datasets_func <- generate_datasets(n_dataset_generator, 100)
 ```
 
+This is then our `brms` backend - note that `brms` requires us to provide a sample
+dataset that it will use to build the model (e.g. to see how many levels of 
+various varying intercepts to include):
+
 ```{r}
 priors_func <- prior(normal(0,1), class = "b") +
   prior(normal(5,1), class = "Intercept") +
@@ -168,7 +192,7 @@ backend_func <- SBC_backend_brms(y ~ x + (1 | group),
                             template_dataset = datasets_func$generated[[1]])
 
 ```
-
+So we can happily compute:
 
 ```{r}
 results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10, 
@@ -177,6 +201,8 @@ results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10,
                     cache_location = file.path(cache_dir, "func"))
 ```
 
+So that's not looking good! Divergent transitions, Rhat problems... And the
+rank plots also show problems:
 
 
 ```{r results_func_plots}
@@ -186,12 +212,13 @@ plot_ecdf_diff(results_func)
 
 It looks like there is a problem affecting at least the `b_Intercept` and `sigma` parameters.
 We may also notice that the `log_lik` (log likelihood derived from all the parameters) is copying
-the behaviour of the worst behaving parameter. This tends to be the case in many models, so in models with lots of parameters, it can be useful to add such a term as they make noticing problems easier. There also other advantages as discussed in the `limits_of_SBC` vignette.
+the behaviour of the worst behaving parameter. This tends to be the case in many models, so in models with lots of parameters, it can be useful to add such a term as they make noticing problems easier. 
 
 What happened is that `brms` by default centers all the predictors, which changes the
 numerical values of the intercept (but not other terms). The interaction with the prior than probably also affects the other parameters.
 
-Maybe we don't want `brms` to do this --- using `0 + Intercept` syntax avoids the centering. 
+Maybe we don't want `brms` to do this --- using `0 + Intercept` syntax avoids the centering,
+so we build a new backend that should match our simulator better
 
 
 ```{r}
@@ -218,9 +245,9 @@ results_func2 <- compute_results(datasets_func, backend_func2, thin_ranks = 10,
                     cache_location = file.path(cache_dir, "func2"))
 ```
 
-We see that this results in mostly non-problematic univariate checks.
-
-TODO: Figure out the source of divergences and check if they create the mismatch for some of the parameters.
+We see that this still results in some problematic fits,
+but the proportion got lower. At this point I am honestly unsure
+what is the issue, but the rank plots look mostly OK:
 
 ```{r results_func2_plots}
 plot_rank_hist(results_func2)
@@ -228,5 +255,4 @@ plot_ecdf_diff(results_func2)
 ```
 
 
-
-
+I promise to update this vignette once I figure out the source of the problems.

@@ -12,6 +12,10 @@ vignette: >
 ---
 
 Here, we'll walk through some problems that are hard/impossible to diagnose with SBC.
+As usual the focus is on problems with models, assuming our inference algorithm 
+is correct. But for each of those problems, one can imagine a corresponding
+failure in an algorithm --- although some of those failures are quite unlikely for
+actual algorithms.
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
@@ -45,7 +49,7 @@ if(!dir.exists(cache_dir)) {
 
 # SBC and minor changes to model
 
-SBC requires _a lot_ of iterations to discover problems that are subtle.
+SBC requires _a lot_ of iterations to discover problems (either with model or the algorithm) that are subtle.
 
 To demonstrate this, we will fit a simple model with a normal likelihood, but use Student's t distribution with 5 degrees of freedom to generate the data.
 
@@ -208,6 +212,8 @@ TODO
 
 SBC will not notice if you completely omit likelihood from your Stan model!
 
+Here we have a generator for a very simple model with gaussian likelihood:
+
 ```{r}
 single_dataset_missing <- function(N) {
   mu <- rnorm(n = 1, mean = 0, sd = 1)
@@ -224,6 +230,9 @@ generator_missing <- SBC_generator_function(single_dataset_missing, N = 10)
 datasets_missing <- generate_datasets(generator_missing, n_datasets = 200)
 ```
 
+
+And here is a model that just completely ignores the data, but has the 
+right prior:
 
 ```{r, comment = ""}
 cat(readLines("stan/missing_likelihood.stan"), sep = "\n")
@@ -249,19 +258,28 @@ if(use_cmdstanr) {
 ```
 
 
+Now we'll compute the results for 200 simulated datasets:
+
 ```{r}
 results_missing <- compute_results(datasets_missing, backend_missing, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "missing"))
 ```
 
+And here are our rank plots:
+
 ```{r results_missing_plots}
 plot_rank_hist(results_missing)
 plot_ecdf_diff(results_missing)
 ```
 
+It's just nothing out of the ordinary.
 
-Can be noticed by prior/posterior contraction plot. For this model, we can
+But we are not completely helpless: 
+This specific type of problem can be noticed by prior/posterior contraction plot. 
+In this plot we compare the prior and posterior standard deviation to get a measure
+of how much more we know about the parameter after fitting the model.
+For this model, we can
 get the prior sd directly, but one can also use a (preferably large) `SBC_datasets` object
 to estimate it empirically for more complex models.
 
@@ -283,7 +301,8 @@ plot_sim_estimated(results_missing, alpha = 0.5)
 
 There is however even more powerful method - and that is to include the likelihood in the SBC.
 This is most easily done by adding a "generated quantity" to the SBC results - this is a function
-that is evaluated within the context of the parameters AND data.
+that is evaluated within the context of the parameters AND data. 
+And it can be added without recomputing the fits!
 
 ```{r}
 normal_lpdf <- function(y, mu, sigma) {
@@ -296,6 +315,7 @@ results_missing_gq <- recompute_statistics(results_missing, datasets_missing,
                                              gen_quants = log_lik_gq)
 ```
 
+The rank plots for the `log_lik` quantity immediately shows a severe problem:
 
 ```{r results_missing_gq_plots}
 plot_ecdf_diff(results_missing_gq)
@@ -306,7 +326,8 @@ plot_rank_hist(results_missing_gq)
 # Partially missing likelihood
 
 A more complicated case is when the likelihood is only slightly wrong (and missing something) - e.g. due to an indexing error.
-Turns out missing just one data point needs a lot of steps, so we'll miss a half of them in our likelihood.
+Turns out missing just one data point needs a lot of simulations to see, so we'll write a
+model that ignores a full half of the data points.
 
 ```{r, comment = ""}
 cat(readLines("stan/partially_missing_likelihood.stan"), sep = "\n")
@@ -326,6 +347,8 @@ if(use_cmdstanr) {
 }
 
 ```
+
+Let us use this model for the same dataset.
 
 ```{r}
 results_missing_2 <- compute_results(datasets_missing, backend_missing_2, gen_quants = log_lik_gq, 
@@ -353,5 +376,5 @@ plot_ecdf_diff(results_missing_2)
 plot_rank_hist(results_missing_2)
 ```
 
-We could definitely find even smaller deviations than omitting half the data points, that would however require more SBC steps.
-This boils down to the earlier discussion on small changes to the model - omitting a few data points does not change the posterior very much and thus is harder to detect by SBC - but it is possible.
+We could definitely find even smaller deviations than omitting half the data points, that would however require more simulations for the SBC.
+This boils down to the earlier discussion on small changes to the model - omitting a few data points does not change the posterior very much in this case (as the model is simple and is already quite well informed by just a few data points) and thus it is harder to detect this problem by SBC - but it is possible.
