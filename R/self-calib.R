@@ -14,7 +14,7 @@
 ##' @return  next param values summarized from `S` * `M` posterior samples
 ##' @export
 
-self_calib <- function(generator, clamp_val, clamp_dist, param, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir, type = type){
+self_calib <- function(generator, clamp_val, clamp_dist, param, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir, type = type, kde_bandwidth=NULL){
   # adjust draws (='S') of clamp_dist and predictor to that of new param
   S <- niterations(param[[1]])
   clamp_dist <- subset_draws(clamp_dist, draw = 1:S)
@@ -22,16 +22,17 @@ self_calib <- function(generator, clamp_val, clamp_dist, param, predictor, backe
   message(paste("self_calib iter", cnt))
   message(paste("S", S))
   # generate-inference p_post(theta) = f(theta'|y) * p(y|theta)
-  result <- compute_results(generator(clamp_val, clamp_dist, param, predictor), backend, thin_ranks = thin)
+  dataset <- generator(clamp_val, clamp_dist, param, predictor)
+  #param <- dataset$parameters
+  result <- compute_results(dataset, backend, thin_ranks = thin)
   # update
-  param_next <- update_param(param, result, thin, cnt, delivDir, type = type)
+  param_next <- update_param(param, result, thin, cnt, delivDir, target_vars = target_vars, type = type, kde_bandwidth = kde_bandwidth)
   # save
   summ <- summarise_draws(param, median, sd) %>% filter(variable == target_vars)
   for (tv in target_vars){
     evolve_df[[tv]]$median[cnt] <- filter(summ, variable == tv)["median"]
     evolve_df[[tv]]$sd[cnt] <-  filter(summ, variable == tv)["sd"]
     evolve_df[[tv]]$scm <- cjs_dist(param[[tv]], param_next[[tv]])
-    print(paste(tv, evolve_df[[tv]]$median[cnt]))
     if(cnt == 0){evolve_df[[tv]]$scm_init <- evolve_df[[tv]]$scm}
   }
   # terminate
@@ -40,7 +41,6 @@ self_calib <- function(generator, clamp_val, clamp_dist, param, predictor, backe
     return (param_next)
   }
   cnt = cnt + 1
-  print(param_next)
   return(self_calib(generator, clamp_val, clamp_dist, param_next, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir, type = type))
 }
 
@@ -66,13 +66,16 @@ iter_stop <- function(param, param_next, target_vars, scm_init){
 
 ##' @return resampled posterior with prior information
 ##' @export
-update_param <-function(theta_, result, thin, cnt, delivDir, target_vars = names(theta_), type = "kde", kde_bandwidth=0.5){
+update_param <-function(theta_, result, thin, cnt, delivDir, target_vars = names(theta_), type = "kde", kde_bandwidth=NULL){
+  kde_bandwidth <- if(is.null(kde_bandwidth)) "nrd0" else kde_bandwidth # density default is "nrd0"\
+  theta_ <- posterior::subset_draws(theta_, variable=target_vars)
   S <- niterations(theta_[[1]])
   tf <- list()
   post <- list()
   theta <- list()
   theta_tf <- list()
   theta_tf_next <- list()
+  kde_bandwidths <- list() # only used if type is gmm_non_parametric
   for (tv in target_vars){
     agg_post <- function(s){
       if(!is.null(result$fits[[s]])){# ADVI fit can be NULL
@@ -86,9 +89,14 @@ update_param <-function(theta_, result, thin, cnt, delivDir, target_vars = names
     theta[[tv]] <- unlist(lapply(seq(1: S), agg_post)) # can reject/thin unideal nrow = S, ncol = M
   }
   S <- floor(length(theta[[1]])/M)
+  print(theta_)
+  print("----------------")
+  print(theta)
+  print(as_draws_rvars(theta))
   pp_overlay_save(theta_, as_draws_rvars(theta), cnt, delivDir)
   out <- tf_param(theta)
   theta_tf <-  tibble::as_tibble(out$param)
+
   tf <- out$tf
   # parameteric
   if(type == "kde"){
@@ -101,6 +109,16 @@ update_param <-function(theta_, result, thin, cnt, delivDir, target_vars = names
     for(tv in target_vars){
       theta_tf_next[[tv]] <- sample_kde(dplyr::pull(theta_tf, tv), bandwidth = kde_bandwidth, n_samples = S)
     }
+  }else if (type == "gmm_non_parametric"){
+    for(tv in target_vars){
+      kde_fit_points <- dplyr::pull(theta_tf, tv)
+      fitted_kde <- density(kde_fit_points, bandwidth = kde_bandwidth)
+      theta_tf_next[["mm_mean"]] <- rvar(array(rep(kde_fit_points, each = S), dim=c(S, S * M)))
+      theta_tf_next[[tv]] <- rvar(array(sample(kde_fit_points, S, replace = TRUE), dim = c(S, 1))) # draw from the posterior distribution
+      kde_bandwidth <- fitted_kde$bw
+    }
+
+
   }else if (type == "sample"){
     for(tv in target_vars){
       theta_tf_next[[tv]] <- theta_tf[[tv]][unlist(lapply(c(1:S), FUN = function(i){sample(size = 1, 1:M) + (i - 1) * M}))]
@@ -113,12 +131,17 @@ update_param <-function(theta_, result, thin, cnt, delivDir, target_vars = names
     # F_{post}^{-1}*F_{prior}(param) #TODO loo_subsample.R
     for(tv in target_vars){
       datagrid <- sort(draws_of(theta_[[tv]]))
-      theta_tf_next[[tv]] <- draws_of(resample_draws(as_draws(rvar(datagrid)),
+      theta_tf_next[["mm_mean"]] <- draws_of(resample_draws(as_draws(rvar(datagrid)),
                                           tabulate(ecdf(datagrid)(theta[[tv]] ) * S, nbins = S))[[1]])
     }
   }
   theta <- invtf_param(theta_tf_next, tf)
-  return (as_draws_rvars(theta))
+  if(type == "gmm_non_parametric"){
+    theta[["mm_bandwidth"]] <- rvar(array(rep(kde_bandwidth, S), dim=c(S, 1)))
+    return (as_draws_rvars(theta))
+  }else{
+    return (as_draws_rvars(theta))
+  }
 }
 
 ar_param <- function(target_ftn = cjs_dist, prop, param, evolve_df, cnt){

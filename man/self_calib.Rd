@@ -6,23 +6,24 @@
 \usage{
 self_calib(
   generator,
-  hyperparam,
+  clamp_val,
+  clamp_dist,
   param,
   predictor,
   backend,
   target_vars,
-  dist,
-  dist_init = 0,
   thin,
-  cnt = 0,
+  cnt,
   evolve_df,
-  delivDir
+  delivDir,
+  type = type,
+  kde_bandwidth = NULL
 )
 }
 \arguments{
 \item{generator}{function that generates datasets given each value in \code{param}}
 
-\item{hyperparam}{scalar hyperparameter values e.g. prior_width}
+\item{clamp_dist}{scalar clamp_disteter values e.g. prior_width}
 
 \item{param}{rvars<S>\link{N} prior values i.e. parameter values to be tested "draws_rvars"}
 
@@ -32,8 +33,6 @@ self_calib(
 
 \item{target_vars}{function of parameters with which SBC iteration convergence are judged}
 
-\item{dist}{empirical distance between the previous and the current parameter values, default is \code{cjs_dist}}
-
 \item{thin}{scalar select 1 out of \code{thin} number of samples, \code{iter_sampling}=\code{thin}*M, default: 10}
 
 \item{cnt}{function of parameters with which SBC iteration convergence are judged}
@@ -41,6 +40,8 @@ self_calib(
 \item{evolve_df}{datafraame holding \verb{median, mad (or sd)} of samples from every iteration}
 
 \item{delivDir}{save location of output result}
+
+\item{scm}{empirical distance between the previous and the current parameter values, default is \code{cjs_dist}}
 }
 \value{
 next param values summarized from \code{S} * \code{M} posterior samples

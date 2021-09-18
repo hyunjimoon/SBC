@@ -90,6 +90,74 @@ plot_rank_hist(result_25)
 plot_rank_hist(result_sc)
 ```
 
+@@@@@@@@@@@@@@@@@ START GMM TEST CODE @@@@@@@@@@@@@@@@
+
+```{r}
+generator_gmm <- function(clamp_val,clamp_dist, param, predictor = NULL, initial = FALSE){
+  # fixed value across simultated datasets
+  N <- clamp_val$N
+  shape <- clamp_val$shape
+  S <- clamp_val$S
+  M <- clamp_val$M
+  # fixed distribution across simultated datasets
+  b <- clamp_dist$b
+  # paramter - target, updated distribution 
+  mm_mean <- param$mm_mean
+  mm_bandwidth <- param$mm_bandwidth
+  a <- if(initial) param$a else rfun(rnorm)(n=1, mean = sample(mm_mean, 1, replace = TRUE), sd = mm_bandwidth)
+  # predictor
+  X = predictor$X
+  # generate
+  print(dim(draws_of(a)))
+  print(dim(draws_of(X)))
+  print(dim(draws_of(b)))
+  mu = exp(a + X %**% b)
+  Y <- rfun(rgamma) (n = N, shape = shape, scale = mu/shape) 
+  gen_rvars <- draws_rvars(N = N, Y = Y, K = K, X = X, 
+                           SM = S * M, mm_mean = mm_mean, mm_bandwidth = mm_bandwidth, shape = shape)
+  # SDEdraws: rvar<S>[1] distributed to each simulation as rvar<1>[1]
+  SBC_datasets(
+    parameters = as_draws_matrix(list(a = a)), 
+    generated = draws_rvars_to_standata(gen_rvars)
+  )
+}
+
+mod_gmm <- cmdstanr::cmdstan_model("./models/gamma-reg_gmm.stan")
+clamp_val <- list(N = N, shape = 1, S = S, M = M)
+clamp_dist <- draws_rvars(b = rvar_rng(rnorm, ndraws = S, n = K, 0, 1)) #rgamma(S, shape = 0.01, scale = 0.01)
+predictor <- draws_rvars(X = array(rnorm(S * N * K, mean = 1, sd = 1), dim = c(S, N, K)))
+
+mm_mean = rvar(array(rnorm(S * S * M, 2, 1), dim = c(S, S * M)))
+mm_bandwidth = 1
+
+param_init_25 <- draws_rvars(a = rfun(rnorm)(n=1, mean = sample(mm_mean, 1, replace = TRUE), sd = mm_bandwidth), mm_mean = mm_mean, mm_bandwidth = mm_bandwidth) # prior(normal(2, 2), class = "b", coef = "Intercept")
+datasets_25 <- generator_gmm(
+  clamp_val = clamp_val,
+  clamp_dist = clamp_dist,
+  param = param_init_25,
+  predictor =  predictor,
+  initial = TRUE
+)
+
+backend_hmc_gmm <- SBC_backend_cmdstan_sample(mod_gmm, chains = chains, iter_sampling = M / chains)
+#result_25_hmc <- compute_results(datasets_25, backend_hmc)
+
+
+
+tv <- c("a")
+evolve_df <- list()
+for (v in tv){
+  evolve_df[[v]] <- list(median = rep(NA,1), sd = rep(NA,1), scm = NA, scm_init = NA) 
+}
+
+delivDir = set_get_Dir("gamma-reg_gmm")$delivDir
+param_sc_hmc_gmm <- self_calib(generator_gmm, clamp_val, clamp_dist, param_init_25, predictor, backend_hmc_gmm, tv, thin = 1, cnt = 1, evolve_df = evolve_df, delivDir = delivDir, type = "gmm_non_parametric")
+
+```
+
+
+@@@@@@@@@@@@@@@@@ END GMM TEST CODE @@@@@@@@@@@@@@@@@@
+
 ```{r}
 thin_ranks_v = 1
 backend_vi <- SBC_backend_cmdstan_variational(mod_gr, output_samples = M, algorithm = "fullrank")
