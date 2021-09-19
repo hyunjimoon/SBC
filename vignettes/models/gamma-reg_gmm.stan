@@ -14,9 +14,11 @@ parameters {
   real a;  // population-level effects
   vector[K] b;
 }
+
 model {
   // initialize linear predictor term
   vector[N] mu = a + X * b;
+  vector[SM] mm_mu = normal_lpdf(a | mm_mean, mm_bandwidth);
   for (n in 1:N) {
     // apply the inverse link function
     mu[n] = shape * exp(-(mu[n]));
@@ -25,9 +27,9 @@ model {
 
   // priors including constants
   #target += normal_lpdf(a| a_loc, a_scale);
-  for(s in 1:SM){
-    target += normal_lpdf(a | mm_mean[s], mm_bandwidth)/SM;
-  }
+
+  target += log_sum_exp(mm_mu) - log(SM)
+
   target += normal_lpdf(b[1] | 0, 1);
   target += normal_lpdf(b[2] | 0, 1);
   target += normal_lpdf(b[3] | 0, 1);
