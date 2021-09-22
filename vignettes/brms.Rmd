@@ -12,6 +12,7 @@ vignette: >
 ---
 
 This vignette shows how the SBC package supports `brms` models. 
+Let's setup the environment:
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
@@ -36,6 +37,8 @@ if(!dir.exists(cache_dir)) {
 }
 
 ```
+
+## Generating data using `brms`
 
 The `brms` package has a built-in feature to simulate from 
 prior corresponding to the model via the `sample_prior = "only"` option. 
@@ -105,16 +108,20 @@ plot_rank_hist(results)
 plot_ecdf_diff(results)
 ```
 
-## Using custom simulation code
+## Using custom generator code
 
 
 Let's take a bit more complex model - with a single varying intercept.
 
 This time we will not use the `brms` model to also simulate from prior, but 
-simulate using an R function.
+simulate using an R function. This way, we get to learn if `brms` does what we think it does!
 
-This  allows us to have different covariate values for each dataset, potentially improving sensitivity.
-Additionally, we get to learn if `brms` does what we think it does!
+Custom generator code also allows us to have different covariate values for each dataset, potentially improving sensitivity
+if we want to check the model for a range of potential covariate values.
+If on the other hand we are interested in a specific dataset, it might make
+more sense to use the predictors as seen in  the dataset in all simulations to focus
+our efforts on the dataset at hand.
+
 
 Let's take a Gaussian model with a single varying intercept.
 

@@ -48,6 +48,12 @@ or [Towards A Principled Bayesian Workflow](https://betanalpha.github.io/assets/
 which is just one of many things to check if one needs a robust analysis.
 In particular, SBC does not use any real data and thus cannot tell you anything
 about potential mismatch between your model and the actual data you plan to analyze.
+However, this is in some sense an advantage: if our model fails (e.g. we have convergence
+problems) on real data, we don't know whether the problem is a bug in our model
+or a mismatch between the model and the data. 
+If we simulate data exactly as the model assumes, any problem has to be a bug.
+Additionally, we can use SBC to better understand whether the data we plan
+to collect are actually capable of answering the questions we have.
 
 This vignette will demonstrate how the basic package interface can be used to 
 run simulations, calculate ranks and investigate calibration.
