@@ -102,7 +102,8 @@ test_that("statistics_from_single_fit", {
     # Can't really check correctness, only
     # testing that no error is thrown and structure is OK
     res <- statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
-                               parameters = params, thin_ranks = 1, gen_quants = NULL)
+                               parameters = params, thin_ranks = 1, gen_quants = NULL,
+                               backend = SBC_backend_mock())
 
     expect_equal(length(unique(res$max_rank)), 1)
     expect_true(all(res$rank >= 0 & res$rank < res$max_rank))

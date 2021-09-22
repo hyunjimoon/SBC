@@ -256,6 +256,11 @@ length.SBC_results <- function(x) {
 #' @param cache_location The filesystem location of cache. For `cache_mode = "results"`
 #'    this should be a name of a single file. If the file name does not end with
 #'    `.rds`, this extension is appended.
+#' @param globals A list of names of objects that are defined
+#' in the global environment and need to present for the backend to work (
+#' if they are not already available in package).
+#' It is added to the `globals` argument to [future::future()], to make those
+#' objects available on all workers.
 #' @return An object of class [SBC_results()].
 #' @export
 compute_results <- function(datasets, backend,
@@ -265,7 +270,8 @@ compute_results <- function(datasets, backend,
                             chunk_size = default_chunk_size(length(datasets)),
                             gen_quants = NULL,
                             cache_mode = "none",
-                            cache_location = NULL) {
+                            cache_location = NULL,
+                            globals = list()) {
   stopifnot(length(datasets) > 0)
 
   datasets <- validate_SBC_datasets(datasets)
@@ -339,10 +345,9 @@ compute_results <- function(datasets, backend,
     )
   }
   if(is.null(gen_quants)) {
-    future.globals <- FALSE
+    future.globals <- globals
   } else {
-    future.globals <- attr(gen_quants, "globals")
-
+    future.globals <- c(globals, attr(gen_quants, "globals"))
   }
 
   results_raw <- future.apply::future_lapply(
@@ -546,18 +551,31 @@ compute_results_single <- function(params_and_generated, backend, cores,
   res$warnings <- result_with_output$warnings
 
   if(is.null(res$error)) {
-    error_stats <- tryCatch( {
-      res$stats <- SBC::statistics_from_single_fit(
-        res$fit, parameters = parameters, thin_ranks = thin_ranks,
-        generated = generated, gen_quants = gen_quants,
-        backend = backend)
+    error_stats <-  SBC:::capture_all_outputs({
+      tryCatch( {
+        res$stats <- SBC::statistics_from_single_fit(
+          res$fit, parameters = parameters, thin_ranks = thin_ranks,
+          generated = generated, gen_quants = gen_quants,
+          backend = backend)
 
-      res$backend_diagnostics <- SBC::SBC_fit_to_diagnostics(
-        fit, res$outuput, res$messages, res$warnings)
-      NULL
-    }, error = identity)
-    if(!is.null(error_stats)) {
-      res$error <- error_stats
+        res$backend_diagnostics <- SBC::SBC_fit_to_diagnostics(
+          fit, res$outuput, res$messages, res$warnings)
+        NULL
+      }, error = identity)
+    })
+
+    if(!is.null(error_stats$result)) {
+      res$error <- error_stats$result
+    }
+
+    if(!is.null(error_stats$output) && length(error_stats$output > 0)) {
+      res$output <- c(res$output, "\n== Output from computing statistics ==\n", error_stats$output)
+    }
+    if(!is.null(error_stats$messages) && length(error_stats$messages > 0)) {
+      res$messages <- c(res$message, "== Messages from computing statistics ==", error_stats$messages)
+    }
+    if(!is.null(error_stats$warnings) && length(error_stats$warnings > 0)) {
+      res$warnings <- c(res$warnings, "== Warnings from computing statistics ==", error_stats$warnings)
     }
   } else {
     res$stats <- NULL
