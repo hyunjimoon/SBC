@@ -343,11 +343,13 @@ plot_rank_hist(results_fixed_ordered_subset)
 plot_ecdf_diff(results_fixed_ordered_subset)
 ```
 
-Since we now have only `r length(results_fixed_ordered_subset)` simulations, it is not surprising that we are still left with a huge uncertainty about the actual coverage of our posterior intervals - we can see that in a plot (showing observed coverage of central posterior intervals of varying width and the associated uncertainty):
+Since we now have only `r length(results_fixed_ordered_subset)` simulations, it is not surprising that we are still left with a huge uncertainty about the actual coverage of our posterior intervals - we can see that in a plot:
 
 ```{r mixture_fixed_ordered_subset_coverage}
 plot_coverage(results_fixed_ordered_subset)
 ```
+
+The coverage plot shows the observed coverage of central posterior intervals of varying width and the associated uncertainty (black + grey), the blue line represents perfect calibration.
 
 Or investigate numerically.
 
@@ -457,7 +459,7 @@ generator_func_beta_first <- function(N_obs, N_predictors) {
       }
       y[n] <- rbeta(1, exp(linpred[1]), exp(linpred[2]))
     }
-    if(all(y > 1e-7) && all(y < 1 - 1e-7)) {
+    if(all(y < 1 - 1e-12)) {
       break;
     }
   }
@@ -478,6 +480,10 @@ generator_func_beta_first <- function(N_obs, N_predictors) {
 generator_beta_first <- SBC_generator_function(generator_func_beta_first, N_obs = 50, N_predictors = 3)
 ```
 
+One thing to note is that we add a rejection sampling step - we repeatedly generate datasets,
+until we find one without `y` values very close to 1. Those can be problematic as they
+can be rounded to 1 when the data for Stan is written to disk. And exact 1 is impossible with the Beta likelihood and the model will fail. Rejecting the dataset due to this criterion is quite rare and in fact, it does not threaten the validity of the SBC procedure (at least to the extent our real data also don't contain such extreme values) - for more details see the [`rejection_sampling`](https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html) vignette.
+
 We'll start with 10 datasets once again.
 
 ```{r}
@@ -492,6 +498,7 @@ results_beta_first_10 <- compute_results(datasets_beta_first, backend_beta_first
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "beta_first_10"))
 ```
+
 We get a single fit with divergent transitions and the ranks look mostly OK:
 
 ```{r beta_first_results}
@@ -505,7 +512,7 @@ Let's inspect the pairs plot for the offending fit:
 mcmc_pairs(results_beta_first_10$fits[[3]]$draws())
 ```
 
-This is a very ugly plot, but we see some correlations between the corresponding beta elements (e.g. `beta[1,1]` and `beta[2,1]`), let's have a closer look and show the same pairs plot for five of our fits:
+This is a very crowded plot and it is hard to resolve details, but we see some correlations between the corresponding beta elements (e.g. `beta[1,1]` and `beta[2,1]`), let's have a closer look and show the same pairs plot for five of our fits:
 
 ```{r beta_first_10_pairs_subset}
 for(i in 1:5) {
@@ -517,9 +524,11 @@ for(i in 1:5) {
 Turns out the correlations are in all fits, although sometimes they are relatively weak and the sampler is able to handle the posterior, it is potentially troubling. The main issue is that we plan to integrate this model with other components and problems that can be tolerated in a single component might interact with other components and make the model intractable.
 
 
-We can even understand the reason for the positive correlation - it is because mean of our response beta distribution is `exp(linpred[1,]) / ( exp(linpred[1,]) + exp(linpred[2,]))`,
-so increasing both linear predictors at the same time results in the same mean (but different variance). Since mean is usually more constrained than variance of the response, we get this
-ridge.
+We can even understand the reason for the positive correlation - it is because predicted means of our response beta distribution is the `exp(linpred[1,]) / ( exp(linpred[1,]) + exp(linpred[2,]))` vector.
+Increasing both linear predictors by the same amount results in the same predicted means for all elemntes of `x` (but different predicted variances). And changing the two corresponding
+`beta` elements has exactly this effect - the two linear predictor  for any `x` increase by the same amount.
+In this case, the mean is more constrained than variance of the response, so the individual
+predictor values for the first shape parameter are allowed to vary quite a bit as long as their counterpart for the second shape parameter increases as well, keeping the predicted mean the same and showing our uncertainty about the variance. And this is how we get this ridge.
 
 
 ### Parametrizing the beta distribution via mean
@@ -561,7 +570,7 @@ generator_func_beta_precision <- function(N_obs, N_predictors) {
       mu <- plogis(linpred)
       y[n] <- rbeta(1, mu * phi, (1 - mu) * phi)
     }
-    if(all(y > 1e-7) && all(y < 1 - 1e-7)) {
+    if(all(y < 1 - 1e-12)) {
       break;
     }
   }
@@ -933,7 +942,7 @@ This actually shows a limitation of the coverage results - for `mu[2]` the appro
 
 Still, this might warrant further investigation if small discrepancies in `mu` are considered important, if we are interested only in the `beta` coefficients, we can stay assured that their calibration is pretty good. We give you our word that we ran additional simulations and the discrepancy disappears.
 
-Finally, we can also use this simulation exercise to understand what would we be likely to learn from an experiment matching the simulations (50 observations, 3 predictors) and plot the true values against estimated mean + 90% posterior credible interval:
+Finally, we can also use this simulation exercise to understand what would we be likely to learn from an experiment matching the simulations (50 observations, 3 predictors) and plot the true values (simulated by the generator) against estimated mean + 90% posterior credible interval:
 
 ```{r sim_estimated_final}
 plot_sim_estimated(results_combined_reject_more, alpha = 0.2)
