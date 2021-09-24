@@ -2,161 +2,109 @@
 ##'
 ##' @param generator function that generates datasets given each value in `param`
 ##' @param clamp_dist scalar clamp_disteter values e.g. prior_width
-##' @param param rvars<S>[N] prior values i.e. parameter values to be tested "draws_rvars"
-##' @param predictor rvars<N>[S] predictor values
-##' @param backend stan_model that samples posterior with `datasets` simulated from the former two
-##' @param target_vars function of parameters with which SBC iteration convergence are judged
-##' @param scm empirical distance between the previous and the current parameter values, default is `cjs_dist`
-##' @param thin scalar select 1 out of `thin` number of samples, `iter_sampling`=`thin`*M, default: 10
-##' @param cnt function of parameters with which SBC iteration convergence are judged
-##' @param evolve_df datafraame holding `median, mad (or sd)` of samples from every iteration
-##' @param delivDir save location of output result
-##' @return  next param values summarized from `S` * `M` posterior samples
+##' @param target_variables a named list defining parameter to mixture index mapping
+##' @param bandwidth the smoothing bandwidth parameter to pass to stats.density
+##' @param mixture_mean_init the initial mixture mean rvar
+##' @param mixture_bw_init the initial mixture bandwidth rvar
+##' @param thin Integer defining thinning parameter
+##' @param max_calib_iterations the maximum number of iterations to run calibration. if not given will run indefinitely
+##' @param sbc_iterations An integer returning the number of SBC iterations or a function with the signature (mixture_mean_rvar, mixture_bw_rvar) -> int
+##'                       which returns the number of SBC iterations to run given previous calibration run results.
+##' @param fixed_generator_args *named list* containing additional arguments to generator
 ##' @export
-
-self_calib <- function(generator, clamp_val, clamp_dist, param, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir, type = type, kde_bandwidth=NULL){
-  # adjust draws (='S') of clamp_dist and predictor to that of new param
-  S <- niterations(param[[1]])
-  clamp_dist <- subset_draws(clamp_dist, draw = 1:S)
-  predictor <- subset_draws(predictor, draw = 1:S)
-  message(paste("self_calib iter", cnt))
-  message(paste("S", S))
-  # generate-inference p_post(theta) = f(theta'|y) * p(y|theta)
-  dataset <- generator(clamp_val, clamp_dist, param, predictor)
-  #param <- dataset$parameters
-  result <- compute_results(dataset, backend, thin_ranks = thin)
-  # update
-  param_next <- update_param(param, result, thin, cnt, delivDir, target_vars = target_vars, type = type, kde_bandwidth = kde_bandwidth)
-  # save
-  summ <- summarise_draws(param, median, sd) %>% filter(variable == target_vars)
-  for (tv in target_vars){
-    evolve_df[[tv]]$median[cnt] <- filter(summ, variable == tv)["median"]
-    evolve_df[[tv]]$sd[cnt] <-  filter(summ, variable == tv)["sd"]
-    evolve_df[[tv]]$scm <- cjs_dist(param[[tv]], param_next[[tv]])
-    if(cnt == 0){evolve_df[[tv]]$scm_init <- evolve_df[[tv]]$scm}
+self_calib <- function(generator, backend, target_variables, bandwidth, mixture_mean_init, mixture_bw_init, thin, max_calib_iterations, sbc_iterations, fixed_generator_args){
+  if(missing(sbc_iterations)){
+    sbc_iterations <- 10  # Set default # of SBC iterations to 10
+    message(paste("sbc_iterations has been unspecified, using default value of", sbc_iterations))
   }
-  # terminate
-  if(iter_stop(param, param_next, target_vars, lapply(evolve_df, '[[', 'scm'))){ # S-S > S-4000S (stable compare)
-    csv_save(evolve_df, delivDir, type = "evolve")
-    return (param_next)
+  if(missing(max_calib_iterations)){
+    max_calib_iterations <- Inf
   }
-  cnt = cnt + 1
-  return(self_calib(generator, clamp_val, clamp_dist, param_next, predictor, backend, target_vars, thin, cnt, evolve_df, delivDir, type = type))
-}
+  if(missing(bandwidth)){
+    bandwidth <- "nrd0"
+  }
+  target_var_names <- names(target_variables) # names of named list, only run calibration for the following parameters
+  target_var_count <- length(target_var_names)
 
-##' Judge whether the SBC iteration have converged
-##'
-##' @param param numeric vector of parameter values to be tested a.k.a prior sample
-##' @param param_next numeric vector of updated parameter values after one SBC cycle a.k.a posterior values
-##' @param target_vars function of parameters with which SBC iteration convergence are judged, null is strict testing all parameters
-##' @param scm_init initial distance between initial parameter and its proposal
-##' @return boolean, judge convergence based on scm-scm_init ratio (relative) or `param`-`param_next` distance (absolute)
-##' @export
-iter_stop <- function(param, param_next, target_vars, scm_init){
-      return(all(unlist(lapply(target_vars,
-                               FUN = function(tv) cjs_dist(param[[tv]], param_next[[tv]]) < 0.5 * unlist(scm_init[[tv]])))))
-}
+  if(!posterior::is_rvar(mixture_mean_init)){
+    mixture_mean_init <- rvar(mixture_mean_init)
+  }
 
-# Updating parameter value `param` to `param_next` for valid comparison and to control `S`
-# Resample `param_next` sample matrix for with PIT weight of F_{prior}F_{post}^{-1}
-# S * n_sample posterior S as comparison threshold is possible for the same number of samples
-##'
-##' @param param numeric vector of prior values i.e. parameter values to be tested
-##' @param post posterior samples of length S * M
+  initial_sbc_iterations <- sbc_iterations(mixture_mean_init, mixture_bw_init)
+  initial_mixture_mean_rvar <- mixture_mean_init
 
-##' @return resampled posterior with prior information
-##' @export
-update_param <-function(theta_, result, thin, cnt, delivDir, target_vars = names(theta_), type = "kde", kde_bandwidth=NULL){
-  kde_bandwidth <- if(is.null(kde_bandwidth)) "nrd0" else kde_bandwidth # density default is "nrd0"\
-  theta_ <- posterior::subset_draws(theta_, variable=target_vars)
-  S <- niterations(theta_[[1]])
-  tf <- list()
-  post <- list()
-  theta <- list()
-  theta_tf <- list()
-  theta_tf_next <- list()
-  kde_bandwidths <- list() # only used if type is gmm_non_parametric
-  for (tv in target_vars){
-    agg_post <- function(s){
-      if(!is.null(result$fits[[s]])){# ADVI fit can be NULL
-        return (thin_draws(subset_draws(SBC_fit_to_draws_matrix(result$fits[[s]]), variable = tv), thin))}
-    }
-    for (s in 1:S){
-      if(tv == target_vars[1] & !is.null(result$fits[[s]])){
-        M <- length(agg_post(s))
+  draw_from_mixture <- function(mm_rvar, n_samples, n_sbc_iters){
+    # draw from a rvar of dim (M, N), draw = 1 along row(M), each n_samples
+    mm_mat <- draws_of(mm_rvar)[1, , ]
+    ret_vec <- c()
+    S <- n_sbc_iters
+    N <- dim(mm_mat)[1]
+    for(m in 1:n_samples){  # I truly, truly hate R array indexing
+      for(n in 1:N){
+        for(S in 1:S){
+
+          ret_vec <- c(ret_vec, sample(mm_mat[n, ], 1, replace = TRUE))
+        }
       }
     }
-    theta[[tv]] <- unlist(lapply(seq(1: S), agg_post)) # can reject/thin unideal nrow = S, ncol = M
+    rvar(array(ret_vec, dim = c(n_sbc_iters, N, n_samples)))
   }
-  S <- floor(length(theta[[1]])/M)
-  print(theta_)
-  print("----------------")
-  print(theta)
-  print(as_draws_rvars(theta))
-  pp_overlay_save(theta_, as_draws_rvars(theta), cnt, delivDir)
-  out <- tf_param(theta)
-  theta_tf <-  tibble::as_tibble(out$param)
+  #mixture_mean_rvar <- draw_from_mixture(mixture_mean_init, dim(mixture_mean_init)[2], initial_sbc_iterations)
+  dataset <- do.call(generator, c(list(initial_sbc_iterations, initial_mixture_mean_rvar, mixture_bw_init), fixed_generator_args))
 
-  tf <- out$tf
-  # parameteric
-  if(type == "kde"){
-    sample_kde <- function(x, bandwidth, n_samples){
-      kde <- density(x, bw=bandwidth)
-      bw <- kde$bw
-      draws <- sample(x, n_samples, replace = TRUE)
-      rnorm(n_samples, draws, bw) # sample(x) + normal(0, bandwidth)
-    }
-    for(tv in target_vars){
-      theta_tf_next[[tv]] <- sample_kde(dplyr::pull(theta_tf, tv), bandwidth = kde_bandwidth, n_samples = S)
-    }
-  }else if (type == "gmm_non_parametric"){
-    for(tv in target_vars){
-      kde_fit_points <- dplyr::pull(theta_tf, tv)
-      fitted_kde <- density(kde_fit_points, bandwidth = kde_bandwidth)
-      theta_tf_next[["mm_mean"]] <- rvar(array(rep(kde_fit_points, each = S), dim=c(S, S * M)))
-      theta_tf_next[[tv]] <- rvar(array(sample(kde_fit_points, S, replace = TRUE), dim = c(S, 1))) # draw from the posterior distribution
-      kde_bandwidth <- fitted_kde$bw
-    }
+  iteration_counter <- 1
+  previous_draws <- NULL
+  sbc_result <- NULL
+
+  cjs_record <- list()
+  for(tv in target_variables){
+    cjs_record[[tv]] <- c()
+  }
+  while(iteration_counter < max_calib_iterations){
+
+    S <- dim(dataset$parameters)[[1]]  # number of SBC iterations
+    message(paste("Running self_calib iteration", iteration_counter, "with S =", S))
+    sbc_result <- SBC::compute_results(dataset, backend, thin_ranks = thin)
+    n_posterior_draws <- posterior::ndraws(sbc_result$fits[[1]]$draws())
 
 
-  }else if (type == "sample"){
-    for(tv in target_vars){
-      theta_tf_next[[tv]] <- theta_tf[[tv]][unlist(lapply(c(1:S), FUN = function(i){sample(size = 1, 1:M) + (i - 1) * M}))]
+    extracted_mixture_means <- array(rep(NA, target_var_count * S * n_posterior_draws), dim = c(target_var_count, S * n_posterior_draws))
+    extracted_mixture_bw <- rep(NA, target_var_count)
+    for(tv in target_var_names){
+      pooled_draws <- c()
+      for(s in 1:S){
+        pooled_draws <- c(pooled_draws, posterior::extract_variable(sbc_result$fits[[s]]$draws(), tv))
+      }
+      fitted_kde <- density(pooled_draws, bw = bandwidth)
+      #theta_tf_next[[tv]] <- rvar(array(sample(kde_fit_points, S, replace = TRUE), dim = c(S, 1))) # draw from the posterior distribution
+      extracted_mixture_bw[target_variables[[tv]]] <- fitted_kde$bw
+      extracted_mixture_means[target_variables[[tv]], ] <- pooled_draws
+      cjs_record[[tv]] <- c(cjs_record[[tv]], cjs_dist(as.vector(posterior::draws_of(initial_mixture_mean_rvar[target_variables[[tv]], ])), pooled_draws))
     }
-    # nonparameteric
-  }else if (type == "bin"){
-    # to be implemented
-    theta_tf <- theta_tf
-  }else if(type == "filter"){
-    # F_{post}^{-1}*F_{prior}(param) #TODO loo_subsample.R
-    for(tv in target_vars){
-      datagrid <- sort(draws_of(theta_[[tv]]))
-      theta_tf_next[["mm_mean"]] <- draws_of(resample_draws(as_draws(rvar(datagrid)),
-                                          tabulate(ecdf(datagrid)(theta[[tv]] ) * S, nbins = S))[[1]])
+
+    extracted_mixture_mean_rvar <- rvar(array(extracted_mixture_means, dim = c(S, target_var_count, S * n_posterior_draws)))
+    extracted_mixture_bw_rvar <- rvar(array(extracted_mixture_bw, dim = c(S, 1)))
+
+    stop <- TRUE
+    for(tv in target_var_names){
+      if(cjs_record[[tv]][iteration_counter] >= 0.5 * cjs_record[[tv]][1]){
+        message(paste("cjs_dist for parameter", tv, ":", cjs_record[[tv]][[iteration_counter]]))
+        stop <- FALSE
+        break
+      }
     }
+    if(stop && iteration_counter != 1){
+      message(paste("self_calib terminated on iteration", iteration_counter))
+      break
+    }
+    previous_draws <- as.vector(extracted_mixture_means)
+
+
+    dataset <- do.call(generator, c(list(sbc_iterations(mixture_mean_init, mixture_bw_init), extracted_mixture_mean_rvar, extracted_mixture_bw_rvar),
+                                    fixed_generator_args))
+    iteration_counter <- iteration_counter + 1
   }
-  theta <- invtf_param(theta_tf_next, tf)
-  if(type == "gmm_non_parametric"){
-    theta[["mm_bandwidth"]] <- rvar(array(rep(kde_bandwidth, S), dim=c(S, 1)))
-    return (as_draws_rvars(theta))
-  }else{
-    return (as_draws_rvars(theta))
-  }
+  return(sbc_result)
 }
 
-ar_param <- function(target_ftn = cjs_dist, prop, param, evolve_df, cnt){
-  param_next <- param
-  scm_prop <- target_ftn(prop, param[[tv]])
-  if(cnt == 0){
-    evolve_df[[tv]]$scm_init <- scm_prop
-    evolve_df[[tv]]$scm <- scm_prop
-  }
-  scm_t <- evolve_df[[tv]]$scm
-  # reject-acceptance
-  if(runif(1) < log(scm_prop)/log(scm_t)){
-    param_next[[tv]] <- prop
-    evolve_df[[tv]]$scm <- scm_prop
-  }
-  return(param_next)
-}
 
