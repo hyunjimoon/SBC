@@ -6,45 +6,38 @@
 \usage{
 self_calib(
   generator,
-  clamp_val,
-  clamp_dist,
-  param,
-  predictor,
   backend,
-  target_vars,
+  target_variables,
+  bandwidth,
+  mixture_mean_init,
+  mixture_bw_init,
   thin,
-  cnt,
-  evolve_df,
-  delivDir,
-  type = type,
-  kde_bandwidth = NULL
+  max_calib_iterations,
+  sbc_iterations,
+  fixed_generator_args
 )
 }
 \arguments{
 \item{generator}{function that generates datasets given each value in \code{param}}
 
+\item{target_variables}{a named list defining parameter to mixture index mapping}
+
+\item{bandwidth}{the smoothing bandwidth parameter to pass to stats.density}
+
+\item{mixture_mean_init}{the initial mixture mean rvar}
+
+\item{mixture_bw_init}{the initial mixture bandwidth rvar}
+
+\item{thin}{Integer defining thinning parameter}
+
+\item{max_calib_iterations}{the maximum number of iterations to run calibration. if not given will run indefinitely}
+
+\item{sbc_iterations}{An integer returning the number of SBC iterations or a function with the signature (mixture_mean_rvar, mixture_bw_rvar) -> int
+which returns the number of SBC iterations to run given previous calibration run results.}
+
+\item{fixed_generator_args}{\emph{named list} containing additional arguments to generator}
+
 \item{clamp_dist}{scalar clamp_disteter values e.g. prior_width}
-
-\item{param}{rvars<S>\link{N} prior values i.e. parameter values to be tested "draws_rvars"}
-
-\item{predictor}{rvars<N>\link{S} predictor values}
-
-\item{backend}{stan_model that samples posterior with \code{datasets} simulated from the former two}
-
-\item{target_vars}{function of parameters with which SBC iteration convergence are judged}
-
-\item{thin}{scalar select 1 out of \code{thin} number of samples, \code{iter_sampling}=\code{thin}*M, default: 10}
-
-\item{cnt}{function of parameters with which SBC iteration convergence are judged}
-
-\item{evolve_df}{datafraame holding \verb{median, mad (or sd)} of samples from every iteration}
-
-\item{delivDir}{save location of output result}
-
-\item{scm}{empirical distance between the previous and the current parameter values, default is \code{cjs_dist}}
-}
-\value{
-next param values summarized from \code{S} * \code{M} posterior samples
 }
 \description{
 Auto calibrate the initial prior samples using SBC iteration
