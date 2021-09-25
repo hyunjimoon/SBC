@@ -48,9 +48,8 @@ plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 
 
   # Bins can differ by size (at most by 1). Build a CI that is conservative,
   # i.e. includes lower quantile of smalelr bins and higher quantile of larger bins
-  larger_bin_size <- ceiling((max_rank / bins))
-  smaller_bin_size <- floor((max_rank / bins))
-  CI = qbinom(c(0.5 * (1 - prob),0.5,0.5 * (1 + prob)), size=n_simulations,prob  =  larger_bin_size / max_rank)
+  larger_bin_size <- ceiling(((max_rank + 1) / bins))
+  smaller_bin_size <- floor(((max_rank + 1) / bins))
   ci_lower = qbinom(0.5 * (1 - prob), size=n_simulations,prob  =  smaller_bin_size / max_rank)
   ci_mean = qbinom(0.5, size=n_simulations,prob  =  1 / bins)
   ci_upper = qbinom(0.5 * (1 + prob), size=n_simulations,prob  =  larger_bin_size / max_rank)
