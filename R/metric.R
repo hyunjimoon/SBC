@@ -110,11 +110,16 @@ wasserstein <- function(x, y){
 ##'   Notes in Computer Science, vol 9285.  Springer, Cham.
 ##'   \code{doi:10.1007/978-3-319-23525-7_11}
 ##' @export
-cjs_dist <- function(x, y, x_weights = rep(1/length(x), length(x)), y_weights = rep(1/length(y), length(y)), ...) {
+cjs_dist <- function(x, y, x_weights, y_weights, ...) {
   if (class(x)[1] == "rvar"){
     x <- c(draws_of(x))
+    message(paste("y at cjs", y))
     y <- c(draws_of(y))
+    x_weights <-  rep(1/length(x), length(x))
+    y_weights <-  rep(1/length(y), length(y))
   }
+  x_weights <-  rep(1/length(x), length(x))
+  y_weights <-  rep(1/length(y), length(y))
   # sort draws and weights
   x_idx <- order(x)
   x <- x[x_idx]

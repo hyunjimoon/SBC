@@ -20,127 +20,57 @@ set.seed(1984)
 devtools::load_all()
 ```
 
-
-Can the trial and error search for stabilized prior from a ~ (2,5) to (2,2) be found automatically?
-```{r warning=FALSE}
-set.seed(12)
-generator <- function(clamp_val,clamp_dist, param, predictor = NULL){
-  # fixed value across simultated datasets
-  N <- clamp_val$N
-  shape <- clamp_val$shape
-  # fixed distribution across simultated datasets
-  b <- clamp_dist$b
-  # paramter - target, updated distribution 
-  a_loc = mean(param$a)
-  a_scale = sd(param$a)
-  a <- rvar(rnorm(S, a_loc, a_scale))
-  # predictor
-  X = predictor$X
-  # generate
-  mu = exp(a + X %**% b)
-  Y <- rfun(rgamma) (n = N, shape = shape, scale = mu/shape) 
-  gen_rvars <- draws_rvars(N = N, Y = Y, K = K, X = X, 
-                           a_loc = a_loc, a_scale = a_scale, shape = shape)
-  # SDEdraws: rvar<S>[1] distributed to each simulation as rvar<1>[1]
-  SBC_datasets(
-    parameters = as_draws_matrix(param), 
-    generated = draws_rvars_to_standata(gen_rvars)
-  )
-}
-# dataset 
-S = 60
-N = 100
-M = 300
-K = 15
-clamp_val <- list(N = N, shape = 1)
-clamp_dist <- draws_rvars(b = rvar_rng(rnorm, ndraws = S, n = K, 0, 1)) #rgamma(S, shape = 0.01, scale = 0.01)
-predictor <- draws_rvars(X = array(rnorm(S * N * K, mean = 1, sd = 1), dim = c(S, N, K)))
-param_init_25 <- draws_rvars(a = rnorm(S, 2, 5)) # prior(normal(2, 2), class = "b", coef = "Intercept")
-datasets_25 <- generator(
-  clamp_val = clamp_val,
-  clamp_dist = clamp_dist,
-  param = param_init_25,
-  predictor =  predictor
-)
-# backend 
-mod_gr <- set_get_Dir("gamma-reg")$mod
-backend_vi <- SBC_backend_cmdstan_variational(mod_gr, output_samples = M, algorithm = "fullrank")
-result_25_vi <- compute_results(datasets_25, backend_vi, thin_ranks = 1)
-plot_rank_hist(result_25_vi)
-
-#iteration
-tv = "a"
-delivDir = set_get_Dir("gamma-reg")$delivDir
-evolve_df <- list()
-for (v in tv){
- evolve_df[[v]] <- list(median = rep(NA,1), sd = rep(NA,1), scm = NA, scm_init = NA) 
-}
-param_sc_vi <- self_calib(generator, clamp_val, clamp_dist, param_init_25, predictor, backend_vi, tv, 1, 1, evolve_df, delivDir, type = "sample")
-# test self-consistency for parameters_sc
-datasets_sc <- generator(
-  clamp_val = clamp_val,
-  clamp_dist = clamp_dist,
-  param = param_sc_hmc,
-  predictor = predictor
-)
-result_sc <- compute_results(datasets_sc, backend_hmc) 
-# before after compare with ecdf and rank summary
-# graphical inspection
-plot_rank_hist(result_25)
-plot_rank_hist(result_sc)
-```
-
-@@@@@@@@@@@@@@@@@ START GMM TEST CODE @@@@@@@@@@@@@@@@
-
 ```{r}
-generator_gmm <- function(S, mixture_mean_rvar, mixture_bw_rvar, fixed_values){
-  # fixed value across simultated datasets
-  N <- fixed_values$N
+generator_gmm <- function(nsims, mixture_means_rvar, mixture_bw_rvar, fixed_values){
+  # fixed value across simulated datasets
+  nobs <- fixed_values$nobs
   shape <- fixed_values$shape
-  n_variables <- dim(mixture_mean_rvar)[[1]]
-  M <- fixed_values$M
+  ntarget_params <- 1 #dim(mixture_means_rvar)[[1]]
+  ndraws <- fixed_values$ndraws
   # fixed distribution across simultated datasets
+  a <- rep(mixture_means_rvar, nsims)
   b <- fixed_values$b  # length (K)
-  # paramter - target, updated distribution
-  a <- rvar_rng(rnorm, n = 1, as.vector(sample(mixture_mean_rvar[1, ], 1, replace=TRUE)), sd=mixture_bw_rvar[1]) # <S>(n_vars, S * M) -> <S>(n_vars)
-
   # predictor
-  X = fixed_values$X
+  X <- fixed_values$X
+  # target paramter
+  a <- rvar_rng(rnorm, n = 1, as.vector(sample(mixture_means_rvar, 1, replace=TRUE)), sd=mixture_bw_rvar) # <S>(n_vars, S * M) -> <S>(n_vars)
   # generate
-  mu = as.vector(exp(a + X %**% b))  # output (S, 1) -> (S) vector
-  Y <- rvar_rng(rgamma, n = N, shape = shape, scale = mu / shape, ndraws = S)
-  gen_rvars <- draws_rvars(N = N, Y = Y, K = K, X = X, n_calib_parameters = n_variables,
-                           SM = S * M, mm_mean = mixture_mean_rvar, mm_bandwidth = mixture_bw_rvar, shape = shape)
+  mu <- as.vector(exp(a + X %**% b))  # output (S, 1) -> (S) vector
+  Y <- rvar_rng(rgamma, n = nobs, shape = shape, scale = mu / shape, ndraws = nsims)
+  gen_rvars <- draws_rvars(nobs = nobs, Y = Y, npredictors = npredictors, X = X, ntarget_params = ntarget_params,
+                           nsims = nsims, mm_mean = mixture_means_rvar, mm_bandwidth = mixture_bw_rvar, shape = shape)
   SBC_datasets(
     parameters = as_draws_matrix(list(a = a)), 
     generated = draws_rvars_to_standata(gen_rvars)
   )
 }
 
-mod_gmm <- cmdstanr::cmdstan_model("./models/gamma-reg_gmm.stan")
-fixed_values <- list(N = N, shape = 1, M = M, b = rvar_rng(rnorm, ndraws = 1, n = K, 0, 1), X = rvar(array(rnorm(n = N * K, mean = 1, sd = 1), dim = c(1, N, K))))
-
-mm_mean = rvar(array(rnorm(S * M * n_variables, 2, 1), dim = c(1, n_variables, S * M)))
-mm_bandwidth = rvar(array(rep(1, S), dim=c(S, 1)))
-
+nsims = 10
+nobs = 10
+ndraws = 300
+npredictors = 15
+ntarget_params = 1
+chains = 4
+fixed_values <- list(nobs = nobs, shape = 1, ndraws = ndraws, b = rvar_rng(rnorm, ndraws = 1, n = npredictors, 0, 1), X = rvar(array(rnorm(n = nobs * npredictors, mean = 1, sd = 1), dim = c(1, nobs, npredictors))))
+mm_mean = rvar(array(rep(rnorm(nsims, 2, 1), each = nsims), dim = c(nsims, nsims)))
+#mm_mean = rvar(array(rep(rnorm(nsims * ntarget_params, 2, 1), nsims), dim = c(nsims, ntarget_params, nsims))) rvar<10>[1,10]
+# mm_mean = rvar(array(rnorm(nsims * ntarget_params * nsims, 2, 1), dim = c(nsims, ntarget_params, nsims))) rvar<10>[1,10]
+mm_bandwidth = rvar(array(rep(1, nsims), dim=c(nsims, 1)))
 
 datasets_25 <- generator_gmm(
-  S = S,
-  mixture_mean_rvar = mm_mean,
+  nsims = nsims,
+  mixture_means_rvar = mm_mean,
   mixture_bw_rvar = mm_bandwidth,
   fixed_values = fixed_values
 )
 
-backend_hmc_gmm <- SBC_backend_cmdstan_sample(mod_gmm, chains = chains, iter_sampling = M / chains)
+mod_gmm <- cmdstanr::cmdstan_model("./models/gamma-reg_gmm.stan")
+backend_hmc_gmm <- SBC_backend_cmdstan_sample(mod_gmm, chains = chains, iter_sampling = ndraws / chains)
 #result_25_hmc <- compute_results(datasets_25, backend_hmc)
 
-
-
-param_sc_hmc <- self_calib(generator_gmm, backend_hmc, list(a = 1), mixture_mean_init = mm_mean, mixture_bw_init = mm_bandwidth, thin = 3, sbc_iterations = 
-                           function(...){10}, fixed_generator_args = list(fixed_values = fixed_values))
-
+param_sc_hmc <- self_calib(generator_gmm, backend_hmc_gmm, list(a = 1), mixture_means_init = mm_mean, mixture_bw_init = mm_bandwidth, thin = 3, 
+                           nsims_fn = function(...){10}, fixed_generator_args = list(fixed_values = fixed_values))
 ```
-
 
 @@@@@@@@@@@@@@@@@ END GMM TEST CODE @@@@@@@@@@@@@@@@@@
 
