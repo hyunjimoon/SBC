@@ -53,7 +53,7 @@ self_calib <- function(generator, backend, mixture_means_init_draws_rvars, mixtu
     sbc_result <- SBC::compute_results(dataset, backend, thin_ranks = thin)
     for(s in 1:nsims){
       returned_errors <- sbc_result$errors
-      if(!is.null(returned_errors[[1]])){
+      if(!is.null(returned_errors[[s]])){
         message("SBC returned 1 or more errors. Terminating and returning the last unsuccessful SBC result...")
         return(sbc_result)
       }
