@@ -72,15 +72,12 @@ self_calib <- function(generator, backend, target_params, mixture_means_init, mi
       for(s in 1:nsims){
         pooled_draws <- c(pooled_draws, posterior::extract_variable(sbc_result$fits[[s]]$draws(), tp))
       }
-
-      fitted_kde <- density(pooled_draws, bw = bandwidth)
-      # 1. logic for setting `nsims` based on mixture_means_init
-      # approx <- MCluster(pooled_draws)
-      # mixture_means[target_params[[tp]], ]  <- approx$mu
-      # mixture_bw[target_params[[tp]], ]  <- approx$sd
-      #tmixture_means[target_params[[tp]], ]<- rvar(array(sample(kde_fit_points, S, replace = TRUE), dim = c(S, 1))) # draw from the posterior distribution
-      mixture_means_hat[target_params[[tp]], ] <- pooled_draws[sample(1:(nsims * ndraws), size = nsims)]  # SM2S
-      mixture_bw_hat[target_params[[tp]]] <-fitted_kde$bw
+      gmm_fit <- Mclust(pooled_draws, G = ndataset)
+      mixture_means_hat[target_params[[tp]], ] <- gmm_fit$parameters$mean
+      mixture_bw_hat[target_params[[tp]], ] <- sqrt(gmm_fit$parameters$variance$sigmasq)
+      # fitted_kde <- density(pooled_draws, bw = bandwidth)
+      # mixture_means_hat[target_params[[tp]], ] <- pooled_draws[sample(1:(nsims * ndraws), size = nsims)]  # SM2S
+      # mixture_bw_hat[target_params[[tp]]] <-fitted_kde$bw
       mixture_means_next <- update_means(mixture_means_hat[target_params[[tp]], ], mixture_means_hat[target_params[[tp]], ])
     }
     mixture_means_hat_rvar <- rvar(array(mixture_means_hat, dim = c(ntarget_params, nsims)))
