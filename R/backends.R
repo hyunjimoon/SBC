@@ -21,11 +21,15 @@ SBC_fit_to_draws_matrix.default <- function(fit) {
 
 #' S3 generic to get backend-specific diagnostics.
 #'
+#' The diagnostics object has to be a `data.frame` but may
+#' inherit additional classes - in particular it may be useful
+#' for the returning object to implement [get_diagnostic_messages()].
+#'
 #' @param fit The fit returned by `SBC_fit`
 #' @param fit_output a character string capturing what the backend wrote to stdout
 #' @param fit_messages a character vector of messages the backend raised
 #' @param fit_warnings a character vector of warnings the backend raised
-#' @return an object that includes diagnostics or NULL, if no diagnostics available.
+#' @return an single row `data.frame` that includes diagnostics or NULL, if no diagnostics available.
 #' @export
 SBC_fit_to_diagnostics <- function(fit, fit_output, fit_messages, fit_warnings) {
   UseMethod("SBC_fit_to_diagnostics")
@@ -50,6 +54,47 @@ SBC_backend_hash_for_cache <- function(backend) {
 SBC_backend_hash_for_cache.default <- function(backend) {
   rlang::hash(backend)
 }
+
+#' S3 generic to let backends signal that they produced independent samples.
+#'
+#' Most backends (e.g. those based on variatns of MCMC) don't produce
+#' independent samples and thus diagnostics like Rhat and ESS are important
+#' and samples may need thinning. Backends that already produce independent
+#' samples (e.g. ADVI/optimizing) can implement this method to return `TRUE`
+#' to signal this is the case. The default implementation returns `FALSE`.
+#' @param backend to check
+#' @export
+SBC_backend_iid_samples <- function(backend) {
+  UseMethod("SBC_backend_iid_samples")
+}
+
+#' @rdname SBC_backend_iid_samples
+#' @export
+SBC_backend_iid_samples.default <- function(backend) {
+  FALSE
+}
+
+#' S3 generic to get backend-specific default thinning for rank computation.
+#'
+#' The default implementation plays it relatively safe and returns 10, unless
+#' [SBC_backend_iid_samples()] returns `TRUE` in which case it returns 1.
+#'
+#' @export
+SBC_backend_default_thin_ranks <- function(backend) {
+  UseMethod("SBC_backend_default_thin_ranks")
+}
+
+#' @rdname SBC_backend_default_thin_ranks
+#' @export
+SBC_backend_default_thin_ranks.default <- function(backend) {
+  if(SBC_backend_iid_samples(backend)) {
+    1
+  } else {
+    10
+  }
+}
+
+
 
 #' SBC backend using the `sampling` method from `rstan`.
 #'
@@ -135,8 +180,8 @@ summary.SBC_nuts_diagnostics <- function(diagnostics) {
 }
 
 
-get_diagnostics_messages.SBC_nuts_diagnostics <- function(x) {
-  get_diagnostics_messages(summary(x))
+get_diagnostic_messages.SBC_nuts_diagnostics <- function(x) {
+  get_diagnostic_messages(summary(x))
 }
 
 # Not currently used. Discussion at https://discourse.mc-stan.org/t/summarising-rhat-values-over-multiple-variables-fits/23957/
@@ -177,7 +222,7 @@ get_expected_max_rhat <- function(n_vars, prob = 0.99, approx_sd = 0.005) {
   1 + std_val_max * approx_sd
 }
 
-get_diagnostics_messages.SBC_nuts_diagnostics_summary <- function(x) {
+get_diagnostic_messages.SBC_nuts_diagnostics_summary <- function(x) {
   message_list <- list()
   i <- 1
   if(!is.null(x$has_failed_chains)) {
@@ -237,7 +282,7 @@ get_diagnostics_messages.SBC_nuts_diagnostics_summary <- function(x) {
 
 #' @export
 print.SBC_nuts_diagnostics_summary <- function(x) {
-  msg <- get_diagnostics_messages(x)
+  msg <- get_diagnostic_messages(x)
   print(msg)
   invisible(x)
 }

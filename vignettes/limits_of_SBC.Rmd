@@ -309,10 +309,12 @@ normal_lpdf <- function(y, mu, sigma) {
   sum(dnorm(y, mean = mu, sd = sigma, log = TRUE))
 }
 
-log_lik_gq <- generated_quantities(log_lik = normal_lpdf(y, mu, 1), .globals = "normal_lpdf" )
+log_lik_gq <- generated_quantities(log_lik = normal_lpdf(y, mu, 1), 
+                                   .globals = "normal_lpdf" )
 
-results_missing_gq <- recompute_statistics(results_missing, datasets_missing, 
-                                             gen_quants = log_lik_gq)
+results_missing_gq <- recompute_statistics(
+  results_missing, datasets_missing, 
+  backend = backend_missing, gen_quants = log_lik_gq)
 ```
 
 The rank plots for the `log_lik` quantity immediately shows a severe problem:
