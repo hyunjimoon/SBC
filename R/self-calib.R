@@ -2,14 +2,14 @@
 ##'
 ##' @param generator function that generates datasets given each value in `param`
 ##' @param backend A backend object to use for running SBC
-##' @param mixture_mean_init the initial mixture mean draws_rvars
-##' @param mixture_bw_init the initial mixture bandwidth draws_rvars
-##' @param thin Integer defining thinning parameter
-##' @param max_calib_iterations the maximum number of iterations to run calibration. if not given will run indefinitely
+##' @param mixture_means_init_draws_rvars the initial mixture mean draws_rvars
+##' @param mixture_bw_init_draws_rvars the initial mixture bandwidth draws_rvars
 ##' @param nsims_fn function with input: (mixture_means_rvar, mixture_bw_rvar), output: int
 ##'                 int is future number of parallel datasets to generate given true and its fitted hyperparameter (mixture_means)
 ##' @param bandwidth the smoothing bandwidth parameter to pass to stats.density
-##' @param fixed_generator_args *named list* containing additional arguments to generator
+##' @param thin Integer defining thinning parameter
+##' @param max_selfcalib_iters the maximum number of iterations to run calibration. if not given will run indefinitely
+##' @param fixed_generator_args *named list* containing additional arguments to pass to generator, *after mixture_means_draws_rvars and mixture_bw_draws_rvars*
 ##' @export
 self_calib <- function(generator, backend, mixture_means_init_draws_rvars, mixture_bw_init_draws_rvars, nsims_fn,
                        bandwidth, thin, max_selfcalib_iters, fixed_generator_args){
