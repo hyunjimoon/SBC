@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Recompute SBC statistics given a single fit. — statistics_from_single_fit • SBC</title>
+<title>Get diagnostic messages for SBC_results or other objects. — get_diagnostic_messages • SBC</title>
 
 
 <!-- jquery -->
@@ -39,10 +39,8 @@
 
 
 
-<meta property="og:title" content="Recompute SBC statistics given a single fit. — statistics_from_single_fit" />
-<meta property="og:description" content="Potentially useful for doing some advanced stuff, but should not
-be used in regular workflow. Use recompute_statistics() to update
-an [SBC_results] objects with different thin_ranks or other settings." />
+<meta property="og:title" content="Get diagnostic messages for SBC_results or other objects. — get_diagnostic_messages" />
+<meta property="og:description" content="Get diagnostic messages for SBC_results or other objects." />
 
 
 
@@ -161,30 +159,21 @@ an [SBC_results] objects with different thin_ranks or other settings." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>Recompute SBC statistics given a single fit.</h1>
+    <h1>Get diagnostic messages for <code>SBC_results</code> or other objects.</h1>
     
-    <div class="hidden name"><code>statistics_from_single_fit.Rd</code></div>
+    <div class="hidden name"><code>get_diagnostic_messages.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Potentially useful for doing some advanced stuff, but should not
-be used in regular workflow. Use <code><a href='recompute_statistics.html'>recompute_statistics()</a></code> to update
-an <code>[SBC_results]</code> objects with different <code>thin_ranks</code> or other settings.</p>
+    <p>Get diagnostic messages for <code>SBC_results</code> or other objects.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>statistics_from_single_fit</span><span class='op'>(</span>
-  <span class='va'>fit</span>,
-  <span class='va'>parameters</span>,
-  <span class='va'>generated</span>,
-  <span class='va'>thin_ranks</span>,
-  <span class='va'>gen_quants</span>,
-  <span class='va'>backend</span>
-<span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>get_diagnostic_messages</span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span></pre>
 
 
-    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
+    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <div class='dont-index'><p><code><a href='recompute_statistics.html'>recompute_statistics()</a></code></p></div>
+    <p>An object of class <code>SBC_diagnostic_messages</code>, inheriting a data.frame.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

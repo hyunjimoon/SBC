@@ -121,7 +121,7 @@
       <h1 data-toc-skip>SBC Interface Introduction</h1>
                         <h4 class="author">Hyunji Moon, Martin Modrák, Shinyoung Kim</h4>
             
-            <h4 class="date">2021-09-18</h4>
+            <h4 class="date">2021-09-26</h4>
       
       
       <div class="hidden name"><code>basic_usage.Rmd</code></div>
@@ -150,7 +150,7 @@
 <li>We have a generator and a model we trust and we want to check whether a given algorithm correctly computes the posterior.</li>
 </ol>
 <p>In any case, a failure of SBC only tells us that at least one of the three pillars of our inference (generator/model/algorithm) is mismatched to others.</p>
-<p>In the context of larger Bayesian workflow (as discussed e.g. in <a href="https://arxiv.org/abs/2011.01808">Bayesian Workflow</a> by Gelman et al.  or <a href="https://betanalpha.github.io/assets/case_studies/principled_bayesian_workflow.html">Towards A Principled Bayesian Workflow</a> by Betancourt), SBC can be used to validate the implementation of a model/algorithm, which is just one of many things to check if one needs a robust analysis. In particular, SBC does not use any real data and thus cannot tell you anything about potential mismatch between your model and the actual data you plan to analyze.</p>
+<p>In the context of larger Bayesian workflow (as discussed e.g. in <a href="https://arxiv.org/abs/2011.01808">Bayesian Workflow</a> by Gelman et al.  or <a href="https://betanalpha.github.io/assets/case_studies/principled_bayesian_workflow.html">Towards A Principled Bayesian Workflow</a> by Betancourt), SBC can be used to validate the implementation of a model/algorithm, which is just one of many things to check if one needs a robust analysis. In particular, SBC does not use any real data and thus cannot tell you anything about potential mismatch between your model and the actual data you plan to analyze. However, this is in some sense an advantage: if our model fails (e.g. we have convergence problems) on real data, we don’t know whether the problem is a bug in our model or a mismatch between the model and the data. If we simulate data exactly as the model assumes, any problem has to be a bug. Additionally, we can use SBC to better understand whether the data we plan to collect are actually capable of answering the questions we have.</p>
 <p>This vignette will demonstrate how the basic package interface can be used to run simulations, calculate ranks and investigate calibration.</p>
 </div>
 <div id="aims-of-the-package" class="section level2">

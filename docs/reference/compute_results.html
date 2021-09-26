@@ -40,10 +40,7 @@
 
 
 <meta property="og:title" content="Fit datasets and evaluate diagnostics and SBC metrics. — compute_results" />
-<meta property="og:description" content="Parallel processing is supported via the future package, for most uses, it is most sensible
-to just call plan(multisession) once in your R session and  all
-cores your computer will be used. For more details refer to the documentation
-of the future package." />
+<meta property="og:description" content="Performs the main SBC routine given datasets and a backend." />
 
 
 
@@ -168,10 +165,7 @@ of the future package." />
     </div>
 
     <div class="ref-description">
-    <p>Parallel processing is supported via the <code>future</code> package, for most uses, it is most sensible
-to just call <code>plan(multisession)</code> once in your R session and  all
-cores your computer will be used. For more details refer to the documentation
-of the <code>future</code> package.</p>
+    <p>Performs the main SBC routine given datasets and a backend.</p>
     </div>
 
     <pre class="usage"><span class='fu'>compute_results</span><span class='op'>(</span>
@@ -179,11 +173,12 @@ of the <code>future</code> package.</p>
   <span class='va'>backend</span>,
   cores_per_fit <span class='op'>=</span> <span class='fu'><a href='default_cores_per_fit.html'>default_cores_per_fit</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/length.html'>length</a></span><span class='op'>(</span><span class='va'>datasets</span><span class='op'>)</span><span class='op'>)</span>,
   keep_fits <span class='op'>=</span> <span class='cn'>TRUE</span>,
-  thin_ranks <span class='op'>=</span> <span class='fl'>10</span>,
+  thin_ranks <span class='op'>=</span> <span class='fu'><a href='SBC_backend_default_thin_ranks.html'>SBC_backend_default_thin_ranks</a></span><span class='op'>(</span><span class='va'>backend</span><span class='op'>)</span>,
   chunk_size <span class='op'>=</span> <span class='fu'><a href='default_chunk_size.html'>default_chunk_size</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/length.html'>length</a></span><span class='op'>(</span><span class='va'>datasets</span><span class='op'>)</span><span class='op'>)</span>,
   gen_quants <span class='op'>=</span> <span class='cn'>NULL</span>,
   cache_mode <span class='op'>=</span> <span class='st'>"none"</span>,
-  cache_location <span class='op'>=</span> <span class='cn'>NULL</span>
+  cache_location <span class='op'>=</span> <span class='cn'>NULL</span>,
+  globals <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='op'>)</span>
 <span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
@@ -244,11 +239,43 @@ and recomputed only when the hash of the backend or dataset changes.</p></td>
 this should be a name of a single file. If the file name does not end with
 <code>.rds</code>, this extension is appended.</p></td>
     </tr>
+    <tr>
+      <th>globals</th>
+      <td><p>A list of names of objects that are defined
+in the global environment and need to present for the backend to work (
+if they are not already available in package).
+It is added to the <code>globals</code> argument to <code><a href='https://rdrr.io/pkg/future/man/future.html'>future::future()</a></code>, to make those
+objects available on all workers.</p></td>
+    </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
     <p>An object of class <code><a href='SBC_results.html'>SBC_results()</a></code>.</p>
+    <h2 class="hasAnchor" id="paralellization"><a class="anchor" href="#paralellization"></a>Paralellization</h2>
+
+    <p>Parallel processing is supported via the <code>future</code> package, for most uses, it is most sensible
+to just call <code>plan(multisession)</code> once in your R session and  all
+cores your computer will be used. For more details refer to the documentation
+of the <code>future</code> package.</p>
+    <h2 class="hasAnchor" id="thinning"><a class="anchor" href="#thinning"></a>Thinning</h2>
+
+    <p>When using backends based on MCMC, there are two possible moments when
+samples may need to be thinned. They can be thinned directly within the backend
+and they may be thinned only to compute the ranks for SBC as specified by the
+<code>thin_ranks</code> argument. The main reason those are separate is that computing the
+ranks requires no or negligible autocorrelation while some autocorrelation
+may be easily tolerated for summarising the fit results or assessing convergence.
+In fact, thinning too aggressively in the backend may lead to overly noisy
+estimates of posterior means, quantiles and the <code><a href='https://mc-stan.org/posterior/reference/rhat.html'>posterior::rhat()</a></code> and
+<code><a href='https://mc-stan.org/posterior/reference/ess_tail.html'>posterior::ess_tail()</a></code> diagnostics. So for well-adapted Hamiltonian Monte-Carlo
+chains (e.g. Stan-based backends), we recommend no thinning in the backend and
+even value of <code>thin_ranks</code> between 6 and 10 is usually sufficient to remove
+the residual autocorrelation. For a backend based on Metropolis-Hastings,
+it might be sensible to thin quite aggressively already in the backend and
+then have some additional thinning via <code>thin_ranks</code>.</p>
+<p>Backends that don't require thining should implement <code><a href='SBC_backend_iid_samples.html'>SBC_backend_iid_samples()</a></code>
+or <code><a href='SBC_backend_default_thin_ranks.html'>SBC_backend_default_thin_ranks()</a></code> to avoid thinning by default.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

@@ -40,7 +40,9 @@
 
 
 <meta property="og:title" content="S3 generic to get backend-specific diagnostics. — SBC_fit_to_diagnostics" />
-<meta property="og:description" content="S3 generic to get backend-specific diagnostics." />
+<meta property="og:description" content="The diagnostics object has to be a data.frame but may
+inherit additional classes - in particular it may be useful
+for the returning object to implement get_diagnostic_messages()." />
 
 
 
@@ -165,7 +167,9 @@
     </div>
 
     <div class="ref-description">
-    <p>S3 generic to get backend-specific diagnostics.</p>
+    <p>The diagnostics object has to be a <code>data.frame</code> but may
+inherit additional classes - in particular it may be useful
+for the returning object to implement <code><a href='get_diagnostic_messages.html'>get_diagnostic_messages()</a></code>.</p>
     </div>
 
     <pre class="usage"><span class='fu'>SBC_fit_to_diagnostics</span><span class='op'>(</span><span class='va'>fit</span>, <span class='va'>fit_output</span>, <span class='va'>fit_messages</span>, <span class='va'>fit_warnings</span><span class='op'>)</span></pre>
@@ -193,7 +197,7 @@
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>an object that includes diagnostics or NULL, if no diagnostics available.</p>
+    <p>an single row <code>data.frame</code> that includes diagnostics or NULL, if no diagnostics available.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

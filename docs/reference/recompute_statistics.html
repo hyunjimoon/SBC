@@ -170,8 +170,23 @@ or added generated quantities." />
 or added generated quantities.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>recompute_statistics</span><span class='op'>(</span><span class='va'>old_results</span>, <span class='va'>datasets</span>, thin_ranks <span class='op'>=</span> <span class='fl'>10</span>, gen_quants <span class='op'>=</span> <span class='cn'>NULL</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>recompute_statistics</span><span class='op'>(</span>
+  <span class='va'>old_results</span>,
+  <span class='va'>datasets</span>,
+  <span class='va'>backend</span>,
+  thin_ranks <span class='op'>=</span> <span class='fu'><a href='SBC_backend_default_thin_ranks.html'>SBC_backend_default_thin_ranks</a></span><span class='op'>(</span><span class='va'>backend</span><span class='op'>)</span>,
+  gen_quants <span class='op'>=</span> <span class='cn'>NULL</span>
+<span class='op'>)</span></pre>
 
+    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
+    <table class="ref-arguments">
+    <colgroup><col class="name" /><col class="desc" /></colgroup>
+    <tr>
+      <th>backend</th>
+      <td><p>backend used to fit the results. Used to pull various defaults
+and other setting influencing the computation of statistics.</p></td>
+    </tr>
+    </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 

@@ -121,7 +121,7 @@
       <h1 data-toc-skip>Limits of SBC</h1>
                         <h4 class="author">Martin Modrák</h4>
             
-            <h4 class="date">2021-09-18</h4>
+            <h4 class="date">2021-09-26</h4>
       
       
       <div class="hidden name"><code>limits_of_SBC.Rmd</code></div>
@@ -409,10 +409,12 @@ model {
   <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">dnorm</a></span><span class="op">(</span><span class="va">y</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="va">sigma</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span>
 
-<span class="va">log_lik_gq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generated_quantities.html">generated_quantities</a></span><span class="op">(</span>log_lik <span class="op">=</span> <span class="fu">normal_lpdf</span><span class="op">(</span><span class="va">y</span>, <span class="va">mu</span>, <span class="fl">1</span><span class="op">)</span>, .globals <span class="op">=</span> <span class="st">"normal_lpdf"</span> <span class="op">)</span>
+<span class="va">log_lik_gq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generated_quantities.html">generated_quantities</a></span><span class="op">(</span>log_lik <span class="op">=</span> <span class="fu">normal_lpdf</span><span class="op">(</span><span class="va">y</span>, <span class="va">mu</span>, <span class="fl">1</span><span class="op">)</span>, 
+                                   .globals <span class="op">=</span> <span class="st">"normal_lpdf"</span> <span class="op">)</span>
 
-<span class="va">results_missing_gq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/recompute_statistics.html">recompute_statistics</a></span><span class="op">(</span><span class="va">results_missing</span>, <span class="va">datasets_missing</span>, 
-                                             gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span><span class="op">)</span></code></pre></div>
+<span class="va">results_missing_gq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/recompute_statistics.html">recompute_statistics</a></span><span class="op">(</span>
+  <span class="va">results_missing</span>, <span class="va">datasets_missing</span>, 
+  backend <span class="op">=</span> <span class="va">backend_missing</span>, gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span><span class="op">)</span></code></pre></div>
 <pre><code>##  - 19 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.027.</code></pre>
 <pre><code>## Not all diagnostics are OK.
 ## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
