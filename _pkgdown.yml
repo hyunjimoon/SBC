@@ -63,6 +63,7 @@ articles:
   - title: "Additional use cases and advanced topics"
     contents:
       - limits_of_SBC
+      - implementing_backends
       - brms
       - discrete_params
       - rejection_sampling
@@ -88,7 +89,7 @@ reference:
   - recompute_statistics
   - contains("results")
   - calculate_ranks_draws_matrix
-  - contains("diagnostics")
+  - contains("diagnostic")
   - starts_with("default_")
 - title: Plotting & Summarising
   desc: Plotting and summarising results
