@@ -1,7 +1,9 @@
 ---
 title: "self-calibration"
-output: html_document
-author: Hyunji Moon, Shinyoung Kim
+author: "Hyunji Moon, Shinyoung Kim"
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -13,6 +15,7 @@ library(posterior)
 library(dplyr)
 library(future)
 library(ggpubr)
+library(mclust)
 options(mc.cores = parallel::detectCores())
 plan(multisession)
 options(SBC.min_chunk_size = 5)
@@ -20,38 +23,54 @@ set.seed(1984)
 devtools::load_all()
 ```
 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(
+  include = TRUE,  cache = FALSE,  collapse = TRUE,  echo = TRUE,
+  message = FALSE, tidy = FALSE,  warning = FALSE,   comment = "  ",
+  dev = "png", dev.args = list(bg = '#FFFFF8'), dpi = 300,
+  fig.align = "center",  fig.width = 7,  fig.asp = 0.618,  fig.show = "hold",
+  out.width = "90%")
+```
+
 ```{r}
 generator_gmm <- function(mixture_mean_draws_rvars, mixture_bw_draws_rvars, fixed_values){
-  #print(rvar_rng(rnorm, n = 1, sample(mixture_mean_draws_rvars$a, 1, replace=TRUE), 1))
-  # fixed value across simultated datasets
-  N <- fixed_values$N
+  # fixed value across simulated datasets
+  nobs <- fixed_values$nobs
+  ndraws <- fixed_values$ndraws
   shape <- fixed_values$shape
-  M <- fixed_values$M
-  # fixed distribution across simultated datasets
-  b <- fixed_values$b  # length (K)
-  # paramter - target, updated distribution
-  a <- rvar_rng(rnorm, n = 1, sample(mixture_mean_draws_rvars$a, 1, replace=TRUE), sd=mixture_bw_draws_rvars$a) # <S>(n_vars, S * M) -> <S>(n_vars)
+
   # predictor
   X = fixed_values$X
+  # parameter with fixed distribution across `nsims` datasets
+  b <- fixed_values$b 
+  # target variable updated at each iteration
+  a <- rvar_rng(rnorm, n = 1, sample(mixture_mean_draws_rvars$a, 1, replace=TRUE), sd=mixture_bw_draws_rvars$a)
+
   # generate
   mu = as.vector(exp(a + X %**% b))
   Y <- rvar_rng(rgamma, n = nobs, shape = shape, scale = mu / shape, ndraws = nsims)
-  gen_rvars <- draws_rvars(nobs = nobs, Y = Y, npredictors = npredictors, X = X, 
-                           nsims = nsims, mm_mean = mixture_mean_draws_rvars$a, mm_bandwidth = mixture_bw_draws_rvars$a, shape = shape)
+  gen_rvars <- draws_rvars(nsims = nsims, nobs = nobs, npredictors = npredictors, 
+                           shape = shape, X = X, 
+                           mm_mean = mixture_mean_draws_rvars$a, mm_bandwidth = mixture_bw_draws_rvars$a, 
+                           Y = Y)
   SBC_datasets(
     parameters = as_draws_matrix(list(a = a)), 
     generated = draws_rvars_to_standata(gen_rvars)
   )
 }
 
-nsims = 10
-nobs = 10
-ndraws = 300
+nsims = 30
+nobs = 100
+ndraws = 1000
 npredictors = 15
 ntarget_params = 1
 chains = 4
-fixed_values <- list(nobs = nobs, shape = 1, ndraws = ndraws, b = rvar_rng(rnorm, ndraws = 1, n = npredictors, 0, 1), X = rvar(array(rnorm(n = nobs * npredictors, mean = 1, sd = 1), dim = c(1, nobs, npredictors))))
-mm_mean = draws_rvars(a = rvar(array(rep(rnorm(nsims, 2, 1), each = nsims), dim = c(nsims, nsims))))
+fixed_values <- list(nobs = nobs, ndraws = ndraws, shape = 1, 
+                     b = rvar_rng(rnorm, ndraws = 1, n = npredictors, 0, 1), 
+                     X = rvar(array(rnorm(n = nobs * npredictors, mean = 1, sd = 1), dim = c(1, nobs, npredictors))))
+
+# proxy for target variable
+mm_mean = draws_rvars(a = rvar(array(rep(rnorm(nsims, 2, 5), each = nsims), dim = c(nsims, nsims))))
 mm_bandwidth = draws_rvars(a = rvar(array(rep(1, nsims), dim=c(nsims, 1))))
 
 datasets_25 <- generator_gmm(
@@ -62,44 +81,33 @@ datasets_25 <- generator_gmm(
 
 mod_gmm <- cmdstanr::cmdstan_model("./models/gamma-reg_gmm.stan")
 backend_hmc_gmm <- SBC_backend_cmdstan_sample(mod_gmm, chains = chains, iter_sampling = ndraws / chains)
-#result_25_hmc <- compute_results(datasets_25, backend_hmc)
-
-param_sc_hmc <- self_calib(generator_gmm, backend_hmc_gmm, mm_mean, mm_bandwidth, nsims_fn = function(...){10}, thin = 3, fixed_generator_args = list(fixed_values = fixed_values))
 ```
 
-@@@@@@@@@@@@@@@@@ END GMM TEST CODE @@@@@@@@@@@@@@@@@@
+Starting from a bad SBC plot (first), better SBC plot (second) is found after three iterations.
+```{r}
+result_25_hmc <- compute_results(datasets_25, backend_hmc_gmm, thin_ranks = 3)
+plot_rank_hist(result_25_hmc)
+
+# self-calibrate
+param_sc_hmc <- self_calib(generator_gmm, backend_hmc_gmm, mm_mean, mm_bandwidth, nsims_fn = function(...){nsims}, thin = 3, fixed_generator_args = list(fixed_values = fixed_values))
+plot_rank_hist(param_sc_hmc)
+```
+
+For ADVI, $N(2,5^2)$ for the coefficient breaks in every case and therefore $N(2,1^2)$ is used. Notice as the self-consistent parameter region is a function of a generator and inference engine; prior $N(2,5^2)$ or $N(2,1^2)$ is simply used as an initial distribution. It remains to be seen whether different initial distribution converge to near enough region (near uniqueness). 
 
 ```{r}
-thin_ranks_v = 1
-backend_vi <- SBC_backend_cmdstan_variational(mod_gr, output_samples = M, algorithm = "fullrank")
-result_25_vi <- compute_results(datasets_25, backend_vi, thin_ranks = thin_ranks_v)
-plot_rank_hist(result_25_vi)
-result_22_vi <- compute_results(datasets_22, backend_vi, thin_ranks = thin_ranks_v)
-plot_rank_hist(result_22_vi)
-#target calibration
-evolve_df <- list()
-for (v in tv){
- evolve_df[[v]] <- list(median = rep(NA,1), sd = rep(NA,1), scm = NA, scm_init = NA) 
-}
-param_sc_vi <- self_calib(generator, clamp_val, clamp_dist, param_init_25, predictor, backend_vi, tv, thin_ranks_v, 1, evolve_df, delivDir)
-
-# test self-consistency for parameters_sc
-datasets_sc_vi <- generator(
-  clamp_val = clamp_val,
-  clamp_dist = clamp_dist,
-  param = param_sc_vi,
-  predictor = predictor
+mm_mean_21 = draws_rvars(a = rvar(array(rep(rnorm(nsims, 2, 1), each = nsims), dim = c(nsims, nsims))))
+datasets_21 <- generator_gmm(
+  mixture_mean_draws_rvars = mm_mean_21,
+  mixture_bw_draws_rvars = mm_bandwidth,
+  fixed_values = fixed_values
 )
-result_sc_vi <- compute_results(datasets_sc_vi, backend_vi, thin_ranks = thin_ranks_v) 
 
-# test self-consistency for parameters_sc
-datasets_sc_vi <- generator(
-  hyperparam = hyperparam,
-  param = param_sc_vi,
-  predictor = predictor
-)
-# before after compare with ecdf and rank summary
-# graphical inspection
-plot_rank_hist(result_25_vi)
-plot_rank_hist(result_sc_vi)
+backend_vi <- SBC_backend_cmdstan_variational(mod_gmm, output_samples = ndraws, algorithm = "fullrank")
+result_21_vi <- compute_results(datasets_21, backend_vi, thin_ranks = 1)
+plot_rank_hist(result_21_vi)
+
+# self-calibrate
+param_sc_vi <- self_calib(generator_gmm, backend_vi, mm_mean_21, mm_bandwidth, nsims_fn = function(...){nsims}, thin = 1, fixed_generator_args = list(fixed_values = fixed_values))
+plot_rank_hist(param_sc_vi)
 ```
