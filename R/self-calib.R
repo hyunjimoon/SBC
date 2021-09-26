@@ -72,6 +72,8 @@ self_calib <- function(generator, backend, mixture_means_init_draws_rvars, mixtu
       mixture_means_next_draws_rvars[[target_param_name]] <- update_means(mixture_means_draws_rvars[[target_param_name]], posterior::rvar(array(sample(pooled_draws, nsims, replace = TRUE), dim = c(nsims, nsims))))
       mixture_bw_next_draws_rvars[[target_param_name]] <- update_bw(mixture_bw_draws_rvars[[target_param_name]], posterior::rvar(array(rep(sqrt(gmm_fit$parameters$variance$sigmasq), nsims), dim = c(nsims, 1))))
     }
+    mixture_means_next_draws_rvars <- do.call(draws_rvars, mixture_means_next_draws_rvars)
+    mixture_bw_next_draws_rvars <- do.call(draws_rvars, mixture_bw_next_draws_rvars)
 
     stop <- TRUE
     for(tp in target_params){
