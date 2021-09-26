@@ -21,24 +21,23 @@ devtools::load_all()
 ```
 
 ```{r}
-generator_gmm <- function(nsims, mixture_means_rvar, mixture_bw_rvar, fixed_values){
-  # fixed value across simulated datasets
-  nobs <- fixed_values$nobs
+generator_gmm <- function(mixture_mean_draws_rvars, mixture_bw_draws_rvars, fixed_values){
+  #print(rvar_rng(rnorm, n = 1, sample(mixture_mean_draws_rvars$a, 1, replace=TRUE), 1))
+  # fixed value across simultated datasets
+  N <- fixed_values$N
   shape <- fixed_values$shape
-  ntarget_params <- 1 #dim(mixture_means_rvar)[[1]]
-  ndraws <- fixed_values$ndraws
+  M <- fixed_values$M
   # fixed distribution across simultated datasets
-  a <- rep(mixture_means_rvar, nsims)
   b <- fixed_values$b  # length (K)
+  # paramter - target, updated distribution
+  a <- rvar_rng(rnorm, n = 1, sample(mixture_mean_draws_rvars$a, 1, replace=TRUE), sd=mixture_bw_draws_rvars$a) # <S>(n_vars, S * M) -> <S>(n_vars)
   # predictor
-  X <- fixed_values$X
-  # target paramter
-  a <- rvar_rng(rnorm, n = 1, as.vector(sample(mixture_means_rvar, 1, replace=TRUE)), sd=mixture_bw_rvar) # <S>(n_vars, S * M) -> <S>(n_vars)
+  X = fixed_values$X
   # generate
-  mu <- as.vector(exp(a + X %**% b))  # output (S, 1) -> (S) vector
+  mu = as.vector(exp(a + X %**% b))
   Y <- rvar_rng(rgamma, n = nobs, shape = shape, scale = mu / shape, ndraws = nsims)
-  gen_rvars <- draws_rvars(nobs = nobs, Y = Y, npredictors = npredictors, X = X, ntarget_params = ntarget_params,
-                           nsims = nsims, mm_mean = mixture_means_rvar, mm_bandwidth = mixture_bw_rvar, shape = shape)
+  gen_rvars <- draws_rvars(nobs = nobs, Y = Y, npredictors = npredictors, X = X, 
+                           nsims = nsims, mm_mean = mixture_mean_draws_rvars$a, mm_bandwidth = mixture_bw_draws_rvars$a, shape = shape)
   SBC_datasets(
     parameters = as_draws_matrix(list(a = a)), 
     generated = draws_rvars_to_standata(gen_rvars)
@@ -52,15 +51,12 @@ npredictors = 15
 ntarget_params = 1
 chains = 4
 fixed_values <- list(nobs = nobs, shape = 1, ndraws = ndraws, b = rvar_rng(rnorm, ndraws = 1, n = npredictors, 0, 1), X = rvar(array(rnorm(n = nobs * npredictors, mean = 1, sd = 1), dim = c(1, nobs, npredictors))))
-mm_mean = rvar(array(rep(rnorm(nsims, 2, 1), each = nsims), dim = c(nsims, nsims)))
-#mm_mean = rvar(array(rep(rnorm(nsims * ntarget_params, 2, 1), nsims), dim = c(nsims, ntarget_params, nsims))) rvar<10>[1,10]
-# mm_mean = rvar(array(rnorm(nsims * ntarget_params * nsims, 2, 1), dim = c(nsims, ntarget_params, nsims))) rvar<10>[1,10]
-mm_bandwidth = rvar(array(rep(1, nsims), dim=c(nsims, 1)))
+mm_mean = draws_rvars(a = rvar(array(rep(rnorm(nsims, 2, 1), each = nsims), dim = c(nsims, nsims))))
+mm_bandwidth = draws_rvars(a = rvar(array(rep(1, nsims), dim=c(nsims, 1))))
 
 datasets_25 <- generator_gmm(
-  nsims = nsims,
-  mixture_means_rvar = mm_mean,
-  mixture_bw_rvar = mm_bandwidth,
+  mixture_mean_draws_rvars = mm_mean,
+  mixture_bw_draws_rvars = mm_bandwidth,
   fixed_values = fixed_values
 )
 
@@ -68,8 +64,7 @@ mod_gmm <- cmdstanr::cmdstan_model("./models/gamma-reg_gmm.stan")
 backend_hmc_gmm <- SBC_backend_cmdstan_sample(mod_gmm, chains = chains, iter_sampling = ndraws / chains)
 #result_25_hmc <- compute_results(datasets_25, backend_hmc)
 
-param_sc_hmc <- self_calib(generator_gmm, backend_hmc_gmm, list(a = 1), mixture_means_init = mm_mean, mixture_bw_init = mm_bandwidth, thin = 3, 
-                           nsims_fn = function(...){10}, fixed_generator_args = list(fixed_values = fixed_values))
+param_sc_hmc <- self_calib(generator_gmm, backend_hmc_gmm, mm_mean, mm_bandwidth, nsims_fn = function(...){10}, thin = 3, fixed_generator_args = list(fixed_values = fixed_values))
 ```
 
 @@@@@@@@@@@@@@@@@ END GMM TEST CODE @@@@@@@@@@@@@@@@@@

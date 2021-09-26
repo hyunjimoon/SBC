@@ -1,33 +1,24 @@
 ##' Auto calibrate the initial prior samples using SBC iteration
 ##'
 ##' @param generator function that generates datasets given each value in `param`
-##' @param clamp_dist scalar clamp_disteter values e.g. prior_width
-##' @param target_params a named list defining parameter to mixture index mapping
-##' @param bandwidth the smoothing bandwidth parameter to pass to stats.density
-##' @param mixture_means_init the initial mixture mean rvar
-##' @param mixture_bw_init the initial mixture bandwidth rvar
+##' @param backend A backend object to use for running SBC
+##' @param mixture_mean_init the initial mixture mean draws_rvars
+##' @param mixture_bw_init the initial mixture bandwidth draws_rvars
 ##' @param thin Integer defining thinning parameter
-##' @param max_selfcalib_iters the maximum number of iterations to run calibration. if not given will run indefinitely
+##' @param max_calib_iterations the maximum number of iterations to run calibration. if not given will run indefinitely
 ##' @param nsims_fn function with input: (mixture_means_rvar, mixture_bw_rvar), output: int
 ##'                 int is future number of parallel datasets to generate given true and its fitted hyperparameter (mixture_means)
-##'
+##' @param bandwidth the smoothing bandwidth parameter to pass to stats.density
 ##' @param fixed_generator_args *named list* containing additional arguments to generator
 ##' @export
-self_calib <- function(generator, backend, target_params, mixture_means_init, mixture_bw_init, nsims_fn,
+self_calib <- function(generator, backend, mixture_means_init_draws_rvars, mixture_bw_init_draws_rvars, nsims_fn,
                        bandwidth, thin, max_selfcalib_iters, fixed_generator_args){
-
-  if(!posterior::is_rvar(mixture_means_init)){
-    mixture_means_init_rvar <- rvar(mixture_means_init)
-  }
-
-  if(!posterior::is_rvar(mixture_bw_init)){
-    mixture_bw_init_rvar <- rvar(mixture_bw_init)
-  }
-
   if(missing(nsims_fn)){
-    nsims_fn <- function(mixture_means_rvar, mixture_means_hat_rvar){10}  # Set default # of SBC iterations to 10
+    nsims_fn <- function(...){10}  # Set default # of SBC iterations to 10
     message(paste("number of simulations has been unspecified, using default value of", nsims))
   }
+  target_params <- posterior::variables(mixture_means_init_draws_rvars) # names of named list, only run calibration for the following parameters
+  ntarget_params <- length(target_params)
 
   if(missing(bandwidth)){
     bandwidth <- "nrd0"
@@ -37,8 +28,6 @@ self_calib <- function(generator, backend, target_params, mixture_means_init, mi
     max_selfcalib_iters <- Inf
   }
 
-  target_names <- names(target_params) # names of named list, only calibrate these parameters
-  ntarget_params <- length(target_names)
   selfcalib_itercount <- 1
   sbc_result <- NULL
   cjs_record <- list()
@@ -49,53 +38,50 @@ self_calib <- function(generator, backend, target_params, mixture_means_init, mi
   while(selfcalib_itercount < max_selfcalib_iters){
     if(selfcalib_itercount == 1){
       nsims <- 10
-      mixture_means_rvar <- mixture_means_init_rvar
-      mixture_bw_rvar <- mixture_bw_init_rvar
+      mixture_means_draws_rvars <- mixture_means_init_draws_rvars
+      mixture_bw_draws_rvars <- mixture_bw_init_draws_rvars
     }else if(stop){
       message(paste("self_calib terminated on iteration", selfcalib_itercount))
       break
     }else{
-      nsims <- nsims_fn(mixture_means_rvar, mixture_means_next_rvar)
-      mixture_means_rvar <- mixture_means_next_rvar
-      mixture_bw_rvar <- mixture_bw_next_rvar
+      nsims <- nsims_fn(mixture_means_draws_rvars, mixture_means_next_draws_rvars)
+      mixture_means_draws_rvars <- mixture_means_next_draws_rvars
+      mixture_bw_draws_rvars <- mixture_bw_next_draws_rvars
     }
-    dataset <- do.call(generator, c(list(nsims, mixture_means_rvar, mixture_bw_rvar), fixed_generator_args))
     message(paste("Running self-calib iteration", selfcalib_itercount, "with nsims =", nsims))
+    dataset <- do.call(generator, c(list(mixture_means_draws_rvars, mixture_bw_draws_rvars), fixed_generator_args))
     sbc_result <- SBC::compute_results(dataset, backend, thin_ranks = thin)
+    for(s in 1:nsims){
+      returned_errors <- sbc_result$errors
+      if(!is.null(returned_errors[[1]])){
+        message("SBC returned 1 or more errors. Terminating and returning the last unsuccessful SBC result...")
+        return(sbc_result)
+      }
+    }
     ndraws <- posterior::ndraws(sbc_result$fits[[1]]$draws())
 
-    mixture_means_hat <- array(rep(NA, ntarget_params * nsims), dim = c(ntarget_params, nsims))
-    mixture_bw_hat <- rep(NA, ntarget_params)
-
-    for(tp in target_names){
+    mixture_means_next_draws_rvars <- list()
+    mixture_bw_next_draws_rvars <- list()
+    for(n_variable in 1:ntarget_params){
+      target_param_name <- target_params[[n_variable]]
       pooled_draws <- c()
       for(s in 1:nsims){
-        pooled_draws <- c(pooled_draws, posterior::extract_variable(sbc_result$fits[[s]]$draws(), tp))
+        pooled_draws <- c(pooled_draws, posterior::extract_variable(sbc_result$fits[[s]]$draws(), target_param_name))
       }
-      gmm_fit <- Mclust(pooled_draws, G = ndataset)
-      mixture_means_hat[target_params[[tp]], ] <- gmm_fit$parameters$mean
-      mixture_bw_hat[target_params[[tp]], ] <- sqrt(gmm_fit$parameters$variance$sigmasq)
-      # fitted_kde <- density(pooled_draws, bw = bandwidth)
-      # mixture_means_hat[target_params[[tp]], ] <- pooled_draws[sample(1:(nsims * ndraws), size = nsims)]  # SM2S
-      # mixture_bw_hat[target_params[[tp]]] <-fitted_kde$bw
-      mixture_means_next <- update_means(mixture_means_hat[target_params[[tp]], ], mixture_means_hat[target_params[[tp]], ])
+      gmm_fit <- mclust::Mclust(pooled_draws, G = nsims, verbose = FALSE)
+      mixture_means_next_draws_rvars[[target_param_name]] <- update_means(mixture_means_draws_rvars[[target_param_name]], posterior::rvar(array(sample(pooled_draws, nsims, replace = TRUE), dim = c(nsims, nsims))))
+      mixture_bw_next_draws_rvars[[target_param_name]] <- update_bw(mixture_bw_draws_rvars[[target_param_name]], posterior::rvar(array(rep(sqrt(gmm_fit$parameters$variance$sigmasq), nsims), dim = c(nsims, 1))))
     }
-    mixture_means_hat_rvar <- rvar(array(mixture_means_hat, dim = c(ntarget_params, nsims)))
-    mixture_bw_hat_rvar <- rvar(array(mixture_bw_hat, dim = c(nsims, 1)))
-
-    mixture_means_next_rvar <- update_means(mixture_means_rvar, mixture_means_hat_rvar)
-    mixture_bw_next_rvar <- update_bw(mixture_bw_rvar, mixture_bw_hat_rvar)
 
     stop <- TRUE
-    for(tp in target_names){
-      cjs_record[[tp]] <- c(cjs_record[[tp]], cjs_dist(mixture_means_rvar, mixture_means_hat_rvar[target_params[[tp]], ]))
+    for(tp in target_params){
+      cjs_record[[tp]] <- c(cjs_record[[tp]], cjs_dist(mixture_means_draws_rvars[[tp]], mixture_means_next_draws_rvars[[tp]]))
       if(cjs_record[[tp]][selfcalib_itercount] >= 0.5 * cjs_record[[tp]][1]){
         message(paste("cjs_dist for parameter", tp, ":", cjs_record[[tp]][[selfcalib_itercount]]))
         stop <- FALSE
         break
       }
     }
-
     selfcalib_itercount <- selfcalib_itercount + 1
   }
   return(sbc_result)

@@ -42,5 +42,6 @@ Suggests:
     rstan,
     knitr,
     rmarkdown,
-    brms
+    brms,
+    mclust
 VignetteBuilder: knitr
