@@ -13,7 +13,8 @@ compute_results(
   chunk_size = default_chunk_size(length(datasets)),
   gen_quants = NULL,
   cache_mode = "none",
-  cache_location = NULL
+  cache_location = NULL,
+  globals = list()
 )
 }
 \arguments{
@@ -55,13 +56,43 @@ and recomputed only when the hash of the backend or dataset changes.}
 \item{cache_location}{The filesystem location of cache. For \code{cache_mode = "results"}
 this should be a name of a single file. If the file name does not end with
 \code{.rds}, this extension is appended.}
+
+\item{globals}{A list of names of objects that are defined
+in the global environment and need to present for the backend to work (
+if they are not already available in package).
+It is added to the \code{globals} argument to \code{\link[future:future]{future::future()}}, to make those
+objects available on all workers.}
 }
 \value{
 An object of class \code{\link[=SBC_results]{SBC_results()}}.
 }
 \description{
+Performs the main SBC routine given datasets and a backend.
+}
+\section{Paralellization}{
 Parallel processing is supported via the \code{future} package, for most uses, it is most sensible
 to just call \code{plan(multisession)} once in your R session and  all
 cores your computer will be used. For more details refer to the documentation
 of the \code{future} package.
 }
+
+\section{Thinning}{
+When using backends based on MCMC, there are two possible moments when
+samples may need to be thinned. They can be thinned directly within the backend
+and they may be thinned only to compute the ranks for SBC as specified by the
+\code{thin_ranks} argument. The main reason those are separate is that computing the
+ranks requires no or negligible autocorrelation while some autocorrelation
+may be easily tolerated for summarising the fit results or assessing convergence.
+In fact, thinning too aggressively in the backend may lead to overly noisy
+estimates of posterior means, quantiles and the \code{\link[posterior:rhat]{posterior::rhat()}} and
+\code{\link[posterior:ess_tail]{posterior::ess_tail()}} diagnostics. So for well-adapted Hamiltonian Monte-Carlo
+chains (e.g. Stan-based backends), we recommend no thinning in the backend and
+even value of \code{thin_ranks} between 6 and 10 is usually sufficient to remove
+the residual autocorrelation. For a backend based on Metropolis-Hastings,
+it might be sensible to thin quite aggressively already in the backend and
+then have some additional thinning via \code{thin_ranks}.
+
+Backends that don't require thining should implement \code{\link[=SBC_backend_iid_samples]{SBC_backend_iid_samples()}}
+or \code{\link[=SBC_backend_default_thin_ranks]{SBC_backend_default_thin_ranks()}} to avoid thinning by default.
+}
+

@@ -220,10 +220,34 @@ length.SBC_results <- function(x) {
 
 #' Fit datasets and evaluate diagnostics and SBC metrics.
 #'
+#' Performs the main SBC routine given datasets and a backend.
+#'
+#' # Paralellization
+#'
 #' Parallel processing is supported via the `future` package, for most uses, it is most sensible
 #'  to just call `plan(multisession)` once in your R session and  all
 #'  cores your computer will be used. For more details refer to the documentation
 #'  of the `future` package.
+#'
+#' # Thinning
+#'
+#' When using backends based on MCMC, there are two possible moments when
+#' samples may need to be thinned. They can be thinned directly within the backend
+#' and they may be thinned only to compute the ranks for SBC as specified by the
+#' `thin_ranks` argument. The main reason those are separate is that computing the
+#' ranks requires no or negligible autocorrelation while some autocorrelation
+#' may be easily tolerated for summarising the fit results or assessing convergence.
+#' In fact, thinning too aggressively in the backend may lead to overly noisy
+#' estimates of posterior means, quantiles and the [posterior::rhat()] and
+#' [posterior::ess_tail()] diagnostics. So for well-adapted Hamiltonian Monte-Carlo
+#' chains (e.g. Stan-based backends), we recommend no thinning in the backend and
+#' even value of `thin_ranks` between 6 and 10 is usually sufficient to remove
+#' the residual autocorrelation. For a backend based on Metropolis-Hastings,
+#' it might be sensible to thin quite aggressively already in the backend and
+#' then have some additional thinning via `thin_ranks`.
+#'
+#' Backends that don't require thining should implement [SBC_backend_iid_samples()]
+#' or [SBC_backend_default_thin_ranks()] to avoid thinning by default.
 #'
 #' @param datasets an object of class `SBC_datasets`
 #' @param backend the model + sampling algorithm. The built-in backends can be constructed
