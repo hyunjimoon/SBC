@@ -14,7 +14,7 @@
 self_calib <- function(generator, backend, mixture_means_init_draws_rvars, mixture_bw_init_draws_rvars, nsims_fn,
                        bandwidth, thin, max_selfcalib_iters, fixed_generator_args){
   if(missing(nsims_fn)){
-    nsims_fn <- function(...){30}  # Set default # of SBC iterations to 30
+    nsims_fn <- function(...){300}  # Set default # of SBC iterations to 30
     message(paste("number of simulations has been unspecified, using default value of", nsims))
   }
   target_params <- posterior::variables(mixture_means_init_draws_rvars) # names of named list, only run calibration for the following parameters
@@ -37,7 +37,7 @@ self_calib <- function(generator, backend, mixture_means_init_draws_rvars, mixtu
 
   while(selfcalib_itercount < max_selfcalib_iters){
     if(selfcalib_itercount == 1){
-      nsims <- 30
+      nsims <- nsims_fn(1)
       mixture_means_draws_rvars <- mixture_means_init_draws_rvars
       mixture_bw_draws_rvars <- mixture_bw_init_draws_rvars
     }else if(stop){
@@ -88,8 +88,7 @@ self_calib <- function(generator, backend, mixture_means_init_draws_rvars, mixtu
   }
   return(sbc_result)
 }
-# if bw required, fucntion(mixture_means_rvar, mixture_bw_rvar, mixture_mean_hat_rvar, mixture_bw_hat_rvar)
-# receive vector for one parameter
+# fucntion(mixture_means_rvar, mixture_bw_rvar, mixture_mean_hat_rvar, mixture_bw_hat_rvar) possible
 update_means <- function(mixture_means_rvar, mixture_means_hat_rvar){
   return(mixture_means_rvar * mean(mixture_means_rvar/ mixture_means_hat_rvar))
 }

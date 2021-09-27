@@ -59,7 +59,7 @@ generator_gmm <- function(mixture_mean_draws_rvars, mixture_bw_draws_rvars, fixe
   )
 }
 
-nsims = 30
+nsims = 300
 nobs = 100
 ndraws = 1000
 npredictors = 15
@@ -110,4 +110,9 @@ plot_rank_hist(result_21_vi)
 # self-calibrate
 param_sc_vi <- self_calib(generator_gmm, backend_vi, mm_mean_21, mm_bandwidth, nsims_fn = function(...){nsims}, thin = 1, fixed_generator_args = list(fixed_values = fixed_values))
 plot_rank_hist(param_sc_vi)
+```
+
+```{r}
+plot_ecdf_diff(param_sc_vi)
+plot_ecdf_diff(result_21_vi)
 ```
