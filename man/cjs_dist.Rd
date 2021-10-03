@@ -4,13 +4,7 @@
 \alias{cjs_dist}
 \title{Cumulative Jensen-Shannon divergence}
 \usage{
-cjs_dist(
-  x,
-  y,
-  x_weights = rep(1/length(x), length(x)),
-  y_weights = rep(1/length(y), length(y)),
-  ...
-)
+cjs_dist(x, y, x_weights, y_weights, ...)
 }
 \arguments{
 \item{x}{numeric vector of samples from first distribution (could be \code{rvar} type)}

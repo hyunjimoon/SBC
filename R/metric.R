@@ -113,8 +113,8 @@ wasserstein <- function(x, y){
 cjs_dist <- function(x, y, x_weights, y_weights, ...) {
   if (class(x)[1] == "rvar"){
     x <- c(draws_of(x))
-    cat("y at cjs")
-    print(y)
+    #cat("y at cjs")
+    #print(y)
     y <- c(draws_of(y))
     x_weights <-  rep(1/length(x), length(x))
     y_weights <-  rep(1/length(y), length(y))

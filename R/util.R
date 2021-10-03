@@ -53,6 +53,43 @@ invtf_param <- function(param, tf){
   }
 }
 
+
+##' Transform parameters from constrained to uncontrained
+##'
+##' @param param a vector
+##' @return list containing uncontrained parameters and transformation type
+##' @export
+tf_param_vec <- function(param){
+
+  if(all(param > 0) & all(param < 1)){
+    tf <- "logit"
+    param <- gtools::logit(param)
+  }else if(all(param > 0)){
+    tf <- "log"
+    param <- log(param)
+  }
+  return (list(param = param, tf = tf))
+}
+
+##' Inverse transform parameters from uncontrained to constrained
+##'
+##' @param param a vector
+##' @param tf string indicating transformation type
+##' @return constrained parameter vector
+##' @export
+invtf_param_vec <- function(param, tf){
+    if(is.null(tf) || missing(tf)){
+      param <- param
+    }
+    else if(tf == "logit"){
+      param <- gtools::inv.logit(param)
+    }else if(tf == "log"){
+      param <- exp(param)
+    }
+    return (param)
+}
+
+
 intv_plot_save <- function(evolve_df, delivDir){
   for (v in names(evolve_df)){
     evolve_df_v <- evolve_df[[v]]

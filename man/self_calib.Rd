@@ -7,37 +7,34 @@
 self_calib(
   generator,
   backend,
-  target_variables,
+  mixture_means_init_draws_rvars,
+  mixture_bw_init_draws_rvars,
+  nsims_fn,
   bandwidth,
-  mixture_mean_init,
-  mixture_bw_init,
   thin,
-  max_calib_iterations,
-  sbc_iterations,
+  max_selfcalib_iters,
   fixed_generator_args
 )
 }
 \arguments{
 \item{generator}{function that generates datasets given each value in \code{param}}
 
-\item{target_variables}{a named list defining parameter to mixture index mapping}
+\item{backend}{A backend object to use for running SBC}
+
+\item{mixture_means_init_draws_rvars}{the initial mixture mean draws_rvars}
+
+\item{mixture_bw_init_draws_rvars}{the initial mixture bandwidth draws_rvars}
+
+\item{nsims_fn}{function with input: (mixture_means_rvar, mixture_bw_rvar), output: int
+int is future number of parallel datasets to generate given true and its fitted hyperparameter (mixture_means)}
 
 \item{bandwidth}{the smoothing bandwidth parameter to pass to stats.density}
 
-\item{mixture_mean_init}{the initial mixture mean rvar}
-
-\item{mixture_bw_init}{the initial mixture bandwidth rvar}
-
 \item{thin}{Integer defining thinning parameter}
 
-\item{max_calib_iterations}{the maximum number of iterations to run calibration. if not given will run indefinitely}
+\item{max_selfcalib_iters}{the maximum number of iterations to run calibration. if not given will run indefinitely}
 
-\item{sbc_iterations}{An integer returning the number of SBC iterations or a function with the signature (mixture_mean_rvar, mixture_bw_rvar) -> int
-which returns the number of SBC iterations to run given previous calibration run results.}
-
-\item{fixed_generator_args}{\emph{named list} containing additional arguments to generator}
-
-\item{clamp_dist}{scalar clamp_disteter values e.g. prior_width}
+\item{fixed_generator_args}{\emph{named list} containing additional arguments to pass to generator, \emph{after mixture_means_draws_rvars and mixture_bw_draws_rvars}}
 }
 \description{
 Auto calibrate the initial prior samples using SBC iteration
