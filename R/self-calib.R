@@ -55,7 +55,9 @@ self_calib <- function(generator, backend, mixture_means_init_draws_rvars, mixtu
       mixture_bw_draws_rvars <- mixture_bw_next_draws_rvars
     }
     message(paste("Running self-calib iteration", selfcalib_itercount, "with nsims =", nsims))
+    message("Calling generator..")
     dataset <- do.call(generator, c(list(mixture_means_draws_rvars, mixture_bw_draws_rvars), fixed_generator_args))
+    message("generator returned value")
     sbc_result <- SBC::compute_results(dataset, backend, thin_ranks = thin)
     if(save_all_results){
       sbc_result_env[[paste0("result_", selfcalib_itercount)]] <- sbc_result
@@ -82,7 +84,7 @@ self_calib <- function(generator, backend, mixture_means_init_draws_rvars, mixtu
       transformation_type <- transformed$tf
 
       gmm_fit <- mclust::Mclust(pooled_draws, G = nsims, verbose = FALSE)
-      mixture_means_next_draws_rvars[[target_param_name]] <- invtf_param_vec(update_means(mixture_means_draws_rvars[[target_param_name]], posterior::rvar(array(sample(pooled_draws, nsims, replace = TRUE), dim = c(nsims, nsims)))), tf = transformation_type)
+      mixture_means_next_draws_rvars[[target_param_name]] <- invtf_param_vec(update_means(mixture_means_draws_rvars[[target_param_name]], posterior::rvar(array(sample(as.vector(gmm_fit$parameters$mean), nsims, replace = TRUE), dim = c(nsims, nsims)))), tf = transformation_type)
       mixture_bw_next_draws_rvars[[target_param_name]] <- update_bw(mixture_bw_draws_rvars[[target_param_name]], posterior::rvar(array(rep(sqrt(gmm_fit$parameters$variance$sigmasq), nsims), dim = c(nsims, 1))))
     }
     mixture_means_next_draws_rvars <- do.call(draws_rvars, mixture_means_next_draws_rvars)
