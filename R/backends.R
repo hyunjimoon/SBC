@@ -427,3 +427,25 @@ SBC_fit_to_draws_matrix.brmsfit <- function(fit) {
 SBC_fit_to_diagnostics.brmsfit <- function(fit, fit_output, fit_messages, fit_warnings) {
   SBC_fit_to_diagnostics(fit$fit, fit_output, fit_messages, fit_warnings)
 }
+#' @export
+SBC_backend_glm <- function(...) {
+  args = list(...)
+  if(any(names(args) == "data")) {
+    stop(paste0("Parameter 'data' cannot be provided when defining a backend",
+                " as it needs to be set by the SBC package"))
+  }
+
+  structure(list(args = args), class = "SBC_backend_glm")
+}
+#' @export
+SBC_fit.SBC_backend_glm <- function(backend, generated, cores) {
+  args_with_data <- backend$args
+  args_with_data$data <- generated
+
+  do.call(glm, args_with_data)
+}
+#' @export
+SBC_fit_to_draws_matrix.glm <- function(fit) {
+  samp_matrix <- MASS::mvrnorm(n = 1000, mu = coef(fit), Sigma = vcov(fit))
+  posterior::as_draws_matrix(samp_matrix)
+}
