@@ -16,6 +16,7 @@ library(dplyr)
 library(future)
 library(ggpubr)
 library(mclust)
+library(rstanarm)
 options(mc.cores = parallel::detectCores())
 plan(multisession)
 options(SBC.min_chunk_size = 5)
@@ -33,53 +34,63 @@ knitr::opts_chunk$set(
 ```
 
 ```{r}
-generator_gmm <- function(mixture_mean_draws_rvars, mixture_bw_draws_rvars, fixed_values){
+#_poisson, _logistic with transform_type  = "log", / family 
+generator_gmm <- function(mixture_means, mixture_sds, fixed_sim_args){
   # fixed value across simulated datasets
-  nobs <- fixed_values$nobs
-  ndraws <- fixed_values$ndraws
-  shape <- fixed_values$shape
-
+  ## meta
+  nobs <- fixed_sim_args$nobs
+  ndraws <- fixed_sim_args$ndraws
+  transform_types <- fixed_sim_args$transform_types
+  link_type <- fixed_sim_args$link_type
+  ## distribution-specific
+  shape <- fixed_sim_args$shape 
+  
   # predictor
-  X = fixed_values$X
+  if("X" %in% names(fixed_sim_args)) {X = fixed_sim_args$X} else X = 0
   # parameter with fixed distribution across `nsims` datasets
-  b <- fixed_values$b 
+  if("b" %in% names(fixed_sim_args)) {b <- fixed_sim_args$b}  else b = 0
   # target variable updated at each iteration
-  a <- rvar_rng(rnorm, n = 1, sample(mixture_mean_draws_rvars$a, 1, replace=TRUE), sd=mixture_bw_draws_rvars$a)
+  a <- invtf_param_vec(rvar_rng(rnorm, n = 1, mean = sample(mixture_means$a, 1, replace=TRUE), sd=mixture_sds$a, ndraws = nsims), tf = transform_types$a)
 
   # generate
-  mu = as.vector(exp(a + X %**% b))
-  Y <- rvar_rng(rgamma, n = nobs, shape = shape, scale = mu / shape, ndraws = nsims)
-  gen_rvars <- draws_rvars(nsims = nsims, nobs = nobs, npredictors = npredictors, 
-                           shape = shape, X = X, 
-                           mm_mean = mixture_mean_draws_rvars$a, mm_bandwidth = mixture_bw_draws_rvars$a, 
+  mu = draws_of(a + X %**% b)
+  if(link_type == "log"){
+        mu =  exp(mu) 
+  }else if(link_type == "logit"){
+        mu <- invlogit(mu)
+  }
+  Y <- rvar_rng(rbinom, n = nobs, size = nsize, prob = mu, ndraws = nsims) 
+  if(any(is.na(Y))) print(mu) 
+  gen_rvars <- draws_rvars(nsims = nsims, nobs = nobs, nsize = nsize,
+                           mixture_means = mixture_means$a, mixture_sds = mixture_sds$a, 
                            Y = Y)
   SBC_datasets(
     parameters = as_draws_matrix(list(a = a)), 
     generated = draws_rvars_to_standata(gen_rvars)
   )
 }
-
-nsims = 300
+nsims = 30
 nobs = 100
 ndraws = 1000
+nsize = 2
 npredictors = 15
 ntarget_params = 1
 chains = 4
-fixed_values <- list(nobs = nobs, ndraws = ndraws, shape = 1, 
-                     b = rvar_rng(rnorm, ndraws = 1, n = npredictors, 0, 1), 
-                     X = rvar(array(rnorm(n = nobs * npredictors, mean = 1, sd = 1), dim = c(1, nobs, npredictors))))
+transform_types = list(a = "identity") # parameter constraint in stan translated to generator (e.g. bound, simplex)
+fixed_sim_args <- list(nobs = nobs, ndraws = ndraws, nsize = nsize, link_type = "logit", transform_types = transform_types, shape = 1,  b = rvar_rng(rnorm, ndraws = 1, n = npredictors, 0, 1), X = rvar(array(rnorm(n = nobs * npredictors, mean = 1, sd = 1), dim = c(1, nobs, npredictors))))
 
 # proxy for target variable
-mm_mean = draws_rvars(a = rvar(array(rep(rnorm(nsims, 2, 5), each = nsims), dim = c(nsims, nsims))))
-mm_bandwidth = draws_rvars(a = rvar(array(rep(1, nsims), dim=c(nsims, 1))))
+mixture_means = draws_rvars(a = rvar(array(rep(rnorm(nsims, 2, 5), each = nsims), dim = c(nsims, nsims))))
+mixture_sds = draws_rvars(a = rvar(array(rep(1, nsims), dim=c(nsims, 1))))
 
 datasets_25 <- generator_gmm(
-  mixture_mean_draws_rvars = mm_mean,
-  mixture_bw_draws_rvars = mm_bandwidth,
-  fixed_values = fixed_values
+  mixture_means = mixture_means,
+  mixture_sds = mixture_sds,
+  fixed_sim_args = fixed_sim_args
 )
 
-mod_gmm <- cmdstanr::cmdstan_model("./models/gamma-reg_gmm.stan")
+#mod_gmm <- cmdstanr::cmdstan_model("./models/gamma-reg_gmm.stan")
+mod_gmm <- cmdstanr::cmdstan_model("./models/binom-laplace_gmm.stan")
 backend_hmc_gmm <- SBC_backend_cmdstan_sample(mod_gmm, chains = chains, iter_sampling = ndraws / chains)
 ```
 
@@ -89,17 +100,17 @@ result_25_hmc <- compute_results(datasets_25, backend_hmc_gmm, thin_ranks = 3)
 plot_rank_hist(result_25_hmc)
 
 # self-calibrate
-param_sc_hmc <- self_calib(generator_gmm, backend_hmc_gmm, mm_mean, mm_bandwidth, nsims_fn = function(...){nsims}, thin = 3, fixed_generator_args = list(fixed_values = fixed_values))
+param_sc_hmc <- self_calib(generator_gmm, backend_hmc_gmm, mixture_means, mixture_sds, nsims_fn = function(...){nsims}, thin = 3, transform_types = transform_types, fixed_generator_args = list(fixed_sim_args = fixed_sim_args))
 plot_rank_hist(param_sc_hmc)
 ```
 
 For ADVI, $N(2,5^2)$ for the coefficient breaks in every case and therefore $N(2,1^2)$ is used. Notice as the self-consistent parameter region is a function of a generator and inference engine; prior $N(2,5^2)$ or $N(2,1^2)$ is simply used as an initial distribution. It remains to be seen whether different initial distribution converge to near enough region (near uniqueness). 
 
 ```{r}
-mm_mean_21 = draws_rvars(a = rvar(array(rep(rnorm(nsims, 2, 1), each = nsims), dim = c(nsims, nsims))))
+mixture_means_21 = draws_rvars(a = rvar(array(rep(rnorm(nsims, 2, 1), each = nsims), dim = c(nsims, nsims))))
 datasets_21 <- generator_gmm(
-  mixture_mean_draws_rvars = mm_mean_21,
-  mixture_bw_draws_rvars = mm_bandwidth,
+  mixture_means = mixture_means_21,
+  mixture_sds = mixture_sds,
   fixed_values = fixed_values
 )
 
@@ -108,7 +119,7 @@ result_21_vi <- compute_results(datasets_21, backend_vi, thin_ranks = 1)
 plot_rank_hist(result_21_vi)
 
 # self-calibrate
-param_sc_vi <- self_calib(generator_gmm, backend_vi, mm_mean_21, mm_bandwidth, nsims_fn = function(...){nsims}, thin = 1, fixed_generator_args = list(fixed_values = fixed_values))
+param_sc_vi <- self_calib(generator_gmm, backend_vi, mixture_means_21, mixture_sds, nsims_fn = function(...){nsims}, thin = 1, fixed_generator_args = list(fixed_values = fixed_values, ))
 plot_rank_hist(param_sc_vi)
 ```
 

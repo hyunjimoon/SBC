@@ -57,18 +57,19 @@ invtf_param <- function(param, tf){
 ##' Transform parameters from constrained to uncontrained
 ##'
 ##' @param param a vector
+##' @param tf string indicating transformation type
 ##' @return list containing uncontrained parameters and transformation type
 ##' @export
-tf_param_vec <- function(param){
-
-  if(all(param > 0) & all(param < 1)){
-    tf <- "logit"
+tf_param_vec <- function(param, tf){
+  if(is.null(tf) || missing(tf)){
+    param <- param
+  }
+  else if(tf == "logit"){
     param <- gtools::logit(param)
-  }else if(all(param > 0)){
-    tf <- "log"
+  }else if(tf == "log"){
     param <- log(param)
   }
-  return (list(param = param, tf = tf))
+  return (param)
 }
 
 ##' Inverse transform parameters from uncontrained to constrained
