@@ -113,6 +113,7 @@ update_means <- function(mixture_means_rvar, mixture_means_hat_rvar){
   return(mixture_means_rvar * mean(mixture_means_rvar/ mixture_means_hat_rvar))
 }
 update_bw <- function(mixture_bw_rvar, mixture_bw_hat_rvar){
+  message(paste("mixture_bw_rvar", mixture_bw_rvar, "mixture_bw_hat_rvar", mixture_bw_hat_rvar))
   return(mixture_bw_rvar * mean(mixture_bw_rvar/ mixture_bw_hat_rvar))
 }
 

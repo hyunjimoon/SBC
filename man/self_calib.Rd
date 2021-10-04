@@ -13,6 +13,7 @@ self_calib(
   bandwidth,
   thin,
   max_selfcalib_iters,
+  save_all_results,
   fixed_generator_args
 )
 }
@@ -33,6 +34,8 @@ int is future number of parallel datasets to generate given true and its fitted 
 \item{thin}{Integer defining thinning parameter}
 
 \item{max_selfcalib_iters}{the maximum number of iterations to run calibration. if not given will run indefinitely}
+
+\item{save_all_results}{Boolean if TRUE returns a list of all SBC results, FALSE returns just the result of the last iteration.}
 
 \item{fixed_generator_args}{\emph{named list} containing additional arguments to pass to generator, \emph{after mixture_means_draws_rvars and mixture_bw_draws_rvars}}
 }

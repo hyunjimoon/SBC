@@ -1,0 +1,229 @@
+---
+title: "iter-binomial-laplace"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(SBC) #devtools::install_github("hyunjimoon/SBC")
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(dplyr)
+library(future)
+library(ggpubr)
+library(mclust)
+library(rstanarm)
+library(ggplot2)
+library(medicaldata)
+library(formula.tools)
+library(MASS)
+options(mc.cores = parallel::detectCores())
+plan(multisession)
+options(SBC.min_chunk_size = 5)
+set.seed(1984)
+devtools::load_all()
+```
+Proposition: iteration has large-sample effect.
+
+other things to understand:
+- prior that leads to far-from-normal posterior could end up prior that produces near-normal posterior thorugh iteration. This setting is an SBC for binomial likelihood and quadratic approximation computation.
+- the role of simulated outcome variable size
+
+Think of the given setting:
+$$p\sim Beta(\alpha, \beta) \\
+x \sim Binom(n, p)$$
+
+The following shows the theoretical relation between posterior mean as the weighted average of prior and likelihood mean when . They have $\alpha + \beta: n$ weight. 
+$$\text{posterior mean} = \frac{\alpha + x}{\alpha + \beta + n} = \frac{\alpha + \beta}{\alpha + \beta + n} * \frac{\alpha}{\alpha + \beta} + \frac{n}{\alpha + \beta + n} * \frac{x}{n}$$
+
+In SBC, the likelihood mean approaches the prior mean as $n \rightarrow \infty$ and $\tilde{x} \sim Binom(n, p)$ wehre $ p\sim Beta(\alpha, \beta)$.
+
+$$\frac{\alpha + \beta}{\alpha + \beta + n} * \frac{\alpha}{\alpha + \beta} + \frac{n}{\alpha + \beta + n} * \frac{\tilde{x}}{n} \underset{n\rightarrow \infty}{\rightarrow}  \frac{\alpha + \beta}{\alpha + \beta + n} * \frac{\alpha}{\alpha + \beta} + \frac{n}{\alpha + \beta + n} * \frac{\alpha}{\alpha + \beta} = \frac{\alpha}{\alpha + \beta}$$ 
+
+None of the posterior of logit scale would be normal, but as n increase, it becomes closer.
+
+![binom-normal](./resources/binom-normal.png)
+
+Could I use beta-binomial conjugate or just stick to the normal distribution for the prior?
+
+As we increase the iteration, it would have the effect of increasing the n and therefore the posterior would apporach to near-normal.
+From the weight $\alpha + \beta: n$ weight, data (success, failure) = (1, 10) is the same with $\alpha =1, \beta = 10$ which is quite away from the normal.
+
+1. Approach 1
+```{r setup, include=FALSE}
+library("rethinking")
+hp <- list()
+success <- list()
+nsims <- 10
+nobs <- 2
+selfcalib_itercount <- 10
+curve( dbeta( x , 1 , 10 ) , from=0 , to=1 )
+s_0 = rbeta(nsims , 1 , 10)
+
+hp["mean"] = 1/ (1+ 10) # approx of conj (beta-binom)? - conjugacy has recurrence (lock-in effect) while non-conjugacy is transient)
+hp["sd"] = sqrt(1 * 10 / ((11)^2 * (12)))
+for (c in seq(1:selfcalib_itercount)){
+  #' generating `nsims` datasets with different `p` value.
+  prob<- rnorm(nsims, hp$mean, hp$sd)
+  # generate parameter
+  success <- rbinom(n = nsims, size = nobs, prob = prob)
+  # generate outcome
+  flist0 <- alist(
+    y ~ dbinom( nobs , p) ,
+    logit(p) <- theta
+  )
+  #' posterior approximation
+  curve( dnorm( x , hp["mean"], hp["sd"]) , from=0 , to=1 )
+
+  # Computation
+  hp <- precis(quap(
+            alist( flist,
+                    ) , 
+  data=list(success_sum = sum(success), fail_sum = nsims * nobs - success_sum)
+  ))
+}
+```
+
+2. Approach 2: use stan with optimizing?..
+```{r}
+generator_gmm <- function(mixture_mean_draws_rvars, mixture_sds_draws_rvars, fixed_values){
+  # fixed value across simulated datasets
+  nobs <- fixed_values$nobs
+  ndraws <- fixed_values$ndraws
+  shape <- fixed_values$shape
+
+  # parameter with fixed distribution across `nsims` datasets
+  b <- fixed_values$b 
+  # target variable updated at each iteration
+  a <- rvar_rng(rnorm, n = 1, sample(mixture_mean_draws_rvars$a, 1, replace=TRUE), sd=mixture_sds_draws_rvars$a)
+
+  # generate
+  mu = as.vector(exp(a + X %**% b))
+  Y <- rvar_rng(rgamma, n = nobs, shape = shape, scale = mu / shape, ndraws = nsims)
+  gen_rvars <- draws_rvars(nsims = nsims, nobs = nobs, npredictors = npredictors, 
+                           shape = shape, X = X, 
+                           mixture_means = mixture_mean_draws_rvars$a, mm_bandwidth = mixture_sds_draws_rvars$a, 
+                           Y = Y)
+  SBC_datasets(
+    parameters = as_draws_matrix(list(a = a)), 
+    generated = draws_rvars_to_standata(gen_rvars)
+  )
+}
+
+nsims = 300
+nobs = 3
+ndraws = 1000
+npredictors = 15
+ntarget_params = 1
+chains = 4
+fixed_values <- list(nobs = nobs, ndraws = ndraws, shape = 1, 
+                     b = rvar_rng(rnorm, ndraws = 1, n = npredictors, 0, 1), 
+                     X = rvar(array(rnorm(n = nobs * npredictors, mean = 1, sd = 1), dim = c(1, nobs, npredictors))))
+
+# proxy for target variable
+mixture_means = draws_rvars(a = rvar(array(rep(rnorm(nsims, 2, 5), each = nsims), dim = c(nsims, nsims))))
+mm_bandwidth = draws_rvars(a = rvar(array(rep(1, nsims), dim=c(nsims, 1))))
+
+datasets_25 <- generator_gmm(
+  mixture_mean_draws_rvars = mixture_means,
+  mixture_sds_draws_rvars = mm_bandwidth,
+  fixed_values = fixed_values
+)
+
+mod_gmm <- cmdstanr::cmdstan_model("./models/binom-laplace.stan")
+backend_hmc_gmm <- SBC_backend_cmdstan_sample(mod_gmm, chains = chains, iter_sampling = ndraws / chains)
+```
+
+3. Approach 3: use sbc_backend_glm batch generator
+```{r logistic}
+generator_gmm <- function(mixture_means, mixture_sds, fixed_values){
+  # fixed value across simulated datasets
+  ## meta
+  nobs <- fixed_values$nobs
+  ndraws <- fixed_values$ndraws
+  ## distribution-specific
+  nsize <- fixed_values$nsize # Do not confuse n of Binom(n, p) with `nobs`
+  
+  # predictor
+  if("X" %in% names(fixed_values)) {X = fixed_values$X} else X = 0
+  # parameter with fixed distribution across `nsims` datasets
+  if("b" %in% names(fixed_values)) b <- fixed_values$b  else b = 0
+  # target variable updated at each iteration
+  a <- rvar_rng(rnorm, n = 1, mean = sample(mixture_means$a, 1, replace=TRUE), sd=mixture_sds$a, ndraws = nsims)
+
+  # generate
+  mu = draws_of(a + X %**% b)
+  mu = invlogit(mu)
+  Y <- rvar_rng(rbinom, n = nobs, size = nsize, prob = mu, ndraws = nsims) 
+  gen_rvars <- draws_rvars(nsims = nsims, nobs = nobs, nsize = nsize,
+                           mixture_means = mixture_means$a, mixture_sds = mixture_sds$a, 
+                           Y = Y)
+  SBC_datasets(
+    parameters = as_draws_matrix(list(a = a)), 
+    generated = draws_rvars_to_standata(gen_rvars)
+  )
+}
+
+nsims = 2
+nobs = 3
+nsize = 2
+ndraws = 10
+ntarget_params = 1
+chains = 4
+fixed_values <- list(nobs = nobs, ndraws = ndraws, nsize = nsize)
+# proxy for target variable
+mixture_means = list(a = 1/11) #draws_rvars(a = rvar(array(rep(rnorm(nsims, 0.1, 1), each = nsims), dim = c(nsims, nsims))))
+mixture_sds = list(a = sqrt(1 * 10 / ((11)^2 * (12)))) #draws_rvars(a = rvar(array(rep(1, nsims), dim=c(nsims, 1))))
+datasets <- generator_gmm(mixture_means, mixture_sds, fixed_values) 
+
+mod_binom_gmm <- cmdstanr::cmdstan_model("./models/binom-laplace_gmm.stan")
+#backend_hmc_binom_gmm <- SBC_backend_cmdstan_sample(mod_binom_gmm, chains = chains, iter_sampling = ndraws / chains)
+backend_vi_binom_gmm <- SBC_backend_cmdstan_variational(mod_binom_gmm, output_samples = ndraws, algorithm = "fullrank")
+# unfortunately we haven't found a way to use generic backend solution such as backend_logistic <- SBC_backend_glm(formula = y ~ 1, family = "binomial") 
+# because of added latent approximation with gaussian mixutre model. Please let me know if you do know how.
+
+#result <- compute_results(datasets, backend_hmc_binom_gmm)
+result_vi <- compute_results(datasets, backend_vi_binom_gmm)
+# result_21_vi <- compute_results(datasets_21, backend_vi, thin_ranks = 1)
+# plot_rank_hist(result_21_vi)
+# 
+# # self-calibrate
+# param_sc_vi <- self_calib(generator_gmm, backend_vi, mixture_means_21, mm_bandwidth, nsims_fn = function(...){nsims}, thin = 1, fixed_generator_args = list(fixed_values = fixed_values))
+# plot_rank_hist(param_sc_vi)
+```
+
+
+4. Approach 4: use sbc_backend_glm single generator
+: use sbc_backend_glm following this: https://hyunjimoon.github.io/SBC/articles/implementing_backends.html#minimal-backend-support-1
+generator needs modification.
+```{r logistic}
+generator_logistic_gmm <- function(mixture_means, mixture_sds, fixed_values){
+  # fixed value across simulated datasets
+  nobs <- fixed_values$nobs
+  ndraws <- fixed_values$ndraws
+  # target variable updated at each iteration
+  a <- rvar_rng(rnorm, n = 1, mean = sample(mixture_means$a, 1, replace=TRUE), sd=mixture_sds$a, ndraws = nsims)
+  # generate
+  mu = invlogit(draws_of(a))
+  y <- rvar_rng(rbinom, n = nobs, size = nsize, prob = mu, ndraws = nsims) 
+  gen_rvars <- draws_rvars(nsims = nsims, nobs = nobs, nsize = nsize,
+                           mixture_means = mixture_means$a, mixture_sds = mixture_sds$a, 
+                           y = y)
+  SBC_datasets(
+    parameters = as_draws_matrix(list(a = a)), 
+    generated = draws_rvars_to_standata(gen_rvars)
+  )
+}
+nsims = 20
+nobs = 3
+nsize = 2
+ndraws = 1000
+mixture_means = list(a = 1/11) #draws_rvars(a = rvar(array(rep(rnorm(nsims, 0.1, 1), each = nsims), dim = c(nsims, nsims))))
+mixture_sds = list(a = sqrt(1 * 10 / ((11)^2 * (12)))) #draws_rvars(a = rvar(array(rep(1, nsims), dim=c(nsims, 1))))
+fixed_values <- list(nobs = nobs, ndraws = ndraws, nsize = nsize)
+datasets_logistic <- generator_logistic_gmm(mixture_means, mixture_sds, fixed_values) 
+
+backend_glm_logistic <- SBC_backend_glm(formula = y ~ 1, family = "binomial") 
+result_glm_logistic <- compute_results(datasets_logistic, backend_glm_logistic)
+```
