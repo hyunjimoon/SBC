@@ -2,7 +2,6 @@
 title: "iter-binomial-laplace"
 output: html_document
 ---
-
 ```{r setup, include=FALSE}
 library(SBC) #devtools::install_github("hyunjimoon/SBC")
 library(cmdstanr)
@@ -10,6 +9,7 @@ library(parallel)
 library(bayesplot)
 library(posterior)
 library(dplyr)
+library(rstan)
 library(future)
 library(ggpubr)
 library(mclust)
@@ -24,6 +24,7 @@ options(SBC.min_chunk_size = 5)
 set.seed(1984)
 devtools::load_all()
 ```
+
 Proposition: iteration has large-sample effect.
 
 other things to understand:
@@ -50,180 +51,112 @@ Could I use beta-binomial conjugate or just stick to the normal distribution for
 As we increase the iteration, it would have the effect of increasing the n and therefore the posterior would apporach to near-normal.
 From the weight $\alpha + \beta: n$ weight, data (success, failure) = (1, 10) is the same with $\alpha =1, \beta = 10$ which is quite away from the normal.
 
-1. Approach 1
-```{r setup, include=FALSE}
-library("rethinking")
-hp <- list()
-success <- list()
-nsims <- 10
+1. binomial likelihood and laplace approximation inference on a logistic scale
+
+```{r setup}
+library(rstanarm)
+library(rstan)
+model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 20
+# prior hyperparameters
+mu <- 0
+sigma <- 5
+mu_lst <- list()
+sigma_lst <- list()
+nsims <- 100
 nobs <- 2
-selfcalib_itercount <- 10
-curve( dbeta( x , 1 , 10 ) , from=0 , to=1 )
-s_0 = rbeta(nsims , 1 , 10)
-
-hp["mean"] = 1/ (1+ 10) # approx of conj (beta-binom)? - conjugacy has recurrence (lock-in effect) while non-conjugacy is transient)
-hp["sd"] = sqrt(1 * 10 / ((11)^2 * (12)))
-for (c in seq(1:selfcalib_itercount)){
-  #' generating `nsims` datasets with different `p` value.
-  prob<- rnorm(nsims, hp$mean, hp$sd)
-  # generate parameter
-  success <- rbinom(n = nsims, size = nobs, prob = prob)
-  # generate outcome
-  flist0 <- alist(
-    y ~ dbinom( nobs , p) ,
-    logit(p) <- theta
-  )
-  #' posterior approximation
-  curve( dnorm( x , hp["mean"], hp["sd"]) , from=0 , to=1 )
-
-  # Computation
-  hp <- precis(quap(
-            alist( flist,
-                    ) , 
-  data=list(success_sum = sum(success), fail_sum = nsims * nobs - success_sum)
-  ))
-}
-```
-
-2. Approach 2: use stan with optimizing?..
-```{r}
-generator_gmm <- function(mixture_mean_draws_rvars, mixture_sds_draws_rvars, fixed_values){
-  # fixed value across simulated datasets
-  nobs <- fixed_values$nobs
-  ndraws <- fixed_values$ndraws
-  shape <- fixed_values$shape
-
-  # parameter with fixed distribution across `nsims` datasets
-  b <- fixed_values$b 
-  # target variable updated at each iteration
-  a <- rvar_rng(rnorm, n = 1, sample(mixture_mean_draws_rvars$a, 1, replace=TRUE), sd=mixture_sds_draws_rvars$a)
-
-  # generate
-  mu = as.vector(exp(a + X %**% b))
-  Y <- rvar_rng(rgamma, n = nobs, shape = shape, scale = mu / shape, ndraws = nsims)
-  gen_rvars <- draws_rvars(nsims = nsims, nobs = nobs, npredictors = npredictors, 
-                           shape = shape, X = X, 
-                           mixture_means = mixture_mean_draws_rvars$a, mm_bandwidth = mixture_sds_draws_rvars$a, 
-                           Y = Y)
-  SBC_datasets(
-    parameters = as_draws_matrix(list(a = a)), 
-    generated = draws_rvars_to_standata(gen_rvars)
-  )
-}
-
-nsims = 300
-nobs = 3
-ndraws = 1000
-npredictors = 15
-ntarget_params = 1
-chains = 4
-fixed_values <- list(nobs = nobs, ndraws = ndraws, shape = 1, 
-                     b = rvar_rng(rnorm, ndraws = 1, n = npredictors, 0, 1), 
-                     X = rvar(array(rnorm(n = nobs * npredictors, mean = 1, sd = 1), dim = c(1, nobs, npredictors))))
-
-# proxy for target variable
-mixture_means = draws_rvars(a = rvar(array(rep(rnorm(nsims, 2, 5), each = nsims), dim = c(nsims, nsims))))
-mm_bandwidth = draws_rvars(a = rvar(array(rep(1, nsims), dim=c(nsims, 1))))
-
-datasets_25 <- generator_gmm(
-  mixture_mean_draws_rvars = mixture_means,
-  mixture_sds_draws_rvars = mm_bandwidth,
-  fixed_values = fixed_values
-)
-
-mod_gmm <- cmdstanr::cmdstan_model("./models/binom-laplace.stan")
-backend_hmc_gmm <- SBC_backend_cmdstan_sample(mod_gmm, chains = chains, iter_sampling = ndraws / chains)
-```
-
-3. Approach 3: use sbc_backend_glm batch generator
-```{r logistic}
-generator_gmm <- function(mixture_means, mixture_sds, fixed_values){
-  # fixed value across simulated datasets
-  ## meta
-  nobs <- fixed_values$nobs
-  ndraws <- fixed_values$ndraws
-  ## distribution-specific
-  nsize <- fixed_values$nsize # Do not confuse n of Binom(n, p) with `nobs`
+# number of binomial trials
+nsize <- 2
+#a <- rbeta(nsims, 1,1000)
+for (j in 1:SBC_iter){
+# number of SBC simulations
+  post_draws_a <- c()
+  a <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(a[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)#, nsims=nsims)
+  													#mixture_means = as.array(mu), mixture_sds=sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	fit
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_a <- fit$par["a"]
+  	post_mean_a
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_a <- sqrt(solve(-fit$hessian))
+  	post_sd_a
+  	
+  	ndraws <- 10
+  	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
+  }
   
-  # predictor
-  if("X" %in% names(fixed_values)) {X = fixed_values$X} else X = 0
-  # parameter with fixed distribution across `nsims` datasets
-  if("b" %in% names(fixed_values)) b <- fixed_values$b  else b = 0
-  # target variable updated at each iteration
-  a <- rvar_rng(rnorm, n = 1, mean = sample(mixture_means$a, 1, replace=TRUE), sd=mixture_sds$a, ndraws = nsims)
-
-  # generate
-  mu = draws_of(a + X %**% b)
-  mu = invlogit(mu)
-  Y <- rvar_rng(rbinom, n = nobs, size = nsize, prob = mu, ndraws = nsims) 
-  gen_rvars <- draws_rvars(nsims = nsims, nobs = nobs, nsize = nsize,
-                           mixture_means = mixture_means$a, mixture_sds = mixture_sds$a, 
-                           Y = Y)
-  SBC_datasets(
-    parameters = as_draws_matrix(list(a = a)), 
-    generated = draws_rvars_to_standata(gen_rvars)
-  )
+  hist(invlogit(post_draws_a), xlim = range(0,1))
+  
+  # compare with mu
+  mu_est <- mean(post_draws_a)
+  message("mu : ", mu, "mu_est : ", mu_est)
+  mu <- mu_est
+  
+  # compare with sigma
+  sigma_est <- sd(post_draws_a)
+  message("sigma : ", sigma, " sigma_est : ", sigma_est)
+  sigma <- sigma_est
+  
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
 }
-
-nsims = 2
-nobs = 3
-nsize = 2
-ndraws = 10
-ntarget_params = 1
-chains = 4
-fixed_values <- list(nobs = nobs, ndraws = ndraws, nsize = nsize)
-# proxy for target variable
-mixture_means = list(a = 1/11) #draws_rvars(a = rvar(array(rep(rnorm(nsims, 0.1, 1), each = nsims), dim = c(nsims, nsims))))
-mixture_sds = list(a = sqrt(1 * 10 / ((11)^2 * (12)))) #draws_rvars(a = rvar(array(rep(1, nsims), dim=c(nsims, 1))))
-datasets <- generator_gmm(mixture_means, mixture_sds, fixed_values) 
-
-mod_binom_gmm <- cmdstanr::cmdstan_model("./models/binom-laplace_gmm.stan")
-#backend_hmc_binom_gmm <- SBC_backend_cmdstan_sample(mod_binom_gmm, chains = chains, iter_sampling = ndraws / chains)
-backend_vi_binom_gmm <- SBC_backend_cmdstan_variational(mod_binom_gmm, output_samples = ndraws, algorithm = "fullrank")
-# unfortunately we haven't found a way to use generic backend solution such as backend_logistic <- SBC_backend_glm(formula = y ~ 1, family = "binomial") 
-# because of added latent approximation with gaussian mixutre model. Please let me know if you do know how.
-
-#result <- compute_results(datasets, backend_hmc_binom_gmm)
-result_vi <- compute_results(datasets, backend_vi_binom_gmm)
-# result_21_vi <- compute_results(datasets_21, backend_vi, thin_ranks = 1)
-# plot_rank_hist(result_21_vi)
-# 
-# # self-calibrate
-# param_sc_vi <- self_calib(generator_gmm, backend_vi, mixture_means_21, mm_bandwidth, nsims_fn = function(...){nsims}, thin = 1, fixed_generator_args = list(fixed_values = fixed_values))
-# plot_rank_hist(param_sc_vi)
+plot(unlist(mu_lst))
+plot(unlist(sigma_lst))
 ```
 
+2. binomial likelihood and hmc inference on a logistic scale
+```{r setup, include=FALSE}
+model_gmm =  cmdstanr::cmdstan_model("./models/binom-laplace_gmm.stan")
+# experiment constants
+SBC_iter <- 100
+nsims <- 5
+nobs <- 2
+ndraws <- 10
+# prior hyperparameters
+mu <- rep(0, nsims)
+sigma <- 5
+mu_lst <- list()
+sigma_lst <- list()
 
-4. Approach 4: use sbc_backend_glm single generator
-: use sbc_backend_glm following this: https://hyunjimoon.github.io/SBC/articles/implementing_backends.html#minimal-backend-support-1
-generator needs modification.
-```{r logistic}
-generator_logistic_gmm <- function(mixture_means, mixture_sds, fixed_values){
-  # fixed value across simulated datasets
-  nobs <- fixed_values$nobs
-  ndraws <- fixed_values$ndraws
-  # target variable updated at each iteration
-  a <- rvar_rng(rnorm, n = 1, mean = sample(mixture_means$a, 1, replace=TRUE), sd=mixture_sds$a, ndraws = nsims)
-  # generate
-  mu = invlogit(draws_of(a))
-  y <- rvar_rng(rbinom, n = nobs, size = nsize, prob = mu, ndraws = nsims) 
-  gen_rvars <- draws_rvars(nsims = nsims, nobs = nobs, nsize = nsize,
-                           mixture_means = mixture_means$a, mixture_sds = mixture_sds$a, 
-                           y = y)
-  SBC_datasets(
-    parameters = as_draws_matrix(list(a = a)), 
-    generated = draws_rvars_to_standata(gen_rvars)
-  )
+# number of binomial trials
+nsize <- 2
+#a <- rbeta(nsims, 1,1000)
+for (j in 1:SBC_iter){
+# number of SBC simulations
+  post_draws_a <- c()
+  for (i in 1:nsims) {
+    a <- rnorm(1, mean = sample(mu, 1, replace=TRUE), sd = sigma)
+  	p <- invlogit(a)
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mixture_means = as.array(mu), mixture_sds = sigma, nsims=nsims)
+  	post_a <- c(model_gmm$sample(data = dat, chains = 2, iter_sampling = ndraws/2)$draws("a"))
+  	post_draws_a <- c(post_draws_a, post_a)
+  }
+  
+  hist(invlogit(post_draws_a), xlim = range(0,1))
+  
+  gmm_fit <- mclust::Mclust(post_draws_a, G = nsims, verbose = FALSE)
+  # approximate posterior mean via posterior mode
+  mu_est <- gmm_fit$parameters$mean
+  # compare with mu
+  message("mu : ", mu, " mu_est : ", mu_est)
+  mu <- mu_est
+  # approximate posterior sd via best sq of gmm fit
+  sigma_est <- bw.nrd0(mu_est)
+  # compare with sigma
+  message("sigma : ", sigma, " sigma_est : ", sigma_est)
+  sigma <- sigma_est
+  
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
 }
-nsims = 20
-nobs = 3
-nsize = 2
-ndraws = 1000
-mixture_means = list(a = 1/11) #draws_rvars(a = rvar(array(rep(rnorm(nsims, 0.1, 1), each = nsims), dim = c(nsims, nsims))))
-mixture_sds = list(a = sqrt(1 * 10 / ((11)^2 * (12)))) #draws_rvars(a = rvar(array(rep(1, nsims), dim=c(nsims, 1))))
-fixed_values <- list(nobs = nobs, ndraws = ndraws, nsize = nsize)
-datasets_logistic <- generator_logistic_gmm(mixture_means, mixture_sds, fixed_values) 
-
-backend_glm_logistic <- SBC_backend_glm(formula = y ~ 1, family = "binomial") 
-result_glm_logistic <- compute_results(datasets_logistic, backend_glm_logistic)
+plot(unlist(mu_lst))
+plot(unlist(sigma_lst))
 ```
