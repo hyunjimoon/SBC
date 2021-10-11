@@ -4,10 +4,12 @@
 \alias{tf_param_vec}
 \title{Transform parameters from constrained to uncontrained}
 \usage{
-tf_param_vec(param)
+tf_param_vec(param, tf)
 }
 \arguments{
 \item{param}{a vector}
+
+\item{tf}{string indicating transformation type}
 }
 \value{
 list containing uncontrained parameters and transformation type

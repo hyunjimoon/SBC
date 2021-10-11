@@ -79,8 +79,9 @@ self_calib <- function(generator, backend, mixture_means_init_draws_rvars, mixtu
       pooled_draws = tf_param_vec(pooled_draws, transform_types[[target_param_name]])
 
       gmm_fit <- mclust::Mclust(pooled_draws, G = nsims, verbose = FALSE)
+      prop_est <- gmm_fit$parameters$pro
       # vectorize gmmmeans -> sample ->
-      mixture_means_next_draws_rvars[[target_param_name]] <- update_means(mixture_means_draws_rvars[[target_param_name]], posterior::rvar(array(rep(as.vector(gmm_fit$parameters$mean), each = nsims), dim = c(nsims, nsims))))
+      mixture_means_next_draws_rvars[[target_param_name]] <- update_means(mixture_means_draws_rvars[[target_param_name]], posterior::resample_draws(posterior::rvar(array(rep(as.vector(gmm_fit$parameters$mean), each = nsims), dim = c(nsims, nsims))), weights = prop_est))
       mixture_bw_next_draws_rvars[[target_param_name]] <- update_bw(mixture_means_next_draws_rvars[[target_param_name]])
     }
     mixture_means_next_draws_rvars <- do.call(draws_rvars, mixture_means_next_draws_rvars)
@@ -109,3 +110,75 @@ update_means <- function(mixture_means_rvar, mixture_means_hat_rvar){
 update_bw <- function(mixture_means_next_rvars){
   return (rvar(rep(bw.nrd0(draws_of(mixture_means_next_rvars)), posterior::niterations(mixture_means_next_rvars))))
 }
+################
+# quantile approximation
+
+#' Given a vector of draws, return a vector of length S of phi which best approximates the CDF.
+#' @param draws a vector of sample draws from a distribution
+#' @param S number of quantile points
+#' @return vector of phi where phi in \[0, 1\]
+approx_quantile_phi <- function(draws, S) {
+  probs <- c(1:S)
+  probs <- unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)}))  # generate (tau_i + tau_{i+1})/2
+  return(quantile(draws, probs, names = FALSE))
+}
+
+#' Given a vector of phis, which represent the quantiles of equally spaced probabilities on [0, 1] defined as i/S, return a function that returns N random samples from the quantile function
+#' @param N number of samples to draw, returned as a vector of length N
+#' @param phis vector of phis to sample from
+#' @return a vector of samples drawn by inverse transform sampling
+sample_quantile_phi <- function(N, phis) {
+  return(sample(phis, N, replace = TRUE))
+}
+
+
+#' Calculate qualtile huber loss for a given tau tau_{s_index}
+#' @param phi_prior vector of phis for the prior(pre-transformation) distribution
+#' @param phi_post vector of phis for the posterior(post-transformation) distribution
+#' @param s_index The tau index to calculate loss
+#' @param k interval to calculate loss. resulting loss will be in range \[-k, k\]
+#' @param S the number of phis. equal to length(phi_prior) = length(phi_post)
+#' @param n_post_samples the number of samples to draw from posterior, to approximate the expected huber loss
+#' @return a vector of length 2, where the first value is the expected huber loss and the second value the number of posterior samples less than the quantile value at phi\[s_index\]
+quantile_huber_loss <- function(phi_prior, phi_post, s_index, k, S, n_post_samples) {
+  summed_rho_mean <- 0
+  zprime_delta <- 0
+  for(n in 1:n_post_samples){
+    zprime <- sample(phi_post, 1)
+    u <- zprime - phi_prior[s_index]
+    delta <- sum(u < 0)
+    tau_hat <- s_index / S
+    huber_loss <- if (abs(u) <= k ) 1/2 * u ** 2  else k * (abs(u) - 1/2 * k)
+    rho <- abs(tau_hat - u) * huber_loss / k
+
+    summed_rho_mean <- summed_rho_mean + rho
+    zprime_delta <- zprime_delta + if(zprime < phi_prior[s_index]) 1 else 0
+  }
+  return(c(summed_rho_mean / n_samples, zprime_delta))
+}
+
+#' @export
+#' Update mixture mean through quantile approxiation based on huber loss
+#'
+#' @param mixture_means_rvar a posterior::rvar object of prior(pre-transformation) mixture mean values
+#' @param mixture_means_rvar a posterior::rvar object of posterior(post-transformation) mixture mean values
+#' @param S Number of approximation points for the target quantile function.
+#' @param k the huber loss bound. huber loss returns in the boundary of \[-k, k\]
+#' @param n_post_samples the number of samples to draw from posterior, to approximate the expected huber loss
+#' @param epsilon gradient update coefficient
+#' @return a posterior::rvar object with the same dimension as the input rvars.
+update_quantile_approximation <- function(mixture_means_rvar, mixture_means_hat_rvar, S, k, n_post_samples,  epsilon) {
+  phi <- approx_quantile_phi(posterior::draws_of(mixture_means_rvar), S = S)
+  phi_post <- approx_quantile_phi(posterior::draws_of(mixture_means_hat_rvar), S = S)
+  updated_phi <- phi
+  summed_loss <- 0
+  for(s in 1:S) {
+    qhl = quantile_huber_loss(phi, phi_post, s, k, S, n_post_samples)
+    huber_loss <- qhl[1]
+    zprime_delta <- qhl[2]
+    summed_loss <- summed_loss + huber_loss
+    updated_phi[s] <- updated_phi[s] + epsilon * (s / S - zprime_delta)
+  }
+  posterior::rvar(array(rep(sample_quantile_phi(nsims, updated_phi), each = nsims), dim = c(nsims, nsims)))  # currently all nsims receive same updated mus
+}
+
