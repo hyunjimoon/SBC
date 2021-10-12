@@ -116,7 +116,7 @@ update_bw <- function(mixture_means_next_rvars){
 #' Given a vector of draws, return a vector of length S of phi which best approximates the CDF.
 #' @param draws a vector of sample draws from a distribution
 #' @param S number of quantile points
-#' @return vector of phi where phi in \[0, 1\]
+#' @return vector of phi which are quantile function values
 approx_quantile_phi <- function(draws, S) {
   probs <- c(1:S)
   probs <- unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)}))  # generate (tau_i + tau_{i+1})/2
