@@ -157,7 +157,7 @@ quantile_huber_loss <- function(phi_prior, phi_post, s_index, k, S, n_post_sampl
   return(c(summed_rho_mean / n_samples, zprime_delta))
 }
 
-#' @export
+
 #' Update mixture mean through quantile approxiation based on huber loss
 #'
 #' @param mixture_means_rvar a posterior::rvar object of prior(pre-transformation) mixture mean values
@@ -167,6 +167,7 @@ quantile_huber_loss <- function(phi_prior, phi_post, s_index, k, S, n_post_sampl
 #' @param n_post_samples the number of samples to draw from posterior, to approximate the expected huber loss
 #' @param epsilon gradient update coefficient
 #' @return a posterior::rvar object with the same dimension as the input rvars.
+#' @export
 update_quantile_approximation <- function(mixture_means_rvar, mixture_means_hat_rvar, S, k, n_post_samples,  epsilon) {
   phi <- approx_quantile_phi(posterior::draws_of(mixture_means_rvar), S = S)
   phi_post <- approx_quantile_phi(posterior::draws_of(mixture_means_hat_rvar), S = S)
