@@ -283,7 +283,7 @@ update_quantile_approximation <- function(hyperparam_rvar, hyperparam_hat_rvar, 
     zprime_delta <- 0
     for(n in 1:n_post_samples){
       zprime <- sample(phi_post, 1)
-      zprime_delta <- zprime_delta + if(zprime < phi_prior[s_index]) 1 else 0
+      zprime_delta <- zprime_delta + if(zprime < phi_prior[s]) 1 else 0
     }
     updated_phi[s] <- updated_phi[s] + epsilon * ((2 * s - 1) / (2 * S) - zprime_delta)  # (tau_{i - 1} + tau_i) / S = (s / S + (s - 1) / S) / 2
   }
