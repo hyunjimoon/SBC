@@ -50,7 +50,7 @@ generator_gmm <- function(mixture_means, mixture_sds, fixed_sim_args){
   # parameter with fixed distribution across `nsims` datasets
   if("b" %in% names(fixed_sim_args)) {b <- fixed_sim_args$b}  else b = 0
   # target variable updated at each iteration
-  a <- invtf_param_vec(rvar_rng(rnorm, n = 1, mean = sample(mixture_means$a, 1, replace=TRUE), sd=mixture_sds$a, ndraws = nsims), tf = transform_types$a)
+  a <- invtf_param_vec(rvar_rng(rnorm, n = 1, mean = sample(mixture_means$a, nsims, replace=TRUE), sd=mixture_sds$a, ndraws = nsims), tf = transform_types$a)
 
   # generate
   mu = draws_of(a + X %**% b)
