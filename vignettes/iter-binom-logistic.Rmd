@@ -90,7 +90,7 @@ Would this converging distribution be unique? From the result below, starting fr
 
 ```{r, warning=FALSE, error=FALSE}
 # change prior hyperparameters
-mu <- 1
+mu <- 4
 sigma <- 1
 SBC_iter <- 91
 mu_lst <- list()
@@ -130,8 +130,9 @@ plot(unlist(sigma_lst))
 
 
 # Experiment 2.
-Quantile update algorithm is used with `self_calib_gmm` function. 
-```{r}
+Quantile update algorithm is used with quanitle regression loss function. With larger `nsims`, it reaches well-calibrated region with lower `SBC_iter`
+
+```{r, warning=FALSE, error=FALSE}
 #' Given a vector of draws, return a vector of length S of phi which best approximates the CDF.
 #' @param draws a vector of sample draws from a distribution
 #' @param S number of quantile points
@@ -170,24 +171,25 @@ update_quantile_approximation <- function(hyperparam, hyperparam_hat, S, n_post_
       zprime <- sample(phi_post, 1)
       zprime_delta <- zprime_delta + if(zprime < hyperparam[s]) 1 else 0
     }
-    updated_phi[s] <- updated_phi[s] + epsilon * ((2 * s - 1) / (2 * S) - zprime_delta)  # = (s / S + (s - 1) / S) / 2
+    updated_phi[s] <- updated_phi[s] + epsilon * ((2 * s - 1) / (2 * S) + zprime_delta)  # = (s / S + (s - 1) / S) / 2
   }
   sample_quantile_phi(nsims, updated_phi)
 }
 ```
 
+## Experiment 2-1. Skewed initial prior
+It has the problem of preferring smaller
 ```{r, warning=FALSE, error=FALSE}
 #model = stan_model("./models/binom-laplace.stan")
 SBC_iter <- 91
 # prior hyperparameters
-mu <- 1
+mu <- -0
 sigma <- 1
 mu_lst <- c()
 sigma_lst <- c()
 mu_hat_lst <- c()
-sigma_hat_lst <- c()
 # the number of dataset
-nsims <- 10
+nsims <- 100
 # outcome dimension for each dataset
 nobs <- 2
 # posterior samples for each dataset
@@ -195,6 +197,7 @@ ndraws <- 10
 # number of binomial trials
 nsize <- 2
 mu_dist <- rnorm(nsims, mu, sigma)
+sigma_dist <- rnorm(nsims, sigma, sigma * 0.1)
 for (j in 1:SBC_iter){
   post_draws_a <- c()
   a <- rnorm(nsims, mu, sigma)
@@ -211,14 +214,14 @@ for (j in 1:SBC_iter){
   	post_sd_a <- sqrt(solve(-fit$hessian))
   	
   	mu_hat_lst <- c(mu_hat_lst, post_mean_a)
-  	sigma_hat_lst <- c(sigma_hat_lst, post_sd_a)
   	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
   }
+  #if ((j-1) %% 30 == 0){
   hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
-  
+  #}
   # update hyperparameters depending on inference algorithm
-  mu_dist <- update_quantile_approximation(mu_dist, mu_hat_lst, nsims, 200, 0.001)
-  mu_est <- median(mu_dist) #mean vs mean
+  mu_dist <- update_quantile_approximation(mu_dist, mu_hat_lst, nsims, 1000, 0.0001)
+  mu_est <- median(mu_dist)
   mu <- mu_est
   sigma_est <- sd(post_draws_a)
   sigma <- sigma_est
@@ -231,5 +234,59 @@ for (j in 1:SBC_iter){
 plot(mu_lst)
 plot(sigma_lst)
 ```
+## Experiment 2-2. Symmetric but non-gaussian prior with fat tail
+```{r, warning=FALSE, error=FALSE}
+#model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 91
+# prior hyperparameters
+mu <- 0
+sigma <- 10
+mu_lst <- c()
+sigma_lst <- c()
+mu_hat_lst <- c()
+# the number of dataset
+nsims <- 1000
+# outcome dimension for each dataset
+nobs <- 2
+# posterior samples for each dataset
+ndraws <- 10
+# number of binomial trials
+nsize <- 2
+mu_dist <- rnorm(nsims, mu, sigma)
+sigma_dist <- rnorm(nsims, sigma, sigma * 0.1)
+for (j in 1:SBC_iter){
+  post_draws_a <- c()
+  a <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(a[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_a <- fit$par["a"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_a <- sqrt(solve(-fit$hessian))
+  	
+  	mu_hat_lst <- c(mu_hat_lst, post_mean_a)
+  	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
+  }
+  #if ((j-1) %% 30 == 0){
+  hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  #}
+  # update hyperparameters depending on inference algorithm
+  mu_dist <- update_quantile_approximation(mu_dist, mu_hat_lst, nsims, 1000, 0.001)
+  mu_est <- median(mu_dist)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_a)
+  sigma <- sigma_est
+  message("mu : ", round(mu, 2), " mu_est : ", round(mu_est, 2), " sigma : ", round(sigma, 2), " sigma_est : ", round(sigma_est, 2))
 
-
+  # hyperparameters trace
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(mu_lst)
+plot(sigma_lst)
+```
