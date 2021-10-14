@@ -1,7 +1,6 @@
 ---
 title: "iter-binomial-laplace"
 output: html_document
-author: Hyunji Moon
 ---
 ```{r setup, include=FALSE}
 library(SBC)
@@ -40,14 +39,14 @@ Target parameter is logit-transformed probability, $a$. Binomial likelihood and 
 
 ```{r}
 model = stan_model("./models/binom-laplace.stan")
-SBC_iter <- 30
+SBC_iter <- 91
 # prior hyperparameters
 mu <- 0
-sigma <- 1
+sigma <- 10
 mu_lst <- list()
 sigma_lst <- list()
 # the number of dataset
-nsims <- 100
+nsims <- 91
 # outcome dimension for each dataset
 nobs <- 2
 # posterior samples for each dataset
@@ -70,8 +69,8 @@ for (j in 1:SBC_iter){
   	post_sd_a <- sqrt(solve(-fit$hessian))
   	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
   }
-  if (j %% 5){
-    hist(invlogit(post_draws_a), xlim = range(0,1))  
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
   }
   
   # update hyperparameters depending on inference algorithm
@@ -88,13 +87,14 @@ plot(unlist(mu_lst))
 plot(unlist(sigma_lst))
 ```
 
-The second experiment with different prior, $N(5, 1^2)$ which is highly unsymmetrical unlike $N(0, 1^2)$, also converge to the same distribution. A likeable explanation is the recurrence of parameter values within well-calibrated region as opposed to that are not. For instance, if $logit(p)$ starts from 0.9, is likely to form a non-normal posterior whose mode is more likely to move away from 0.9. On the other hand, parameter values near .5 forms a symmetric and stable posterior which in most cases has its mode near .5. 
+The second experiment with different prior, $N(1, 1^2)$ which is unsymmetrical unlike $N(0, 10^2)$, also converge to the same distribution. A likeable explanation is the recurrence of parameter values within well-calibrated region as opposed to that are not. For instance, if $logit(p)$ starts from 0.9, is likely to form a non-normal posterior whose mode is more likely to move away from 0.9. On the other hand, parameter values near .5 forms a symmetric and stable posterior which in most cases has its mode near .5. 
 
 # Experiment 2.
 ```{r}
 # change prior hyperparameters
-mu <- 5
+mu <- 1
 sigma <- 1
+SBC_iter <- 91
 mu_lst <- list()
 sigma_lst <- list()
 for (j in 1:SBC_iter){
@@ -113,8 +113,8 @@ for (j in 1:SBC_iter){
   	post_sd_a <- sqrt(solve(-fit$hessian))
   	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
   }
-  if (j %% 5){
-    hist(invlogit(post_draws_a), xlim = range(0,1))  
+  if ((j-1) %% 30 == 0){
+    hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
   }
   
   # update hyperparameters depending on inference algorithm
