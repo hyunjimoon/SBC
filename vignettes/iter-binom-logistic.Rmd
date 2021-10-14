@@ -1,9 +1,10 @@
 ---
 title: "iter-binomial-laplace"
 output: html_document
+author: Hyunji Moon
 ---
 ```{r setup, include=FALSE}
-library(SBC) #devtools::install_github("hyunjimoon/SBC")
+library(SBC)
 library(cmdstanr)
 library(parallel)
 library(bayesplot)
@@ -15,95 +16,71 @@ library(ggpubr)
 library(mclust)
 library(rstanarm)
 library(ggplot2)
-library(medicaldata)
-library(formula.tools)
-library(MASS)
 options(mc.cores = parallel::detectCores())
 plan(multisession)
 options(SBC.min_chunk_size = 5)
 set.seed(1984)
-devtools::load_all()
 ```
 
-Proposition: iteration has large-sample effect.
+Proposition: SBC iteration would converge to the distribution that respects computation model.
 
-other things to understand:
-- prior that leads to far-from-normal posterior could end up prior that produces near-normal posterior thorugh iteration. This setting is an SBC for binomial likelihood and quadratic approximation computation.
-- the role of simulated outcome variable size
+This is due to the recurrence of well-calibrated regions which would be illustrated in experiment 1 which shows different priors converging to the same distribution. We view this as model bootstrap where likelihood and inference algorithm form a transition and automatically finds the best prior pair. Experiment 2 introduces a quantile-based hyperparameter gradient update which fastens this converge. The convergence is shown in 1-Wasserstein distance. Further attemps are applying this calibration boost algorithm to different likelihood and inference algorithm pairs which are known to have selective well-calibrated parameter region. Examples are as follows:
 
-Think of the given setting:
-$$p\sim Beta(\alpha, \beta) \\
-x \sim Binom(n, p)$$
+variance parameter starting from boundary-mode distribution 
+- likelihood: hierarchical
+- inference algorithm: HMC, variantional inference
 
-The following shows the theoretical relation between posterior mean as the weighted average of prior and likelihood mean when . They have $\alpha + \beta: n$ weight. 
-$$\text{posterior mean} = \frac{\alpha + x}{\alpha + \beta + n} = \frac{\alpha + \beta}{\alpha + \beta + n} * \frac{\alpha}{\alpha + \beta} + \frac{n}{\alpha + \beta + n} * \frac{x}{n}$$
+coefficient parameter starting from fat-tailed distribution 
+- likelihood: logit-link generalized linear model
+- inference algorithm: HMC, variantional inference
 
-In SBC, the likelihood mean approaches the prior mean as $n \rightarrow \infty$ and $\tilde{x} \sim Binom(n, p)$ wehre $ p\sim Beta(\alpha, \beta)$.
+# Experient 1.
 
-$$\frac{\alpha + \beta}{\alpha + \beta + n} * \frac{\alpha}{\alpha + \beta} + \frac{n}{\alpha + \beta + n} * \frac{\tilde{x}}{n} \underset{n\rightarrow \infty}{\rightarrow}  \frac{\alpha + \beta}{\alpha + \beta + n} * \frac{\alpha}{\alpha + \beta} + \frac{n}{\alpha + \beta + n} * \frac{\alpha}{\alpha + \beta} = \frac{\alpha}{\alpha + \beta}$$ 
+Target parameter is logit-transformed probability, $a$. Binomial likelihood and laplace approximation inference algorithm on logit scale is used. Hyperparameters for laplace approximation are $\mu, \sigma$ which correspond to posterior distribution mode and second derivative at the mode. These hyperparameter values are set as the prior parameter for the iteration. Results show starting from $N(0, 1^2)$ distribution, initial non-normal distribution slowly transforms to normal form to adjust to the constraints imposed by the approximation of inference algorithm, in this case normal distribution.
 
-None of the posterior of logit scale would be normal, but as n increase, it becomes closer.
-
-![binom-normal](./resources/binom-normal.png)
-
-Could I use beta-binomial conjugate or just stick to the normal distribution for the prior?
-
-As we increase the iteration, it would have the effect of increasing the n and therefore the posterior would apporach to near-normal.
-From the weight $\alpha + \beta: n$ weight, data (success, failure) = (1, 10) is the same with $\alpha =1, \beta = 10$ which is quite away from the normal.
-
-1. binomial likelihood and laplace approximation inference on a logistic scale
-
-```{r setup}
-library(rstanarm)
-library(rstan)
+```{r}
 model = stan_model("./models/binom-laplace.stan")
-SBC_iter <- 20
+SBC_iter <- 30
 # prior hyperparameters
 mu <- 0
-sigma <- 5
+sigma <- 1
 mu_lst <- list()
 sigma_lst <- list()
+# the number of dataset
 nsims <- 100
+# outcome dimension for each dataset
 nobs <- 2
+# posterior samples for each dataset
+ndraws <- 10
 # number of binomial trials
 nsize <- 2
-#a <- rbeta(nsims, 1,1000)
 for (j in 1:SBC_iter){
-# number of SBC simulations
   post_draws_a <- c()
   a <- rnorm(nsims, mu, sigma)
   for (i in 1:nsims) {
   	p <- invlogit(a[i])
   	y <- rbinom(nobs, nsize, p)
-  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)#, nsims=nsims)
-  													#mixture_means = as.array(mu), mixture_sds=sigma)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
   	fit <- optimizing(model, data = dat, hessian = TRUE)
-  	fit
   	
   	# approximate posterior mean via posterior mode
   	post_mean_a <- fit$par["a"]
-  	post_mean_a
   	
   	# approximate posterior sd via (sqrt) of the inverse negative Hessian
   	post_sd_a <- sqrt(solve(-fit$hessian))
-  	post_sd_a
-  	
-  	ndraws <- 10
   	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
   }
+  if (j %% 5){
+    hist(invlogit(post_draws_a), xlim = range(0,1))  
+  }
   
-  hist(invlogit(post_draws_a), xlim = range(0,1))
-  
-  # compare with mu
+  # update hyperparameters depending on inference algorithm
   mu_est <- mean(post_draws_a)
-  message("mu : ", mu, "mu_est : ", mu_est)
   mu <- mu_est
-  
-  # compare with sigma
   sigma_est <- sd(post_draws_a)
-  message("sigma : ", sigma, " sigma_est : ", sigma_est)
   sigma <- sigma_est
-  
+  # compare with previous hyperparameters
+  message("mu : ", round(mu, 2), " mu_est : ", round(mu_est, 2), " sigma : ", round(sigma, 2), " sigma_est : ", round(sigma_est, 2))
   mu_lst <- c(mu_lst, mu)
   sigma_lst <- c(sigma_lst, sigma)
 }
@@ -111,49 +88,43 @@ plot(unlist(mu_lst))
 plot(unlist(sigma_lst))
 ```
 
-2. binomial likelihood and hmc inference on a logistic scale
-```{r setup, include=FALSE}
-model_gmm =  cmdstanr::cmdstan_model("./models/binom-laplace_gmm.stan")
-# experiment constants
-SBC_iter <- 100
-nsims <- 5
-nobs <- 2
-ndraws <- 10
-# prior hyperparameters
-mu <- rep(0, nsims)
-sigma <- 5
+The second experiment with different prior, $N(5, 1^2)$ which is highly unsymmetrical unlike $N(0, 1^2)$, also converge to the same distribution. A likeable explanation is the recurrence of parameter values within well-calibrated region as opposed to that are not. For instance, if $logit(p)$ starts from 0.9, is likely to form a non-normal posterior whose mode is more likely to move away from 0.9. On the other hand, parameter values near .5 forms a symmetric and stable posterior which in most cases has its mode near .5. 
+
+# Experiment 2.
+```{r}
+# change prior hyperparameters
+mu <- 5
+sigma <- 1
 mu_lst <- list()
 sigma_lst <- list()
-
-# number of binomial trials
-nsize <- 2
-#a <- rbeta(nsims, 1,1000)
 for (j in 1:SBC_iter){
-# number of SBC simulations
   post_draws_a <- c()
+  a <- rnorm(nsims, mu, sigma)
   for (i in 1:nsims) {
-    a <- rnorm(1, mean = sample(mu, 1, replace=TRUE), sd = sigma)
-  	p <- invlogit(a)
+  	p <- invlogit(a[i])
   	y <- rbinom(nobs, nsize, p)
-  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mixture_means = as.array(mu), mixture_sds = sigma, nsims=nsims)
-  	post_a <- c(model_gmm$sample(data = dat, chains = 2, iter_sampling = ndraws/2)$draws("a"))
-  	post_draws_a <- c(post_draws_a, post_a)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_a <- fit$par["a"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_a <- sqrt(solve(-fit$hessian))
+  	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
+  }
+  if (j %% 5){
+    hist(invlogit(post_draws_a), xlim = range(0,1))  
   }
   
-  hist(invlogit(post_draws_a), xlim = range(0,1))
-  
-  gmm_fit <- mclust::Mclust(post_draws_a, G = nsims, verbose = FALSE)
-  # approximate posterior mean via posterior mode
-  mu_est <- gmm_fit$parameters$mean
-  # compare with mu
-  message("mu : ", mu, " mu_est : ", mu_est)
+  # update hyperparameters depending on inference algorithm
+  mu_est <- mean(post_draws_a)
   mu <- mu_est
-  # approximate posterior sd via best sq of gmm fit
-  sigma_est <- bw.nrd0(mu_est)
-  # compare with sigma
-  message("sigma : ", sigma, " sigma_est : ", sigma_est)
+  sigma_est <- sd(post_draws_a)
   sigma <- sigma_est
-  
+  # compare with previous hyperparameters
+  message("mu : ", round(mu, 2), " mu_est : ", round(mu_est, 2), " sigma : ", round(sigma, 2), " sigma_est : ", round(sigma_est, 2))
+
   mu_lst <- c(mu_lst, mu)
   sigma_lst <- c(sigma_lst, sigma)
 }
