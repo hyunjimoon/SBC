@@ -217,10 +217,10 @@ for (j in 1:SBC_iter){
   	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
   }
   #if ((j-1) %% 30 == 0){
-  hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))
   #}
   # update hyperparameters depending on inference algorithm
-  mu_dist <- update_quantile_approximation(mu_dist, mu_hat_lst, nsims, 1000, 0.0001)
+  mu_dist <- posterior::draws_of(SBC::update_quantile_approximation(mu_dist, mu_hat_lst, nsims, -1, 1000, 1e-5))[1, ]
   mu_est <- median(mu_dist)
   mu <- mu_est
   sigma_est <- sd(post_draws_a)

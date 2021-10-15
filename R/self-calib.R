@@ -276,16 +276,16 @@ quantile_huber_loss <- function(phi_prior, phi_post, s_index, k, S, n_post_sampl
 update_quantile_approximation <- function(hyperparam_rvar, hyperparam_hat_rvar, S, k, n_post_samples,  epsilon) {
   phi <- approx_quantile_phi(hyperparam_rvar, S = S)
   phi_post <- approx_quantile_phi(hyperparam_hat_rvar, S = S)
-  updated_phi <- phi
+  updated_phi <- phi_post
   for(s in 1:S) {
     # zprime_delta <- 0
     # for(n in 1:n_post_samples){
     #   zprime <- sample(phi_post, 1)
     #   zprime_delta <- zprime_delta + if(zprime < phi[s]) 1 else 0
     # }
-    zprime_delta <- sum(sample(phi_post, n_post_samples, replace = TRUE) < phi[s])
-    updated_phi[s] <- updated_phi[s] + epsilon * ((2 * s - 1) / (2 * S) - zprime_delta)  # (tau_{i - 1} + tau_i) / S = (s / S + (s - 1) / S) / 2
+    zprime_delta <- sum(sample(phi, n_post_samples, replace = TRUE) < phi_post[s])
+    #print(paste(zprime_delta / n_post_samples, "/", (2 * s - 1) / (2 * S)))
+    updated_phi[s] <- updated_phi[s] + epsilon * ((2 * s - 1) / (2 * S) - zprime_delta / n_post_samples)  # (tau_{i - 1} + tau_i) / S = (s / S + (s - 1) / S) / 2
   }
-  print(sqrt(l2))
   return(posterior::rvar(array(rep(sample_quantile_phi(nsims, updated_phi), each = nsims), dim = c(nsims, nsims)))) # currently all nsims receive same updated mus
 }
