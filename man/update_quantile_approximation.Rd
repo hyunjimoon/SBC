@@ -2,11 +2,11 @@
 % Please edit documentation in R/self-calib.R
 \name{update_quantile_approximation}
 \alias{update_quantile_approximation}
-\title{Update mixture mean through quantile approxiation based on huber loss}
+\title{Update mixture mean through quantile approxiation based on analytic gradient of quantile loss}
 \usage{
 update_quantile_approximation(
-  mixture_means_rvar,
-  mixture_means_hat_rvar,
+  hyperparam_rvar,
+  hyperparam_hat_rvar,
   S,
   k,
   n_post_samples,
@@ -14,13 +14,15 @@ update_quantile_approximation(
 )
 }
 \arguments{
-\item{mixture_means_rvar}{a posterior::rvar object of posterior(post-transformation) mixture mean values}
+\item{hyperparam_rvar}{a posterior::rvar object of prior(pre-transformation) mixture mean values}
+
+\item{hyperparam_hat_rvar}{a posterior::rvar object of posterior(post-transformation) mixture mean values}
 
 \item{S}{Number of approximation points for the target quantile function.}
 
 \item{k}{the huber loss bound. huber loss returns in the boundary of [-k, k]}
 
-\item{n_post_samples}{the number of samples to draw from posterior, to approximate the expected huber loss}
+\item{n_post_samples}{the number of samples to draw from posterior, to approximate the expected quantile loss}
 
 \item{epsilon}{gradient update coefficient}
 }
@@ -28,5 +30,5 @@ update_quantile_approximation(
 a posterior::rvar object with the same dimension as the input rvars.
 }
 \description{
-Update mixture mean through quantile approxiation based on huber loss
+Update mixture mean through quantile approxiation based on analytic gradient of quantile loss
 }

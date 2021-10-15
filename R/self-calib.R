@@ -225,7 +225,6 @@ update_bw <- function(mixture_means_next_rvars){
 #' @param S number of quantile points
 #' @return vector of phi which are quantile function values
 approx_quantile_phi <- function(draws, S) {
-  probs <- c(1:S)
   probs <- unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)}))  # generate (tau_i + tau_{i+1})/2
   return(quantile(draws, probs, names = FALSE))
 }
@@ -275,17 +274,18 @@ quantile_huber_loss <- function(phi_prior, phi_post, s_index, k, S, n_post_sampl
 #' @return a posterior::rvar object with the same dimension as the input rvars.
 #' @export
 update_quantile_approximation <- function(hyperparam_rvar, hyperparam_hat_rvar, S, k, n_post_samples,  epsilon) {
-  phi <- approx_quantile_phi(posterior::draws_of(hyperparam_rvar), S = S)
-  phi_post <- approx_quantile_phi(posterior::draws_of(hyperparam_hat_rvar), S = S)
+  phi <- approx_quantile_phi(hyperparam_rvar, S = S)
+  phi_post <- approx_quantile_phi(hyperparam_hat_rvar, S = S)
   updated_phi <- phi
-
   for(s in 1:S) {
-    zprime_delta <- 0
-    for(n in 1:n_post_samples){
-      zprime <- sample(phi_post, 1)
-      zprime_delta <- zprime_delta + if(zprime < phi_prior[s]) 1 else 0
-    }
+    # zprime_delta <- 0
+    # for(n in 1:n_post_samples){
+    #   zprime <- sample(phi_post, 1)
+    #   zprime_delta <- zprime_delta + if(zprime < phi[s]) 1 else 0
+    # }
+    zprime_delta <- sum(sample(phi_post, n_post_samples, replace = TRUE) < phi[s])
     updated_phi[s] <- updated_phi[s] + epsilon * ((2 * s - 1) / (2 * S) - zprime_delta)  # (tau_{i - 1} + tau_i) / S = (s / S + (s - 1) / S) / 2
   }
-  posterior::rvar(array(rep(sample_quantile_phi(nsims, updated_phi), each = nsims), dim = c(nsims, nsims)))  # currently all nsims receive same updated mus
+  print(sqrt(l2))
+  return(posterior::rvar(array(rep(sample_quantile_phi(nsims, updated_phi), each = nsims), dim = c(nsims, nsims)))) # currently all nsims receive same updated mus
 }
