@@ -23,26 +23,18 @@ set.seed(1984)
 
 Proposition: SBC iteration would converge to the distribution that respects computation model.
 
-This is due to the recurrence of well-calibrated regions which would be illustrated in experiment 1 which shows different priors converging to the same distribution. We view this as model bootstrap where likelihood and inference algorithm form a transition and automatically finds the best prior pair. Experiment 2 introduces a quantile-based hyperparameter gradient update which fastens this converge. The convergence is shown in 1-Wasserstein distance. Further attemps are applying this calibration boost algorithm to different likelihood and inference algorithm pairs which are known to have selective well-calibrated parameter region. Examples are as follows:
-
-variance parameter starting from boundary-mode distribution 
-- likelihood: hierarchical
-- inference algorithm: HMC, variantional inference
-
-coefficient parameter starting from fat-tailed distribution 
-- likelihood: logit-link generalized linear model
-- inference algorithm: HMC, variantional inference
+This is due to the recurrence of well-calibrated regions which would be illustrated in experiment 1 which shows different priors converging to the same distribution for simple binomial likelihood and Laplace approximateion as a inference algorithm. Laplace approximation uses a normal distribution to approximate posterior distribution. It estimates mode and computes standard error from the Hessian. We view the result as model bootstrap where likelihood and inference algorithm form a transition and automatically finds the $\pi$ non-null recurrent set. 
 
 # Experient 1.
 
-Target parameter is logit-transformed probability, $a$. Binomial likelihood and laplace approximation inference algorithm on logit scale is used. Hyperparameters for laplace approximation are $\mu, \sigma$ which correspond to posterior distribution mode and second derivative at the mode. These hyperparameter values are set as the prior parameter for the iteration. Results show starting from $N(0, 1^2)$ distribution, initial non-normal distribution slowly transforms to normal form to adjust to the constraints imposed by the approximation of inference algorithm, in this case normal distribution.
+Target parameter is logit-transformed probability, $a$. Binomial likelihood and laplace approximation inference algorithm on logit scale is used. Hyperparameters for laplace approximation are $\mu, \sigma$ which correspond to posterior distribution mode and second derivative at the mode. These hyperparameter values are set as the prior parameter for the iteration. Results show starting from $N(0, 10^2)$ distribution, initial non-normal distribution slowly transforms to normal form to adjust to the constraints imposed by the approximation of inference algorithm, in this case normal distribution.
 
 ```{r, warning=FALSE, error=FALSE}
 model = stan_model("./models/binom-laplace.stan")
-SBC_iter <- 91
+SBC_iter <- 1000
 # prior hyperparameters
-mu <- 0
-sigma <- 10
+mu <- 1
+sigma <- 1
 mu_lst <- list()
 sigma_lst <- list()
 # the number of dataset
@@ -56,7 +48,7 @@ nsize <- 2
 for (j in 1:SBC_iter){
   post_draws_a <- c()
   a <- rnorm(nsims, mu, sigma)
-  for (i in 1:nsims) {
+  for (i in 1:nsims) {ww
   	p <- invlogit(a[i])
   	y <- rbinom(nobs, nsize, p)
   	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
@@ -128,63 +120,58 @@ plot(unlist(mu_lst))
 plot(unlist(sigma_lst))
 ```
 
-
-# Experiment 2.
-Quantile update algorithm is used with quanitle regression loss function. With larger `nsims`, it reaches well-calibrated region with lower `SBC_iter`
-
+However, for too extreme values, periodicity is observed.
 ```{r, warning=FALSE, error=FALSE}
-#' Given a vector of draws, return a vector of length S of phi which best approximates the CDF.
-#' @param draws a vector of sample draws from a distribution
-#' @param S number of quantile points
-#' @return vector of phi which are quantile function values
-approx_quantile_phi <- function(draws, S) {
-  probs <- c(1:S)
-  probs <- unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)}))  # generate (tau_i + tau_{i+1})/2
-  return(quantile(draws, probs, names = FALSE))
-}
-
-#' Given a vector of phis, which represent the quantiles of equally spaced probabilities on [0, 1] defined as i/S, return a function that returns N random samples from the quantile function
-#' @param N number of samples to draw, returned as a vector of length N
-#' @param phis vector of phis to sample from
-#' @return a vector of samples drawn by inverse transform sampling
-sample_quantile_phi <- function(N, phis) {
-  return(sample(phis, N, replace = TRUE))
-}
-
-#' Update hyperparameter through quantile approxiation based on analytic gradient of quantile loss
-#'
-#' @param hyperparam vector of hyperparameter before transition
-#' @param hyperparam_hat vector of post-transition parameter
-#' @param S Number of approximation points for the target quantile function.
-#' @param n_post_samples the number of samples to draw from posterior, to approximate the expected quantile loss
-#' @param epsilon gradient update coefficient
-#' @return vector of `nsims` with the same dimension as the input rvars.
-#' @export
-update_quantile_approximation <- function(hyperparam, hyperparam_hat, S, n_post_samples, epsilon) {
-  phi <- approx_quantile_phi(hyperparam, S = S)
-  phi_post <- approx_quantile_phi(hyperparam_hat, S = S)
-  updated_phi <- phi
-
-  for(s in 1:S) {
-    zprime_delta <- 0
-    for(n in 1:n_post_samples){
-      zprime <- sample(phi_post, 1)
-      zprime_delta <- zprime_delta + if(zprime < hyperparam[s]) 1 else 0
-    }
-    updated_phi[s] <- updated_phi[s] + epsilon * ((2 * s - 1) / (2 * S) + zprime_delta)  # = (s / S + (s - 1) / S) / 2
+# change prior hyperparameters
+mu <- 7
+sigma <- 1
+SBC_iter <- 10000
+nsims = 10
+mu_lst <- list()
+sigma_lst <- list()
+for (j in 1:SBC_iter){
+  post_draws_a <- c()
+  a <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(a[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_a <- fit$par["a"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_a <- sqrt(solve(-fit$hessian))
+  	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
   }
-  sample_quantile_phi(nsims, updated_phi)
+  if ((j-1) %% 30 == 0){
+    hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  
+  # update hyperparameters depending on inference algorithm
+  mu_est <- mean(post_draws_a)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_a)
+  sigma <- sigma_est
+  # compare with previous hyperparameters
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
 }
+plot(unlist(mu_lst))
+plot(unlist(sigma_lst))
 ```
 
+# Experiment 2.
+Experiment 2 introduces a quantile-based hyperparameter gradient update which fastens this converge. The convergence is shown in 1-Wasserstein distance. Quantile update algorithm is used with quanitle regression loss function. Our aim is that it reaches well-calibrated region with lower `SBC_iter`.
+
 ## Experiment 2-1. Skewed initial prior
-It has the problem of preferring smaller
 ```{r, warning=FALSE, error=FALSE}
 
 #cmdstan_model = cmdstan_model("./models/binom-laplace.stan")
 
 #model = stan_model("./models/binom-laplace.stan")
-SBC_iter <- 910
+SBC_iter <- 100
 # prior hyperparameters
 mu <- 3
 sigma <- 1
@@ -250,10 +237,11 @@ for (j in 1:SBC_iter){
 plot(mu_lst)
 plot(sigma_lst)
 ```
+
 ## Experiment 2-2. Symmetric but non-gaussian prior with fat tail
 ```{r, warning=FALSE, error=FALSE}
 #model = stan_model("./models/binom-laplace.stan")
-SBC_iter <- 91
+SBC_iter <- 100
 # prior hyperparameters
 mu <- 0
 sigma <- 10
