@@ -268,24 +268,37 @@ quantile_huber_loss <- function(phi_prior, phi_post, s_index, k, S, n_post_sampl
 #' @param hyperparam_rvar a posterior::rvar object of prior(pre-transformation) mixture mean values
 #' @param hyperparam_hat_rvar a posterior::rvar object of posterior(post-transformation) mixture mean values
 #' @param S Number of approximation points for the target quantile function.
-#' @param k the huber loss bound. huber loss returns in the boundary of \[-k, k\]
 #' @param n_post_samples the number of samples to draw from posterior, to approximate the expected quantile loss
 #' @param epsilon gradient update coefficient
 #' @return a posterior::rvar object with the same dimension as the input rvars.
 #' @export
-update_quantile_approximation <- function(hyperparam_rvar, hyperparam_hat_rvar, S, k, n_post_samples,  epsilon) {
+update_quantile_approximation <- function(hyperparam_rvar, hyperparam_hat_rvar, S,  n_post_samples,  epsilon) {
   phi <- approx_quantile_phi(hyperparam_rvar, S = S)
   phi_post <- approx_quantile_phi(hyperparam_hat_rvar, S = S)
-  updated_phi <- phi_post
-  for(s in 1:S) {
-    # zprime_delta <- 0
-    # for(n in 1:n_post_samples){
-    #   zprime <- sample(phi_post, 1)
-    #   zprime_delta <- zprime_delta + if(zprime < phi[s]) 1 else 0
-    # }
-    zprime_delta <- sum(sample(phi, n_post_samples, replace = TRUE) < phi_post[s])
-    #print(paste(zprime_delta / n_post_samples, "/", (2 * s - 1) / (2 * S)))
-    updated_phi[s] <- updated_phi[s] + epsilon * ((2 * s - 1) / (2 * S) - zprime_delta / n_post_samples)  # (tau_{i - 1} + tau_i) / S = (s / S + (s - 1) / S) / 2
+  updated_phi <- phi
+  wass_last <- wasserstein(updated_phi, phi_post)
+  iters <- 0
+  while(iters <= 5 || abs(wasserstein(updated_phi, phi_post) - wass_last) > wass_last * 0.001){
+    wass_last <- wasserstein(updated_phi, phi_post)
+    zprime <- sample_quantile_phi(n_post_samples, updated_phi)
+    for(s in 1:S) {
+      delta_sum <- 0
+      for(m in 1:n_post_samples){
+        zprime_delta <- sum(zprime[m] < updated_phi[s])
+        delta_sum <- delta_sum + ((2 * s - 1) / (2 * S) - zprime_delta / n_post_samples + if (zprime[m] - updated_phi[s] == 0) 1 else 0)
+      }
+      updated_phi[s] <- updated_phi[s] + epsilon * (delta_sum * 1 / n_post_samples)
+      #zprime <- sample_quantile_phi(n_post_samples, updated_phi)
+      #zprime_delta <- sum(zprime < updated_phi[s])
+      #print(paste(zprime_delta / n_post_samples, "/", (2 * s - 1) / (2 * S)))
+      #updated_phi[s] <- updated_phi[s] + epsilon * ((2 * s - 1) / (2 * S) - zprime_delta / n_post_samples)  # (tau_{i - 1} + tau_i) / S = (s / S + (s - 1) / S) / 2
+
+      #phi_delta <- c(phi_delta, ((2 * s - 1) / (2 * S) - zprime_delta / n_post_samples))
+    }
+    iters <- iters + 1
+    #message(updated_phi)
+    #message(paste(wasserstein(updated_phi, phi_post), wass_last))
   }
-  return(posterior::rvar(array(rep(sample_quantile_phi(nsims, updated_phi), each = nsims), dim = c(nsims, nsims)))) # currently all nsims receive same updated mus
+  print(paste("optimization iters:", iters))
+  return(list(updated_phi=posterior::rvar(array(rep(updated_phi, each = nsims), dim = c(nsims, nsims))), phi=phi)) # currently all nsims receive same updated mus
 }

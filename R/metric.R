@@ -68,7 +68,7 @@ max_diff <- function(x, y){
 # TODO need testing
 wasserstein <- function(x, y){
   tempf <- Vectorize(function(i) abs((x[i]/sum(x)  - y[i]/sum(y)))) # expected sums = 1
-  val <- integrate(tempf,1,bins, rel.tol=.Machine$double.eps^.05)$value
+  val <- integrate(tempf,1,5, rel.tol=.Machine$double.eps^.05)$value
   return(val)
 }
 # wasserstein <- function(x, y, bin_count){
