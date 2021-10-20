@@ -12,5 +12,5 @@ parameters {
 
 model {
   a ~ normal(mu, sigma);
-  Y ~ binomial_logit_lpmf(nsize, a);
+  Y ~ binomial_logit(nsize, a);
 }

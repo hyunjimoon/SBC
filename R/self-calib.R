@@ -280,14 +280,17 @@ update_quantile_approximation <- function(hyperparam_rvar, hyperparam_hat_rvar, 
   iters <- 0
   while(iters <= 5 || abs(wasserstein(updated_phi, phi_post) - wass_last) > wass_last * 0.001){
     wass_last <- wasserstein(updated_phi, phi_post)
+    #plot(phi, unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)})), type = "l")
+    #lines(updated_phi, unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)})), col="red")
     zprime <- sample_quantile_phi(n_post_samples, updated_phi)
     for(s in 1:S) {
-      delta_sum <- 0
-      for(m in 1:n_post_samples){
-        zprime_delta <- sum(zprime[m] < updated_phi[s])
-        delta_sum <- delta_sum + ((2 * s - 1) / (2 * S) - zprime_delta / n_post_samples + if (zprime[m] - updated_phi[s] == 0) 1 else 0)
-      }
-      updated_phi[s] <- updated_phi[s] + epsilon * (delta_sum * 1 / n_post_samples)
+      # delta_sum <- 0
+      # for(m in 1:n_post_samples){
+      #   zprime_delta <- sum(zprime[m] < updated_phi[s])
+      #   delta_sum <- delta_sum + ((2 * s - 1) / (2 * S) - zprime_delta / n_post_samples + if (zprime[m] - updated_phi[s] == 0) 1 else 0)
+      # }
+      delta_sum <-(2 * s - 1) / (2 * S) - (sum(zprime < updated_phi[s]) + sum(zprime == updated_phi[s])) / n_post_samples
+      updated_phi[s] <- updated_phi[s] + epsilon * (delta_sum / n_post_samples)
       #zprime <- sample_quantile_phi(n_post_samples, updated_phi)
       #zprime_delta <- sum(zprime < updated_phi[s])
       #print(paste(zprime_delta / n_post_samples, "/", (2 * s - 1) / (2 * S)))

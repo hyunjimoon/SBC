@@ -173,13 +173,13 @@ Experiment 2 introduces a quantile-based hyperparameter gradient update which fa
 #model = stan_model("./models/binom-laplace.stan")
 SBC_iter <- 100
 # prior hyperparameters
-mu <- 3
-sigma <- 1
+mu <- 0
+sigma <- 0.05
 mu_lst <- c()
 sigma_lst <- c()
 mu_hat_lst <- c()
 # the number of dataset
-nsims <- 20
+nsims <- 1000
 # outcome dimension for each dataset
 nobs <- 2
 # posterior samples for each dataset
@@ -219,11 +219,11 @@ for (j in 1:SBC_iter){
   mu_dist <- SBC::update_quantile_approximation(mu_dist, post_draws_a, nsims, 100, 0.1)
 
   quantiles <- unlist(lapply(c(1:nsims), function(x) {(2 * x - 1) / (2 * nsims)}))
-  #plot(mu_dist$phi, quantiles, type = "l")
+  plot(mu_dist$phi, quantiles, type = "l")
   
   #mu_dist <- posterior::draws_of(SBC::update_quantile_approximation(mu_dist, mu_hat_lst, nsims, -1, 10000, 0.1))[1, ]
   mu_dist <- posterior::draws_of(mu_dist$updated_phi)[1, ]
-  #lines(quantile(mu_dist, probs=quantiles, names = FALSE), quantiles, col="red")
+  lines(quantile(mu_dist, probs=quantiles, names = FALSE), quantiles, col="red")
   mu_est <- mean(mu_dist)
   mu <- mu_est
   sigma_est <- sd(post_draws_a)
