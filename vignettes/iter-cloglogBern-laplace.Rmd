@@ -1,0 +1,176 @@
+---
+title: "iter-cloglogBern-laplace"
+output: html_document
+---
+
+# Experiment 3. Likelihood and prior distribution family
+
+Experiment 3-1 changes $p(y|\theta)$ and show a very degenerate type of convergence. Experiment 3-2 alleviate this by selecting a more expressive prior distribution family.
+
+## Experiment 3-1.inverse c-log-log which is asymmetric 
+Contrary to inverse logit, asymmetrical inverse complementary log-log prior predictive converges but to a rather degenerate one. This is expected given that there is no symmetry point in the middle that emits a fixed point.
+
+```{r, warning=FALSE, error=FALSE}
+model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 1001
+# prior hyperparameters
+mu <- 1
+sigma <- 10
+mu_lst <- c()
+sigma_lst <- c()
+# experiment settings
+## the number of dataset
+nsims <- 100
+## outcome dimension for each dataset
+nobs <- 2
+## posterior samples for each dataset
+ndraws <- 100
+## number of binomial trials
+nsize <- 1
+
+for (j in 1:SBC_iter){
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(theta[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_theta <- fit$par["theta"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_theta <- sqrt(solve(-fit$hessian))
+  	post_draws_theta <- c(post_draws_theta, rnorm(ndraws, post_mean_theta, post_sd_theta))
+  }
+  
+  # regularizer: update hyperparameters
+  mu_est <- mean(post_draws_theta)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_theta)
+  sigma <- sigma_est
+    
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
+```
+
+## Experiment 3-2. mixture normal family 
+Contrary to inverse logit, asymmetrical inverse complementary log-log prior predictive converges but to a rather degenerate one. This is expected given that there is no symmetry point in the middle that emits a fixed point.
+
+```{r, warning=FALSE, error=FALSE}
+#model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 1000
+# prior hyperparameters
+mu <- 3
+sigma <- 1
+mu_lst <- c()
+sigma_lst <- c()
+mu_hat_lst <- c()
+# the number of dataset
+nsims <- 100
+# outcome dimension for each dataset
+nobs <- 10
+# posterior samples for each dataset
+ndraws <- 100
+# number of binomial trials
+nsize <- 1
+mu_dist <- rnorm(nsims, mu, sigma)
+sigma_dist <- rnorm(nsims, sigma, sigma * 0.1)
+for (j in 1:SBC_iter){
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(theta[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_theta <- fit$par["theta"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_theta <- sqrt(solve(-fit$hessian))
+  	
+  	mu_hat_lst <- c(mu_hat_lst, post_mean_theta)
+  	post_draws_theta <- c(post_draws_theta, rnorm(ndraws, post_mean_theta, post_sd_theta))
+  }
+  
+  # regularizer: update hyperparameters
+  mu_dist <- update_quantile_approximation(mu_dist, mu_hat_lst, nsims, 1000, 0.001)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_theta)
+  sigma <- sigma_est
+    
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
+```
+
+# Experiment 4.-2. Change 1sc-log-log, less symmetric prior predictive distribution 
+Contrary to inverse logit, asymmetrical inverse complementary log-log prior predictive converges but to a rather degenerate one. This is expected given that there is no symmetry point in the middle that emits a fixed point.
+
+```{r, warning=FALSE, error=FALSE}
+#model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 1000
+# prior hyperparameters
+mu <- 3
+sigma <- 1
+mu_lst <- c()
+sigma_lst <- c()
+mu_hat_lst <- c()
+# the number of dataset
+nsims <- 100
+# outcome dimension for each dataset
+nobs <- 10
+# posterior samples for each dataset
+ndraws <- 100
+# number of binomial trials
+nsize <- 1
+mu_dist <- rnorm(nsims, mu, sigma)
+sigma_dist <- rnorm(nsims, sigma, sigma * 0.1)
+for (j in 1:SBC_iter){
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(theta[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_theta <- fit$par["theta"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_theta <- sqrt(solve(-fit$hessian))
+  	
+  	mu_hat_lst <- c(mu_hat_lst, post_mean_theta)
+  	post_draws_theta <- c(post_draws_theta, rnorm(ndraws, post_mean_theta, post_sd_theta))
+  }
+  
+  # regularizer: update hyperparameters
+  mu_dist <- update_quantile_approximation(mu_dist, mu_hat_lst, nsims, 1000, 0.001)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_theta)
+  sigma <- sigma_est
+    
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
+```

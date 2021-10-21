@@ -1,6 +1,7 @@
 ---
 title: "iter-binomial-laplace"
 output: html_document
+author: "Hyunji Moon"
 ---
 ```{r setup, include=FALSE, warning=FALSE}
 library(SBC)
@@ -21,276 +22,247 @@ options(SBC.min_chunk_size = 5)
 set.seed(1984)
 ```
 
-Proposition: SBC iteration would converge to the distribution that respects computation model.
 
-This is due to the recurrence of well-calibrated regions which would be illustrated in experiment 1 which shows different priors converging to the same distribution for simple binomial likelihood and Laplace approximateion as a inference algorithm. Laplace approximation uses a normal distribution to approximate posterior distribution. It estimates mode and computes standard error from the Hessian. We view the result as model bootstrap where likelihood and inference algorithm form a transition and automatically finds the $\pi$ non-null recurrent set. 
+Definition:
 
-# Experient 1.
+- simulation prior := prior distribution that informs the prior predictive simulations and is being iteratively updated
 
-Target parameter is logit-transformed probability, $a$. Binomial likelihood and laplace approximation inference algorithm on logit scale is used. Hyperparameters for laplace approximation are $\mu, \sigma$ which correspond to posterior distribution mode and second derivative at the mode. These hyperparameter values are set as the prior parameter for the iteration. Results show starting from $N(0, 10^2)$ distribution, initial non-normal distribution slowly transforms to normal form to adjust to the constraints imposed by the approximation of inference algorithm, in this case normal distribution.
+- inference prior := prior distribution that informs the posterior distribution, and hence the posterior sampling method
+
+- prior predictive distribution $P(y)$:= marginal distribution of $y, p(y)$ 
+
+- data-averaged posterior $P(\theta')$:= combined posterior samples from each datasets
+
+- posterior sampling method := a.k.a. inference algorithm in which distribution is the function of prior predictive distribution and inference prior
+
+- default prior of chosen likelihood and posterior sampling method := wide enough prior to the level of not hurting self-consistency
+
+Prior predictive distribution is determined by two components, prior distribution and likelihood.
+$$p(y_1,..,y_n) = \int \prod_{i=1}^{n} f(y_i|\theta)p(\theta)d\theta$$
+
+Let us denote the distribution of likelihood and posterior sampling method as $F, G^{-1}$. Inverse is used to denote most poterior sampling methods reversely uses likelihood distribution to minimize the distance between the target and generated distribution. In SBC package, `glm` formula used for predictive distribution can be used as a approximation, what we call backend. See [implementing_backends](https://hyunjimoon.github.io/SBC/articles/implementing_backends.htmls) vignette for this.
+
+![F, G_t^{-1}, Regularizer determine the outcome of converged distribution, which we call default prior.](iter_overview.png)
+
+Proposition: Iteration of prior predictive simulation, posterior sampling, and regularizing converge to a default prior for a given prior distribution family, likelihood, and inference algorithm.
+
+This is due to the recurrence of well-calibrated regions which will be illustrated in experiment 1 which shows different priors converging to the same distribution for simple Bernoulli likelihood and Laplace approximation as a inference algorithm. This approximation truncates Taylor expansion of the log target density at the mode to the sencond order i.e. $\mu_{t+1} = argmax \;f(w)$, $\sigma_{t+1} = -\frac{d^{2}}{d w^{2}} \log f(w) ; w=w_{0}$.
+
+
+# Experient 1. 1.Normal simulation prior (samples: 100), 2.Bernouli-logit prior predictive simultation, 3. Laplace approximation posterior sampling (draws: 100), 4. Plugging mean and sd of the data-averaged posterior to the next simulation prior as the regularizer
+
+Target parameter is logit-transformed probability, $a$. Binomial likelihood and laplace approximation inference algorithm on logit scale is used. Hyperparameters for laplace approximation are $\mu, \sigma$ which correspond to posterior distribution mode and second derivative at the mode. These hyperparameter values are set as the prior parameter for the iteration. Results show starting from $N(0, 3^2)$ distribution, initial non-normal distribution slowly transforms to normal form to adjust to the constraints imposed by the approximation of inference algorithm, in this case normal distribution. Final convergence is around $N(0, 0.5^2)$.
 
 ```{r, warning=FALSE, error=FALSE}
 model = stan_model("./models/binom-laplace.stan")
 SBC_iter <- 1000
 # prior hyperparameters
-mu <- 1
-sigma <- 1
-mu_lst <- list()
-sigma_lst <- list()
-# the number of dataset
-nsims <- 91
-# outcome dimension for each dataset
-nobs <- 2
-# posterior samples for each dataset
-ndraws <- 10
-# number of binomial trials
-nsize <- 2
-for (j in 1:SBC_iter){
-  post_draws_a <- c()
-  a <- rnorm(nsims, mu, sigma)
-  for (i in 1:nsims) {ww
-  	p <- invlogit(a[i])
-  	y <- rbinom(nobs, nsize, p)
-  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
-  	fit <- optimizing(model, data = dat, hessian = TRUE)
-  	
-  	# approximate posterior mean via posterior mode
-  	post_mean_a <- fit$par["a"]
-  	
-  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
-  	post_sd_a <- sqrt(solve(-fit$hessian))
-  	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
-  }
-  if ((j-1) %% 30 ==0){
-    hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
-  }
-  
-  # update hyperparameters depending on inference algorithm
-  mu_est <- mean(post_draws_a)
-  mu <- mu_est
-  sigma_est <- sd(post_draws_a)
-  sigma <- sigma_est
-  # compare with previous hyperparameters
-  mu_lst <- c(mu_lst, mu)
-  sigma_lst <- c(sigma_lst, sigma)
-}
-plot(unlist(mu_lst))
-plot(unlist(sigma_lst))
-```
-
-Would this converging distribution be unique? From the result below, starting from $N(1, 1^2)$ which is unsymmetrical compared to $N(0, 10^2)$, also converges to the same distribution. A likeable explanation is the recurrence of parameter values within well-calibrated region as opposed to that are not. For instance, if $logit(p)$ starts from 0.9, is likely to form a non-normal posterior whose mode is more likely to move away from 0.9. On the other hand, parameter values near .5 forms a symmetric and stable posterior which in most cases has its mode near .5. 
-
-```{r, warning=FALSE, error=FALSE}
-# change prior hyperparameters
-mu <- 4
-sigma <- 1
-SBC_iter <- 91
-mu_lst <- list()
-sigma_lst <- list()
-for (j in 1:SBC_iter){
-  post_draws_a <- c()
-  a <- rnorm(nsims, mu, sigma)
-  for (i in 1:nsims) {
-  	p <- invlogit(a[i])
-  	y <- rbinom(nobs, nsize, p)
-  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
-  	fit <- optimizing(model, data = dat, hessian = TRUE)
-  	
-  	# approximate posterior mean via posterior mode
-  	post_mean_a <- fit$par["a"]
-  	
-  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
-  	post_sd_a <- sqrt(solve(-fit$hessian))
-  	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
-  }
-  if ((j-1) %% 30 == 0){
-    hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
-  }
-  
-  # update hyperparameters depending on inference algorithm
-  mu_est <- mean(post_draws_a)
-  mu <- mu_est
-  sigma_est <- sd(post_draws_a)
-  sigma <- sigma_est
-  # compare with previous hyperparameters
-  mu_lst <- c(mu_lst, mu)
-  sigma_lst <- c(sigma_lst, sigma)
-}
-plot(unlist(mu_lst))
-plot(unlist(sigma_lst))
-```
-
-However, for too extreme values, periodicity is observed.
-```{r, warning=FALSE, error=FALSE}
-# change prior hyperparameters
-mu <- 7
-sigma <- 1
-SBC_iter <- 10000
-nsims = 10
-mu_lst <- list()
-sigma_lst <- list()
-for (j in 1:SBC_iter){
-  post_draws_a <- c()
-  a <- rnorm(nsims, mu, sigma)
-  for (i in 1:nsims) {
-  	p <- invlogit(a[i])
-  	y <- rbinom(nobs, nsize, p)
-  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
-  	fit <- optimizing(model, data = dat, hessian = TRUE)
-  	
-  	# approximate posterior mean via posterior mode
-  	post_mean_a <- fit$par["a"]
-  	
-  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
-  	post_sd_a <- sqrt(solve(-fit$hessian))
-  	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
-  }
-  if ((j-1) %% 30 == 0){
-    hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
-  }
-  
-  # update hyperparameters depending on inference algorithm
-  mu_est <- mean(post_draws_a)
-  mu <- mu_est
-  sigma_est <- sd(post_draws_a)
-  sigma <- sigma_est
-  # compare with previous hyperparameters
-  mu_lst <- c(mu_lst, mu)
-  sigma_lst <- c(sigma_lst, sigma)
-}
-plot(unlist(mu_lst))
-plot(unlist(sigma_lst))
-```
-
-# Experiment 2.
-Experiment 2 introduces a quantile-based hyperparameter gradient update which fastens this converge. The convergence is shown in 1-Wasserstein distance. Quantile update algorithm is used with quanitle regression loss function. Our aim is that it reaches well-calibrated region with lower `SBC_iter`.
-
-## Experiment 2-1. Skewed initial prior
-```{r, warning=FALSE, error=FALSE}
-
-#cmdstan_model = cmdstan_model("./models/binom-laplace.stan")
-
-#model = stan_model("./models/binom-laplace.stan")
-SBC_iter <- 100
-# prior hyperparameters
 mu <- 0
-sigma <- 0.05
+sigma <- 3
 mu_lst <- c()
 sigma_lst <- c()
-mu_hat_lst <- c()
-# the number of dataset
-nsims <- 1000
-# outcome dimension for each dataset
+# experiment settings
+## the number of dataset
+nsims <- 100
+## outcome dimension for each dataset
 nobs <- 2
-# posterior samples for each dataset
+## posterior samples for each dataset
 ndraws <- 100
-# number of binomial trials
-nsize <- 2
-mu_dist <- rnorm(nsims, mu, sigma)
-sigma_dist <- rnorm(nsims, sigma, sigma * 0.1)
+## number of binomial trials
+nsize <- 1
 for (j in 1:SBC_iter){
-  post_draws_a <- c()
-  a <- rnorm(nsims, mu, sigma)
-  mu_hat_lst <- c()
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
   for (i in 1:nsims) {
-  	p <- invlogit(a[i])
+  	p <- invlogit(theta[i])
   	y <- rbinom(nobs, nsize, p)
   	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
   	fit <- optimizing(model, data = dat, hessian = TRUE)
   	
-  	#post_a <- cmdstan_model$sample(data = dat, chains = 2, iter_sampling = ndraws/2, refresh = 0)$draws("a")
-  	#print(post_a)
-  	
   	# approximate posterior mean via posterior mode
-  	post_mean_a <- fit$par["a"]
-  	#post_mean_a <- mean(post_a)
+  	post_mean_theta <- fit$par["theta"]
   	
   	# approximate posterior sd via (sqrt) of the inverse negative Hessian
-  	#post_sd_a <- sd(post_a)
-  	post_sd_a <- sqrt(solve(-fit$hessian))
-  	
-  	mu_hat_lst <- c(mu_hat_lst, post_mean_a)
-  	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
+  	post_sd_theta <- sqrt(solve(-fit$hessian))
+  	post_draws_theta <- c(post_draws_theta, rnorm(ndraws, post_mean_theta, post_sd_theta))
   }
-  #if ((j-1) %% 30 == 0){
-  hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))
-  #}
-  # update hyperparameters depending on inference algorithm
-  mu_dist <- SBC::update_quantile_approximation(mu_dist, post_draws_a, nsims, 100, 0.1)
 
-  quantiles <- unlist(lapply(c(1:nsims), function(x) {(2 * x - 1) / (2 * nsims)}))
-  plot(mu_dist$phi, quantiles, type = "l")
-  
-  #mu_dist <- posterior::draws_of(SBC::update_quantile_approximation(mu_dist, mu_hat_lst, nsims, -1, 10000, 0.1))[1, ]
-  mu_dist <- posterior::draws_of(mu_dist$updated_phi)[1, ]
-  lines(quantile(mu_dist, probs=quantiles, names = FALSE), quantiles, col="red")
-  mu_est <- mean(mu_dist)
+  # regularizer: update hyperparameters
+  mu_est <- mean(post_draws_theta)
   mu <- mu_est
-  sigma_est <- sd(post_draws_a)
+  sigma_est <- sd(post_draws_theta)
   sigma <- sigma_est
-  message("mu : ", round(mu, 2), " mu_est : ", round(mu_est, 2), " sigma : ", round(sigma, 2), " sigma_est : ", round(sigma_est, 2))
-
-  # hyperparameters trace
+    
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
   mu_lst <- c(mu_lst, mu)
   sigma_lst <- c(sigma_lst, sigma)
 }
-plot(mu_lst)
-plot(sigma_lst)
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
+print(sigma_lst[length(sigma_lst)])
 ```
 
-## Experiment 2-2. Symmetric but non-gaussian prior with fat tail
+Would this converging distribution be unique? From the result below, starting from $N(3, 1^2)$ which is unsymmetrical compared to $N(0, 3^2)$, also converges to a similar distribution. A likeable explanation is the recurrence of parameter values within well-calibrated region as opposed to that are not. For instance, if $logit^{-1}(\theta)$ starts from 0.9, is likely to form a non-normal posterior whose mode is more likely to move away from 0.9. On the other hand, parameter values near .5 forms a symmetric and stable posterior which in most cases has its mode near .5. In this case, the disstribution converge to around $N(0, 0.4^2)$
+
 ```{r, warning=FALSE, error=FALSE}
-#model = stan_model("./models/binom-laplace.stan")
-SBC_iter <- 100
+model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 1000
 # prior hyperparameters
-mu <- 0
+mu <- 3
+sigma <- 1
+mu_lst <- c()
+sigma_lst <- c()
+# experiment settings
+## the number of dataset
+nsims <- 100
+## outcome dimension for each dataset
+nobs <- 2
+## posterior samples for each dataset
+ndraws <- 100
+## number of binomial trials
+nsize <- 1
+for (j in 1:SBC_iter){
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(theta[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_theta <- fit$par["theta"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_theta <- sqrt(solve(-fit$hessian))
+  	post_draws_theta <- c(post_draws_theta, rnorm(ndraws, post_mean_theta, post_sd_theta))
+  }
+  if ((j-1) %% 300 == 0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  
+  # regularizer: update hyperparameters
+  mu_est <- mean(post_draws_theta)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_theta)
+  sigma <- sigma_est
+    
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
+print(sigma_lst[length(sigma_lst)])
+```
+
+# Experiment 2. Change experimental settings
+## 2-1. Decreasing the number of prior samples from 100 to 10
+
+Drastic jumps are observed. This may be due to simultation noise but observed oscillation of after the jump tells zero calibration bias prior is the form of a point, not a range. 
+
+```{r, warning=FALSE, error=FALSE}
+model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 10000
+# prior hyperparameters
+mu <- 1
 sigma <- 10
 mu_lst <- c()
 sigma_lst <- c()
-mu_hat_lst <- c()
-# the number of dataset
-nsims <- 1000
-# outcome dimension for each dataset
+# experiment settings
+## the number of dataset
+nsims <- 100
+## outcome dimension for each dataset
 nobs <- 2
-# posterior samples for each dataset
-ndraws <- 10
-# number of binomial trials
-nsize <- 2
-mu_dist <- rnorm(nsims, mu, sigma)
-sigma_dist <- rnorm(nsims, sigma, sigma * 0.1)
+## posterior samples for each dataset
+ndraws <- 100
+## number of binomial trials
+nsize <- 1
 for (j in 1:SBC_iter){
-  post_draws_a <- c()
-  a <- rnorm(nsims, mu, sigma)
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
   for (i in 1:nsims) {
-  	p <- invlogit(a[i])
+  	p <- invlogit(theta[i])
   	y <- rbinom(nobs, nsize, p)
   	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
   	fit <- optimizing(model, data = dat, hessian = TRUE)
   	
   	# approximate posterior mean via posterior mode
-  	post_mean_a <- fit$par["a"]
+  	post_mean_theta <- fit$par["theta"]
   	
   	# approximate posterior sd via (sqrt) of the inverse negative Hessian
-  	post_sd_a <- sqrt(solve(-fit$hessian))
-  	
-  	mu_hat_lst <- c(mu_hat_lst, post_mean_a)
-  	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
+  	post_sd_theta <- sqrt(solve(-fit$hessian))
+  	post_draws_theta <- c(post_draws_theta, rnorm(ndraws, post_mean_theta, post_sd_theta))
   }
-  #if ((j-1) %% 30 == 0){
-  hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
-  #}
-  # update hyperparameters depending on inference algorithm
-  mu_dist <- update_quantile_approximation(mu_dist, mu_hat_lst, nsims, 1000, 0.001)
-  mu_est <- median(mu_dist)
+  
+  # regularizer: update hyperparameters
+  mu_est <- mean(post_draws_theta)
   mu <- mu_est
-  sigma_est <- sd(post_draws_a)
+  sigma_est <- sd(post_draws_theta)
   sigma <- sigma_est
-  message("mu : ", round(mu, 2), " mu_est : ", round(mu_est, 2), " sigma : ", round(sigma, 2), " sigma_est : ", round(sigma_est, 2))
-
-  # hyperparameters trace
+    
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
   mu_lst <- c(mu_lst, mu)
   sigma_lst <- c(sigma_lst, sigma)
 }
-plot(mu_lst)
-plot(sigma_lst)
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
+```
+
+## 2-2. Increasing outcome dimension what is usually called sample size
+
+```{r, warning=FALSE, error=FALSE}
+model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 10000
+# prior hyperparameters
+mu <- 1
+sigma <- 10
+mu_lst <- c()
+sigma_lst <- c()
+# experiment settings
+## the number of dataset
+nsims <- 100
+## outcome dimension for each dataset
+nobs <- 100
+## posterior samples for each dataset
+ndraws <- 100
+## number of binomial trials
+nsize <- 1
+for (j in 1:SBC_iter){
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(theta[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_theta <- fit$par["theta"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_theta <- sqrt(solve(-fit$hessian))
+  	post_draws_theta <- c(post_draws_theta, rnorm(ndraws, post_mean_theta, post_sd_theta))
+  }
+  
+  # regularizer: update hyperparameters
+  mu_est <- mean(post_draws_theta)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_theta)
+  sigma <- sigma_est
+    
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
 ```

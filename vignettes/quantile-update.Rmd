@@ -1,0 +1,150 @@
+---
+title: "quantile-update"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+library(SBC)
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(dplyr)
+library(rstan)
+library(future)
+library(ggpubr)
+library(mclust)
+library(rstanarm)
+library(ggplot2)
+options(mc.cores = parallel::detectCores())
+plan(multisession)
+options(SBC.min_chunk_size = 5)
+set.seed(1984)
+```
+
+We introduce a quantile-based hyperparameter gradient update which fastens this converge. The convergence is shown in 1-Wasserstein distance. Quantile update algorithm is used with quanitle regression loss function. Our aim is that it reaches well-calibrated region with lower `SBC_iter`.
+
+## Experiment 2-1. Skewed initial prior
+```{r, warning=FALSE, error=FALSE}
+#cmdstan_model = cmdstan_model("./models/binom-laplace.stan")
+#model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 100
+# prior hyperparameters
+mu <- 0
+sigma <- 0.05
+mu_lst <- c()
+sigma_lst <- c()
+mu_hat_lst <- c()
+# the number of dataset
+nsims <- 1000
+# outcome dimension for each dataset
+nobs <- 2
+# posterior samples for each dataset
+ndraws <- 100
+# number of binomial trials
+nsize <- 2
+mu_dist <- rnorm(nsims, mu, sigma)
+sigma_dist <- rnorm(nsims, sigma, sigma * 0.1)
+for (j in 1:SBC_iter){
+  post_draws_a <- c()
+  a <- rnorm(nsims, mu, sigma)
+  mu_hat_lst <- c()
+  for (i in 1:nsims) {
+  	p <- invlogit(a[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	#post_a <- cmdstan_model$sample(data = dat, chains = 2, iter_sampling = ndraws/2, refresh = 0)$draws("a")
+  	#print(post_a)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_a <- fit$par["a"]
+  	#post_mean_a <- mean(post_a)
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	#post_sd_a <- sd(post_a)
+  	post_sd_a <- sqrt(solve(-fit$hessian))
+  	
+  	mu_hat_lst <- c(mu_hat_lst, post_mean_a)
+  	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
+  }
+  #if ((j-1) %% 30 == 0){
+  hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))
+  #}
+  # update hyperparameters depending on inference algorithm
+  mu_dist <- SBC::update_quantile_approximation(mu_dist, post_draws_a, nsims, 100, 0.1)
+  quantiles <- unlist(lapply(c(1:nsims), function(x) {(2 * x - 1) / (2 * nsims)}))
+  plot(mu_dist$phi, quantiles, type = "l")
+  
+  #mu_dist <- posterior::draws_of(SBC::update_quantile_approximation(mu_dist, mu_hat_lst, nsims, -1, 10000, 0.1))[1, ]
+  mu_dist <- posterior::draws_of(mu_dist$updated_phi)[1, ]
+  lines(quantile(mu_dist, probs=quantiles, names = FALSE), quantiles, col="red")
+  mu_est <- mean(mu_dist)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_a)
+  sigma <- sigma_est
+  message("mu : ", round(mu, 2), " mu_est : ", round(mu_est, 2), " sigma : ", round(sigma, 2), " sigma_est : ", round(sigma_est, 2))
+  # hyperparameters trace
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(mu_lst)
+plot(sigma_lst)
+```
+
+## Experiment 2-2. Symmetric but non-gaussian prior with fat tail
+```{r, warning=FALSE, error=FALSE}
+#model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 100
+# prior hyperparameters
+mu <- 0
+sigma <- 10
+mu_lst <- c()
+sigma_lst <- c()
+mu_hat_lst <- c()
+# the number of dataset
+nsims <- 1000
+# outcome dimension for each dataset
+nobs <- 2
+# posterior samples for each dataset
+ndraws <- 10
+# number of binomial trials
+nsize <- 2
+mu_dist <- rnorm(nsims, mu, sigma)
+sigma_dist <- rnorm(nsims, sigma, sigma * 0.1)
+for (j in 1:SBC_iter){
+  post_draws_a <- c()
+  a <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(a[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_a <- fit$par["a"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_a <- sqrt(solve(-fit$hessian))
+  	
+  	mu_hat_lst <- c(mu_hat_lst, post_mean_a)
+  	post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
+  }
+  #if ((j-1) %% 30 == 0){
+  hist(invlogit(post_draws_a), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  #}
+  # update hyperparameters depending on inference algorithm
+  mu_dist <- update_quantile_approximation(mu_dist, mu_hat_lst, nsims, 1000, 0.001)
+  mu_est <- median(mu_dist)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_a)
+  sigma <- sigma_est
+  message("mu : ", round(mu, 2), " mu_est : ", round(mu_est, 2), " sigma : ", round(sigma, 2), " sigma_est : ", round(sigma_est, 2))
+  # hyperparameters trace
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(mu_lst)
+plot(sigma_lst)
+```

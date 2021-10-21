@@ -1,0 +1,131 @@
+---
+title: "logit-probit-iter"
+output: html_document
+---
+
+---
+title: "iter-binomial-laplace"
+output: html_document
+---
+```{r setup, include=FALSE, warning=FALSE}
+library(SBC)
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(dplyr)
+library(rstan)
+library(future)
+library(ggpubr)
+library(mclust)
+library(rstanarm)
+library(ggplot2)
+library(NormalLaplace)
+options(mc.cores = parallel::detectCores())
+plan(multisession)
+options(SBC.min_chunk_size = 5)
+set.seed(1984)
+```
+
+#mean, sd of the whole sample
+```{r setup, include=FALSE}
+model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 101
+# prior hyperparameters
+mu <- 0
+sigma <- 10
+mu_lst <- list()
+sigma_lst <- list()
+# the number of dataset
+nsims <- 100
+# outcome dimension for each dataset
+nobs <- 1000
+# posterior samples for each dataset
+ndraws <- 10
+# number of binomial trials
+nsize <- 1
+for (j in 1:SBC_iter){
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
+  # compute ecdf
+  ys <- matrix(nrow = nsims, ncol = nobs)
+  for (s in 1:nsims){
+    ys[s,] <- as.numeric(runif(nobs) < invlogit(theta[s]))
+  }
+  # F(G^{-1}(U)) = U; view parameter and data as one
+  post_draws_theta <- as.numeric(ys)
+  # update hyperparameter
+  mu_est <- mean(post_draws_theta)
+  mu <- mu_est
+  sd_est <- sd(post_draws_theta)
+  sd <- sd_est
+  message("mu : ", round(mu, 2), ", mu_est : ", round(mu_est, 2), ", sigma : ", round(sigma, 2), ", sigma_est : ", round(sigma_est, 2))
+  # if the above doesn't work, do optimize with the whole data
+# 	fit <- optimizing(model, data = dat, hessian = TRUE)
+#   # approximate posterior mean via posterior mode
+#   post_mean_a <- fit$par["a"]
+#   # approximate posterior sd via (sqrt) of the inverse negative Hessian
+#   post_sd_a <- sqrt(solve(-fit$hessian))
+#   post_draws_a <- c(post_draws_a, rnorm(ndraws, post_mean_a, post_sd_a))
+#   sigma_est <- sd(post_draws_a)
+#   sigma <- sigma_est
+  #if ((j-1) %% 30 ==0){
+  hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  #}
+  
+  # compare with previous hyperparameters
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
+```
+#mode of each dataset
+```{r setup, include=FALSE}
+model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 101
+# prior hyperparameters
+mu <- 0.1
+sigma <- 1
+mu_lst <- list()
+sigma_lst <- list()
+# the number of dataset
+nsims <- 100
+# outcome dimension for each dataset
+nobs <- 1000
+# posterior samples for each dataset
+ndraws <- 100
+# number of binomial trials
+nsize <- 1
+for (j in 1:SBC_iter){
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
+  # compute ecdf
+  ys <- matrix(nrow = nsims, ncol = nobs)
+  for (s in 1:nsims){
+    ys[s,] <- as.numeric(runif(nobs) < invlogit(theta[s]))
+    dat <- list(Y=as.array(ys[s,]), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	# approximate posterior mean via posterior mode
+  	post_mean_theta <- fit$par["a"]
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_theta <- sqrt(solve(-fit$hessian))
+  	post_draws_theta <- c(post_draws_theta, rnorm(ndraws, post_mean_a, post_sd_a))
+  	hist(post_draws_theta)
+  }
+  hist(post_draws_theta)
+  # update hyperparameters depending on inference algorithm
+  mu_est <- mean(post_draws_theta)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_theta)
+  sigma <- sigma_est
+  message("mu : ", round(mu, 2), ", mu_est : ", round(mu_est, 2), ", sigma : ", round(sigma, 2), ", sigma_est : ", round(sigma_est, 2))
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
+```
