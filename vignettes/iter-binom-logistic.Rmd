@@ -266,3 +266,87 @@ for (j in 1:SBC_iter){
 plot(unlist(mu_lst), ylab = "prior mean")
 plot(unlist(sigma_lst), ylab = "prior sd")
 ```
+
+# Experiment 3
+Using gradient update for convergence
+``` {r, warning=FALSE, error=FALSE}
+model <- stan_model("models/binom-laplace.stan")
+get_posterior <- function(eta, mu, sigma) {
+  # multiple options for link functions
+  if (link == 1) {
+    p = brms:::inv_logit(eta)
+  } else if (link == 2) {
+    p = dnorm(eta)
+  } else if (link == 3) {
+    p = brms:::inv_cloglog(eta);
+  }
+  y <- rbinom(nobs, nsize, p)
+  dat <- list(Y = as.array(y), nsize=nsize, nobs=nobs, 
+              mu = mu, sigma = sigma, link = link)
+  
+  fit <- optimizing(model, data = dat, hessian = TRUE)
+  
+  # approximate posterior mean via posterior mode
+  post_mean_eta <- fit$par["eta"]
+  
+  # approximate posterior sd via (sqrt) of the inverse negative Hessian
+  post_sd_eta <- sqrt(solve(-fit$hessian))
+  
+  # approximate the posterior using eta normal distribution
+  rnorm(ndraws, post_mean_eta, post_sd_eta)
+}
+
+# results from solving (x-y)^2 after x 
+# fix points are all x = y
+quad_recursion <- function(x, y) {
+  (y^2 + x^2) / (2 * y)
+}
+
+# prior hyperparameters
+mu <- -6
+sigma <- 10
+
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 3
+
+# maximal number of SBC iterations
+niter <- 100
+
+# number of SBC simulations per iteration
+nsims <- 100
+
+# number of draws per posterior approximation
+ndraws <- 100
+
+# number of observations
+nobs <- 1
+
+# number of binomial trials per observation
+nsize <- 2
+
+for (j in 1:niter) {
+  post_draws_eta <- c()
+  eta <- rnorm(nsims, mu[j], sigma[j])
+  for (i in 1:nsims) {
+    draws_new <- get_posterior(eta[i], mu = mu[j], sigma = sigma[j])
+    post_draws_eta <- c(post_draws_eta, draws_new)
+  }
+  
+  hist(post_draws_eta, probability = TRUE, 30)
+  xval <- seq(min(post_draws_eta), max(post_draws_eta), length.out = 100)
+  lines(xval, dnorm(xval, mu[j], sigma[j]))
+  
+  mu_est <- mean(post_draws_eta)
+  mu_new <- quad_recursion(mu_est, mu[j])
+  mu[j+1] <- mu_new
+  message("mu : ", mu[j], " mu_est : ", mu_est, " mu_new : ", mu_new)
+  
+  sigma_est <- sd(post_draws_eta)
+  sigma_new <- quad_recursion(sigma_est, sigma[j])
+  sigma[j+1] <- sigma_new
+  message("sigma : ", sigma[j], " sigma_est : ", sigma_est, " sigma_new : ", sigma_new)
+}
+
+plot(mu)
+plot(sigma)
+```
