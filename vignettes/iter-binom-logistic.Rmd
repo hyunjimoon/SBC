@@ -48,7 +48,7 @@ Proposition: Iteration of prior predictive simulation, posterior sampling, and r
 
 This is due to the recurrence of well-calibrated regions which will be illustrated in experiment 1 which shows different priors converging to the same distribution for simple Bernoulli likelihood and Laplace approximation as a inference algorithm. This approximation truncates Taylor expansion of the log target density at the mode to the sencond order i.e. $\mu_{t+1} = argmax \;f(w)$, $\sigma_{t+1} = -\frac{d^{2}}{d w^{2}} \log f(w) ; w=w_{0}$.
 
-
+# PASSIVE UPDATE
 # Experient 1. 1.Normal simulation prior (samples: 100), 2.Bernouli-logit prior predictive simultation, 3. Laplace approximation posterior sampling (draws: 100), 4. Plugging mean and sd of the data-averaged posterior to the next simulation prior as the regularizer
 
 Target parameter is logit-transformed probability, $a$. Binomial likelihood and laplace approximation inference algorithm on logit scale is used. Hyperparameters for laplace approximation are $\mu, \sigma$ which correspond to posterior distribution mode and second derivative at the mode. These hyperparameter values are set as the prior parameter for the iteration. Results show starting from $N(0, 3^2)$ distribution, initial non-normal distribution slowly transforms to normal form to adjust to the constraints imposed by the approximation of inference algorithm, in this case normal distribution. Final convergence is around $N(0, 0.5^2)$.
@@ -266,9 +266,121 @@ for (j in 1:SBC_iter){
 plot(unlist(mu_lst), ylab = "prior mean")
 plot(unlist(sigma_lst), ylab = "prior sd")
 ```
+## 2-3. Changing the order of the procedure.
+Data-averaged posterior where average happens in outcome level (gather y from each dataset then computation once) vs parameter level (computation in each dataset then gather parameter). The former is of course more normal-like as the Laplace approximation (computation) happened lastly. Procedure change. 
+```{r}
+model <- stan_model("models/binom-laplace.stan")
+# prior hyperparameters
+mu <- 0
+sigma <- 10
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
 
-# Experiment 3
-Using gradient update for convergence
+ # maximal number of SBC iterations
+niter <- 20
+
+# number of SBC simulations per iteration
+nsims <- 100
+
+# number of draws per posterior approximation
+ndraws <- 100
+
+# number of observations
+nobs <- 1
+
+# number of binomial trials per observation
+nsize <- 2
+get_posterior_1 <- function(eta, mu, sigma) {
+    # multiple options for link functions
+  if (link == 1) {
+    p = brms:::inv_logit(eta)
+  } else if (link == 2) {
+    p = dnorm(eta)
+  } else if (link == 3) {
+    p = brms:::inv_cloglog(eta);
+  }
+  p = brms:::inv_logit(eta)
+  y <- rbinom(nobs, nsize, p)
+  dat <- list(Y = as.array(y), nsize=nsize, nobs=nobs, 
+              mu = mu, sigma = sigma, link = link)
+  
+  fit <- optimizing(model, data = dat, hessian = TRUE)
+  
+  # approximate posterior mean via posterior mode
+  post_mean_eta <- fit$par["eta"]
+  
+  # approximate posterior sd via (sqrt) of the inverse negative Hessian
+  post_sd_eta <- sqrt(solve(-fit$hessian))
+  
+  # approximate the posterior using eta normal distribution
+  rnorm(ndraws, post_mean_eta, post_sd_eta)
+}
+
+get_posterior_2 <- function(y, mu, sigma) {
+  dat <- list(Y = as.array(y), nsize=nsize, nobs=nobs*nsims, 
+              mu = mu, sigma = sigma)
+  
+  fit <- optimizing(model, data = dat, hessian = TRUE)
+  
+  # approximate posterior mean via posterior mode
+  post_mean_eta <- fit$par["eta"]
+  
+  # approximate posterior sd via (sqrt) of the inverse negative Hessian
+  post_sd_eta <- sqrt(solve(-fit$hessian))
+  
+  # approximate the posterior using eta normal distribution
+  rnorm(ndraws, post_mean_eta, post_sd_eta)
+}
+
+# maximal number of SBC iterations
+niter <- 50
+# number of SBC simulations per iteration
+nsims <- 100
+# number of draws per posterior approximation
+ndraws <- 100
+# number of observations
+nobs <- 1
+# number of binomial trials per observation
+nsize <- 2
+
+# First procedure
+for (j in 1:niter) {
+  post_draws_eta <- c()
+  eta <- rnorm(nsims, mu[j], sigma[j])
+  for (i in 1:nsims) {
+    draws_new <- get_posterior_1(eta[i], mu = mu[j], sigma = sigma[j])
+    post_draws_eta <- c(post_draws_eta, draws_new)
+  }
+  mu[j+1] <- mean(post_draws_eta)
+  sigma[j+1] <-  sd(post_draws_eta)
+  message("mu : ", mu[j], " mu_est : ", mu[j+1])
+  hist(post_draws_eta, probability = TRUE, 30, main = paste(j, "th itheration"))
+  xval <- seq(min(post_draws_eta), max(post_draws_eta), length.out = 100)
+  lines(xval, dnorm(xval, mu[j], sigma[j]))
+}
+
+# Second procedure
+for (j in 1:niter) {
+  draws_y <- c()
+  eta <- rnorm(nsims, mu[j], sigma[j])
+  for (i in 1:nsims) {
+    p = brms:::inv_logit(eta[i])
+    draws_new <- rbinom(nobs, nsize, p)
+    draws_y <- c(draws_y, draws_new)
+  }
+  post_draws_eta <- get_posterior_2(draws_y, mu[j], sigma[j])
+  mu[j+1] <- mean(post_draws_eta)
+  sigma[j+1] <-  sd(post_draws_eta)
+  message("mu : ", mu[j], " mu_est : ", mu[j+1])
+  hist(post_draws_eta, probability = TRUE, 30, main = paste(j, "th itheration"))
+  xval <- seq(min(post_draws_eta), max(post_draws_eta), length.out = 100)
+  lines(xval, dnorm(xval, mu[j], sigma[j]))
+}
+```
+
+
+# ACTIVE UPDATE
+Using fixed point iteration for convergence
 ``` {r, warning=FALSE, error=FALSE}
 model <- stan_model("models/binom-laplace.stan")
 get_posterior <- function(eta, mu, sigma) {
@@ -303,7 +415,7 @@ quad_recursion <- function(x, y) {
 }
 
 # prior hyperparameters
-mu <- -6
+mu <- -2
 sigma <- 10
 
 # link function (1 = logit, 2 = probit, 3 = cloglog)
@@ -350,3 +462,70 @@ for (j in 1:niter) {
 plot(mu)
 plot(sigma)
 ```
+
+# Maximal coupling update
+```{R}
+# prior hyperparameters
+mu <- 0
+sigma <- 2
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# maximal number of SBC iterations
+niter <- 20
+
+# number of SBC simulations per iteration
+nsims <- 1000
+
+# number of draws per posterior approximation
+ndraws <- 100
+
+# number of observations
+nobs <- 1
+
+# number of binomial trials per observation
+nsize <- 2
+for (j in 1:niter) {
+  post_draws_eta <- c()
+  eta <- rnorm(nsims, mu[j], sigma[j])
+  for (i in 1:nsims) {
+    draws_new <- get_posterior(eta[i], mu = mu[j], sigma = sigma[j])
+    post_draws_eta <- c(post_draws_eta, draws_new)
+  }
+
+  hist(post_draws_eta, probability = TRUE, 30)
+  xval <- seq(min(post_draws_eta), max(post_draws_eta), length.out = 100)
+  lines(xval, dnorm(xval, mu[j], sigma[j]))
+  
+  breaks <- seq(-10, 10, by = .1)
+  # p is categorized samples of prior
+  p <- hist(eta, breaks = breaks)$counts / length(eta)
+  # q is categorized samples of data-averaged posterior
+  q <- hist(post_draws_eta, breaks = breaks)$counts / length(post_draws_eta)
+  w = 1 - sum(abs(p - q))
+  pqmin = pmin(p, q)
+  Z <- sum(pqmin)
+  # common random number generation for coupling
+  u <- runif(1)
+  if (u < w){
+    tmp <- runif(pqmin / Z)
+    p_coup <- tmp
+    q_coup <- tmp
+  }else{
+    p_coup <- runif((p - pqmin)/ 1 - Z)
+    q_coup <- runif((q - pqmin)/ 1 - Z)
+  }
+  # p_new is the new marginal sample for the next step prior 
+  mu_new <- mean(p_coup) 
+  mu[j+1] <- mu_new
+  message("mu : ", mu[j], " mu_est : ", mu_est, " mu_new : ", mu_new)
+  
+  sigma_new <- sd(p_coup)
+  sigma[j+1] <- sigma_new
+  message("sigma : ", sigma[j], " sigma_est : ", sigma_est, " sigma_new : ", sigma_new)
+}
+
+plot(mu)
+plot(sigma)
+```
+
