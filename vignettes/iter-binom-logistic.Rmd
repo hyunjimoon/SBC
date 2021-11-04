@@ -587,7 +587,7 @@ for (j in 1:niter) {
     # compute gradient of E_p_lambda[g(theta)]
     grad_loss_sens_j <- grad_loss_sens(lambda, model_sens1)
     # gradient update
-    lambda_new <- lambda -  1e-1 * c(grad_loss_sens_j["mu"], 0)#grad_loss_sens_j["log_sigma"])
+    lambda_new <- lambda -  c(grad_loss_sens_j["mu"], 0)#grad_loss_sens_j["log_sigma"])
     mu_new <- lambda_new[1]
     sigma_new <- exp(lambda_new[2])
   } else {
@@ -661,7 +661,9 @@ for(i in 1:nrow(combinations)){
   #combinations[i, "z"] <- SBC::wasserstein(prior_samples, draws_new)
   lambda <- c(prior_mu, prior_sd)
   for(k in 1:niter){
-     grad_loss_sens_j <- grad_loss_sens(lambda, model_sens1)
+    p_coup <- max_coupling(lambda, approximator)
+    lambda <- c(mean(p_coup), sd(p_coup))
+    grad_loss_sens_j <- grad_loss_sens(lambda, model_sens1)
     # gradient update
     lambda <- lambda -  c(grad_loss_sens_j["mu"], 0)#grad_loss_sens_j["log_sigma"])
     combinations[i, "z"] <- loss(lambda, "sampling")
