@@ -3,7 +3,7 @@ data {
   int Y[nobs];  // outcome
   int <lower =1> nsize;
   real mu;
-  real <lower = 0> sigma;
+  real log_sigma;
   int<lower=1,upper=3> link;
 }
 parameters {
@@ -21,7 +21,7 @@ transformed parameters {
   }
 }
 model {
-  eta ~ normal(mu, sigma);
+  eta ~ normal(mu, exp(log_sigma));
   Y ~ binomial(nsize, p);
 }
 
