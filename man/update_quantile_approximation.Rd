@@ -8,7 +8,6 @@ update_quantile_approximation(
   hyperparam_rvar,
   hyperparam_hat_rvar,
   S,
-  k,
   n_post_samples,
   epsilon
 )
@@ -19,8 +18,6 @@ update_quantile_approximation(
 \item{hyperparam_hat_rvar}{a posterior::rvar object of posterior(post-transformation) mixture mean values}
 
 \item{S}{Number of approximation points for the target quantile function.}
-
-\item{k}{the huber loss bound. huber loss returns in the boundary of [-k, k]}
 
 \item{n_post_samples}{the number of samples to draw from posterior, to approximate the expected quantile loss}
 
