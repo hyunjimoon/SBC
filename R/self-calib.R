@@ -15,8 +15,10 @@
 ##' @export
 self_calib_adaptive <- function(generator, approximator, sens_stan_model_dir, target_param, init_mu, init_sigma, nsims, ndraws, nchains, tol, fixed_args){
   if(approximator == "sampling"){
-    sens_model <- rsensitivity::GenerateSensitivityFromModel(sens_stan_model_dir)
+    model_name <- rsensitivity::GenerateSensitivityFromModel(sens_stan_model_dir)
     sampling_model <- stan_model(rsensitivity::GetSamplingModelFilename(model_name))
+    dummy_data <- do.call(generator, c(list(0, 1), fixed_args))
+    sens_stan_model <- rsensitivity::GetStanSensitivityModel(sens_model, dummy_data$generated[[1]])
     backend = SBC_backend_rstan_sample(sampling_model, iter = ndraws / nchains + 1000, warmup=1000)
   }
   else if(approximator == "optimizing"){
@@ -46,7 +48,7 @@ self_calib_adaptive <- function(generator, approximator, sens_stan_model_dir, ta
   # define update strategies
   sensitivity_update <- function(dap, mu, sigma){
     single_fit <- dap$fits[[1]]
-    sens_res <- rstansensitivity::GetStanSensitivityFromModelFit(of, sens_stan_model)
+    sens_res <- rstansensitivity::GetStanSensitivityFromModelFit(single_fit, sens_stan_model)
     sens_mat <- (sens_res$grad_mat %*% sens_res$draws_mat) / (n - 1) - rowMeans(sens_res$grad_mat) %*% t(colMeans(sens_res$draws_mat)) * (n / (n - 1))
 
     grad_self_cons <- abs(sens_mat[,1] - 1)
