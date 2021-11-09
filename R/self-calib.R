@@ -3,82 +3,39 @@
 ##' Auto calibrate the initial prior samples using SBC iterations, with an adaptive update strategy
 ##'
 ##' @param generator function that generates datasets given each value in `param`
-##' @param approximator A string, either 'sampling' or 'optimizing', which defines the inference method
-##' @param target_param target parameter name
+##' @param backend backend object to use for running SBC
+##' @param target_param string type target parameter name
 ##' @param init_mu initial lambda_mu value to use
 ##' @param init_sigma initial lambda_sigma value to use
-##' @param nsims number of simulations?
-##' @param ndraws number of posterior draws
+##' @param nsims number of datasets i.e. prior draws
 ##' @param nchains number of chains
 ##' @param tol tolerence for determining termination
 ##' @param fixed_args *named list* containing additional arguments to pass to generator, *after mu and sigma*
 ##' @export
-self_calib_adaptive <- function(generator, approximator, sens_stan_model_dir, target_param, init_mu, init_sigma, nsims, ndraws, nchains, tol, fixed_args){
-  if(approximator == "sampling"){
-    model_name <- rsensitivity::GenerateSensitivityFromModel(sens_stan_model_dir)
-    sampling_model <- stan_model(rsensitivity::GetSamplingModelFilename(model_name))
-    dummy_data <- do.call(generator, c(list(0, 1), fixed_args))
-    sens_stan_model <- rsensitivity::GetStanSensitivityModel(sens_model, dummy_data$generated[[1]])
-    backend = SBC_backend_rstan_sample(sampling_model, iter = ndraws / nchains + 1000, warmup=1000)
-  }
-  else if(approximator == "optimizing"){
-    stop("Not implemented :(")
-  }
-  else{
-    stop("approximator must be either 'sampling' or 'optimizing'")
-  }
-  # start function declarations
+self_calib_adaptive <- function(generator, backend, target_param, init_mu, init_sigma, nsims, tol, fixed_args){
 
   calculate_dap <- function(mu, sigma){
     dataset <- do.call(generator, c(list(mu, sigma), fixed_args))
-    sbc_result <- SBC::compute_results(generated, backend, thin_ranks = 1)
-    draws_y <- c()
+    sbc_result <- SBC::compute_results(dataset, backend, thin_ranks = 1)
     draws_eta <- c()
     for(fit in sbc_result$fits){
       samples <- rstan::extract(fit)
-      draws_y <- c(draws_y, samples$y)
       draws_eta <- c(draws_eta, samples[[target_param]])
     }
-    mu <- mean(draws_y)
-    sigma <- sd(draws_y)
-    return(list(mu=mean(draws_y), sigma=sd(draws_y), draws_eta=draws_eta))
+    mu <- mean(draws_eta)
+    sigma <- sd(draws_eta)
+    return(list(mu=mu, sigma=sigma, draws_eta=draws_eta))
   }
 
   ###############
   # define update strategies
-  sensitivity_update <- function(dap, mu, sigma){
-    single_fit <- dap$fits[[1]]
-    sens_res <- rstansensitivity::GetStanSensitivityFromModelFit(single_fit, sens_stan_model)
-    sens_mat <- (sens_res$grad_mat %*% sens_res$draws_mat) / (n - 1) - rowMeans(sens_res$grad_mat) %*% t(colMeans(sens_res$draws_mat)) * (n / (n - 1))
-
-    grad_self_cons <- abs(sens_mat[,1] - 1)
-    mu_new <- mu - grad_self_cons["mu"]
-    sigma_new <- mu - grad_self_cons["sigma"]
-    return(list(mu=mu_new, sigma_new=sigma_new))
-  }
-
-  max_coupling_update <- function(dap, mu,sigma){
+  max_coupling_update <- function(dap_eta, mu, sigma){
     eta <- rnorm(nsims, mu, sigma)
-    dap_eta <- dap$draws_eta
-    breaks <- seq(-20, 20, by = 1)
-    # p is categorized samples of prior
-    p <- hist(eta, breaks = breaks)$counts / length(eta)
-    # q is categorized samples of data-averaged posterior
-    q <- hist(dap_eta, breaks = breaks)$counts / length(dap_eta)
-    w = 1 - sum(abs(p - q))
-    pqmin = pmin(p, q)
-    Z <- sum(pqmin)
-    # common random number generation for coupling
-    u <- runif(1)
-    if (u < w){
-      tmp <- runif(pqmin / Z)
-      p_coup <- tmp
-      q_coup <- tmp
-    }else{
-      p_coup <- runif((p - pqmin)/ 1 - Z)
-      q_coup <- runif((q - pqmin)/ 1 - Z)
+    eta_max <- c()
+    for (i in 1:100){
+      eta_max <- c(eta_max, rnorm_max_coupling(mu, mean(dap_eta), sigma, sd(dap_eta))[1])
     }
-    return(list(mu=mean(p_coup), sigma=sd(p_coup)))
+    return(list(mu=mean(eta_max), sigma=sd(eta_max)))
   }
 
   heuristic_update <- function(dap, mu, sigma){
@@ -92,6 +49,28 @@ self_calib_adaptive <- function(generator, approximator, sens_stan_model_dir, ta
     sigma_new <- cubic_recursion1(dap$mu, sigma)
     return(list(mu=mu_new, sigma=sigma_new))
   }
+
+  gradient_update <- function(dap, mu, sigma){
+    loss <- function(lambda) {
+      dap_lambda <- c(dap$mu, dap$sigma)
+      message("loss : ", sum((lambda - dap_lambda)^2))
+      sum((lambda - dap_lambda)^2)
+    }
+
+    grad_loss <- function(lambda) {
+      # rough finite difference gradients such that steps are bigger
+      # than the expected error caused by the simulations from prior and posterior
+      numDeriv::grad(loss, lambda, method.args=list(eps=0.3, d = 0.3))
+    }
+    # use log(sigma) to have parameters on the unconstrained scale
+    lambda <- c(mu, log(sigma))
+
+    # gradient descent update
+    lambda_new <- lambda - gamma * grad_loss(lambda)
+    mu_new <- lambda_new[1]
+    sigma_new <- exp(lambda_new[2])
+    return(list(mu=mu_new, sigma=sigma_new))
+  }
   ###############
   square_loss <- function(dap, new_mu, new_sigma) {
     return((dap$mu - new_mu)^2 + (dap$sigma - new_mu)^2)
@@ -100,24 +79,25 @@ self_calib_adaptive <- function(generator, approximator, sens_stan_model_dir, ta
 
   current_mu <- init_mu
   current_sigma <- init_sigma
-  update_strategy_fun <- sensitivity_update  # define which update function to use
+
   # write your adaptive method here
 
   for (iter_num in 1:niter) {
     dap_result <- calculate_dap(current_mu, current_sigma)
     if(iter_num == 1){
-      coupling_result <- max_coupling_update(dap_result, current_mu, current_sigma)
-      current_mu <- coupling_result$mu
-      current_sigma <- coupling_result$sigma
-    }
-    update_result <- update_strategy_fun(dap_result, current_mu, current_sigma)
-    new_mu <- update_result$mu
-    new_sigma <- update_result$sigma
-    loss <- square_loss(dap_result, new_mu, new_sigma)
-    message(sprintf("Iteration %d - loss: %f", iter_num, loss))
-    if (abs(current_mu - new_mu) < tol & abs(current_mu - new_sigma) < tol){
-      message(sprintf("Terminating self_calib on iteration %d", iter_num))
-      break
+      coupling_result <- max_coupling_update(dap_result$draws_eta, current_mu, current_sigma)
+      new_mu <- coupling_result$mu
+      new_sigma <- coupling_result$sigma
+    }else{
+      update_result <- gradient_update(dap_result, current_mu, current_sigma)
+      new_mu <- update_result$mu
+      new_sigma <- update_result$sigma
+      loss <- square_loss(dap_result, new_mu, new_sigma)
+      message(sprintf("Iteration %d - loss: %f", iter_num, loss))
+      if (abs(current_mu - new_mu) < tol & abs(current_mu - new_sigma) < tol){
+        message(sprintf("Terminating self_calib on iteration %d", iter_num))
+        break
+      }
     }
     current_mu <- new_mu
     current_sigma <- new_sigma

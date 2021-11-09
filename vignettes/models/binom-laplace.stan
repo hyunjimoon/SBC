@@ -2,15 +2,15 @@ data {
   int<lower=1> nobs;  // total number of observations
   int Y[nobs];  // outcome
   int <lower =1> nsize;
-  real mu;
-  real log_sigma;
+  real lambda_mu;
+  real lambda_log_sigma;
   int<lower=1,upper=3> link;
 }
 parameters {
   real eta;
 }
 transformed parameters {
-  // multiple options for link functions
+  // lambda_multiple options for link functions
   real p;
   if (link == 1) {
     p = inv_logit(eta);
@@ -21,8 +21,6 @@ transformed parameters {
   }
 }
 model {
-  eta ~ normal(mu, exp(log_sigma));
+  eta ~ normal(lambda_mu, exp(lambda_log_sigma));
   Y ~ binomial(nsize, p);
 }
-
-

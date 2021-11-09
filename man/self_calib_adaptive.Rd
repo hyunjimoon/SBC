@@ -6,8 +6,7 @@
 \usage{
 self_calib_adaptive(
   generator,
-  approximator,
-  sens_stan_model_dir,
+  backend,
   target_param,
   init_mu,
   init_sigma,
@@ -21,9 +20,9 @@ self_calib_adaptive(
 \arguments{
 \item{generator}{function that generates datasets given each value in \code{param}}
 
-\item{approximator}{A string, either 'sampling' or 'optimizing', which defines the inference method}
+\item{backend}{backend object to use for running SBC}
 
-\item{target_param}{target parameter name}
+\item{target_param}{string type target parameter name}
 
 \item{init_mu}{initial lambda_mu value to use}
 

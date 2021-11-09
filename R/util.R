@@ -75,21 +75,48 @@ tf_param_vec <- function(param, tf){
 ##' Inverse transform parameters from uncontrained to constrained
 ##'
 ##' @param param a vector
-##' @param tf string indicating transformation type
+##' @param link_type int indicating link type
 ##' @return constrained parameter vector
 ##' @export
-invtf_param_vec <- function(param, tf){
-    if(is.null(tf) || missing(tf)){
+invtf_param_vec <- function(param, link_type){
+    if(is.null(link_type) || missing(link_type)){
       param <- param
     }
-    else if(tf == "logit"){
-      param <- gtools::inv.logit(param)
-    }else if(tf == "log"){
-      param <- exp(param)
-    }
+    else if(link_type == 1){
+      param <- brms:::inv_logit(param)
+    } else if (link_type == 2) {
+      param = dnorm(param)
+    } else if (link_type == 3) {
+      param = brms:::inv_cloglog(eta);
     return (param)
+    }
 }
 
+
+#'Maximal coupling of two univariate Normal distributions
+#'from https://github.com/pierrejacob/debiasedhmc/blob/1a2eeeb041eea4e5c050e5188e7100f31e61e35b/R/gaussian_couplings.R
+#'@description Sample from maximal coupling of two univariate Normal distributions,
+#'specified through their means and standard deviations.
+#'@param mu1 mean of first distribution
+#'@param mu2 mean of second distribution
+#'@param sigma1 standard deviation of first distribution
+#'@param sigma2 standard deviation of second distribution
+#'
+#'@export
+rnorm_max_coupling <- function(mu1, mu2, sigma1, sigma2){
+  x <- rnorm(1, mu1, sigma1)
+  if (dnorm(x, mu1, sigma1, log = TRUE) + log(runif(1)) < dnorm(x, mu2, sigma2, log = TRUE)){
+    return(c(x,x))
+  } else {
+    reject <- TRUE
+    y <- NA
+    while (reject){
+      y <- rnorm(1, mu2, sigma2)
+      reject <- (dnorm(y, mu2, sigma2, log = TRUE) + log(runif(1)) < dnorm(y, mu1, sigma1, log = TRUE))
+    }
+    return(c(x,y))
+  }
+}
 
 intv_plot_save <- function(evolve_df, delivDir){
   for (v in names(evolve_df)){

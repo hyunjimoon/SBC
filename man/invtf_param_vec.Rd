@@ -4,12 +4,12 @@
 \alias{invtf_param_vec}
 \title{Inverse transform parameters from uncontrained to constrained}
 \usage{
-invtf_param_vec(param, tf)
+invtf_param_vec(param, link_type)
 }
 \arguments{
 \item{param}{a vector}
 
-\item{tf}{string indicating transformation type}
+\item{link_type}{int indicating link type}
 }
 \value{
 constrained parameter vector
