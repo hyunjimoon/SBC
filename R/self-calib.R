@@ -4,6 +4,7 @@
 ##'
 ##' @param generator function that generates datasets given each value in `param`
 ##' @param backend backend object to use for running SBC
+##' @param updator hyperparameter update type
 ##' @param target_param string type target parameter name
 ##' @param init_mu initial lambda_mu value to use
 ##' @param init_sigma initial lambda_sigma value to use
@@ -12,16 +13,26 @@
 ##' @param tol tolerence for determining termination
 ##' @param fixed_args *named list* containing additional arguments to pass to generator, *after mu and sigma*
 ##' @export
-self_calib_adaptive <- function(generator, backend, target_param, init_mu, init_sigma, nsims, tol, fixed_args){
+self_calib_adaptive <- function(generator, backend, updator, target_param, init_mu, init_sigma, nsims, tol, fixed_args){
 
   calculate_dap <- function(mu, sigma){
-    dataset <- do.call(generator, c(list(mu, sigma), fixed_args))
-    sbc_result <- SBC::compute_results(dataset, backend, thin_ranks = 1)
+    datasets <- do.call(generator, c(list(mu, sigma), fixed_args))
+    sbc_result <- SBC::compute_results(datasets, backend, thin_ranks = 1)
+    plot_rank_hist(sbc_result)
     draws_eta <- c()
-    for(fit in sbc_result$fits){
-      samples <- rstan::extract(fit)
-      draws_eta <- c(draws_eta, samples[[target_param]])
+
+    if(typeof(sbc_result$fits[[1]]) == "S4"){
+      for(fit in sbc_result$fits){
+        samples <- rstan::extract(fit)
+        draws_eta <- c(draws_eta, samples[[target_param]])
+      }
+    }else{
+      for(fit in sbc_result$fits){
+        samples <- fit$draws()
+        draws_eta <- c(draws_eta, posterior::extract_variable(fit$draws(), target_param))
+      }
     }
+    # assume normal for dap
     mu <- mean(draws_eta)
     sigma <- sd(draws_eta)
     return(list(mu=mu, sigma=sigma, draws_eta=draws_eta))
@@ -29,29 +40,31 @@ self_calib_adaptive <- function(generator, backend, target_param, init_mu, init_
 
   ###############
   # define update strategies
-  max_coupling_update <- function(dap_eta, mu, sigma){
-    eta <- rnorm(nsims, mu, sigma)
+  max_coupling_update <- function(dap, lambda){
+    eta <- rnorm(nsims, lambda[1], exp(lambda[2]))
     eta_max <- c()
+
     for (i in 1:100){
-      eta_max <- c(eta_max, rnorm_max_coupling(mu, mean(dap_eta), sigma, sd(dap_eta))[1])
+      eta_max <- c(eta_max, rnorm_max_coupling(lambda[1], dap$mu, exp(lambda[2]), dap$sigma)[1])
     }
-    return(list(mu=mean(eta_max), sigma=sd(eta_max)))
+    c(mean(eta_max), log(sd(eta_max)))
   }
 
-  heuristic_update <- function(dap, mu, sigma){
+  heuristic_update <- function(dap, lambda){
     quad_recursion3 <- function(x, y) {
       (y^2 + x^2) / (x + y)
     }
     cubic_recursion1 <- function(x, y) {
       (x^3 - 3*x^2*y - y^3) / (-3*y^2)
     }
-    mu_new <- quad_recursion3(dap$mu, mu)
-    sigma_new <- cubic_recursion1(dap$mu, sigma)
-    return(list(mu=mu_new, sigma=sigma_new))
+    mu_new <- quad_recursion3(dap$mu, lambda[1])
+    log_sigma_new <- cubic_recursion1(log(dap$sigma), lambda[2])
+    c(mu_new, log_sigma_new)
   }
 
-  gradient_update <- function(dap, mu, sigma){
+  gradient_update <- function(dap, lambda){
     loss <- function(lambda) {
+      print("DEBID")
       dap_lambda <- c(dap$mu, dap$sigma)
       message("loss : ", sum((lambda - dap_lambda)^2))
       sum((lambda - dap_lambda)^2)
@@ -62,47 +75,52 @@ self_calib_adaptive <- function(generator, backend, target_param, init_mu, init_
       # than the expected error caused by the simulations from prior and posterior
       numDeriv::grad(loss, lambda, method.args=list(eps=0.3, d = 0.3))
     }
-    # use log(sigma) to have parameters on the unconstrained scale
-    lambda <- c(mu, log(sigma))
 
     # gradient descent update
-    lambda_new <- lambda - gamma * grad_loss(lambda)
-    mu_new <- lambda_new[1]
-    sigma_new <- exp(lambda_new[2])
-    return(list(mu=mu_new, sigma=sigma_new))
+    gamma <- 0.5
+    lambda - gamma * grad_loss(lambda)
   }
   ###############
-  square_loss <- function(dap, new_mu, new_sigma) {
-    return((dap$mu - new_mu)^2 + (dap$sigma - new_mu)^2)
+  lambda_loss <- function(dap, lambda) {
+    return((dap$mu - lambda[1])^2 + (log(dap$sigma) - lambda[2])^2)
   }
-    # end function declarations
+  eta_loss <- function(dap_eta, lambda) {
+    eta <- rnorm(length(dap_eta), lambda[1], lambda[2])
+    return(cjs_dist(eta, dap_eta))
+  }
+  # end function declarations
 
-  current_mu <- init_mu
-  current_sigma <- init_sigma
+  mu_current <- init_mu
+  sigma_current <- init_sigma
 
   # write your adaptive method here
 
   for (iter_num in 1:niter) {
-    dap_result <- calculate_dap(current_mu, current_sigma)
-    if(iter_num == 1){
-      coupling_result <- max_coupling_update(dap_result$draws_eta, current_mu, current_sigma)
-      new_mu <- coupling_result$mu
-      new_sigma <- coupling_result$sigma
+    dap_result <- calculate_dap(mu_current, sigma_current)
+    if(iter_num < 4){
+      lambda_current <- c(mu_current, log(sigma_current))
+      if(iter_num ==1){
+        message(sprintf("Iteration 0 - lambda loss: %f", lambda_loss(dap_result, lambda_current))) #eta loss: %f
+      }
+      lambda_new <- max_coupling_update(dap_result, lambda_current)
     }else{
-      update_result <- gradient_update(dap_result, current_mu, current_sigma)
-      new_mu <- update_result$mu
-      new_sigma <- update_result$sigma
-      loss <- square_loss(dap_result, new_mu, new_sigma)
-      message(sprintf("Iteration %d - loss: %f", iter_num, loss))
-      if (abs(current_mu - new_mu) < tol & abs(current_mu - new_sigma) < tol){
-        message(sprintf("Terminating self_calib on iteration %d", iter_num))
-        break
+      if(updator == "gradient"){
+        lambda_new <- gradient_update(dap_result, lambda_current)
+      }else if(updator == "heuristic"){
+        lambda_new <- heuristic_update(dap_result, lambda_current)
       }
     }
-    current_mu <- new_mu
-    current_sigma <- new_sigma
+    mu_new <- lambda_new[1]
+    sigma_new <- exp(lambda_new[2])
+    if (abs(mu_current - mu_new) < tol & abs(mu_current - sigma_new) < tol){
+      message(sprintf("Terminating self_calib on iteration %d", iter_num))
+      break
+    }
+    message(sprintf("Iteration %d - lambda loss: %f eta loss: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
+    mu_current <- mu_new
+    sigma_current <- sigma_new
   }
-  return(list(mu=current_mu, sigma=current_sigma))
+  return(list(mu=mu_current, sigma=sigma_current))
 }
 
 
@@ -160,9 +178,9 @@ self_calib_gaussian <- function(generator, backend, mixture_means_init_draws_rva
     }
     message(paste("Running self-calib iteration", selfcalib_itercount, "with nsims =", nsims))
     message("Calling generator..")
-    dataset <- do.call(generator, c(list(mixture_means_draws_rvars, mixture_bw_draws_rvars), fixed_generator_args))
+    datasets <- do.call(generator, c(list(mixture_means_draws_rvars, mixture_bw_draws_rvars), fixed_generator_args))
     message("generator returned value")
-    sbc_result <- SBC::compute_results(dataset, backend, thin_ranks = thin)
+    sbc_result <- SBC::compute_results(datasets, backend, thin_ranks = thin)
     if(save_all_results){
       sbc_result_env[[paste0("result_", selfcalib_itercount)]] <- sbc_result
     }
@@ -266,9 +284,9 @@ self_calib_gaussian <- function(generator, backend, mixture_means_init_draws_rva
     }
     message(paste("Running self-calib iteration", selfcalib_itercount, "with nsims =", nsims))
     message("Calling generator..")
-    dataset <- do.call(generator, c(list(mixture_means_draws_rvars, mixture_bw_draws_rvars), fixed_generator_args))
+    datasets <- do.call(generator, c(list(mixture_means_draws_rvars, mixture_bw_draws_rvars), fixed_generator_args))
     message("generator returned value")
-    sbc_result <- SBC::compute_results(dataset, backend, thin_ranks = thin)
+    sbc_result <- SBC::compute_results(datasets, backend, thin_ranks = thin)
     if(save_all_results){
       sbc_result_env[[paste0("result_", selfcalib_itercount)]] <- sbc_result
     }

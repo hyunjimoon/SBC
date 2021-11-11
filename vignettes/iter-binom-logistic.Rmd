@@ -57,6 +57,218 @@ generator_binom <- function(lambda_mu, lambda_sigma, fixed_sim_args){
   # fixed value across simulated datasets
   ## meta
   nobs <- fixed_sim_args$nobs
+  nsims <- fixed_sim_args$nsims
+  link_type <- fixed_sim_args$link_type
+  
+  # predictor
+  if("X" %in% names(fixed_sim_args)) {X <- fixed_sim_args$X} else X = 0
+  # parameter with fixed distribution across `nsims` datasets
+  if("b" %in% names(fixed_sim_args)) {b <- fixed_sim_args$b}  else b = 0
+  # target variable updated at each iteration
+  
+  # generate
+  eta <- draws_of(rvar_rng(rnorm, n = 1, mean = lambda_mu, sd=lambda_sigma, ndraws = nsims)  + X %**% b)
+  mu <- invtf_param_vec(eta, link_type = link_type)
+ 
+  Y <- rvar_rng(rbinom, n = nobs, size = nsize, prob = mu, ndraws = nsims) 
+  gen_rvars <- draws_rvars(nsims = nsims, nobs = nobs, nsize = nsize, link = link_type,
+                           lambda_mu = lambda_mu, lambda_log_sigma = log(lambda_sigma), 
+                           Y = Y)
+  SBC_datasets(
+    parameters = as_draws_matrix(list(eta = eta)), 
+    generated = draws_rvars_to_standata(gen_rvars)
+  )
+}
+
+
+# prior hyperparameters
+lambda_mu <- 1
+lambda_sigma <- 10
+
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# maximal number of SBC iterations
+niter <- 100
+
+# number of SBC simulations per iteration (generator)
+nsims <- 80
+
+# number of draws per posterior approximation (backend)
+ndraws <- 100
+
+# number of observations
+nobs <- 2
+
+# number of binomial trials per observation
+nsize <- 10
+
+nchains <- 1
+# tolerance
+tol <- 0.02
+
+# learning rate
+gamma <- 0.5
+
+# hyperparameter update type 
+updator = "heuristic"
+
+# step1: prior predictvie sampling
+fixed_sim_args <- list(nobs = nobs, nsims = nsims, nsize = nsize, link_type = 1)
+datasets <- generator_binom(lambda_mu, lambda_sigma, fixed_sim_args)
+
+# step2: posterior sampling
+rstan_mod <- stan_model("models/binom-laplace.stan")
+cmdstan_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
+rstan_backend_hmc <- SBC_backend_rstan_sample(rstan_mod, chains = nchains, iter = ndraws / nchains + 1000, warmup=1000)
+
+backend_vi <- SBC_backend_cmdstan_variational(cmdstan_mod, output_samples = ndraws, algorithm = "fullrank")
+
+
+# TODO
+#backend_laplace <- SBC_backend_rstan_laplace(rstan_mod, iter_sampling = ndraws)
+# backend_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod, chains = 2, iter_sampling = ndraws / 2) if cmdstanr return hession
+                
+# initial badly calibrated
+result_hmc <- compute_results(datasets, rstan_backend_hmc, thin_ranks = 1)
+result_vi <- compute_results(datasets, backend_vi, thin_ranks = 1)
+plot_rank_hist(result_hmc)
+plot_rank_hist(result_vi)
+
+# step3: updating hyperparmeters
+param_sc_hmc <- self_calib_adaptive(generator_binom, rstan_backend_hmc, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_sim_args = fixed_sim_args))
+plot_rank_hist(param_sc_hmc)
+
+param_sc_vi <- self_calib_adaptive(generator_binom, backend_vi, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_sim_args = fixed_sim_args))
+plot_rank_hist(param_sc_vi)
+```
+
+```{r, warning=FALSE, error=FALSE}
+generator_gamma <- function(lambda_mu, lambda_sigma, fixed_sim_args){
+  # fixed value across simulated datasets
+  ## meta
+  nobs <- fixed_sim_args$nobs
+  ndraws <- fixed_sim_args$ndraws
+  shape <- fixed_sim_args$shape
+  # predictor
+  if("X" %in% names(fixed_sim_args)) {X <- fixed_sim_args$X} else X = 0
+  # parameter with fixed distribution across `nsims` datasets
+  if("b" %in% names(fixed_sim_args)) {b <- fixed_sim_args$b}  else b = 0
+  # target variable updated at each iteration
+  
+  # generate
+  eta <- draws_of(rvar_rng(rnorm, n = 1, mean = lambda_mu, sd=lambda_sigma, ndraws = nsims)  + X %**% b)
+  mu <- exp(eta)
+  
+  Y <- rfun(rgamma) (n = N, shape = shape, scale = mu/shape) 
+  gen_rvars <- draws_rvars(nobs= nobs, Y = Y, K = K, X = X, shape = shape,
+                          lambda_mu = lambda_mu, lambda_log_sigma = log(lambda_sigma), 
+                           Y = Y)
+  SBC_datasets(
+    parameters = as_draws_matrix(list(eta = eta)), 
+    generated = draws_rvars_to_standata(gen_rvars)
+  )
+}
+
+nsims = 100
+nobs = 30
+M = 300
+K = 15
+chains = 4
+hyperparam <- list(N = N, shape = 1, b = rvar_rng(rnorm, ndraws = nsims, n = K, 0, 1)) #rgamma(S, shape = 0.01, scale = 0.01)
+#hyperparam <- list(N = N, shape = rvar_rng(rgamma, S, shape = 0.01, scale = 0.01), b = rvar_rng(rnorm, ndraws = S, n = K, 0, 1)) 
+predictor <- draws_rvars(X = array(rnorm(nsims * nobs * K, mean = 1, sd = 1), dim = c(nsims, nobs, K)))
+param_init_25 <- draws_rvars(a = rnorm(S, 2, 5)) # prior(normal(2, 2), class = "b", coef = "Intercept")
+datasets_25 <- generator(
+  hyperparam = hyperparam,
+  param = param_init_25,
+  predictor =  predictor
+)
+
+# step2: posterior sampling
+#mod_gr <- stan_model("models/binom-laplace.stan")
+mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
+
+backend_hmc <- SBC_backend_cmdstan_sample(mod_gr, chains = chains, iter_sampling = M * 10 / chains)
+backend_vi <- SBC_backend_cmdstan_variational(mod_gr, output_samples = M, algorithm = "fullrank")
+result_25_hmc <- compute_results(datasets_25, backend_hmc)
+result_25_vi <- compute_results(datasets_25, backend_vi, thin_ranks = 1)
+plot_rank_hist(result_25_hmc)
+plot_rank_hist(result_25_vi)
+
+```
+
+HMC is underdispersed. ADVI is skewed to the right and has a tendency to under-estimate.
+
+```{r  warning=FALSE}
+
+
+# prior hyperparameters
+lambda_mu <- 0
+lambda_sigma <- 8
+
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# maximal number of SBC iterations
+niter <- 100
+
+# number of SBC simulations per iteration
+nsims <- 100
+
+# number of draws per posterior approximation
+ndraws <- 100
+
+# number of observations
+nobs <- 2
+
+# number of binomial trials per observation
+nsize <- 10
+
+nchains <- 1
+# tolerance
+tol <- 0.02
+
+# learning rate
+gamma <- 0.5
+
+# approximator type 
+approximator = "sampling"
+
+# step1: prior predictvie sampling
+fixed_sim_args <- list(nobs = nobs, ndraws = ndraws, nsize = nsize, link_type = 1)
+datasets <- generator_binom(lambda_mu, lambda_sigma, fixed_sim_args)
+
+# step2: posterior sampling
+rstan_mod <- stan_model("models/binom-laplace.stan")
+cmdstan_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
+
+rstan_backend_hmc <- SBC_backend_rstan_sample(rstan_mod, chains = nchains, iter = ndraws / nchains + 1000, warmup=1000)
+cmdstan_backend_vi <- SBC_backend_cmdstan_variational(cmdstan_mod, output_samples = ndraws)
+# TODO
+# backend_laplace <- SBC_backend_rstan_laplace(rstan_mod, iter_sampling = ndraws)
+# backend_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod, chains = 2, iter_sampling = ndraws / 2) if cmdstanr return hession
+                
+# initial badly calibrated
+result_hmc <- compute_results(datasets, rstan_backend_hmc, thin_ranks = 1)
+plot_rank_hist(result_hmc)
+
+result_vi <- compute_results(datasets, cmdstan_backend_vi, thin_ranks = 1)
+plot_rank_hist(result_vi)
+
+# step3: updating hyperparmeters
+param_sc_hmc <- self_calib_adaptive(generator_binom, rstan_backend_hmc, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_sim_args = fixed_sim_args))
+plot_rank_hist(param_sc_hmc)
+
+param_sc_vi <- self_calib_adaptive(generator_binom, cmdstan_backend_vi, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_sim_args = fixed_sim_args))
+plot_rank_hist(param_sc_vi)
+```
+
+```{r, warning=FALSE, error=FALSE}
+generator_gamma <- function(lambda_mu, lambda_sigma, fixed_sim_args){
+  # fixed value across simulated datasets
+  ## meta
+  nobs <- fixed_sim_args$nobs
   ndraws <- fixed_sim_args$ndraws
   link_type <- fixed_sim_args$link_type
   
@@ -82,8 +294,8 @@ generator_binom <- function(lambda_mu, lambda_sigma, fixed_sim_args){
 
 
 # prior hyperparameters
-lambda_mu <- 3
-lambda_sigma <- 1
+lambda_mu <- 0
+lambda_sigma <- 8
 
 # link function (1 = logit, 2 = probit, 3 = cloglog)
 link <- 1
@@ -92,7 +304,7 @@ link <- 1
 niter <- 100
 
 # number of SBC simulations per iteration
-nsims <- 10
+nsims <- 100
 
 # number of draws per posterior approximation
 ndraws <- 100
@@ -103,12 +315,12 @@ nobs <- 2
 # number of binomial trials per observation
 nsize <- 10
 
-nchains <- 2
+nchains <- 1
 # tolerance
 tol <- 0.02
 
 # learning rate
-gamma <- 10
+gamma <- 0.5
 
 # approximator type 
 approximator = "sampling"
@@ -118,21 +330,32 @@ fixed_sim_args <- list(nobs = nobs, ndraws = ndraws, nsize = nsize, link_type = 
 datasets <- generator_binom(lambda_mu, lambda_sigma, fixed_sim_args)
 
 # step2: posterior sampling
+mod_gmm <- 
 rstan_mod <- stan_model("models/binom-laplace.stan")
-cmdstan_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
-rstan_backend_hmc <- SBC_backend_rstan_sample(rstan_mod, chains = 1, iter = ndraws / nchains + 10, warmup=10)
+cmdstan_mod_g <- cmdstanr::cmdstan_model("./models/gamma-reg_gmm.stan")
+
+rstan_backend_hmc <- SBC_backend_rstan_sample(rstan_mod, chains = nchains, iter = ndraws / nchains + 1000, warmup=1000)
+cmdstan_backend_vi <- SBC_backend_cmdstan_variational(cmdstan_mod, output_samples = ndraws)
 # TODO
-#backend_laplace <- SBC_backend_rstan_laplace(rstan_mod, iter_sampling = ndraws)
+# backend_laplace <- SBC_backend_rstan_laplace(rstan_mod, iter_sampling = ndraws)
 # backend_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod, chains = 2, iter_sampling = ndraws / 2) if cmdstanr return hession
-# initial uncalibrated
-result <- compute_results(datasets, rstan_backend_hmc, thin_ranks = 1)
-plot_rank_hist(result)
+                
+# initial badly calibrated
+result_hmc <- compute_results(datasets, rstan_backend_hmc, thin_ranks = 1)
+plot_rank_hist(result_hmc)
 
-# self-calibrate
+result_vi <- compute_results(datasets, cmdstan_backend_vi, thin_ranks = 1)
+plot_rank_hist(result_vi)
 
+# step3: updating hyperparmeters
 param_sc_hmc <- self_calib_adaptive(generator_binom, rstan_backend_hmc, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_sim_args = fixed_sim_args))
 plot_rank_hist(param_sc_hmc)
+
+param_sc_vi <- self_calib_adaptive(generator_binom, cmdstan_backend_vi, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_sim_args = fixed_sim_args))
+plot_rank_hist(param_sc_vi)
 ```
+
+
 
 Would this converging distribution be unique? From the result below, starting from $N(3, 1^2)$ which is unsymmetrical compared to $N(0, 3^2)$, also converges to a similar distribution. A likeable explanation is the recurrence of parameter values within well-calibrated region as opposed to that are not. For instance, if $logit^{-1}(\theta)$ starts from 0.9, is likely to form a non-normal posterior whose mode is more likely to move away from 0.9. On the other hand, parameter values near .5 forms a symmetric and stable posterior which in most cases has its mode near .5. In this case, the disstribution converge to around $N(0, 0.4^2)$
 

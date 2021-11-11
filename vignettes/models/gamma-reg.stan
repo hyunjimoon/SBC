@@ -1,27 +1,35 @@
 data {
-  int<lower=1> N;  // total number of observations
-  vector[N] Y;  // response variable
+  int<lower=1> nobs;  // total number of observations
+  vector[nobs] Y;  // response variable
   int<lower=1> K;  // number of population-level effects
-  matrix[N, K] X;  // population-level design matrix
+  matrix[nobs, K] X;  // population-level design matrix
   real<lower=0> shape;  // shape parameter
-  real a_loc;
-  real a_scale;
+  real lambda_mu;
+  real lambda_log_sigma;
+  int<lower=1,upper=3> link;
 }
 parameters {
-  real a;  // population-level effects
+  vector[nobs] eta;  // population-level effects
   vector[K] b;
 }
+
+transformed parameters {
+
+
+  // lambda_multiple options for link functions
+}
+
 model {
   // initialize linear predictor term
-  vector[N] mu = a + X * b;
-  for (n in 1:N) {
+  vector[nobs] mu = eta + X * b;
+  for (n in 1:nobs) {
     // apply the inverse link function
     mu[n] = shape * exp(-(mu[n]));
   }
   target += gamma_lpdf(Y | shape, mu);
 
   // priors including constants
-  target += normal_lpdf(a| a_loc, a_scale);
+  target += normal_lpdf(eta| lambda_mu, exp(lambda_log_sigma));
   target += normal_lpdf(b[1] | 0, 1);
   target += normal_lpdf(b[2] | 0, 1);
   target += normal_lpdf(b[3] | 0, 1);
