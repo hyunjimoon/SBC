@@ -151,6 +151,62 @@ SBC_backend_hash_for_cache.SBC_backend_rstan_sample <- function(backend) {
   rlang::hash(list(model = backend$model@model_code, args = backend$args))
 }
 
+
+#' SBC backend using the `optimizing` method from `rstan`.
+#'
+#' @param model a `stanmodel` object (created via `rstan::stan_model`)
+#' @param ... other arguments passed to `optimizing` (number of iterations, ...).
+#'   Argument `data` cannot be set this way as they need to be
+#'   controlled by the package.
+#' @export
+SBC_backend_rstan_optimizing <- function(model, ...) {
+  stopifnot(inherits(model, "stanmodel"))
+  message("Please note point estimate methods do not return any meaningful MCMC diagnostic values.")
+  args <- list(...)
+  unacceptable_params <- c("data")
+  if(any(names(args) %in% unacceptable_params)) {
+    stop(paste0("Parameters ", paste0("'", unacceptable_params, "'", collapse = ", "),
+                " cannot be provided when defining a backend as they need to be set ",
+                "by the SBC package"))
+  }
+
+  args$hessian = TRUE
+  structure(list(model = model, args = args), class = "SBC_backend_rstan_optimizing")
+}
+
+
+#' @export
+SBC_fit.SBC_backend_rstan_optimizing <- function(backend, generated, cores) {
+  structure(list(fit_list=do.call(rstan::optimizing,
+                combine_args(list(object = backend$model,
+                                  data = generated),
+                             backend$args)
+                ))
+            , class = "RStanOptimizingFit")
+}
+
+#' @export
+SBC_fit_to_draws_matrix.RStanOptimizingFit <- function(fit) {
+  posterior::as_draws_matrix(fit$fit_list$theta_tilde)
+}
+
+#' @export
+SBC_fit_to_diagnostics.RStanOptimizingFit <- function(fit, fit_output, fit_messages, fit_warnings) {
+  res <- data.frame(
+    max_chain_time = 0,
+    n_failed_chains = 0,
+    n_divergent = 0,
+    n_max_treedepth =  0,
+    n_rejects = 0
+    #
+  )
+  class(res) <- c("SBC_nuts_diagnostics", class(res))
+  res
+}
+
+
+
+
 #' @export
 summary.SBC_nuts_diagnostics <- function(diagnostics) {
   summ <- list(
