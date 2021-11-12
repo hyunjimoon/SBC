@@ -153,3 +153,86 @@ empirical_pit <- function(y, yrep) {
 ranks_to_empirical_pit <- function(ranks, n_posterior_samples){
   (1 + ranks) / (1 + n_posterior_samples)
 }
+
+#' Compute observed coverage of posterior credible intervals.
+#'
+#' Uses ranks to compute coverage and surrounding uncertainty of posterior credible intervals.
+#' The uncertainty is only approximate (treating coverage for each interval as a set of independent
+#' Bernoulli trials, while in fact they are not independent), so for making claims on presence/
+#' absence of detectable discrepancies we strongly recommend using [plot_ecdf()] or [plot_ecdf_diff()].
+#' The uncertainty about the coverage can however be useful for guiding decisions on whether
+#' more SBC steps should be performed (i.e. whether we can rule out that the coverage of
+#' the given backend differs too much for our purposes from the optimal value).
+#'
+#' Note that while coverage of central posterior intervals (with the default `type = "central"`)
+#' is often of the biggest practical interest, perfect calibration of central intervals
+#' still leaves space for substantial problems with the model (e.g. if the posterior 25% - 50% intervals
+#' contain 50% of the true values and the posterior 50% - 75% interval never contains the true value,
+#' the central 50% interval still has the ideal 50% coverage), so investigating central
+#' intervals should always be accompanied by checks with [plot_ecdf()] or [plot_ecdf_diff()]
+#' or by using `type = "leftmost"`, because if all leftmost credible intervals are well calibrated,
+#' then all intervals are well calibrated.
+#'
+#' @param stats a data.frame of rank statistics (e.g. as returned in the `$stats` component of [SBC_results]),
+#'   at minimum should have at least `parameter`, `rank` and `max_rank` columns)
+#' @param width a vector of values between 0 and 1 representing widths of credible intervals for
+#'   which we compute coverage.
+#' @param prob determines width of the uncertainty interval around the observed coverage
+#' @param inteval_type `"central"` to show coverage of central credible intervals
+#'   or `"leftmost"` to show coverage of leftmost credible intervals (i.e. the observed CDF).
+#' @return A `data.frame` with columns `parameter`, `width` (width of the interval as given
+#'   in the `width` parameter), `width_represented` the closest width that can be represented by
+#'   the ranks in the input (any discrepancy needs to be judged against this rather than `width`),
+#'   `estimate` - observed coverage for the interval, `ci_low`, `ci_high` the uncertainty
+#'   interval around `estimate` (width of the interval is given by the `prob` argument).
+#' @seealso [plot_coverage()]
+#' @export
+empirical_coverage <- function(stats, width, prob = 0.95, interval_type = "central") {
+  if(!all(c("parameter", "rank", "max_rank") %in% names(stats))) {
+    stop(SBC_error("SBC_invalid_argument_error",
+                   "The stats data.frame needs a 'parameter', 'rank' and 'max_rank' columns"))
+  }
+
+  stopifnot(is.numeric(width))
+  stopifnot(all(width >= 0) && all(width <= 1))
+
+  stopifnot(interval_type %in% c("central", "leftmost"))
+
+  get_low_rank <- function(max_rank, n_ranks_covered) {
+    if(interval_type == "central") {
+      round(max_rank / 2 - n_ranks_covered / 2)
+    } else if(interval_type == "leftmost") {
+      rep(0, max(length(n_ranks_covered), length(max_rank)))
+    } else {
+      stop("Invalid interval_type")
+    }
+  }
+
+  long <- tidyr::crossing(stats, data.frame(width = width))
+  long <- dplyr::mutate(long,
+                       n_ranks_covered = round((max_rank + 1) * width),
+                       low_rank = get_low_rank(max_rank, n_ranks_covered),
+                       high_rank = low_rank + n_ranks_covered - 1,
+                       width_represented =  (high_rank - low_rank + 1) / (max_rank + 1),
+                       is_covered = rank >= low_rank & rank <= high_rank)
+
+   summ <- dplyr::summarise(
+     dplyr::group_by(long, parameter, width),
+     post_alpha = sum(is_covered) + 1,
+     post_beta = dplyr::n() - sum(is_covered) + 1,
+     width_represented = unique(width_represented),
+     # Special handling if width_represented is either 0 or 1 as in such case,
+     # the result can never be different from 0 / 1 and so the CI should collapse to a point
+     representable = width_represented > 0 & width_represented < 1,
+     ci_low =  dplyr::if_else(representable,
+                              qbeta(0.5 - prob / 2, post_alpha, post_beta),
+                              width_represented),
+     estimate = sum(is_covered) / dplyr::n(),
+     ci_high = dplyr::if_else(representable,
+                              qbeta(0.5 + prob / 2, post_alpha, post_beta),
+                              width_represented),
+     .groups = "drop"
+   )
+
+   dplyr::select(summ, -post_alpha, -post_beta, -representable)
+}

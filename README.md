@@ -27,7 +27,7 @@ plot_rank_hist(results)
 For detailed usage, please refer to the included vignettes.
 
 ### Compatibility
-Currently `SBC` supports `cmdstan`, `rstan`, and `brms` models out of the box. However, adding Backends for other platforms is supported through the `api` interface.
+Currently `SBC` supports `cmdstan`, `rstan`, and `brms` models out of the box. However, adding Backends for other platforms is supported.
 
 ## Installation
 To install the development version of SBC, run

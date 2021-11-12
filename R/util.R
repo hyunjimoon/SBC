@@ -105,48 +105,32 @@ rnorm_max_coupling <- function(mu1, mu2, sigma1, sigma2){
   }
 }
 
-intv_plot_save <- function(evolve_df, delivDir){
-  for (v in names(evolve_df)){
-    evolve_df_v <- evolve_df[[v]]
-    intv <- subset_draws(mutate_variables(as_draws_df(lapply(evolve_df_v, as.numeric)), low1sd = (median + mad), up1sd = (median - mad)) , c("low1sd", "up1sd"))
-    intv$iter <- as.numeric(rownames(evolve_df_v))
-    intv <- reshape2::melt(intv, id.vars = "iter")
-    intv <- filter(intv, variable == "low1sd" | variable == "up1sd")
-    ggplot(intv, aes(x = as.numeric(iter), y = value,  color = variable) ) +
-      geom_line() #+ ggtitle(sprintf("target par: %s, N: %s, M: %s ", pars, N, M))
-    ggsave(file = file.path(delivDir, paste0(paste0(modelName, "_"), "evolove.png")), width = 5, height = 5)
+
+SBC_error <- function(subclass, message, call = sys.call(-1), ...) {
+  structure(
+    class = c(subclass, "SBC_error", "error", "condition"),
+    list(message = message, call = call),
+    ...
+  )
+}
+
+
+require_package_version <- function(package, version, purpose) {
+  if(!requireNamespace(package, quietly = TRUE)) {
+    stop(paste0("Using ", purpose, " requires the '", package, "' package"))
+  }
+  # Cannot use `versionCheck` of `requireNamespace` as that doesn't work when
+  # the package is already loaded. Note that `packageVersion` and `package_version`
+  # are completely different methods
+  if(packageVersion(package) < package_version(version)) {
+    stop(paste0("SBC requires ", package, " version >= ", version, ", please update to use SBC."))
   }
 }
 
-set_get_Dir <- function(modelName){
-  scriptDir <- getwd()
-  modDir <- file.path(scriptDir, "models")
-  dir.create(file.path(scriptDir, "deliv"))
-  delivDir <- file.path(scriptDir, "deliv", modelName)
-  dir.create(delivDir)
-  file <- file.path(modDir, paste0(modelName, ".stan"))
-  mod <- cmdstan_model(file)
-  return(list( mod = mod, modDir = modDir, file = file, delivDir = delivDir))
+require_brms_version <- function(purpose) {
+  require_package_version("brms", "2.16.1", purpose)
 }
 
-csv_save <- function(res, delivDir, type){
-  if(type == "each") {
-    write.csv(as_draws_df(res), file =  file.path(delivDir, paste0(paste0(cnt, "_"), "each.csv", sep = "")))
-  } else if (type == "evolve"){
-    for(v in names(res)) write.csv(res, file = file.path(paste0(paste0(delivDir, paste0(v, "_evolve_df.csv")))))
-  } else if (type == "ecdf"){
-    for(v in names(res)) write.csv(res, file =  file.path(delivDir, paste0(paste0(cnt, "_"), "ecdf.csv", sep = "")))
-  } else if (type == "diagnositcs"){
-    write.csv(res, file =  file.path(delivDir, "diagnositcs.csv"))
-  }
-}
-
-pp_overlay_save <- function(param, param_next, cnt = 0, delivDir){
-  g <- list()
-  plotlist <- list()
-  for (v in names(param)){
-    g[[v]] <- bayesplot::ppc_dens_overlay(c(draws_of(param[[v]])), matrix(draws_of(param_next[[v]]), ncol = niterations(param[[v]])))
-  }
-  ggpubr::ggarrange(g[["a"]], nrow =length(names(param))) #TODO
-  ggplot2::ggsave(file = file.path(delivDir, paste0(paste0(paste0(names(param), collapse = "", sep = "_"), cnt, "_"), "pp.png")),  bg = "white")
+require_cmdstanr_version <- function(purpose) {
+  require_package_version("cmdstanr", "0.4.0", purpose)
 }

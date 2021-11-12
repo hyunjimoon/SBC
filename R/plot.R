@@ -48,9 +48,8 @@ plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 
 
   # Bins can differ by size (at most by 1). Build a CI that is conservative,
   # i.e. includes lower quantile of smalelr bins and higher quantile of larger bins
-  larger_bin_size <- ceiling((max_rank / bins))
-  smaller_bin_size <- floor((max_rank / bins))
-  CI = qbinom(c(0.5 * (1 - prob),0.5,0.5 * (1 + prob)), size=n_simulations,prob  =  larger_bin_size / max_rank)
+  larger_bin_size <- ceiling(((max_rank + 1) / bins))
+  smaller_bin_size <- floor(((max_rank + 1) / bins))
   ci_lower = qbinom(0.5 * (1 - prob), size=n_simulations,prob  =  smaller_bin_size / max_rank)
   ci_mean = qbinom(0.5, size=n_simulations,prob  =  1 / bins)
   ci_upper = qbinom(0.5 * (1 + prob), size=n_simulations,prob  =  larger_bin_size / max_rank)
@@ -108,6 +107,7 @@ guess_bins <- function(max_rank, N) {
 #' @param ... additional arguments passed to [data_for_ecdf_plots()].
 #' Most notably, if `x` is matrix, a `max_rank` parameter needs to be given.
 #' @import ggplot2
+#' @seealso [plot_coverage()]
 plot_ecdf <- function(x,
                       parameters = NULL,
                       K = NULL,
@@ -268,7 +268,7 @@ data_for_ecdf_plots.data.frame <- function(x, parameters = NULL,
 
   summ <- dplyr::summarise(dplyr::group_by(stats, parameter), count = dplyr::n(), .groups = "drop")
   if(length(unique(summ$count)) > 1) {
-    stop("Not all varaibles have the same number of ranks")
+    stop("Not all variables have the same number of simulations.")
   }
 
   rank <- dplyr::select(stats, dataset_id, parameter, rank)
@@ -332,6 +332,9 @@ data_for_ecdf_plots.matrix <- function(x,
 
 #' Prior/posterior contraction plot.
 #'
+#' The rationale for this plot and its interpretaion is explained in
+#' Mike Betancourt's
+#' [Towards A Principled Bayesian Workflow](https://betanalpha.github.io/assets/case_studies/principled_bayesian_workflow.html#132_A_Bayesian_Eye_Chart).
 #'
 #' @param x object containing results (a data.frame or [SBC_results()] object).
 #' @param prior_sd a named vector of prior standard deviations for your parameters.
@@ -456,4 +459,57 @@ plot_sim_estimated.data.frame <- function(x, parameters = NULL, estimate = "mean
     main_geom +
     scale_y_continuous(estimate) +
     facet_wrap(~parameter, scales = "free")
+}
+
+
+#' Plot the observed coverage and its uncertainty
+#'
+#' Please refer to [empirical_coverage()] for details on computation
+#' and limitations of this plot as well as details on the arguments.
+#'
+#' @param x object containing results (a data.frame or [SBC_results()] object).
+#' @param parameters parameters to show in the plot or `NULL` to show all
+#' @param prob the with of the uncertainty interval to be shown
+#' @return a ggplot2 plot object
+#' @export
+plot_coverage <- function(x, parameters = NULL, prob = 0.95,
+                          interval_type = "central") {
+  UseMethod("plot_coverage")
+}
+
+#' @rdname plot_coverage
+#' @export
+plot_coverage.SBC_results <- function(x, parameters = NULL, prob = 0.95,
+                                      interval_type = "central") {
+  plot_coverage(x$stats, parameters = parameters, prob = prob, interval_type = interval_type)
+}
+
+#' @rdname plot_coverage
+#' @export
+plot_coverage.data.frame <- function(x, parameters = NULL, prob = 0.95,
+                                     interval_type = "central") {
+  if(!all(c("parameter", "rank", "max_rank") %in% names(x))) {
+    stop(SBC_error("SBC_invalid_argument_error",
+                   "The stats data.frame needs a 'parameter', 'rank' and 'max_rank' columns"))
+  }
+
+  if(!is.null(parameters)) {
+    x <- dplyr::filter(x, parameter %in% parameters)
+  }
+
+  max_max_rank <- max(x$max_rank)
+  coverage <- empirical_coverage(x, (0:max_max_rank) / (max_max_rank + 1), prob = prob,
+                                interval_type = interval_type)
+
+  ggplot2::ggplot(coverage, aes(x = width_represented, y = estimate,
+                                ymin = ci_low, ymax = ci_high)) +
+    geom_ribbon(fill = "black", alpha = 0.33) +
+    geom_segment(x = 0, y = 0, xend = 1, yend = 1, color = "skyblue1", size = 2) +
+    #geom_abline(intercept = 0, slope = 1, color = "skyblue1", size = 2) +
+    geom_line() +
+    scale_x_continuous(paste0(interval_type, " interval width")) +
+    scale_y_continuous("Observed coverage") +
+    facet_wrap(~parameter)
+
+
 }
