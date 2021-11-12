@@ -20,22 +20,14 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     sbc_result <- SBC::compute_results(datasets, backend, thin_ranks = 1)
     plot_rank_hist(sbc_result)
     draws_eta <- c()
-
-    if(typeof(sbc_result$fits[[1]]) == "S4"){
-      for(fit in sbc_result$fits){
-        samples <- rstan::extract(fit)
-        draws_eta <- c(draws_eta, samples[[target_param]])
-      }
-    }else{
-      for(fit in sbc_result$fits){
-        samples <- fit$draws()
-        draws_eta <- c(draws_eta, posterior::extract_variable(fit$draws(), target_param))
-      }
+    for(fit in sbc_result$fits){
+      samples <- fit$draws()
+      draws_eta <- c(draws_eta, posterior::extract_variable(fit$draws(), target_param))
     }
     # assume normal for dap
     mu <- mean(draws_eta)
     sigma <- sd(draws_eta)
-    return(list(mu=mu, sigma=sigma, draws_eta=draws_eta))
+    return(list(mu=mu, sigma=sigma, draws_eta=draws_eta)) # draws_eta
   }
 
   ###############
@@ -84,6 +76,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   lambda_loss <- function(dap, lambda) {
     return((dap$mu - lambda[1])^2 + (log(dap$sigma) - lambda[2])^2)
   }
+
   eta_loss <- function(dap_eta, lambda) {
     eta <- rnorm(length(dap_eta), lambda[1], lambda[2])
     return(cjs_dist(eta, dap_eta))
@@ -93,14 +86,12 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   mu_current <- init_mu
   sigma_current <- init_sigma
 
-  # write your adaptive method here
-
   for (iter_num in 1:niter) {
     dap_result <- calculate_dap(mu_current, sigma_current)
     if(iter_num < 4){
       lambda_current <- c(mu_current, log(sigma_current))
       if(iter_num ==1){
-        message(sprintf("Iteration 0 - lambda loss: %f", lambda_loss(dap_result, lambda_current))) #eta loss: %f
+        message(sprintf("Iteration 0 - lambda loss: %f eta loss: %f", lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
       }
       lambda_new <- max_coupling_update(dap_result, lambda_current)
     }else{

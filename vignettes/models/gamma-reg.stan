@@ -6,25 +6,19 @@ data {
   real<lower=0> shape;  // shape parameter
   real lambda_mu;
   real lambda_log_sigma;
-  int<lower=1,upper=3> link;
 }
 parameters {
-  vector[nobs] eta;  // population-level effects
+  real eta;  // population-level effects
   vector[K] b;
-}
-
-transformed parameters {
-
-
-  // lambda_multiple options for link functions
 }
 
 model {
   // initialize linear predictor term
-  vector[nobs] mu = eta + X * b;
+  vector[nobs] logmu = eta + X * b;
+  vector[nobs] mu;
   for (n in 1:nobs) {
     // apply the inverse link function
-    mu[n] = shape * exp(-(mu[n]));
+    mu[n] = shape * exp(-(logmu[n]));
   }
   target += gamma_lpdf(Y | shape, mu);
 

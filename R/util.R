@@ -33,26 +33,13 @@ tf_param <- function(param){
   return (list(param = param, tf = tf))
 }
 
-##' Inverse transform parameters from uncontrained to constrained
-##'
-##' @param param uncontrained parameter `draws_rvars`
-##' @param tf list of transformation type
-##' @return contrained parameter `draws_rvars`
-##' @export
-invtf_param <- function(param, tf){
-  for (tv in names(param)){
-    if(is.null(tf[[tv]])){
-      param[[tv]] <- param[[tv]]
-    }
-    else if(tf[[tv]] == "logit"){
-      param[[tv]] <- gtools::inv.logit(param[[tv]])
-    }else if(tf[[tv]] == "log"){
-      param[[tv]] <- exp(param[[tv]])
-    }
-    return (param)
-  }
+if (link == 1) {
+  p = brms:::inv_logit(eta)
+} else if (link == 2) {
+  p = dnorm(eta)
+} else if (link == 3) {
+  p = brms:::inv_cloglog(eta);
 }
-
 
 ##' Transform parameters from constrained to uncontrained
 ##'
@@ -87,9 +74,9 @@ invtf_param_vec <- function(param, link_type){
     } else if (link_type == 2) {
       param = dnorm(param)
     } else if (link_type == 3) {
-      param = brms:::inv_cloglog(eta);
-    return (param)
+      param = brms:::inv_cloglog(eta)
     }
+  param
 }
 
 
