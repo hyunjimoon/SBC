@@ -4,7 +4,14 @@
 \alias{statistics_from_single_fit}
 \title{Recompute SBC statistics given a single fit.}
 \usage{
-statistics_from_single_fit(fit, parameters, generated, thin_ranks, gen_quants)
+statistics_from_single_fit(
+  fit,
+  parameters,
+  generated,
+  thin_ranks,
+  gen_quants,
+  backend
+)
 }
 \description{
 Potentially useful for doing some advanced stuff, but should not

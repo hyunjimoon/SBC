@@ -5,3 +5,5 @@ Meta
 
 *.nb.html
 *.exe
+
+*_SBC_cache

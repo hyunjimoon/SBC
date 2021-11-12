@@ -9,26 +9,29 @@ compute_results(
   backend,
   cores_per_fit = default_cores_per_fit(length(datasets)),
   keep_fits = TRUE,
-  thin_ranks = 10,
+  thin_ranks = SBC_backend_default_thin_ranks(backend),
   chunk_size = default_chunk_size(length(datasets)),
-  gen_quants = NULL
+  gen_quants = NULL,
+  cache_mode = "none",
+  cache_location = NULL,
+  globals = list()
 )
 }
 \arguments{
 \item{datasets}{an object of class \code{SBC_datasets}}
 
 \item{backend}{the model + sampling algorithm. The built-in backends can be constructed
-using \code{SBC_backend_cmdstan_sample()}, \code{SBC_backend_cmdstan_variational()},\code{SBC_backend_cmdstan_optimize()}, \code{SBC_backend_rstan_sample()} and \code{SBC_backend_brms()}.
-(more to come). The backend is an S3 class supporting at least the \code{SBC_fit},
-\code{SBC_fit_to_draws_matrix} methods.}
+using \code{\link[=SBC_backend_cmdstan_sample]{SBC_backend_cmdstan_sample()}}, \code{\link[=SBC_backend_cmdstan_variational]{SBC_backend_cmdstan_variational()}}, \code{\link[=SBC_backend_rstan_sample]{SBC_backend_rstan_sample()}} and \code{\link[=SBC_backend_brms]{SBC_backend_brms()}}.
+(more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the \code{\link[=SBC_fit]{SBC_fit()}},
+\code{\link[=SBC_fit_to_draws_matrix]{SBC_fit_to_draws_matrix()}} methods.}
 
 \item{cores_per_fit}{how many cores should the backend be allowed to use for a single fit?
 Defaults to the maximum number that does not produce more parallel chains
-than you have cores. See \code{default_cores_per_fit()}.}
+than you have cores. See \code{\link[=default_cores_per_fit]{default_cores_per_fit()}}.}
 
 \item{keep_fits}{boolean, when \code{FALSE} full fits are discarded from memory -
 reduces memory consumption and increases speed (when processing in parallel), but
-prevents you from inspecting the fits and using \code{recompute_statistics()}.
+prevents you from inspecting the fits and using \code{\link[=recompute_statistics]{recompute_statistics()}}.
 We recommend to set to \code{TRUE} in early phases of workflow, when you run just a few fits.
 Once the model is stable and you want to run a lot of iterations, we recommend setting
 to \code{FALSE} (even for quite a simple model, 1000 fits can easily exhaust 32GB of RAM).}
@@ -44,22 +47,52 @@ the work may be distributed less equally across workers. We recommend setting th
 enough that a single batch takes at least several seconds, i.e. for small models,
 you can often reduce computation time noticeably by increasing this value.
 You can use \code{options(SBC.min_chunk_size = value)} to set a minimum chunk size globally.
-See documentation of \code{future.chunk.size} argument for \code{future.apply::future_lapply()} for more details.}
+See documentation of \code{future.chunk.size} argument for \code{\link[future.apply:future_lapply]{future.apply::future_lapply()}} for more details.}
+
+\item{cache_mode}{Type of caching of results, currently the only supported modes are
+\code{"none"} (do not cache) and \code{"results"} where the whole results object is stored
+and recomputed only when the hash of the backend or dataset changes.}
+
+\item{cache_location}{The filesystem location of cache. For \code{cache_mode = "results"}
+this should be a name of a single file. If the file name does not end with
+\code{.rds}, this extension is appended.}
+
+\item{globals}{A list of names of objects that are defined
+in the global environment and need to present for the backend to work (
+if they are not already available in package).
+It is added to the \code{globals} argument to \code{\link[future:future]{future::future()}}, to make those
+objects available on all workers.}
 }
 \value{
-An object of class \code{SBC_results} that holds:
-\itemize{
-\item \verb{$stats} statistics for all parameters and fits (one row per parameter-fit combination)
-\item \verb{$fits}  the raw fits (unless \code{keep_fits = FALSE}) or \code{NULL} if the fit failed
-\item \verb{$errors} error messages that caused fit failures
-\item \verb{$outputs}, \verb{$messages}, \verb{$warnings} the outputs/messages/warnings written by fits
-\item \verb{$default_diagnostics} a data frame of default convergence/correctness diagnostics (one row per fit)
-\item \verb{$backend_diagnostics} a data frame of backend-specific diagnostics (one row per fit)
-}
+An object of class \code{\link[=SBC_results]{SBC_results()}}.
 }
 \description{
+Performs the main SBC routine given datasets and a backend.
+}
+\section{Paralellization}{
 Parallel processing is supported via the \code{future} package, for most uses, it is most sensible
 to just call \code{plan(multisession)} once in your R session and  all
-cores your computer has will be used. For more details refer to the documentation
+cores your computer will be used. For more details refer to the documentation
 of the \code{future} package.
 }
+
+\section{Thinning}{
+When using backends based on MCMC, there are two possible moments when
+samples may need to be thinned. They can be thinned directly within the backend
+and they may be thinned only to compute the ranks for SBC as specified by the
+\code{thin_ranks} argument. The main reason those are separate is that computing the
+ranks requires no or negligible autocorrelation while some autocorrelation
+may be easily tolerated for summarising the fit results or assessing convergence.
+In fact, thinning too aggressively in the backend may lead to overly noisy
+estimates of posterior means, quantiles and the \code{\link[posterior:rhat]{posterior::rhat()}} and
+\code{\link[posterior:ess_tail]{posterior::ess_tail()}} diagnostics. So for well-adapted Hamiltonian Monte-Carlo
+chains (e.g. Stan-based backends), we recommend no thinning in the backend and
+even value of \code{thin_ranks} between 6 and 10 is usually sufficient to remove
+the residual autocorrelation. For a backend based on Metropolis-Hastings,
+it might be sensible to thin quite aggressively already in the backend and
+then have some additional thinning via \code{thin_ranks}.
+
+Backends that don't require thining should implement \code{\link[=SBC_backend_iid_samples]{SBC_backend_iid_samples()}}
+or \code{\link[=SBC_backend_default_thin_ranks]{SBC_backend_default_thin_ranks()}} to avoid thinning by default.
+}
+
