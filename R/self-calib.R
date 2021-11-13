@@ -67,10 +67,22 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
       message("loss : ", sum((lambda - dap_lambda)^2))
       sum((lambda - dap_lambda)^2)
     }
+    grad_loss <- function(lambda) {
+      # rough finite difference gradients such that steps are bigger
+      # than the expected error caused by the simulations from prior and posterior
+      numDeriv::grad(loss, lambda, method.args=list(eps=0.3, d = 0.3))
+    }
+    # gradient descent update
+    gamma <- 0.5
+    lambda - gamma * grad_loss(lambda)
+  }
+  ########
+  # mixture update strategy
 
   quantile_update <- function(dap, lambda){
-    phi <- approx_quantile_phi(lambda, S = fixed_args$nsims)
+    phi <- approx_quantile_phi(posterior::draws_of(lambda$mu), S = fixed_args$nsims)
     updated_phi <- phi
+    phi_post <- approx_quantile_phi(posterior::draws_of(dap$mu), S = fixed_args$nsims)
     wass_last <- wasserstein(updated_phi, phi_post)
     iters <- 0
     while(iters <= 5 || abs(wasserstein(updated_phi, phi_post) - wass_last) > wass_last * 0.001){
@@ -78,27 +90,22 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
       #plot(phi, unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)})), type = "l")
       #lines(updated_phi, unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)})), col="red")
       zprime <- sample_quantile_phi(fixed_args$ndraws, updated_phi)
+      S <- fixed_args$nsims
       for(s in 1:S) {
-        delta_sum <-(2 * s - 1) / (2 * S) - (sum(zprime < updated_phi[s]) + sum(zprime == updated_phi[s])) / n_post_samples
-        updated_phi[s] <- updated_phi[s] + epsilon * (delta_sum / n_post_samples)
+        delta_sum <-(2 * s - 1) / (2 * S) - (sum(zprime < updated_phi[s]) + sum(zprime == updated_phi[s])) / fixed_args$ndraws
+        updated_phi[s] <- updated_phi[s] + 0.1 * (delta_sum / fixed_args$ndraws)
       }
       iters <- iters + 1
       #message(updated_phi)
-      #message(paste(wasserstein(updated_phi, phi_post), wass_last))
+      message(paste(wasserstein(updated_phi, phi_post), wass_last))
     }
-    print(paste("optimization iters:", iters))
-    return(list(updated_phi=posterior::rvar(array(rep(updated_phi, each = nsims), dim = c(nsims, nsims))), phi=phi)) # currently all nsims receive same updated mus
-  }
-    grad_loss <- function(lambda) {
-      # rough finite difference gradients such that steps are bigger
-      # than the expected error caused by the simulations from prior and posterior
-      numDeriv::grad(loss, lambda, method.args=list(eps=0.3, d = 0.3))
-    }
+    #message(paste("optimization iters:", iters))
+    return_mu <- posterior::rvar(array(rep(updated_phi, each = nsims), dim = c(nsims, nsims)))
 
-    # gradient descent update
-    gamma <- 0.5
-    lambda - gamma * grad_loss(lambda)
+    return_sigma <- rvar(rep(bw.nrd0(draws_of(return_mu)), posterior::niterations(return_mu)))
+    return(list(mu=return_mu, sigma = return_sigma)) # currently all nsims receive same updated mus
   }
+
   ###############
   lambda_loss <- function(dap, lambda) {
     return((dap$mu - lambda[1])^2 + (log(dap$sigma) - lambda[2])^2)
@@ -117,7 +124,11 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     stop <- FALSE
     dap_result <- calculate_dap(mu_current, sigma_current)
     if(is.element("rvar", class(init_mu))){
-      cjs_record <- cjs_dist(mixture_means_draws_rvars, mixture_means_next_draws_rvars)
+      lambda_current <- list(mu=mu_current, sigma=sigma_current)
+      mixture_means_next_draws_rvars <- quantile_update(dap_result, lambda_current)
+      mu_new <- mixture_means_next_draws_rvars$mu
+      sigma_new <- mixture_means_next_draws_rvars$sigma
+      cjs_record <- cjs_dist(mu_current, mu_new)
       if(iter_num ==1){
         cjs_prev <- cjs_record
       }
@@ -126,8 +137,8 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
         stop <- TRUE
       }
     }else{
+      lambda_current <- c(mu_current, log(sigma_current))
       if(iter_num < 4){
-        lambda_current <- c(mu_current, log(sigma_current))
         lambda_new <- max_coupling_update(dap_result, lambda_current)
       }else{
         if(updator == "gradient"){
@@ -136,6 +147,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
           lambda_new <- heuristic_update(dap_result, lambda_current)
         }
       }
+      print(lambda_new)
       mu_new <- lambda_new$mu
       sigma_new <- exp(lambda_new$sigma)
       if (abs(mu_current - mu_new) < tol & abs(mu_current - sigma_new) < tol){
