@@ -16,17 +16,24 @@
 self_calib_adaptive <- function(generator, backend, updator, target_param, init_mu, init_sigma, nsims, tol, fixed_args){
 
   calculate_dap <- function(mu, sigma){
-    datasets <- do.call(generator, c(list(mu, sigma), fixed_args))
+    nsims <- fixed_args$nsims
+    datasets <- do.call(generator, c(list(mu, sigma), list(fixed_args = fixed_args)))
     sbc_result <- SBC::compute_results(datasets, backend, thin_ranks = 1)
-    plot_rank_hist(sbc_result)
     draws_eta <- c()
     for(fit in sbc_result$fits){
-      samples <- fit$draws()
-      draws_eta <- c(draws_eta, posterior::extract_variable(fit$draws(), target_param))
+      samples <- SBC_fit_to_draws_matrix(fit)
+      draws_eta <- c(draws_eta, posterior::extract_variable(samples, target_param))
     }
-    # assume normal for dap
-    mu <- mean(draws_eta)
-    sigma <- sd(draws_eta)
+    if(is.element("rvar", class(init_mu))){
+      gmm_fit <- mclust::Mclust(draws_eta, G = nsims, verbose = FALSE)
+      prop_est <- gmm_fit$parameters$pro
+      mu <- posterior::rvar(array(rep(sample(as.vector(gmm_fit$parameters$mean), prob = prop_est), each = nsims), dim = c(nsims, nsims)))
+      sigma <- rvar(rep(bw.nrd0(draws_of(mu)), posterior::niterations(mu)))
+    }else{
+      # assume normal for dap
+      mu <- mean(draws_eta)
+      sigma <- sd(draws_eta)
+    }
     return(list(mu=mu, sigma=sigma, draws_eta=draws_eta)) # draws_eta
   }
 
@@ -56,12 +63,32 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
 
   gradient_update <- function(dap, lambda){
     loss <- function(lambda) {
-      print("DEBID")
       dap_lambda <- c(dap$mu, dap$sigma)
       message("loss : ", sum((lambda - dap_lambda)^2))
       sum((lambda - dap_lambda)^2)
     }
 
+  quantile_update <- function(dap, lambda){
+    phi <- approx_quantile_phi(lambda, S = fixed_args$nsims)
+    updated_phi <- phi
+    wass_last <- wasserstein(updated_phi, phi_post)
+    iters <- 0
+    while(iters <= 5 || abs(wasserstein(updated_phi, phi_post) - wass_last) > wass_last * 0.001){
+      wass_last <- wasserstein(updated_phi, phi_post)
+      #plot(phi, unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)})), type = "l")
+      #lines(updated_phi, unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)})), col="red")
+      zprime <- sample_quantile_phi(fixed_args$ndraws, updated_phi)
+      for(s in 1:S) {
+        delta_sum <-(2 * s - 1) / (2 * S) - (sum(zprime < updated_phi[s]) + sum(zprime == updated_phi[s])) / n_post_samples
+        updated_phi[s] <- updated_phi[s] + epsilon * (delta_sum / n_post_samples)
+      }
+      iters <- iters + 1
+      #message(updated_phi)
+      #message(paste(wasserstein(updated_phi, phi_post), wass_last))
+    }
+    print(paste("optimization iters:", iters))
+    return(list(updated_phi=posterior::rvar(array(rep(updated_phi, each = nsims), dim = c(nsims, nsims))), phi=phi)) # currently all nsims receive same updated mus
+  }
     grad_loss <- function(lambda) {
       # rough finite difference gradients such that steps are bigger
       # than the expected error caused by the simulations from prior and posterior
@@ -85,29 +112,42 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
 
   mu_current <- init_mu
   sigma_current <- init_sigma
-
+  cjs_prev <- Inf
   for (iter_num in 1:niter) {
+    stop <- FALSE
     dap_result <- calculate_dap(mu_current, sigma_current)
-    if(iter_num < 4){
-      lambda_current <- c(mu_current, log(sigma_current))
+    if(is.element("rvar", class(init_mu))){
+      cjs_record <- cjs_dist(mixture_means_draws_rvars, mixture_means_next_draws_rvars)
       if(iter_num ==1){
-        message(sprintf("Iteration 0 - lambda loss: %f eta loss: %f", lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
+        cjs_prev <- cjs_record
       }
-      lambda_new <- max_coupling_update(dap_result, lambda_current)
+      message(sprintf("Iteration %d - cjs_dist for parameter %f", iter_num,cjs_record))
+      if(cjs_record >= 0.5 * cjs_prev){
+        stop <- TRUE
+      }
     }else{
-      if(updator == "gradient"){
-        lambda_new <- gradient_update(dap_result, lambda_current)
-      }else if(updator == "heuristic"){
-        lambda_new <- heuristic_update(dap_result, lambda_current)
+      if(iter_num < 4){
+        lambda_current <- c(mu_current, log(sigma_current))
+        lambda_new <- max_coupling_update(dap_result, lambda_current)
+      }else{
+        if(updator == "gradient"){
+          lambda_new <- gradient_update(dap_result, lambda_current)
+        }else if(updator == "heuristic"){
+          lambda_new <- heuristic_update(dap_result, lambda_current)
+        }
       }
+      mu_new <- lambda_new$mu
+      sigma_new <- exp(lambda_new$sigma)
+      if (abs(mu_current - mu_new) < tol & abs(mu_current - sigma_new) < tol){
+        stop <- TRUE
+      }
+      message(sprintf("Iteration %d - lambda loss: %f eta loss: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
     }
-    mu_new <- lambda_new[1]
-    sigma_new <- exp(lambda_new[2])
-    if (abs(mu_current - mu_new) < tol & abs(mu_current - sigma_new) < tol){
+
+    if(stop){
       message(sprintf("Terminating self_calib on iteration %d", iter_num))
       break
     }
-    message(sprintf("Iteration %d - lambda loss: %f eta loss: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
     mu_current <- mu_new
     sigma_current <- sigma_new
   }

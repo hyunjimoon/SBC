@@ -33,14 +33,6 @@ tf_param <- function(param){
   return (list(param = param, tf = tf))
 }
 
-if (link == 1) {
-  p = brms:::inv_logit(eta)
-} else if (link == 2) {
-  p = dnorm(eta)
-} else if (link == 3) {
-  p = brms:::inv_cloglog(eta);
-}
-
 ##' Transform parameters from constrained to uncontrained
 ##'
 ##' @param param a vector

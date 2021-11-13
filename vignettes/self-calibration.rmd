@@ -61,7 +61,7 @@ These are general settings for our experiment. One critical requirement for SBCâ
 ```{R}
 ## Generator settings
 # number of SBC simulations per iteration (generator)
-nsims <- 10
+nsims <- 80
 
 # number of observations
 nobs <- 2
@@ -86,15 +86,6 @@ Received comments:
  
 Then$\frac{dZ_{\lambda}}{d\lambda} = E[(\pi_\lambda(\theta))(\partial_\lambda\pi_{\lambda}(\theta))]$ where the expectation is  
 
-
-```{R}
-fit <- optimizing(model, data = dat, hessian = TRUE)
-# approximate posterior mean via posterior mode
-post_mean_eta <- fit$par["eta"]
-# approximate posterior sd via (sqrt) of the inverse negative Hessian
-post_sd_eta <- sqrt(solve(-fit$hessian))
-```
-
 # PASSIVE UPDATE
 # TODO once SBC_backend supports rstan optimizing.
 # Experient 1. 1.Normal simulation prior (samples: 100), 2.Bernouli-logit prior predictive simultation, 3. Laplace approximation posterior sampling (draws: 100) 4. mean and sd for DAP summary and use it for the next prior parameter
@@ -110,13 +101,14 @@ Could we make this convergence to the well-calibrated prior more efficient, cons
 # Experient 3. 1. Normal simulation prior (samples: 100), 2.Gamma-glm prior predictive simultation, 3. HMC posterior sampling (draws: 100) 4. coupling+gradient update based on moment-matching DAP summary (mean, sd)
 
 ```{r, warning=FALSE, error=FALSE}
-# step1: 
-generator_binom <- function(lambda_mu, lambda_sigma, fixed_sim_args){
+# step1: inferring posterior
+generator_binom <- function(lambda_mu, lambda_sigma, fixed_args){
   # fixed value across simulated datasets
   # experiment settings
-  nobs <- fixed_sim_args$nobs
-  link_type <- fixed_sim_args$link_type
-  # clamped parameters
+  nobs <- fixed_args$nobs
+  nsize <- fixed_args$nsize
+  # modular settings
+  link_type <- fixed_args$link_type
 
   # generate
   eta <- rnorm(1, mean = lambda_mu, sd=lambda_sigma)
@@ -124,41 +116,25 @@ generator_binom <- function(lambda_mu, lambda_sigma, fixed_sim_args){
   Y <- rbinom(nobs, size = nsize, prob = mu) 
   list(
     parameters = list(eta = eta),
-    generated = list(nobs= nobs, 
+    generated = list(nobs= nobs, nsize = nsize, link = link_type,
                      lambda_mu = lambda_mu, lambda_log_sigma = log(lambda_sigma), 
                      Y = Y)
   )
 }
-fixed_sim_args_binom <- list(nobs = nobs, link_type = 1)
-datasets_binom <- generate_datasets(SBC_generator_function(generator_binom, lambda_mu, lambda_sigma, fixed_sim_args_binom), n_datasets = nsims)
+fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws)
 
-
-# step2: inferring posterior
-rstan_mod <- stan_model("models/binom-laplace.stan")
-cmdstan_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
-rstan_backend_hmc <- SBC_backend_rstan_sample(rstan_mod, chains = nchains, iter = ndraws / nchains + 1000, warmup=1000)
-
-backend_vi <- SBC_backend_cmdstan_variational(cmdstan_mod, output_samples = ndraws, algorithm = "fullrank")
-
-# TODO
-#backend_laplace <- SBC_backend_rstan_laplace(rstan_mod, iter_sampling = ndraws)
-# backend_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod, chains = 2, iter_sampling = ndraws / 2) if cmdstanr return hession
-                
-# initial badly calibrated
-result_hmc <- compute_results(datasets, rstan_backend_hmc, thin_ranks = 1)
-result_vi <- compute_results(datasets, backend_vi, thin_ranks = 1)
-plot_rank_hist(result_hmc)
-plot_rank_hist(result_vi)
-```
-
-```{R}
-## Self-calib settings
 # initial prior hyperparameters
 lambda_mu <- 1
 lambda_sigma <- 10
 
+datasets_binom <- generate_datasets(SBC_generator_function(generator_binom, lambda_mu, lambda_sigma, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+```
+
+```{R}
+## Self-calib settings
+
 # hyperparameter update algorithm 
-updator = "heuristic"
+updator = "gradient"
 
 # maximal number of SBC iterations
 niter <- 100
@@ -169,15 +145,30 @@ tol <- 0.02
 # learning rate
 gamma <- 0.5
 
-# step3: updating hyperparmeters
-param_sc_hmc <- self_calib_adaptive(generator_binom, rstan_backend_hmc, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_sim_args = fixed_sim_args))
-plot_rank_hist(param_sc_hmc)
+# step2: inferring posterior
+rstan_binom_mod <- stan_model("models/binom-laplace.stan")
+cmdstan_binom_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
 
-param_sc_vi <- self_calib_adaptive(generator_binom, backend_vi, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_sim_args = fixed_sim_args))
-plot_rank_hist(param_sc_vi)
+backend_binom_opt <- SBC_backend_rstan_optimizing(rstan_binom_mod, draws = ndraws)
+backend_binom_hmc <- SBC_backend_cmdstan_sample(cmdstan_binom_mod, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+
+# initial badly calibrated
+result_binom_opt <- compute_results(datasets_binom, backend_binom_opt, thin_ranks = 1)
+plot_rank_hist(result_binom_opt)
+# result_binom_hmc <- compute_results(datasets_binom, backend_binom_hmc)
+
+# step3: updating hyperparmeters
+# wrapper function to follow `self_calib_adaptive` interface
+calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
+  generate_datasets(SBC_generator_function(generator_binom, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
+}
+sc_opt <- self_calib_adaptive(calib_generator, backend_binom_opt, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = fixed_args_binom)
+sc_hmc <- self_calib_adaptive(calib_generator, backend_binom_hmc, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = fixed_args_binom)
+
+plot_rank_hist(sc_opt)
 ```
 
-## 2. Computation
+## 2. Gamma regression
 HMC is underdispersed. ADVI is skewed to the right and has a tendency to under-estimate.
 
 ```{r  warning=FALSE}
@@ -212,12 +203,18 @@ datasets_gamma <- generate_datasets(SBC_generator_function(generator_gamma, lamb
 
 # step2: posterior sampling
 mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
-backend_hmc <- SBC_backend_cmdstan_sample(mod_gr, chains = 4, iter_sampling = ndraws / 4) # thin = 10
-result_25_hmc <- compute_results(datasets_gamma, backend_hmc, thin_ranks = 1)
+rstan_mod_gr <- stan_model("models/gamma-reg.stan")
+backend_gamma_hmc <- SBC_backend_cmdstan_sample(mod_gr, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+backend_gamma_opt <- SBC_backend_rstan_optimizing(rstan_mod_gr, draws = ndraws)
+#result_25_hmc <- compute_results(datasets_gamma, backend_hmc, thin_ranks = 1)
+
+result_25_opt <- compute_results(datasets_binom, backend_binom_opt, thin_ranks = 1)
+result_25_hmc <- compute_results(datasets_binom, backend_gamma_hmc, thin_ranks = 1)
 plot_rank_hist(result_25_hmc)
+plot_rank_hist(result_25_opt)
 ```
 
-What happens with VI?
+
 ```{r setup, include=FALSE}
 ## Self-calib settings
 # initial prior hyperparameters
@@ -241,7 +238,7 @@ gamma <- 0.5
 calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
   generate_datasets(SBC_generator_function(generator_gamma, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
 }
-param_sc_hmc <- self_calib_adaptive(calib_generator, backend_hmc, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_args = fixed_args))
+param_sc_hmc <- self_calib_adaptive(calib_generator, backend_hmc, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, list(fixed_args = fixed_args_binom))
 plot_rank_hist(param_sc_hmc)
 
 backend_vi <- SBC_backend_cmdstan_variational(mod_gr, output_samples = ndraws, algorithm = "fullrank")
