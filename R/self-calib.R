@@ -138,7 +138,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
         stop <- TRUE
       }
     }else{
-      lambda_current <- c(mu_current, log(sigma_current))
+      lambda_current <- list(mu=mu_current, logsigma=log(sigma_current))
       if(iter_num < 4){
         lambda_new <- max_coupling_update(dap_result, lambda_current)
       }else{
