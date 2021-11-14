@@ -40,13 +40,13 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   ###############
   # define update strategies
   max_coupling_update <- function(dap, lambda){
-    eta <- rnorm(nsims, lambda[1], exp(lambda[2]))
+    eta <- rnorm(nsims, lambda$mu, exp(lambda$logsigma))
     eta_max <- c()
 
     for (i in 1:100){
-      eta_max <- c(eta_max, rnorm_max_coupling(lambda[1], dap$mu, exp(lambda[2]), dap$sigma)[1])
+      eta_max <- c(eta_max, rnorm_max_coupling(lambda$mu, dap$mu, exp(lambda$logsigma), dap$sigma)[1])
     }
-    c(mean(eta_max), log(sd(eta_max)))
+    list(mu = mean(eta_max), logsigma = log(sd(eta_max)))
   }
 
   heuristic_update <- function(dap, lambda){
@@ -56,9 +56,9 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     cubic_recursion1 <- function(x, y) {
       (x^3 - 3*x^2*y - y^3) / (-3*y^2)
     }
-    mu_new <- quad_recursion3(dap$mu, lambda[1])
-    log_sigma_new <- cubic_recursion1(log(dap$sigma), lambda[2])
-    c(mu_new, log_sigma_new)
+    mu_new <- quad_recursion3(dap$mu, lambda$mu)
+    logsigma_new <- cubic_recursion1(log(dap$sigma), lambda$logsigma)
+    list(mu = mu_new, logsigma = logsigma_new)
   }
 
   gradient_update <- function(dap, lambda){
@@ -74,7 +74,8 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     }
     # gradient descent update
     gamma <- 0.5
-    lambda - gamma * grad_loss(lambda)
+    lambda <- lambda - gamma * grad_loss(lambda)
+    return(list(mu=lambda$mu, logsigma = lambda$logsigma))
   }
   ########
   # mixture update strategy
@@ -102,17 +103,17 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     #message(paste("optimization iters:", iters))
     return_mu <- posterior::rvar(array(rep(updated_phi, each = nsims), dim = c(nsims, nsims)))
 
-    return_sigma <- rvar(rep(bw.nrd0(draws_of(return_mu)), posterior::niterations(return_mu)))
-    return(list(mu=return_mu, sigma = return_sigma)) # currently all nsims receive same updated mus
+    return_logsigma <- log(rvar(rep(bw.nrd0(draws_of(return_mu)), posterior::niterations(return_mu))))
+    return(list(mu=return_mu, logsigma = return_logsigma)) # currently all nsims receive same updated mus
   }
 
   ###############
   lambda_loss <- function(dap, lambda) {
-    return((dap$mu - lambda[1])^2 + (log(dap$sigma) - lambda[2])^2)
+    return((dap$mu - lambda$mu)^2 + (log(dap$sigma) - lambda$logsigma)^2)
   }
 
   eta_loss <- function(dap_eta, lambda) {
-    eta <- rnorm(length(dap_eta), lambda[1], lambda[2])
+    eta <- rnorm(length(dap_eta), lambda$mu, lambda$logsigma)
     return(cjs_dist(eta, dap_eta))
   }
   # end function declarations
@@ -124,10 +125,10 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     stop <- FALSE
     dap_result <- calculate_dap(mu_current, sigma_current)
     if(is.element("rvar", class(init_mu))){
-      lambda_current <- list(mu=mu_current, sigma=sigma_current)
+      lambda_current <- list(mu=mu_current, logsigma=log(sigma_current))
       mixture_means_next_draws_rvars <- quantile_update(dap_result, lambda_current)
       mu_new <- mixture_means_next_draws_rvars$mu
-      sigma_new <- mixture_means_next_draws_rvars$sigma
+      logsigma_new <- mixture_means_next_draws_rvars$logsigma
       cjs_record <- cjs_dist(mu_current, mu_new)
       if(iter_num ==1){
         cjs_prev <- cjs_record
@@ -147,10 +148,9 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
           lambda_new <- heuristic_update(dap_result, lambda_current)
         }
       }
-      print(lambda_new)
       mu_new <- lambda_new$mu
-      sigma_new <- exp(lambda_new$sigma)
-      if (abs(mu_current - mu_new) < tol & abs(mu_current - sigma_new) < tol){
+      sigma_new <- exp(lambda_new$logsigma)
+      if (abs(mu_current - mu_new) < tol & abs(log(sigma_current) - log(sigma_new)) < tol){
         stop <- TRUE
       }
       message(sprintf("Iteration %d - lambda loss: %f eta loss: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
@@ -165,6 +165,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   }
   return(list(mu=mu_current, sigma=sigma_current))
 }
+
 
 
 ##' Auto calibrate the initial prior samples using SBC iteration for gaussian approximation

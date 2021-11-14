@@ -24,6 +24,8 @@ options(SBC.min_chunk_size = 5)
 set.seed(1984)
 ```
 
+We introduce a quantile-based hyperparameter gradient update which fastens this converge. The convergence is shown in 1-Wasserstein distance. Quantile update algorithm is used with quanitle regression loss function. Our aim is that it reaches well-calibrated region with lower `SBC_iter`.
+
 ```{R}
 ## Generator settings
 # number of SBC simulations per iteration (generator)
@@ -92,7 +94,7 @@ tol <- 0.02
 gamma <- 0.5
 
 # step2: inferring posterior
-#rstan_binom_mod <- stan_model("models/binom-laplace.stan")
+rstan_binom_mod <- stan_model("models/binom-laplace.stan")
 cmdstan_binom_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
 
 backend_binom_opt <- SBC_backend_rstan_optimizing(rstan_binom_mod, draws = ndraws)
