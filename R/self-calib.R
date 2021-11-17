@@ -50,14 +50,45 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   }
 
   heuristic_update <- function(dap, lambda){
-    quad_recursion3 <- function(x, y) {
-      (y^2 + x^2) / (x + y)
+    logsigma_Txgx <- function(Tx, x) {
+      (x^2 + x^2) / (Tx + x)
     }
-    cubic_recursion1 <- function(x, y) {
-      (x^3 - 3*x^2*y - y^3) / (-3*y^2)
+    logsigma_xgTx <- function(Tx, x) {
+      (Tx^2 + x^2) / (2*Tx)
     }
-    mu_new <- quad_recursion3(dap$mu, lambda$mu)
-    logsigma_new <- cubic_recursion1(log(dap$sigma), lambda$logsigma)
+    mu_abs_Txgx <- function(Tx, x) {
+      (x^2 + x^2) / abs(Tx + x)
+    }
+    mu_abs_xgTx <- function(Tx, x) {
+      (Tx^2 + x^2) / abs(2*Tx)
+    }
+    if(dap$logsigma > lambda$logsigma){
+      print("T_logsigma > logsigma")
+      logsigma_new <- logsigma_Txgx(dap$logsigma, lambda$logsigma)
+    }
+    else{
+      print("T_logsigma <= logsigma")
+      logsigma_new <- logsigma_xgTx(dap$logsigma, lambda$logsigma)
+    }
+
+    if(abs(dap$mu) > abs(lambda$mu)){
+      print("T_mu > mu")
+      mu_new <- mu_abs_Txgx(dap$mu, lambda$mu) * sign(lambda$mu)
+    }
+    else{
+      print("T_mu <= mu")
+      mu_new <- mu_abs_xgTx(dap$mu, lambda$mu) * sign(lambda$mu)
+    }
+
+    draws_eta <- dap$draws_eta
+    hist(draws_eta, breaks=80, freq = FALSE)
+    xval <- seq(min(draws_eta), max(draws_eta), length.out = 100)
+    lines(xval, dnorm(xval, dap$mu, dap$sigma))
+    lines(xval, dnorm(xval, mu_new, exp(logsigma_new)), col="red")
+    print(sprintf("Tx: %f x: %f, new logsigma: %f", dap$logsigma, lambda$logsigma, logsigma_new))
+    print(sprintf("Tx: %f x: %f, new mu: %f", dap$mu, lambda$mu, mu_new))
+    #print(paste(mu_new, logsigma_new))
+
     list(mu = mu_new, logsigma = logsigma_new)
   }
 
@@ -124,6 +155,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   for (iter_num in 1:niter) {
     stop <- FALSE
     dap_result <- calculate_dap(mu_current, sigma_current)
+    dap_result$logsigma = log(dap_result$sigma)
     if(is.element("rvar", class(init_mu))){
       lambda_current <- list(mu=mu_current, logsigma=log(sigma_current))
       mixture_means_next_draws_rvars <- quantile_update(dap_result, lambda_current)
