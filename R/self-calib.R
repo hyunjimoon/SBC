@@ -49,7 +49,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     list(mu = mean(eta_max), logsigma = log(sd(eta_max)))
   }
 
-  heuristic_update_cubic <- function(dap, lambda, max_diff){
+  heuristic_update_cubic <- function(dap, lambda, max_diff_mu, max_diff_sigma){
     logsigma_Txgx <- function(Tx, x) {
       (x^2 + x^2) / (Tx + x)
     }
@@ -65,12 +65,14 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
       logsigma_new <- logsigma_xgTx(dap$logsigma, lambda$logsigma)
     }
 
-    mu_cubic <- function(Tx, x, b_t){
+    cubic <- function(Tx, x, b_t){
       Tx + 1/(Tx - b_t) ^2 * (x - Tx)^3
+      #1/2 * (x - Tx) + Tx
     }
 
-    mu_new <- mu_cubic(dap$mu, lambda$mu, dap$mu + max_diff)
-    print(sprintf("T_x:%f x:%f mu_new:%f b_t:%f", dap$mu, lambda$mu, mu_new, dap$mu + max_diff))
+    mu_new <- cubic(dap$mu, lambda$mu, dap$mu + max_diff_mu)
+    logsigma_new <- cubic(dap$logsigma, lambda$logsigma, dap$logsigma + max_diff_sigma)
+    print(sprintf("T_x:%f x:%f mu_new:%f b_t:%f", dap$mu, lambda$mu, mu_new, dap$mu + max_diff_mu))
 
     list(mu = mu_new, logsigma = logsigma_new)
   }
@@ -183,7 +185,8 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   sigma_current <- init_sigma
   cjs_prev <- Inf
   t_df <- list(iter=c(), T_logsigma=c(), logsigma=c(), new_logsigma=c(), T_mu=c(), mu=c(), new_mu=c(), lambda_loss=c(), eta_loss=c())
-  heuristic_max_diff <- -Inf
+  heuristic_max_diff_mu <- -Inf
+  heuristic_max_diff_logsigma <- -Inf
   for (iter_num in 1:niter) {
     stop <- FALSE
     t_df$iter <- c(t_df$iter, iter_num)
@@ -216,7 +219,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
       mx <- ggplot(plot_df)
       mx <- mx  + geom_density(aes(x=dap), color="red") + geom_density(aes(x=prior))
       print(mx)
-      if(iter_num < 4){
+      if(iter_num < 0){
         lambda_new <- max_coupling_update(dap_result, lambda_current)
       }else{
         if(updator == "gradient"){
@@ -225,8 +228,9 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
           lambda_new <- heuristic_update(dap_result, lambda_current)
         }
         else if(updator == "heuristic_cubic"){
-          heuristic_max_diff <- max(heuristic_max_diff, abs(dap_result$mu - lambda_current$mu) * 1.1)
-          lambda_new <- heuristic_update_cubic(dap_result, lambda_current, heuristic_max_diff)
+          heuristic_max_diff_mu <- max(heuristic_max_diff_mu, abs(dap_result$mu - lambda_current$mu) * 1.1)
+          heuristic_max_diff_logsigma <- max(heuristic_max_diff_logsigma, abs(dap_result$logsigma - lambda_current$logsigma) * 1.1)
+          lambda_new <- heuristic_update_cubic(dap_result, lambda_current, heuristic_max_diff_mu, heuristic_max_diff_logsigma)
         }
       }
 
