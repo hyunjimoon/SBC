@@ -235,14 +235,14 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
 
       mu_new <- lambda_new$mu
       sigma_new <- exp(lambda_new$logsigma)
-      if (abs(mu_current - mu_new) < tol & abs(log(sigma_current) - log(sigma_new)) < tol){
+      if (abs(mu_current - dap_result$mu) < tol & abs(log(sigma_current) - log(dap_result$sigma)) < tol){
         stop <- TRUE
       }
 
-      t_df$lambda_loss <- c(t_df$lambda_loss, lambda_loss(dap_result, lambda_new))
-      t_df$eta_loss <- c(t_df$eta_loss, eta_loss(dap_result$draws_eta, lambda_new))
+      t_df$lambda_loss <- c(t_df$lambda_loss, lambda_loss(dap_result, lambda_current))
+      t_df$eta_loss <- c(t_df$eta_loss, eta_loss(dap_result$draws_eta, lambda_current))
       #message(sprintf("Iteration %d - dap_mu: %f ", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
-      message(sprintf("Iteration %d - lambda loss: %f eta loss: %f", iter_num, lambda_loss(dap_result, lambda_new), eta_loss(dap_result$draws_eta, lambda_new)))
+      message(sprintf("Iteration %d - lambda loss: %f eta loss: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
     }
 
     if(stop){
