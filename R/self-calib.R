@@ -65,7 +65,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
       logsigma_new <- logsigma_xgTx(dap$logsigma, lambda$logsigma)
     }
 
-    mu_new <- mu_cubic(dap$mu, lambda$mu, max_diff)
+    mu_new <- mu_cubic(dap$mu, lambda$mu, dap$mu + max_diff)
     print(sprintf("T_x:%f x:%f mu_new:%f b_t:%f", dap$mu, lambda$mu, mu_new, dap$mu + max_diff))
     draws_eta <- dap$draws_eta
     hist(draws_eta, breaks=80, freq = FALSE)
