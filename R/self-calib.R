@@ -49,6 +49,33 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     list(mu = mean(eta_max), logsigma = log(sd(eta_max)))
   }
 
+  heuristic_update_cubic <- function(dap, lambda, max_diff){
+    logsigma_Txgx <- function(Tx, x) {
+      (x^2 + x^2) / (Tx + x)
+    }
+    logsigma_xgTx <- function(Tx, x) {
+      (Tx^2 + x^2) / (2*Tx)
+    }
+    if(dap$logsigma > lambda$logsigma){
+      print("T_logsigma > logsigma")
+      logsigma_new <- logsigma_Txgx(dap$logsigma, lambda$logsigma)
+    }
+    else{
+      print("T_logsigma <= logsigma")
+      logsigma_new <- logsigma_xgTx(dap$logsigma, lambda$logsigma)
+    }
+
+    mu_new <- mu_cubic(dap$mu, lambda$mu, max_diff)
+    print(sprintf("T_x:%f x:%f mu_new:%f b_t:%f", dap$mu, lambda$mu, mu_new, dap$mu + max_diff))
+    draws_eta <- dap$draws_eta
+    hist(draws_eta, breaks=80, freq = FALSE)
+    xval <- seq(min(draws_eta), max(draws_eta), length.out = 100)
+    lines(xval, dnorm(xval, dap$mu, dap$sigma))
+    lines(xval, dnorm(xval, mu_new, exp(logsigma_new)), col="red")
+
+    list(mu = mu_new, logsigma = logsigma_new)
+  }
+
   heuristic_update <- function(dap, lambda){
     logsigma_Txgx <- function(Tx, x) {
       (x^2 + x^2) / (Tx + x)
@@ -57,10 +84,14 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
       (Tx^2 + x^2) / (2*Tx)
     }
     mu_abs_Txgx <- function(Tx, x) {
-      (x^2 + x^2) / abs(Tx + x)
+      alpha = 1 / sqrt(2) * abs(Tx - x)
+      (2 * (abs(x) + abs(alpha)) ^ 2) / (abs(Tx) * abs(x) + 2 * abs(alpha))
+      #(x^2 + x^2) / abs(Tx + x)
     }
     mu_abs_xgTx <- function(Tx, x) {
-      (Tx^2 + x^2) / abs(2*Tx)
+      #(Tx^2 + x^2) / abs(2*Tx)
+      alpha = 1 / sqrt(2) * abs(Tx - x)
+      (2 * (abs(x) + abs(alpha)) ^ 2) / (abs(Tx) * abs(x) + 2 * abs(alpha))
     }
     if(dap$logsigma > lambda$logsigma){
       print("T_logsigma > logsigma")
@@ -152,10 +183,20 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   mu_current <- init_mu
   sigma_current <- init_sigma
   cjs_prev <- Inf
+  t_df <- list(iter=c(), T_logsigma=c(), logsigma=c(), new_logsigma=c(), T_mu=c(), mu=c(), new_mu=c(), lambda_loss=c(), eta_loss=c())
+  heuristic_max_diff <- -Inf
   for (iter_num in 1:niter) {
     stop <- FALSE
+    t_df$iter <- c(t_df$iter, iter_num)
+
     dap_result <- calculate_dap(mu_current, sigma_current)
     dap_result$logsigma = log(dap_result$sigma)
+
+    t_df$mu <- c(t_df$mu, mu_current)
+    t_df$logsigma <- c(t_df$logsigma, sigma_current)
+    t_df$T_mu <- c(t_df$T_mu, dap_result$mu)
+    t_df$T_logsigma <- c(t_df$T_logsigma, dap_result$logsigma)
+
     if(is.element("rvar", class(init_mu))){
       lambda_current <- list(mu=mu_current, logsigma=log(sigma_current))
       mixture_means_next_draws_rvars <- quantile_update(dap_result, lambda_current)
@@ -179,12 +220,23 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
         }else if(updator == "heuristic"){
           lambda_new <- heuristic_update(dap_result, lambda_current)
         }
+        else if(updator == "heuristic_cubic"){
+          heuristic_max_diff <- max(heuristic_max_diff, abs(dap_result$mu - lambda_current$mu) * 1.1)
+          lambda_new <- heuristic_update_cubic(dap_result, lambda_current, heuristic_max_diff)
+        }
       }
+
+      t_df$new_mu <- c(t_df$new_mu, lambda_new$mu)
+      t_df$new_logsigma <- c(t_df$new_logsigma, lambda_new$logsigma)
+
       mu_new <- lambda_new$mu
       sigma_new <- exp(lambda_new$logsigma)
       if (abs(mu_current - mu_new) < tol & abs(log(sigma_current) - log(sigma_new)) < tol){
         stop <- TRUE
       }
+
+      t_df$lambda_loss <- c(t_df$lambda_loss, lambda_loss(dap_result, lambda_current))
+      t_df$eta_loss <- c(t_df$eta_loss, eta_loss(dap_result$draws_eta, lambda_current))
       message(sprintf("Iteration %d - lambda loss: %f eta loss: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
     }
 
@@ -195,7 +247,9 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     mu_current <- mu_new
     sigma_current <- sigma_new
   }
-  return(list(mu=mu_current, sigma=sigma_current))
+  t_df <- as.data.frame(t_df)
+  print(t_df)
+  return(list(mu=mu_current, sigma=sigma_current, t_df=t_df))
 }
 
 
