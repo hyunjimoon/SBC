@@ -71,11 +71,6 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
 
     mu_new <- mu_cubic(dap$mu, lambda$mu, dap$mu + max_diff)
     print(sprintf("T_x:%f x:%f mu_new:%f b_t:%f", dap$mu, lambda$mu, mu_new, dap$mu + max_diff))
-    draws_eta <- dap$draws_eta
-    hist(draws_eta, breaks=80, freq = FALSE)
-    xval <- seq(min(draws_eta), max(draws_eta), length.out = 100)
-    lines(xval, dnorm(xval, dap$mu, dap$sigma))
-    lines(xval, dnorm(xval, mu_new, exp(logsigma_new)), col="red")
 
     list(mu = mu_new, logsigma = logsigma_new)
   }
@@ -216,6 +211,11 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
       }
     }else{
       lambda_current <- list(mu=mu_current, logsigma=log(sigma_current))
+
+      plot_df <- data.frame(dap=dap_result$draws_eta, prior=rnorm(length(dap_result$draws_eta), mu_current, sigma_current))
+      mx <- ggplot(plot_df)
+      mx <- mx  + geom_density(aes(x=dap), color="red") + geom_density(aes(x=prior))
+      print(mx)
       if(iter_num < 4){
         lambda_new <- max_coupling_update(dap_result, lambda_current)
       }else{

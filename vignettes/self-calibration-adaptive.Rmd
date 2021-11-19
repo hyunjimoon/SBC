@@ -32,7 +32,7 @@ We introduce a quantile-based hyperparameter gradient update which fastens this 
 nsims <- 80
 
 # number of observations
-nobs <- 2
+nobs <- 10#2
 
 # link function (1 = logit, 2 = probit, 3 = cloglog)
 link <- 1
@@ -72,8 +72,8 @@ generator_binom <- function(lambda_mu, lambda_sigma, fixed_args){
 fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws)
 
 # initial prior hyperparameters
-lambda_mu <- 1
-lambda_sigma <- 10
+lambda_mu <- 11.7617#1
+lambda_sigma <- exp(2.536367)#10
 
 datasets_binom <- generate_datasets(SBC_generator_function(generator_binom, lambda_mu, lambda_sigma, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
 ```
@@ -82,13 +82,13 @@ datasets_binom <- generate_datasets(SBC_generator_function(generator_binom, lamb
 ## Self-calib settings
 
 # hyperparameter update algorithm 
-updator = "gradient"
+updator = "heuristic_cubic"
 
 # maximal number of SBC iterations
 niter <- 100
 
 # tolerance
-tol <- 0.02
+tol <- 0.1
 
 # learning rate
 gamma <- 0.5
@@ -113,7 +113,45 @@ calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
 sc_opt <- self_calib_adaptive(calib_generator, backend_binom_opt, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = fixed_args_binom)
 #sc_hmc <- self_calib_adaptive(calib_generator, backend_binom_hmc, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = fixed_args_binom)
 
-plot_rank_hist(sc_opt)
+#plot_rank_hist(sc_opt)
+```
+
+
+```{R}
+generator_gamma <- function(lambda_mu, lambda_sigma, fixed_args){
+  # fixed value across simulated datasets
+  ## meta
+  nobs <- fixed_args$nobs
+  K <- fixed_args$K
+  shape <- fixed_args$shape
+  # predictor
+  X <- array(rnorm(nobs * K, mean = 1, sd = 1), dim = c(nobs, K))
+  b <- rnorm(K, mean = 0, sd = 1)
+  # generate
+  eta <- rnorm(1, mean = lambda_mu, sd=lambda_sigma)
+  logmu <- as.numeric(eta+ X %*% b)
+  mu <- exp(logmu)
+  Y <- rgamma(nobs, shape = shape, scale = mu/shape) 
+  list(
+    parameters = list(eta = eta),
+    generated = list(nobs= nobs, K = K, X = X, shape = shape,
+                          lambda_mu = lambda_mu, lambda_log_sigma = log(lambda_sigma), 
+                          Y = Y)
+  )
+}
+# prior hyperparameters
+lambda_mu <- 2
+lambda_sigma <- 5
+fixed_args_gamma <- list(nobs = nobs, K = 15, shape = 1, nsims = nsims)
+datasets_gamma <- generate_datasets(SBC_generator_function(generator_gamma, lambda_mu, lambda_sigma, fixed_args_gamma), n_datasets = nsims)
+calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
+  generate_datasets(SBC_generator_function(generator_gamma, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
+}
+rstan_mod_gr <- stan_model("models/gamma-reg.stan")
+backend_gr_opt <- SBC_backend_rstan_optimizing(rstan_mod_gr, draws = ndraws)
+sc_opt <- self_calib_adaptive(calib_generator, backend_gr_opt, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = fixed_args_gamma)
+# step2: posterior sampling
+
 ```
 
 ```{R}
@@ -145,14 +183,14 @@ generator_binom_gmm <- function(lambda_mu, lambda_sigma, fixed_args){
 }
 # step1: prior predictvie sampling
 fixed_args_binom <- list(nobs = nobs, nsims = nsims, nsize = nsize, link_type = 1, ndraws=100)
-lambda_mu_gmm <- rvar(array(rep(rnorm(nsims, 2, 5), each = nsims), dim = c(nsims, nsims)))
+lambda_mu_gmm <- rvar(array(rep(10, 10,  each = nsims), dim = c(nsims, nsims)))
 lambda_sigma_gmm <- rvar(array(rep(10, nsims), dim=c(nsims, 1)))
 datasets <- generator_binom_gmm(lambda_mu_gmm, lambda_sigma_gmm, fixed_args_binom)
-cmdstan_binom_mod <- cmdstanr::cmdstan_model("models/binom-laplace_gmm.stan")
-rstan_binom_mod <- stan_model("models/binom-laplace_gmm.stan")
+#cmdstan_binom_mod <- cmdstanr::cmdstan_model("models/binom-laplace_gmm.stan")
+#rstan_binom_mod <- stan_model("models/binom-laplace_gmm.stan")
 backend_binom_hmc_gmm <- SBC_backend_cmdstan_sample(cmdstan_binom_mod, chains = 4, iter_sampling = ndraws / 4) 
 backend_binom_opt <- SBC_backend_rstan_optimizing(rstan_binom_mod, draws = ndraws)
 sc_opt <- self_calib_adaptive(generator_binom_gmm, backend_binom_opt, updator, "eta", lambda_mu_gmm, lambda_sigma_gmm, nsims, tol, fixed_args = fixed_args_binom)
 
-sc_hmc <- self_calib_adaptive(generator_binom_gmm, backend_binom_opt, updator, "eta", lambda_mu_gmm, lambda_sigma_gmm, nsims, tol, fixed_args = fixed_args_binom)
+#sc_hmc <- self_calib_adaptive(generator_binom_gmm, backend_binom_opt, updator, "eta", lambda_mu_gmm, lambda_sigma_gmm, nsims, tol, fixed_args = fixed_args_binom)
 ```
