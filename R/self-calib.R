@@ -9,11 +9,11 @@
 ##' @param init_mu initial lambda_mu value to use
 ##' @param init_sigma initial lambda_sigma value to use
 ##' @param nsims number of datasets i.e. prior draws
-##' @param nchains number of chains
+##' @param gamma convergence speed e.g. step size
 ##' @param tol tolerence for determining termination
 ##' @param fixed_args *named list* containing additional arguments to pass to generator, *after mu and sigma*
 ##' @export
-self_calib_adaptive <- function(generator, backend, updator, target_param, init_mu, init_sigma, nsims, tol, fixed_args){
+self_calib_adaptive <- function(generator, backend, updator, target_param, init_mu, init_sigma, nsims, gamma, tol, fixed_args){
 
   calculate_dap <- function(mu, sigma){
     nsims <- fixed_args$nsims
@@ -39,15 +39,6 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
 
   ###############
   # define update strategies
-  max_coupling_update <- function(dap, lambda){
-    eta <- rnorm(nsims, lambda$mu, exp(lambda$logsigma))
-    eta_max <- c()
-
-    for (i in 1:100){
-      eta_max <- c(eta_max, rnorm_max_coupling(lambda$mu, dap$mu, exp(lambda$logsigma), dap$sigma)[1])
-    }
-    list(mu = mean(eta_max), logsigma = log(sd(eta_max)))
-  }
 
   heuristic_update_cubic <- function(dap, lambda, max_diff_mu, max_diff_sigma){
     logsigma_Txgx <- function(Tx, x) {
@@ -73,6 +64,20 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     mu_new <- cubic(dap$mu, lambda$mu, dap$mu + max_diff_mu)
     logsigma_new <- cubic(dap$logsigma, lambda$logsigma, dap$logsigma + max_diff_sigma)
     print(sprintf("T_x:%f x:%f mu_new:%f b_t:%f", dap$mu, lambda$mu, mu_new, dap$mu + max_diff_mu))
+
+    list(mu = mu_new, logsigma = logsigma_new)
+  }
+
+  normal_str_update <- function(dap, lambda, gamma){
+    normal_str <- function(Tx, x, gamma){
+      b_t <- (gamma +1) * Tx + gamma * x
+      Tx + (1/(b_t - Tx) ^2) * (x - Tx)^3
+    }
+    mu_new <- normal_str(dap$mu, lambda$mu, gamma)
+    sigmasq_new <- normal_str(exp(dap$logsigma)^2, exp(lambda$logsigma)^2, gamma)
+    logsigma_new <- log(sqrt(sigmasq_new))
+    print(sprintf("T_x:%f x:%f mu_new:%f", dap$mu, lambda$mu, mu_new))
+    print(sprintf("T_x:%f x:%f sigma_new:%f", exp(dap$logsigma)^2, exp(lambda$logsigma)^2, sigmasq_new))
 
     list(mu = mu_new, logsigma = logsigma_new)
   }
@@ -136,7 +141,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
       numDeriv::grad(loss, lambda, method.args=list(eps=0.3, d = 0.3))
     }
     # gradient descent update
-    gamma <- 0.5
+    # gamma <- 0.5
     lambda <- lambda - gamma * grad_loss(lambda)
     return(list(mu=lambda$mu, logsigma = lambda$logsigma))
   }
@@ -172,7 +177,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
 
   ###############
   lambda_loss <- function(dap, lambda) {
-    return((dap$mu - lambda$mu)^2 + (log(dap$sigma) - lambda$logsigma)^2)
+    return((dap$mu - lambda$mu)^2 + ((dap$sigma)^2 - exp(lambda$logsigma)^2)^2)
   }
 
   eta_loss <- function(dap_eta, lambda) {
@@ -219,19 +224,18 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
       mx <- ggplot(plot_df)
       mx <- mx  + geom_density(aes(x=dap), color="red") + geom_density(aes(x=prior))
       print(mx)
-      if(iter_num < 0){
-        lambda_new <- max_coupling_update(dap_result, lambda_current)
-      }else{
-        if(updator == "gradient"){
-          lambda_new <- gradient_update(dap_result, lambda_current)
-        }else if(updator == "heuristic"){
-          lambda_new <- heuristic_update(dap_result, lambda_current)
-        }
-        else if(updator == "heuristic_cubic"){
-          heuristic_max_diff_mu <- max(heuristic_max_diff_mu, abs(dap_result$mu - lambda_current$mu) * 1.1)
-          heuristic_max_diff_logsigma <- max(heuristic_max_diff_logsigma, abs(dap_result$logsigma - lambda_current$logsigma) * 1.1)
-          lambda_new <- heuristic_update_cubic(dap_result, lambda_current, heuristic_max_diff_mu, heuristic_max_diff_logsigma)
-        }
+
+      if(updator == "gradient"){
+        lambda_new <- gradient_update(dap_result, lambda_current)
+      }else if(updator == "heuristic"){
+        lambda_new <- heuristic_update(dap_result, lambda_current)
+      }
+      else if(updator == "heuristic_cubic"){
+        heuristic_max_diff_mu <- max(heuristic_max_diff_mu, abs(dap_result$mu - lambda_current$mu) * 1.1)
+        heuristic_max_diff_logsigma <- max(heuristic_max_diff_logsigma, abs(dap_result$logsigma - lambda_current$logsigma) * 1.1)
+        lambda_new <- heuristic_update_cubic(dap_result, lambda_current, heuristic_max_diff_mu, heuristic_max_diff_logsigma)
+      }else if(updator == "normal_str_update"){
+        lambda_new <- normal_str_update(dap_result, lambda_current, gamma)
       }
 
       t_df$new_mu <- c(t_df$new_mu, lambda_new$mu)
