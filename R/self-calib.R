@@ -184,6 +184,13 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     eta <- rnorm(length(dap_eta), lambda$mu, exp(lambda$logsigma))
     return(cjs_dist(eta, dap_eta))
   }
+
+  normal_kl_divergence <- function(dap, lambda){
+    v_1 <- sqrt(dap$sigma)
+    v_2 <- sqrt(lambda$sigma)
+    (dap$mu - lambda$mu)^ 2/(2 * v_2) + 0.5 * ((v_1 / v_2) - log(v_1 / v_2) - 1)
+  }
+
   # end function declarations
 
   mu_current <- init_mu
@@ -218,12 +225,13 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
         stop <- TRUE
       }
     }else{
-      lambda_current <- list(mu=mu_current, logsigma=log(sigma_current))
+      lambda_current <- list(mu=mu_current, logsigma=log(sigma_current), sigma=sigma_current)
 
       plot_df <- data.frame(dap=dap_result$draws_eta, prior=rnorm(length(dap_result$draws_eta), mu_current, sigma_current))
       mx <- ggplot(plot_df)
-      mx <- mx  + geom_density(aes(x=dap), color="red") + geom_density(aes(x=prior))
+      mx <- mx  + geom_density(aes(x=dap), color="red") + geom_density(aes(x=prior)) + ggtitle("red = dap")
       print(mx)
+      ggsave(sprintf("iter_%d.png", iter_num))
 
       if(updator == "gradient"){
         lambda_new <- gradient_update(dap_result, lambda_current)
@@ -250,7 +258,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
       t_df$lambda_loss <- c(t_df$lambda_loss, lambda_loss(dap_result, lambda_current))
       t_df$eta_loss <- c(t_df$eta_loss, eta_loss(dap_result$draws_eta, lambda_current))
       #message(sprintf("Iteration %d - dap_mu: %f ", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
-      message(sprintf("Iteration %d - lambda loss: %f eta loss: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
+      message(sprintf("Iteration %d - lambda loss: %f eta loss: %f normal_kl_divergence: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current), normal_kl_divergence(dap_result, lambda_current)))
     }
 
     if(stop){
