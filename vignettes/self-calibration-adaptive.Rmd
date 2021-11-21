@@ -72,8 +72,8 @@ generator_binom <- function(lambda_mu, lambda_sigma, fixed_args){
 fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws)
 
 # initial prior hyperparameters
-lambda_mu <- 1 #11000.7617#1
-lambda_sigma <- 0.1 #1000 #exp(2.536367)#10
+lambda_mu <- 100 #11000.7617#1
+lambda_sigma <- 100 #1000 #exp(2.536367)#10
 
 datasets_binom <- generate_datasets(SBC_generator_function(generator_binom, lambda_mu, lambda_sigma, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
 ```
@@ -91,7 +91,7 @@ niter <- 100
 tol <- 0.1
 
 # learning rate
-gamma <- 10 # 0.5 for gradient update, 10 for normal_str_update
+gamma <- 1.5 # 0.5 for gradient update, 10 for normal_str_update
 
 # step2: inferring posterior
 rstan_binom_mod <- stan_model("models/binom-laplace.stan")
@@ -111,9 +111,11 @@ calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
   generate_datasets(SBC_generator_function(generator_binom, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
 }
 sc_opt <- self_calib_adaptive(calib_generator, backend_binom_opt, updator, "eta", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_binom)
-#sc_hmc <- self_calib_adaptive(calib_generator, backend_binom_hmc, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = fixed_args_binom)
 
-#plot_rank_hist(sc_opt)
+datasets_new <- generate_datasets(SBC_generator_function(generator_binom, sc_opt$mu, sc_opt$sigma, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+result_binom_opt_new <- compute_results(datasets_new, backend_binom_opt, thin_ranks = 1)
+    
+plot_rank_hist(result_binom_opt_new)
 ```
 
 
@@ -140,19 +142,24 @@ generator_gamma <- function(lambda_mu, lambda_sigma, fixed_args){
   )
 }
 # prior hyperparameters
-lambda_mu <- 20
-lambda_sigma <- 50
+lambda_mu <- 10
+lambda_sigma <- 10
 fixed_args_gamma <- list(nobs = nobs, K = 15, shape = 1, nsims = nsims)
 datasets_gamma <- generate_datasets(SBC_generator_function(generator_gamma, lambda_mu, lambda_sigma, fixed_args_gamma), n_datasets = nsims)
 calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
   generate_datasets(SBC_generator_function(generator_gamma, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
 }
 rstan_mod_gr <- stan_model("models/gamma-reg.stan")
-backend_gr_opt <- SBC_backend_rstan_optimizing(rstan_mod_gr, draws = ndraws)
-sc_opt <- self_calib_adaptive(calib_generator, backend_gr_opt, updator, "eta", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_gamma)
+cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
+# backend_gr_opt <- SBC_backend_rstan_optimizing(rstan_mod_gr, draws = ndraws)
+# result in Error in chol.default(-H) : the leading minor of order 13 is not positive definite
+
+backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+sc_opt <- self_calib_adaptive(calib_generator, backend_gr_hmc, updator, "eta", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_gamma)
 # step2: posterior sampling
 
 ```
+
 
 ```{R}
 generator_binom_gmm <- function(lambda_mu, lambda_sigma, fixed_args){

@@ -76,8 +76,8 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     mu_new <- normal_str(dap$mu, lambda$mu, gamma)
     sigmasq_new <- normal_str(exp(dap$logsigma)^2, exp(lambda$logsigma)^2, gamma)
     logsigma_new <- log(sqrt(sigmasq_new))
-    print(sprintf("T_x:%f x:%f mu_new:%f", dap$mu, lambda$mu, mu_new))
-    print(sprintf("T_x:%f x:%f sigma_new:%f", exp(dap$logsigma)^2, exp(lambda$logsigma)^2, sigmasq_new))
+    print(sprintf("x:%f T_x:%f mu_new:%f", lambda$mu, dap$mu, mu_new))
+    print(sprintf("x:%f T_x:%f sigmasq_new:%f", exp(lambda$logsigma)^2, exp(dap$logsigma)^2, sigmasq_new))
 
     list(mu = mu_new, logsigma = logsigma_new)
   }
@@ -196,7 +196,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   mu_current <- init_mu
   sigma_current <- init_sigma
   cjs_prev <- Inf
-  t_df <- list(iter=c(), T_logsigma=c(), logsigma=c(), new_logsigma=c(), T_mu=c(), mu=c(), new_mu=c(), lambda_loss=c(), eta_loss=c())
+  t_df <- list(iter=c(), mu=c(), T_mu=c(), B_mu=c(), sigmasq=c(), T_sigmasq=c(), B_sigmasq=c(),  lambda_loss=c())
   heuristic_max_diff_mu <- -Inf
   heuristic_max_diff_logsigma <- -Inf
   for (iter_num in 1:niter) {
@@ -207,9 +207,9 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     dap_result$logsigma = log(dap_result$sigma)
 
     t_df$mu <- c(t_df$mu, mu_current)
-    t_df$logsigma <- c(t_df$logsigma, log(sigma_current))
     t_df$T_mu <- c(t_df$T_mu, dap_result$mu)
-    t_df$T_logsigma <- c(t_df$T_logsigma, dap_result$logsigma)
+    t_df$sigmasq <- c(t_df$sigmasq, sigma_current^2)
+    t_df$T_sigmasq <- c(t_df$T_sigmasq, exp(dap_result$logsigma)^2)
 
     if(is.element("rvar", class(init_mu))){
       lambda_current <- list(mu=mu_current, logsigma=log(sigma_current))
@@ -246,8 +246,8 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
         lambda_new <- normal_str_update(dap_result, lambda_current, gamma)
       }
 
-      t_df$new_mu <- c(t_df$new_mu, lambda_new$mu)
-      t_df$new_logsigma <- c(t_df$new_logsigma, lambda_new$logsigma)
+      t_df$B_mu <- c(t_df$B_mu, lambda_new$mu)
+      t_df$B_sigmasq <- c(t_df$B_sigmasq, exp(lambda_new$logsigma)^2)
 
       mu_new <- lambda_new$mu
       sigma_new <- exp(lambda_new$logsigma)
