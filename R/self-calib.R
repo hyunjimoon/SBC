@@ -186,8 +186,8 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   }
 
   normal_kl_divergence <- function(dap, lambda){
-    v_1 <- sqrt(dap$sigma)
-    v_2 <- sqrt(lambda$sigma)
+    v_1 <- dap$sigma^2
+    v_2 <- lambda$sigma^2
     (dap$mu - lambda$mu)^ 2/(2 * v_2) + 0.5 * ((v_1 / v_2) - log(v_1 / v_2) - 1)
   }
 
