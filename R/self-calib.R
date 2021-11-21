@@ -181,7 +181,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   }
 
   eta_loss <- function(dap_eta, lambda) {
-    eta <- rnorm(length(dap_eta), lambda$mu, lambda$logsigma)
+    eta <- rnorm(length(dap_eta), lambda$mu, exp(lambda$logsigma))
     return(cjs_dist(eta, dap_eta))
   }
   # end function declarations
