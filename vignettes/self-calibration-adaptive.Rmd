@@ -24,7 +24,7 @@ options(SBC.min_chunk_size = 5)
 set.seed(1984)
 ```
 
-We introduce a quantile-based hyperparameter gradient update which fastens this converge. The convergence is shown in 1-Wasserstein distance. Quantile update algorithm is used with quanitle regression loss function. Our aim is that it reaches well-calibrated region with lower `SBC_iter`.
+We introduce a self-calibration algorithm. First, dap operator $\hat{g}(f(\Phi X, U), \Phi X)$ is inspected to verify its sublinearity and monotonicity. Then, based on this hyperparmeter self-calibration algorithm is suggested. Final improvement of calibration is compared with SBC rank plot.
 
 ```{R}
 ## Generator settings
@@ -48,8 +48,30 @@ ndraws <- 100
 nchains <- 2
 ```
 
-```{r, warning=FALSE, error=FALSE}
-# step1: inferring posterior
+```{R}
+## Generator settings
+# number of SBC simulations per iteration (generator)
+nsims <- 80
+
+# number of observations
+nobs <- 10#2
+
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# number of binomial trials per observation
+nsize <- 10
+
+## Backend settings
+# number of draws per posterior approximation 
+ndraws <- 100
+
+# number of chains for hmc posterior approximation
+nchains <- 2
+```
+
+# Inspecting DAP of binom-laplace 
+```{R}
 generator_binom <- function(lambda_mu, lambda_sigma, fixed_args){
   # fixed value across simulated datasets
   # experiment settings
@@ -57,7 +79,7 @@ generator_binom <- function(lambda_mu, lambda_sigma, fixed_args){
   nsize <- fixed_args$nsize
   # modular settings
   link_type <- fixed_args$link_type
-
+  
   # generate
   eta <- rnorm(1, mean = lambda_mu, sd=lambda_sigma)
   mu <- invtf_param_vec(eta, link_type = link_type)
@@ -69,17 +91,105 @@ generator_binom <- function(lambda_mu, lambda_sigma, fixed_args){
                      Y = Y)
   )
 }
+
 fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws)
 
+# step2: inferring posterior
+rstan_binom_mod <- stan_model("models/binom-laplace.stan")
+backend_binom_opt <- SBC_backend_rstan_optimizing(rstan_binom_mod, draws = ndraws)
+
+calculate_dap <- function(mu, sigma, generator, backened, fixed_args){
+  datasets <- generate_datasets(SBC_generator_function(generator, mu, sigma, fixed_args), n_datasets = fixed_args$nsims)
+  sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
+  draws_eta <- c()
+  for(fit in sbc_result$fits){
+    samples <- SBC_fit_to_draws_matrix(fit)
+    draws_eta <- c(draws_eta, posterior::extract_variable(samples, "eta"))
+  }
+  # assume normal for dap
+  mu <- mean(draws_eta)
+  sigma <- sd(draws_eta)
+  return(list(mu=mu, sigma=sigma, draws_eta=draws_eta))
+}
+
+prior_dap <- list(mu = c(), logsigma = c(), dap_mu = c(), dap_logsigma = c())
+for (mu in seq(-4, 4, by = 2)){
+  for(logsigma in seq(-4, 4, by = 2)){
+    prior_dap$mu <- c(prior_dap$mu, mu)
+    prior_dap$logsigma <- c(prior_dap$logsigma, logsigma)
+    dap <- calculate_dap(mu, exp(logsigma), generator_binom, backend_binom_opt, fixed_args_binom)
+    prior_dap$dap_mu <- c(prior_dap$dap_mu, dap$mu)
+    prior_dap$dap_logsigma <- c(prior_dap$dap_logsigma, log(dap$sigma))
+  }
+}
+prior_dap <- data.frame(prior_dap)
+
+prior_dap_b <- list(mu = c(), sigma = c(), dap_mu = c(), dap_sigma = c(), mu_loss = c(), sigma_loss = c())
+for (mu in seq(-5, 5, by = 1)){
+  for(sigma in seq(1, 9, by = 1)){
+    prior_dap_b$mu <- c(prior_dap_b$mu, mu)
+    prior_dap_b$sigma <- c(prior_dap_b$sigma, sigma)
+    dap <- calculate_dap(mu, sigma, generator_binom, backend_binom_opt, fixed_args_binom)
+    prior_dap_b$dap_mu <- c(prior_dap_b$dap_mu, dap$mu)
+    prior_dap_b$dap_sigma <- c(prior_dap_b$dap_sigma, dap$sigma)
+    prior_dap_b$mu_loss <- c(prior_dap_b$mu_loss, mu - dap$mu)
+    prior_dap_b$sigma_loss <- c(prior_dap_b$sigma_loss, sigma - dap$sigma)
+  }
+}
+prior_dap_b <- data.frame(prior_dap_b)
+ggplot(prior_dap_b) + geom_density_2d(aes(x=mu, y = sigma)) + geom_density_2d(aes(x=dap_mu, y = dap_sigma), color = "red")
+```
+
+# Inspecting DAP of gamma-regression-hmc
+````{R}
+generator_gr <- function(lambda_mu, lambda_sigma, fixed_args){
+  # fixed value across simulated datasets
+  ## meta
+  nobs <- fixed_args$nobs
+  K <- fixed_args$K
+  shape <- fixed_args$shape
+  # predictor
+  X <- array(rnorm(nobs * K, mean = 1, sd = 1), dim = c(nobs, K))
+  b <- rnorm(K, mean = 0, sd = 1)
+  # generate
+  eta <- rnorm(1, mean = lambda_mu, sd=lambda_sigma)
+  logmu <- as.numeric(eta+ X %*% b)
+  mu <- exp(logmu)
+  Y <- rgamma(nobs, shape = shape, scale = mu/shape) 
+  list(
+    parameters = list(eta = eta),
+    generated = list(nobs= nobs, K = K, X = X, shape = shape,
+                          lambda_mu = lambda_mu, lambda_log_sigma = log(lambda_sigma), 
+                          Y = Y)
+  )
+}
+
+fixed_args_gr <- list(nobs = nobs, K = 15, shape = 1, nsims = nsims)
+cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
+backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+prior_dap_gr <- list(mu = c(), sigma = c(), dap_mu = c(), dap_sigma = c(), mu_loss = c(), sigma_loss = c())
+for (mu in seq(-5, 5, by = 2)){
+  for(sigma in seq(1, 9, by = 3)){
+    prior_dap_gr$mu <- c(prior_dap_gr$mu, mu)
+    prior_dap_gr$sigma <- c(prior_dap_gr$sigma, sigma)
+    dap <- calculate_dap(mu, sigma, generator_gr, backend_gr_hmc, fixed_args_gr)
+    prior_dap_gr$dap_mu <- c(prior_dap_gr$dap_mu, dap$mu)
+    prior_dap_gr$dap_sigma <- c(prior_dap_gr$dap_sigma, dap$sigma)
+    prior_dap_gr$mu_loss <- c(prior_dap_gr$mu_loss, mu - dap$mu)
+    prior_dap_gr$sigma_loss <- c(prior_dap_gr$sigma_loss, sigma - dap$sigma)
+  }
+}
+prior_dap_gr <- data.frame(prior_dap_gr)
+ggplot(prior_dap_gr) + geom_density_2d(aes(x=mu, y = sigma)) + geom_density_2d(aes(x=dap_mu, y = dap_sigma), color = "red")
+```
+
+# Self-calibration of binom-laplace
+```{r, warning=FALSE, error=FALSE}
 # initial prior hyperparameters
 lambda_mu <- 100 #11000.7617#1
 lambda_sigma <- 100 #1000 #exp(2.536367)#10
 
 datasets_binom <- generate_datasets(SBC_generator_function(generator_binom, lambda_mu, lambda_sigma, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
-```
-
-```{R}
-## Self-calib settings
 
 # hyperparameter update algorithm 
 updator = "normal_str_update"
@@ -110,40 +220,17 @@ plot_rank_hist(result_binom_opt)
 calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
   generate_datasets(SBC_generator_function(generator_binom, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
 }
-sc_opt <- self_calib_adaptive(calib_generator, backend_binom_opt, updator, "eta", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_binom)
-
-datasets_new <- generate_datasets(SBC_generator_function(generator_binom, sc_opt$mu, sc_opt$sigma, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
-result_binom_opt_new <- compute_results(datasets_new, backend_binom_opt, thin_ranks = 1)
+sc_binom_opt <- self_calib_adaptive(calib_generator, backend_binom_opt, updator, "eta", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_binom)
+datasets_binom_new <- generate_datasets(SBC_generator_function(generator_binom, sc_binom_opt$mu, sc_binom_opt$sigma, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+result_binom_opt_new <- compute_results(datasets_binom_new, backend_binom_opt, thin_ranks = 1)
     
 plot_rank_hist(result_binom_opt_new)
 ```
 
-
 ```{R}
-generator_gamma <- function(lambda_mu, lambda_sigma, fixed_args){
-  # fixed value across simulated datasets
-  ## meta
-  nobs <- fixed_args$nobs
-  K <- fixed_args$K
-  shape <- fixed_args$shape
-  # predictor
-  X <- array(rnorm(nobs * K, mean = 1, sd = 1), dim = c(nobs, K))
-  b <- rnorm(K, mean = 0, sd = 1)
-  # generate
-  eta <- rnorm(1, mean = lambda_mu, sd=lambda_sigma)
-  logmu <- as.numeric(eta+ X %*% b)
-  mu <- exp(logmu)
-  Y <- rgamma(nobs, shape = shape, scale = mu/shape) 
-  list(
-    parameters = list(eta = eta),
-    generated = list(nobs= nobs, K = K, X = X, shape = shape,
-                          lambda_mu = lambda_mu, lambda_log_sigma = log(lambda_sigma), 
-                          Y = Y)
-  )
-}
 # prior hyperparameters
-lambda_mu <- 10
-lambda_sigma <- 10
+lambda_mu <- 50
+lambda_sigma <- 50
 fixed_args_gamma <- list(nobs = nobs, K = 15, shape = 1, nsims = nsims)
 datasets_gamma <- generate_datasets(SBC_generator_function(generator_gamma, lambda_mu, lambda_sigma, fixed_args_gamma), n_datasets = nsims)
 calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
@@ -152,52 +239,20 @@ calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
 rstan_mod_gr <- stan_model("models/gamma-reg.stan")
 cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
 # backend_gr_opt <- SBC_backend_rstan_optimizing(rstan_mod_gr, draws = ndraws)
-# result in Error in chol.default(-H) : the leading minor of order 13 is not positive definite
+# OPT DOES NOT WORK: result in Error in chol.default(-H) : the leading minor of order 13 is not positive definite
 
 backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = 4, iter_sampling = ndraws / 4) # thin = 10
-sc_opt <- self_calib_adaptive(calib_generator, backend_gr_hmc, updator, "eta", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_gamma)
-# step2: posterior sampling
 
-```
+# initial badly calibrated
+result_gr_hmc <- compute_results(datasets_gamma, backend_gr_hmc)
+plot_rank_hist(result_gr_hmc)
 
+sc_opt_gr <- self_calib_adaptive(calib_generator, backend_gr_hmc, updator, "eta", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_gamma)
 
-```{R}
-generator_binom_gmm <- function(lambda_mu, lambda_sigma, fixed_args){
-  # fixed value across simulated datasets
-  ## meta
-  nobs <- fixed_args$nobs
-  nsims <- fixed_args$nsims
-  link_type <- fixed_args$link_type
-  
-  # predictor
-  if("X" %in% names(fixed_args)) {X <- fixed_args$X} else X = 0
-  # parameter with fixed distribution across `nsims` datasets
-  if("b" %in% names(fixed_args)) {b <- fixed_args$b}  else b = 0
-  # target variable updated at each iteration
-  
-  # generate
-  eta <- draws_of(rvar_rng(rnorm, n = 1, mean = lambda_mu, sd=lambda_sigma, ndraws = nsims)  + X %**% b)
-  mu <- invtf_param_vec(eta, link_type = link_type)
- 
-  Y <- rvar_rng(rbinom, n = nobs, size = nsize, prob = mu, ndraws = nsims)
-  gen_rvars <- draws_rvars(nsims = nsims, nobs = nobs, nsize = nsize, link = link_type,
-                           lambda_mu = lambda_mu, lambda_log_sigma = log(lambda_sigma), 
-                           Y = Y)
-  SBC_datasets(
-    parameters = as_draws_matrix(list(eta = eta)), 
-    generated = draws_rvars_to_standata(gen_rvars)
-  )
-}
-# step1: prior predictvie sampling
-fixed_args_binom <- list(nobs = nobs, nsims = nsims, nsize = nsize, link_type = 1, ndraws=100)
-lambda_mu_gmm <- rvar(array(rep(10, 10,  each = nsims), dim = c(nsims, nsims)))
-lambda_sigma_gmm <- rvar(array(rep(10, nsims), dim=c(nsims, 1)))
-datasets <- generator_binom_gmm(lambda_mu_gmm, lambda_sigma_gmm, fixed_args_binom)
-#cmdstan_binom_mod <- cmdstanr::cmdstan_model("models/binom-laplace_gmm.stan")
-#rstan_binom_mod <- stan_model("models/binom-laplace_gmm.stan")
-backend_binom_hmc_gmm <- SBC_backend_cmdstan_sample(cmdstan_binom_mod, chains = 4, iter_sampling = ndraws / 4) 
-backend_binom_opt <- SBC_backend_rstan_optimizing(rstan_binom_mod, draws = ndraws)
-sc_opt <- self_calib_adaptive(generator_binom_gmm, backend_binom_opt, updator, "eta", lambda_mu_gmm, lambda_sigma_gmm, nsims, tol, fixed_args = fixed_args_binom)
-
-#sc_hmc <- self_calib_adaptive(generator_binom_gmm, backend_binom_opt, updator, "eta", lambda_mu_gmm, lambda_sigma_gmm, nsims, tol, fixed_args = fixed_args_binom)
+# after calibration
+sc_opt_gr <- sc_opt
+datasets_gr_new <- generate_datasets(SBC_generator_function(generator_gamma, sc_opt_gr$mu, sc_opt_gr$sigma, fixed_args_gamma), n_datasets = fixed_args_gamma$nsims)
+result_gr_hmc_new <- compute_results(datasets_gr_new, backend_gr_hmc)
+    
+plot_rank_hist(result_gr_hmc_new)
 ```
