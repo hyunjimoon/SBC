@@ -24,7 +24,7 @@ options(SBC.min_chunk_size = 5)
 set.seed(1984)
 ```
 
-We introduce a self-calibration algorithm. First, dap operator $\hat{g}(f(\Phi X, U), \Phi X)$ is inspected to verify its sublinearity and monotonicity. Then, based on this hyperparmeter self-calibration algorithm is suggested. Final improvement of calibration is compared with SBC rank plot.
+We introduce a self-calibration algorithm. First, dap operator: $P \rightarrow P$ is $\hat{g}(f(\Phi X, U), \Phi X)$. Limiting to normal is inspected to verify its sublinearity and monotonicity. Then, based on this hyperparmeter self-calibration algorithm is suggested. Final improvement of calibration is compared with SBC rank plot.
 
 ```{R}
 ## Generator settings
@@ -112,18 +112,6 @@ calculate_dap <- function(mu, sigma, generator, backened, fixed_args){
   return(list(mu=mu, sigma=sigma, draws_eta=draws_eta))
 }
 
-prior_dap <- list(mu = c(), logsigma = c(), dap_mu = c(), dap_logsigma = c())
-for (mu in seq(-4, 4, by = 2)){
-  for(logsigma in seq(-4, 4, by = 2)){
-    prior_dap$mu <- c(prior_dap$mu, mu)
-    prior_dap$logsigma <- c(prior_dap$logsigma, logsigma)
-    dap <- calculate_dap(mu, exp(logsigma), generator_binom, backend_binom_opt, fixed_args_binom)
-    prior_dap$dap_mu <- c(prior_dap$dap_mu, dap$mu)
-    prior_dap$dap_logsigma <- c(prior_dap$dap_logsigma, log(dap$sigma))
-  }
-}
-prior_dap <- data.frame(prior_dap)
-
 prior_dap_b <- list(mu = c(), sigma = c(), dap_mu = c(), dap_sigma = c(), mu_loss = c(), sigma_loss = c())
 for (mu in seq(-5, 5, by = 1)){
   for(sigma in seq(1, 9, by = 1)){
@@ -137,7 +125,7 @@ for (mu in seq(-5, 5, by = 1)){
   }
 }
 prior_dap_b <- data.frame(prior_dap_b)
-ggplot(prior_dap_b) + geom_density_2d(aes(x=mu, y = sigma)) + geom_density_2d(aes(x=dap_mu, y = dap_sigma), color = "red")
+ggplot(prior_dap_b)+  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
 ```
 
 # Inspecting DAP of gamma-regression-hmc
@@ -168,8 +156,8 @@ fixed_args_gr <- list(nobs = nobs, K = 15, shape = 1, nsims = nsims)
 cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
 backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = 4, iter_sampling = ndraws / 4) # thin = 10
 prior_dap_gr <- list(mu = c(), sigma = c(), dap_mu = c(), dap_sigma = c(), mu_loss = c(), sigma_loss = c())
-for (mu in seq(-5, 5, by = 2)){
-  for(sigma in seq(1, 9, by = 3)){
+for (mu in seq(-3, 3, by = 1)){
+  for(sigma in seq(1, 51, by = 10)){
     prior_dap_gr$mu <- c(prior_dap_gr$mu, mu)
     prior_dap_gr$sigma <- c(prior_dap_gr$sigma, sigma)
     dap <- calculate_dap(mu, sigma, generator_gr, backend_gr_hmc, fixed_args_gr)
@@ -180,7 +168,7 @@ for (mu in seq(-5, 5, by = 2)){
   }
 }
 prior_dap_gr <- data.frame(prior_dap_gr)
-ggplot(prior_dap_gr) + geom_density_2d(aes(x=mu, y = sigma)) + geom_density_2d(aes(x=dap_mu, y = dap_sigma), color = "red")
+ggplot(prior_dap_gr)+  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
 ```
 
 # Self-calibration of binom-laplace
