@@ -26,6 +26,8 @@ set.seed(1984)
 
 We introduce a self-calibration algorithm. First, dap operator: $P \rightarrow P$ is $\hat{g}(f(\Phi X, U), \Phi X)$. Limiting to normal is inspected to verify its sublinearity and monotonicity. Then, based on this hyperparmeter self-calibration algorithm is suggested. Final improvement of calibration is compared with SBC rank plot.
 
+We finally apply the self-calibration algorithm to the centered eightschools model, starting from an unstable region and attempting to find a self-consistent region. We found that for models that impose constraints, reparameterizing the model to include an unconstrained parameter, run self calibration in the unconstrained space, and the applying constraints manually showed the best results.
+
 ```{R}
 ## Generator settings
 # number of SBC simulations per iteration (generator)
@@ -171,7 +173,7 @@ prior_dap_gr <- data.frame(prior_dap_gr)
 ggplot(prior_dap_gr)+  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
 ```
 # Inspecting DAP of eightschools
-We will be testing tau
+Since tau requires a positive constraint, we will be working with log(tau).
 ```{R}
 generator_eightschools_cp <- function(lambda_mu, lambda_sigma, fixed_args){
   # fixed value across simulated datasets
@@ -181,14 +183,16 @@ generator_eightschools_cp <- function(lambda_mu, lambda_sigma, fixed_args){
   
   # Draw tau from the designated normal distribuiton
   a_bar <- -lambda_mu/lambda_sigma
-  tau <- NaN
-  while(TRUE){
-    u <- runif(1)
-    x_bar <- sqrt(a_bar^2 - 2 * log(1 - u))
-    nu <- runif(1)
-    tau <- lambda_sigma * x_bar + lambda_mu
-    if(nu <= x_bar/a_bar) break
-  }
+  # tau <- NaN
+  # while(TRUE){
+  #   u <- runif(1)
+  #   x_bar <- sqrt(a_bar^2 - 2 * log(1 - u))
+  #   nu <- runif(1)
+  #   tau <- lambda_sigma * x_bar + lambda_mu
+  #   if(nu <= x_bar/a_bar) break
+  # }
+  log_tau <- rnorm(1, lambda_mu, lambda_sigma)
+  tau <- exp(log_tau)
   
   
   
@@ -199,7 +203,7 @@ generator_eightschools_cp <- function(lambda_mu, lambda_sigma, fixed_args){
   y <- rnorm(J, mu, sigma)
   
   list(
-    parameters = list(tau = tau), 
+    parameters = list(log_tau = log_tau), 
     generated = list(
       J = J,
       y = y,
@@ -297,7 +301,7 @@ ggplot(sc_binom_opt$t_df) + geom_point(aes(x=iter, y=lambda_loss))
 ```
 
 
-Try for eightschools
+We now repeat the above procedure with eight-school's log(tau). We start at N(10, 10), which upon inspection of the DAP distribution, results in a very narrow distribution near 0. Rank histogram plots also imply extreme underdispersion. But after 6 self-calibration iterations, we can observe the extreme rank plots being tamed, with the DAP distribution and the lambda hyperdistribution being similar.
 ```{R}
 lambda_mu = 10
 lambda_sigma = 10
@@ -312,7 +316,7 @@ calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
   generate_datasets(SBC_generator_function(generator_eightschools_cp, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
 }
 
-sc_hmc_eightschools <- self_calib_adaptive(calib_generator, backend_eightschools_hmc, updator, "tau", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_eightschools)
+sc_hmc_eightschools <- self_calib_adaptive(calib_generator, backend_eightschools_hmc, updator, "log_tau", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_eightschools)
 
 datasets_eightschools_new <- generate_datasets(SBC_generator_function(generator_eightschools_cp, sc_hmc_eightschools$mu, sc_hmc_eightschools$sigma, fixed_args_eightschools), n_datasets = fixed_args_eightschools$nsims)
 result_eightschools_hmc_new <- compute_results(datasets_eightschools_new, backend_eightschools_hmc)
