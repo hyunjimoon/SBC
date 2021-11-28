@@ -170,6 +170,55 @@ for (mu in seq(-3, 3, by = 1)){
 prior_dap_gr <- data.frame(prior_dap_gr)
 ggplot(prior_dap_gr)+  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
 ```
+# Inspecting DAP of eightschools
+We will be testing tau
+```{R}
+generator_eightschools_cp <- function(lambda_mu, lambda_sigma, fixed_args){
+  # fixed value across simulated datasets
+  nsims <- fixed_args$nsims
+  J <- fixed_args$J
+  sigma <- fixed_args$sigma
+  
+  # Draw tau from the designated normal distribuiton
+  a_bar <- -lambda_mu/lambda_sigma
+  tau <- NaN
+  while(TRUE){
+    u <- runif(1)
+    x_bar <- sqrt(a_bar^2 - 2 * log(1 - u))
+    nu <- runif(1)
+    tau <- lambda_sigma * x_bar + lambda_mu
+    if(nu <= x_bar/a_bar) break
+  }
+  
+  
+  
+  # other parameters are drawn from the default prior
+  mu = rnorm(1, 0, 5)
+  theta <- rnorm(1, mu, tau)
+  # draw y from simulated parameters
+  y <- rnorm(J, mu, sigma)
+  
+  list(
+    parameters = list(tau = tau), 
+    generated = list(
+      J = J,
+      y = y,
+      sigma = sigma,
+      nsims = nsims,
+      lambda_mu = lambda_mu,
+      lambda_log_sigma = log(lambda_sigma)
+    )
+  )
+}
+
+cmdstan_mod_eightschools <- cmdstanr::cmdstan_model("models/eightschools_cp_posteriordb.stan")
+backend_eightschools_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_eightschools, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+fixed_args_eightschools <- list(J = 8, nsims = nsims, sigma = c(15, 10, 16, 11, 9, 11, 10, 18), nsims=nsims)
+datasets <- generate_datasets(SBC_generator_function(generator_eightschools_cp, 0, 1, fixed_args_eightschools), n_datasets = fixed_args_eightschools$nsims)
+sbc_result <- compute_results(datasets, backend_eightschools_hmc, thin_ranks = 4)
+plot_rank_hist(sbc_result)
+```
+
 
 # Self-calibration of binom-laplace
 ```{r, warning=FALSE, error=FALSE}
@@ -213,6 +262,7 @@ datasets_binom_new <- generate_datasets(SBC_generator_function(generator_binom, 
 result_binom_opt_new <- compute_results(datasets_binom_new, backend_binom_opt, thin_ranks = 1)
     
 plot_rank_hist(result_binom_opt_new)
+ggplot(sc_binom_opt$t_df) + geom_point(aes(x=iter, y=lambda_loss))
 ```
 
 ```{R}
@@ -220,9 +270,9 @@ plot_rank_hist(result_binom_opt_new)
 lambda_mu <- 50
 lambda_sigma <- 50
 fixed_args_gamma <- list(nobs = nobs, K = 15, shape = 1, nsims = nsims)
-datasets_gamma <- generate_datasets(SBC_generator_function(generator_gamma, lambda_mu, lambda_sigma, fixed_args_gamma), n_datasets = nsims)
+datasets_gamma <- generate_datasets(SBC_generator_function(generator_gr, lambda_mu, lambda_sigma, fixed_args_gamma), n_datasets = nsims)
 calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
-  generate_datasets(SBC_generator_function(generator_gamma, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
+  generate_datasets(SBC_generator_function(generator_gr, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
 }
 rstan_mod_gr <- stan_model("models/gamma-reg.stan")
 cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
@@ -239,8 +289,35 @@ sc_opt_gr <- self_calib_adaptive(calib_generator, backend_gr_hmc, updator, "eta"
 
 # after calibration
 sc_opt_gr <- sc_opt
-datasets_gr_new <- generate_datasets(SBC_generator_function(generator_gamma, sc_opt_gr$mu, sc_opt_gr$sigma, fixed_args_gamma), n_datasets = fixed_args_gamma$nsims)
+datasets_gr_new <- generate_datasets(SBC_generator_function(generator_Gr, sc_opt_gr$mu, sc_opt_gr$sigma, fixed_args_gamma), n_datasets = fixed_args_gamma$nsims)
 result_gr_hmc_new <- compute_results(datasets_gr_new, backend_gr_hmc)
     
 plot_rank_hist(result_gr_hmc_new)
+ggplot(sc_binom_opt$t_df) + geom_point(aes(x=iter, y=lambda_loss))
 ```
+
+
+Try for eightschools
+```{R}
+lambda_mu = 10
+lambda_sigma = 10
+cmdstan_mod_eightschools <- cmdstanr::cmdstan_model("models/eightschools_cp_posteriordb.stan")
+backend_eightschools_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_eightschools, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+fixed_args_eightschools <- list(J = 8, nsims = nsims, sigma = c(15, 10, 16, 11, 9, 11, 10, 18), nsims=nsims)
+datasets <- generate_datasets(SBC_generator_function(generator_eightschools_cp, 0, 1, fixed_args_eightschools), n_datasets = fixed_args_eightschools$nsims)
+result_eightschools_hmc <- compute_results(datasets, backend_eightschools_hmc, thin_ranks = 4)
+# initial badly calibrated
+plot_rank_hist(result_eightschools_hmc)
+calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
+  generate_datasets(SBC_generator_function(generator_eightschools_cp, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
+}
+
+sc_hmc_eightschools <- self_calib_adaptive(calib_generator, backend_eightschools_hmc, updator, "tau", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_eightschools)
+
+datasets_eightschools_new <- generate_datasets(SBC_generator_function(generator_eightschools_cp, sc_hmc_eightschools$mu, sc_hmc_eightschools$sigma, fixed_args_eightschools), n_datasets = fixed_args_eightschools$nsims)
+result_eightschools_hmc_new <- compute_results(datasets_eightschools_new, backend_eightschools_hmc)
+plot_rank_hist(result_eightschools_hmc_new)
+# plot calibration result
+```
+
+
