@@ -13,28 +13,40 @@
 ##' @param tol tolerence for determining termination
 ##' @param fixed_args *named list* containing additional arguments to pass to generator, *after mu and sigma*
 ##' @export
-self_calib_adaptive <- function(generator, backend, updator, target_param, init_mu, init_sigma, nsims, gamma, tol, fixed_args){
+#self_calib_adaptive <- function(generator, backend, updator, target_param, init_mu, init_sigma, nsims, gamma, tol, fixed_args){
+self_calib_adaptive <- function(generator, backend, updator, target_param, init_alpha, init_beta, nsims, gamma, tol, fixed_args){
 
-  calculate_dap <- function(mu, sigma){
+  #calculate_dap <- function(mu, sigma){
+  calculate_dap <- function(alpha, beta){
     nsims <- fixed_args$nsims
-    datasets <- do.call(generator, c(list(mu, sigma), list(fixed_args = fixed_args)))
+    #datasets <- do.call(generator, c(list(mu, sigma), list(fixed_args = fixed_args)))
+    datasets <- do.call(generator, c(list(alpha, beta), list(fixed_args = fixed_args)))
     sbc_result <- SBC::compute_results(datasets, backend, thin_ranks = 1)
     draws_eta <- c()
     for(fit in sbc_result$fits){
       samples <- SBC_fit_to_draws_matrix(fit)
       draws_eta <- c(draws_eta, posterior::extract_variable(samples, target_param))
     }
-    if(is.element("rvar", class(init_mu))){
+    #if(is.element("rvar", class(init_mu))){
+    if(is.element("rvar", class(init_alpha))){
       gmm_fit <- mclust::Mclust(draws_eta, G = nsims, verbose = FALSE)
       prop_est <- gmm_fit$parameters$pro
       mu <- posterior::rvar(array(rep(sample(as.vector(gmm_fit$parameters$mean), prob = prop_est), each = nsims), dim = c(nsims, nsims)))
       sigma <- rvar(rep(bw.nrd0(draws_of(mu)), posterior::niterations(mu)))
     }else{
       # assume normal for dap
-      mu <- mean(draws_eta)
-      sigma <- sd(draws_eta)
+      #mu <- mean(draws_eta)
+      #sigma <- sd(draws_eta)
+
+      # use gamma distribution
+      gamma_est <- MASS::fitdistr(draws_eta, "gamma", start=list(shape=1, rate=1))$estimate
+      alpha <- as.numeric(gamma_est["shape"])
+      beta <- as.numeric(gamma_est["rate"])
+
+
     }
-    return(list(mu=mu, sigma=sigma, draws_eta=draws_eta)) # draws_eta
+    #return(list(mu=mu, sigma=sigma, draws_eta=draws_eta)) # draws_eta
+    return(list(logalpha=log(alpha), logbeta=log(beta), draws_eta=draws_eta))
   }
 
   ###############
@@ -70,16 +82,21 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
 
   normal_str_update <- function(dap, lambda, gamma){
     normal_str <- function(Tx, x, gamma){
-      b_t <- (gamma +1) * Tx + gamma * x
-      Tx + (1/(b_t - Tx) ^2) * (x - Tx)^3
+      #b_t <- (Tx + x) / 2
+      #Tx + (1/(b_t - Tx) ^2) * (x - Tx)^3
+      #(Tx + x)/2
+      Tx
     }
-    mu_new <- normal_str(dap$mu, lambda$mu, gamma)
-    sigmasq_new <- normal_str(exp(dap$logsigma)^2, exp(lambda$logsigma)^2, gamma)
-    logsigma_new <- log(sqrt(sigmasq_new))
-    print(sprintf("x:%f T_x:%f mu_new:%f", lambda$mu, dap$mu, mu_new))
-    print(sprintf("x:%f T_x:%f sigmasq_new:%f", exp(lambda$logsigma)^2, exp(dap$logsigma)^2, sigmasq_new))
+    # mu_new <- normal_str(dap$mu, lambda$mu, gamma)
+    # sigmasq_new <- normal_str(exp(dap$logsigma)^2, exp(lambda$logsigma)^2, gamma)
+    # logsigma_new <- log(sqrt(sigmasq_new))
+    #
+    # list(mu = mu_new, logsigma = logsigma_new)
 
-    list(mu = mu_new, logsigma = logsigma_new)
+    logalpha_new <- log(normal_str(exp(dap$logalpha), exp(lambda$logalpha), gamma))
+    logbeta_new <- log(normal_str(exp(dap$logbeta), exp(lambda$logbeta), gamma))
+
+    list(logalpha = logalpha_new, logbeta = logbeta_new)
   }
 
   heuristic_update <- function(dap, lambda){
@@ -177,11 +194,13 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
 
   ###############
   lambda_loss <- function(dap, lambda) {
-    return((dap$mu - lambda$mu)^2 + ((dap$sigma)^2 - exp(lambda$logsigma)^2)^2)
+    #return((dap$mu - lambda$mu)^2 + ((dap$sigma)^2 - exp(lambda$logsigma)^2)^2)
+    return((dap$logalpha - lambda$logalpha)^2 + (exp(dap$logbeta) - exp(lambda$logbeta))^2)
   }
 
   eta_loss <- function(dap_eta, lambda) {
-    eta <- rnorm(length(dap_eta), lambda$mu, exp(lambda$logsigma))
+    #eta <- rnorm(length(dap_eta), lambda$mu, exp(lambda$logsigma))
+    eta <- rgamma(length(dap_eta), shape=exp(lambda$logalpha), rate = exp(lambda$logbeta))
     return(cjs_dist(eta, dap_eta))
   }
 
@@ -193,25 +212,35 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
 
   # end function declarations
 
-  mu_current <- init_mu
-  sigma_current <- init_sigma
+  # mu_current <- init_mu
+  # sigma_current <- init_sigma
+  alpha_current <-init_alpha
+  beta_current <- init_beta
   cjs_prev <- Inf
-  t_df <- list(iter=c(), mu=c(), T_mu=c(), B_mu=c(), sigmasq=c(), T_sigmasq=c(), B_sigmasq=c(),  lambda_loss=c())
+  #t_df <- list(iter=c(), mu=c(), T_mu=c(), B_mu=c(), sigmasq=c(), T_sigmasq=c(), B_sigmasq=c(),  lambda_loss=c())
+  t_df <- list(iter=c(), alpha=c(), T_alpha=c(), B_alpha=c(), beta=c(), T_beta=c(), B_beta=c(),  lambda_loss=c(), eta_loss=c())
   heuristic_max_diff_mu <- -Inf
   heuristic_max_diff_logsigma <- -Inf
   for (iter_num in 1:niter) {
     stop <- FALSE
     t_df$iter <- c(t_df$iter, iter_num)
 
-    dap_result <- calculate_dap(mu_current, sigma_current)
-    dap_result$logsigma = log(dap_result$sigma)
+    #dap_result <- calculate_dap(mu_current, sigma_current)
+    #dap_result$logsigma = log(dap_result$sigma)
+    dap_result <- calculate_dap(alpha_current, beta_current)
 
-    t_df$mu <- c(t_df$mu, mu_current)
-    t_df$T_mu <- c(t_df$T_mu, dap_result$mu)
-    t_df$sigmasq <- c(t_df$sigmasq, sigma_current^2)
-    t_df$T_sigmasq <- c(t_df$T_sigmasq, exp(dap_result$logsigma)^2)
+    # t_df$mu <- c(t_df$mu, mu_current)
+    # t_df$T_mu <- c(t_df$T_mu, dap_result$mu)
+    # t_df$sigmasq <- c(t_df$sigmasq, sigma_current^2)
+    # t_df$T_sigmasq <- c(t_df$T_sigmasq, exp(dap_result$logsigma)^2)
 
-    if(is.element("rvar", class(init_mu))){
+    t_df$alpha <- c(t_df$alpha, alpha_current)
+    t_df$T_alpha <- c(t_df$T_alpha, exp(dap_result$logalpha))
+    t_df$beta <- c(t_df$beta, beta_current)
+    t_df$T_beta <- c(t_df$T_beta, exp(dap_result$logbeta))
+
+    #if(is.element("rvar", class(init_mu))){
+    if(is.element("rvar", class(init_alpha))){
       lambda_current <- list(mu=mu_current, logsigma=log(sigma_current))
       mixture_means_next_draws_rvars <- quantile_update(dap_result, lambda_current)
       mu_new <- mixture_means_next_draws_rvars$mu
@@ -225,13 +254,18 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
         stop <- TRUE
       }
     }else{
-      lambda_current <- list(mu=mu_current, logsigma=log(sigma_current), sigma=sigma_current)
+      # lambda_current <- list(mu=mu_current, logsigma=log(sigma_current), sigma=sigma_current)
+      lambda_current <- list(logalpha=log(alpha_current), logbeta=log(beta_current))
 
-      plot_df <- data.frame(dap=dap_result$draws_eta, prior=rnorm(length(dap_result$draws_eta), mu_current, sigma_current))
-      mx <- ggplot(plot_df)
-      mx <- mx  + geom_density(aes(x=dap), color="red") + geom_density(aes(x=prior)) + ggtitle("red = dap")
-      print(mx)
-      ggsave(sprintf("iter_%d.png", iter_num))
+      if(iter_num == 1 || iter_num %% 10 == 0){
+        #plot_df <- data.frame(dap=dap_result$draws_eta, prior=rnorm(length(dap_result$draws_eta), shape=mu_current, rate=sigma_current))
+        plot_df <- data.frame(dap=dap_result$draws_eta, prior=rgamma(length(dap_result$draws_eta), shape=alpha_current, rate=beta_current))
+        mx <- ggplot(plot_df)
+        mx <- mx  + geom_density(aes(x=dap), color="red") + geom_density(aes(x=prior)) + ggtitle("red = dap")
+        print(mx)
+        #ggsave(sprintf("iter_%d.png", iter_num))
+      }
+
 
       if(updator == "gradient"){
         lambda_new <- gradient_update(dap_result, lambda_current)
@@ -246,31 +280,40 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
         lambda_new <- normal_str_update(dap_result, lambda_current, gamma)
       }
 
-      t_df$B_mu <- c(t_df$B_mu, lambda_new$mu)
-      t_df$B_sigmasq <- c(t_df$B_sigmasq, exp(lambda_new$logsigma)^2)
+      # t_df$B_mu <- c(t_df$B_mu, lambda_new$mu)
+      # t_df$B_sigmasq <- c(t_df$B_sigmasq, exp(lambda_new$logsigma)^2)
+      t_df$B_alpha <- c(t_df$B_alpha, exp(lambda_new$logalpha))
+      t_df$B_beta <- c(t_df$B_beta, exp(lambda_new$logbeta))
 
-      mu_new <- lambda_new$mu
-      sigma_new <- exp(lambda_new$logsigma)
-      if (abs(mu_current - dap_result$mu) < tol & abs(log(sigma_current) - log(dap_result$sigma)) < tol){
+      #mu_new <- lambda_new$mu
+      #sigma_new <- exp(lambda_new$logsigma)
+      alpha_new <- exp(lambda_new$logalpha)
+      beta_new <- exp(lambda_new$logbeta)
+      #if (abs(mu_current - dap_result$mu) < tol & abs(log(sigma_current) - log(dap_result$sigma)) < tol){
+      if (abs(log(alpha_current) - dap_result$logalpha) < tol & abs(log(beta_current) - dap_result$logbeta) < tol){
         stop <- TRUE
       }
 
       t_df$lambda_loss <- c(t_df$lambda_loss, lambda_loss(dap_result, lambda_current))
       t_df$eta_loss <- c(t_df$eta_loss, eta_loss(dap_result$draws_eta, lambda_current))
-      #message(sprintf("Iteration %d - dap_mu: %f ", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
-      message(sprintf("Iteration %d - lambda loss: %f eta loss: %f normal_kl_divergence: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current), normal_kl_divergence(dap_result, lambda_current)))
+      #message(sprintf("Iteration %d - lambda loss: %f eta loss: %f normal_kl_divergence: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current), normal_kl_divergence(dap_result, lambda_current)))
+      message(sprintf("Iteration %d - lambda loss: %f eta loss: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
     }
+
+    # mu_current <- mu_new
+    # sigma_current <- sigma_new
+    alpha_current <- alpha_new
+    beta_current <- beta_new
 
     if(stop){
       message(sprintf("Terminating self_calib on iteration %d", iter_num))
       break
     }
-    mu_current <- mu_new
-    sigma_current <- sigma_new
   }
   t_df <- as.data.frame(t_df)
-  print(t_df)
-  return(list(mu=mu_current, sigma=sigma_current, t_df=t_df))
+  #print(t_df)
+  #return(list(mu=mu_current, sigma=sigma_current, t_df=t_df))
+  return(list(alpha=alpha_current, beta=beta_current, t_df=t_df))
 }
 
 
