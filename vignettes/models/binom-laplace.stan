@@ -5,6 +5,8 @@ data {
   real lambda_mu;
   real lambda_log_sigma;
   int<lower=1,upper=3> link;
+  int eta_dist_type;  // 1 == normal, 2 == gamma
+
 }
 parameters {
   real eta;

@@ -8,10 +8,10 @@ self_calib_adaptive(
   generator,
   backend,
   updator,
-  target_param,
-  init_mu,
-  init_sigma,
+  target_params,
+  init_lambdas,
   nsims,
+  gamma,
   tol,
   fixed_args
 )
@@ -23,19 +23,19 @@ self_calib_adaptive(
 
 \item{updator}{hyperparameter update type}
 
-\item{target_param}{string type target parameter name}
-
-\item{init_mu}{initial lambda_mu value to use}
-
-\item{init_sigma}{initial lambda_sigma value to use}
-
 \item{nsims}{number of datasets i.e. prior draws}
+
+\item{gamma}{convergence speed e.g. step size}
 
 \item{tol}{tolerence for determining termination}
 
 \item{fixed_args}{\emph{named list} containing additional arguments to pass to generator, \emph{after mu and sigma}}
 
-\item{nchains}{number of chains}
+\item{target_param}{list of strings indicating target parameter names}
+
+\item{init_mu}{initial lambda_mu value to use}
+
+\item{init_sigma}{initial lambda_sigma value to use}
 }
 \description{
 Auto calibrate the initial prior samples using SBC iterations, with an adaptive update strategy

@@ -5,7 +5,7 @@
 ##' @param generator function that generates datasets given each value in `param`
 ##' @param backend backend object to use for running SBC
 ##' @param updator hyperparameter update type
-##' @param target_param string type target parameter name
+##' @param target_param list of strings indicating target parameter names
 ##' @param init_mu initial lambda_mu value to use
 ##' @param init_sigma initial lambda_sigma value to use
 ##' @param nsims number of datasets i.e. prior draws
@@ -13,85 +13,48 @@
 ##' @param tol tolerence for determining termination
 ##' @param fixed_args *named list* containing additional arguments to pass to generator, *after mu and sigma*
 ##' @export
-#self_calib_adaptive <- function(generator, backend, updator, target_param, init_mu, init_sigma, nsims, gamma, tol, fixed_args){
-self_calib_adaptive <- function(generator, backend, updator, target_param, init_alpha, init_beta, nsims, gamma, tol, fixed_args){
+self_calib_adaptive <- function(generator, backend, updator, target_params, init_lambdas, nsims, gamma, tol, fixed_args){
+  dist_types <- fixed_args$dist_types
 
-  #calculate_dap <- function(mu, sigma){
-  calculate_dap <- function(alpha, beta){
+  calculate_dap <- function(current_lambdas){
     nsims <- fixed_args$nsims
-    #datasets <- do.call(generator, c(list(mu, sigma), list(fixed_args = fixed_args)))
-    datasets <- do.call(generator, c(list(alpha, beta), list(fixed_args = fixed_args)))
+    datasets <- do.call(generator, list(current_lambdas, fixed_args = fixed_args))
     sbc_result <- SBC::compute_results(datasets, backend, thin_ranks = 1)
-    draws_eta <- c()
+    draws_etas <- list()
+    return_lambdas <- list()
     for(fit in sbc_result$fits){
       samples <- SBC_fit_to_draws_matrix(fit)
-      draws_eta <- c(draws_eta, posterior::extract_variable(samples, target_param))
+      for(target_param in target_params){
+        draws_etas[[target_param]] <- c(draws_etas$target_param, posterior::extract_variable(samples, target_param))
+      }
     }
-    #if(is.element("rvar", class(init_mu))){
-    if(is.element("rvar", class(init_alpha))){
-      gmm_fit <- mclust::Mclust(draws_eta, G = nsims, verbose = FALSE)
-      prop_est <- gmm_fit$parameters$pro
-      mu <- posterior::rvar(array(rep(sample(as.vector(gmm_fit$parameters$mean), prob = prop_est), each = nsims), dim = c(nsims, nsims)))
-      sigma <- rvar(rep(bw.nrd0(draws_of(mu)), posterior::niterations(mu)))
-    }else{
-      # assume normal for dap
-      #mu <- mean(draws_eta)
-      #sigma <- sd(draws_eta)
-
-      # use gamma distribution
-      gamma_est <- MASS::fitdistr(draws_eta, "gamma", start=list(shape=1, rate=1))$estimate
-      alpha <- as.numeric(gamma_est["shape"])
-      beta <- as.numeric(gamma_est["rate"])
-
-
+    for(target_param in target_params){
+      if(fixed_args$dist_type[[target_param]] == "normal"){
+        print(paste("normal", target_param))
+        mu <- mean(draws_etas[[target_param]])
+        sigma <- sd(draws_etas[[target_param]])
+        return_lambdas[[target_param]] <- list(mu=mu, sigma=sigma)
+      }
+      else if(fixed_args$dist_type[[target_param]] == "gamma"){
+        print(paste("gamma", target_param))
+        gamma_est <- MASS::fitdistr(draws_etas[[target_param]], "gamma", start=list(shape=1, rate=1))$estimate
+        alpha <- as.numeric(gamma_est["shape"])
+        beta <- as.numeric(gamma_est["rate"])
+        return_lambdas[[target_param]] <- list(alpha=alpha, beta=beta)
+      }
     }
-    #return(list(mu=mu, sigma=sigma, draws_eta=draws_eta)) # draws_eta
-    return(list(logalpha=log(alpha), logbeta=log(beta), draws_eta=draws_eta))
+    return(list(return_lambdas = return_lambdas, draws_etas = draws_etas))
   }
 
   ###############
   # define update strategies
 
-  heuristic_update_cubic <- function(dap, lambda, max_diff_mu, max_diff_sigma){
-    logsigma_Txgx <- function(Tx, x) {
-      (x^2 + x^2) / (Tx + x)
-    }
-    logsigma_xgTx <- function(Tx, x) {
-      (Tx^2 + x^2) / (2*Tx)
-    }
-    if(dap$logsigma > lambda$logsigma){
-      print("T_logsigma > logsigma")
-      logsigma_new <- logsigma_Txgx(dap$logsigma, lambda$logsigma)
-    }
-    else{
-      print("T_logsigma <= logsigma")
-      logsigma_new <- logsigma_xgTx(dap$logsigma, lambda$logsigma)
-    }
-
-    cubic <- function(Tx, x, b_t){
-      Tx + 1/(Tx - b_t) ^2 * (x - Tx)^3
-      #1/2 * (x - Tx) + Tx
-    }
-
-    mu_new <- cubic(dap$mu, lambda$mu, dap$mu + max_diff_mu)
-    logsigma_new <- cubic(dap$logsigma, lambda$logsigma, dap$logsigma + max_diff_sigma)
-    print(sprintf("T_x:%f x:%f mu_new:%f b_t:%f", dap$mu, lambda$mu, mu_new, dap$mu + max_diff_mu))
-
-    list(mu = mu_new, logsigma = logsigma_new)
-  }
-
-  normal_str_update <- function(dap, lambda, gamma){
+  normal_str_update <- function(draws_dap_lambdas, lambda, gamma){
     normal_str <- function(Tx, x, gamma){
       #b_t <- (Tx + x) / 2
       #Tx + (1/(b_t - Tx) ^2) * (x - Tx)^3
-      #(Tx + x)/2
-      Tx
+      (Tx + x)/2
     }
-    # mu_new <- normal_str(dap$mu, lambda$mu, gamma)
-    # sigmasq_new <- normal_str(exp(dap$logsigma)^2, exp(lambda$logsigma)^2, gamma)
-    # logsigma_new <- log(sqrt(sigmasq_new))
-    #
-    # list(mu = mu_new, logsigma = logsigma_new)
 
     logalpha_new <- log(normal_str(exp(dap$logalpha), exp(lambda$logalpha), gamma))
     logbeta_new <- log(normal_str(exp(dap$logbeta), exp(lambda$logbeta), gamma))
@@ -99,108 +62,23 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     list(logalpha = logalpha_new, logbeta = logbeta_new)
   }
 
-  heuristic_update <- function(dap, lambda){
-    logsigma_Txgx <- function(Tx, x) {
-      (x^2 + x^2) / (Tx + x)
-    }
-    logsigma_xgTx <- function(Tx, x) {
-      (Tx^2 + x^2) / (2*Tx)
-    }
-    mu_abs_Txgx <- function(Tx, x) {
-      alpha = 1 / sqrt(2) * abs(Tx - x)
-      (2 * (abs(x) + abs(alpha)) ^ 2) / (abs(Tx) * abs(x) + 2 * abs(alpha))
-      #(x^2 + x^2) / abs(Tx + x)
-    }
-    mu_abs_xgTx <- function(Tx, x) {
-      #(Tx^2 + x^2) / abs(2*Tx)
-      alpha = 1 / sqrt(2) * abs(Tx - x)
-      (2 * (abs(x) + abs(alpha)) ^ 2) / (abs(Tx) * abs(x) + 2 * abs(alpha))
-    }
-    if(dap$logsigma > lambda$logsigma){
-      print("T_logsigma > logsigma")
-      logsigma_new <- logsigma_Txgx(dap$logsigma, lambda$logsigma)
-    }
-    else{
-      print("T_logsigma <= logsigma")
-      logsigma_new <- logsigma_xgTx(dap$logsigma, lambda$logsigma)
-    }
-
-    if(abs(dap$mu) > abs(lambda$mu)){
-      print("T_mu > mu")
-      mu_new <- mu_abs_Txgx(dap$mu, lambda$mu) * sign(lambda$mu)
-    }
-    else{
-      print("T_mu <= mu")
-      mu_new <- mu_abs_xgTx(dap$mu, lambda$mu) * sign(lambda$mu)
-    }
-
-    draws_eta <- dap$draws_eta
-    hist(draws_eta, breaks=80, freq = FALSE)
-    xval <- seq(min(draws_eta), max(draws_eta), length.out = 100)
-    lines(xval, dnorm(xval, dap$mu, dap$sigma))
-    lines(xval, dnorm(xval, mu_new, exp(logsigma_new)), col="red")
-    print(sprintf("Tx: %f x: %f, new logsigma: %f", dap$logsigma, lambda$logsigma, logsigma_new))
-    print(sprintf("Tx: %f x: %f, new mu: %f", dap$mu, lambda$mu, mu_new))
-    #print(paste(mu_new, logsigma_new))
-
-    list(mu = mu_new, logsigma = logsigma_new)
-  }
-
-  gradient_update <- function(dap, lambda){
-    loss <- function(lambda) {
-      dap_lambda <- c(dap$mu, dap$sigma)
-      message("loss : ", sum((lambda - dap_lambda)^2))
-      sum((lambda - dap_lambda)^2)
-    }
-    grad_loss <- function(lambda) {
-      # rough finite difference gradients such that steps are bigger
-      # than the expected error caused by the simulations from prior and posterior
-      numDeriv::grad(loss, lambda, method.args=list(eps=0.3, d = 0.3))
-    }
-    # gradient descent update
-    # gamma <- 0.5
-    lambda <- lambda - gamma * grad_loss(lambda)
-    return(list(mu=lambda$mu, logsigma = lambda$logsigma))
-  }
-  ########
-  # mixture update strategy
-
-  quantile_update <- function(dap, lambda){
-    phi <- approx_quantile_phi(posterior::draws_of(lambda$mu), S = fixed_args$nsims)
-    updated_phi <- phi
-    phi_post <- approx_quantile_phi(posterior::draws_of(dap$mu), S = fixed_args$nsims)
-    wass_last <- wasserstein(updated_phi, phi_post)
-    iters <- 0
-    while(iters <= 5 || abs(wasserstein(updated_phi, phi_post) - wass_last) > wass_last * 0.001){
-      wass_last <- wasserstein(updated_phi, phi_post)
-      #plot(phi, unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)})), type = "l")
-      #lines(updated_phi, unlist(lapply(c(1:S), function(x) {(2 * x - 1) / (2 * S)})), col="red")
-      zprime <- sample_quantile_phi(fixed_args$ndraws, updated_phi)
-      S <- fixed_args$nsims
-      for(s in 1:S) {
-        delta_sum <-(2 * s - 1) / (2 * S) - (sum(zprime < updated_phi[s]) + sum(zprime == updated_phi[s])) / fixed_args$ndraws
-        updated_phi[s] <- updated_phi[s] + 0.1 * (delta_sum / fixed_args$ndraws)
-      }
-      iters <- iters + 1
-      #message(updated_phi)
-      message(paste(wasserstein(updated_phi, phi_post), wass_last))
-    }
-    #message(paste("optimization iters:", iters))
-    return_mu <- posterior::rvar(array(rep(updated_phi, each = nsims), dim = c(nsims, nsims)))
-
-    return_logsigma <- log(rvar(rep(bw.nrd0(draws_of(return_mu)), posterior::niterations(return_mu))))
-    return(list(mu=return_mu, logsigma = return_logsigma)) # currently all nsims receive same updated mus
+  mc_update <- function(draws_dap_lambdas, lambdas){
+    lambdas
   }
 
   ###############
-  lambda_loss <- function(dap, lambda) {
+  lambda_loss <- function(dap_lambdas, new_lambdas) {
     #return((dap$mu - lambda$mu)^2 + ((dap$sigma)^2 - exp(lambda$logsigma)^2)^2)
-    return((dap$logalpha - lambda$logalpha)^2 + (exp(dap$logbeta) - exp(lambda$logbeta))^2)
+    sum((unlist(dap_lambdas) - unlist(new_lambdas))^2)
   }
 
-  eta_loss <- function(dap_eta, lambda) {
-    #eta <- rnorm(length(dap_eta), lambda$mu, exp(lambda$logsigma))
-    eta <- rgamma(length(dap_eta), shape=exp(lambda$logalpha), rate = exp(lambda$logbeta))
+  eta_loss <- function(dap_eta, new_lambdas) {
+    if("mu" %in% names(new_lambdas)){  # normal
+      eta <- rnorm(length(dap_eta), mean=new_lambdas$mu, sd = new_lambdas$sigma)
+    }
+    else if("alpha" %in% names(new_lambdas)){  # gamma
+      eta <- rgamma(length(dap_eta), shape=new_lambdas$alpha, rate = new_lambdas$beta)
+    }
     return(cjs_dist(eta, dap_eta))
   }
 
@@ -211,99 +89,66 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
   }
 
   # end function declarations
-
-  # mu_current <- init_mu
-  # sigma_current <- init_sigma
-  alpha_current <-init_alpha
-  beta_current <- init_beta
-  cjs_prev <- Inf
-  #t_df <- list(iter=c(), mu=c(), T_mu=c(), B_mu=c(), sigmasq=c(), T_sigmasq=c(), B_sigmasq=c(),  lambda_loss=c())
-  t_df <- list(iter=c(), alpha=c(), T_alpha=c(), B_alpha=c(), beta=c(), T_beta=c(), B_beta=c(),  lambda_loss=c(), eta_loss=c())
-  heuristic_max_diff_mu <- -Inf
-  heuristic_max_diff_logsigma <- -Inf
+  lambda_current <- init_lambdas
+  t_df <- list()
   for (iter_num in 1:niter) {
-    stop <- FALSE
+    stop <- TRUE
     t_df$iter <- c(t_df$iter, iter_num)
 
-    #dap_result <- calculate_dap(mu_current, sigma_current)
-    #dap_result$logsigma = log(dap_result$sigma)
-    dap_result <- calculate_dap(alpha_current, beta_current)
+    dap_result <- calculate_dap(lambda_current)
 
-    # t_df$mu <- c(t_df$mu, mu_current)
-    # t_df$T_mu <- c(t_df$T_mu, dap_result$mu)
-    # t_df$sigmasq <- c(t_df$sigmasq, sigma_current^2)
-    # t_df$T_sigmasq <- c(t_df$T_sigmasq, exp(dap_result$logsigma)^2)
-
-    t_df$alpha <- c(t_df$alpha, alpha_current)
-    t_df$T_alpha <- c(t_df$T_alpha, exp(dap_result$logalpha))
-    t_df$beta <- c(t_df$beta, beta_current)
-    t_df$T_beta <- c(t_df$T_beta, exp(dap_result$logbeta))
-
-    #if(is.element("rvar", class(init_mu))){
-    if(is.element("rvar", class(init_alpha))){
-      lambda_current <- list(mu=mu_current, logsigma=log(sigma_current))
-      mixture_means_next_draws_rvars <- quantile_update(dap_result, lambda_current)
-      mu_new <- mixture_means_next_draws_rvars$mu
-      logsigma_new <- mixture_means_next_draws_rvars$logsigma
-      cjs_record <- cjs_dist(mu_current, mu_new)
-      if(iter_num ==1){
-        cjs_prev <- cjs_record
+    dap_tx_plot_list <- list()
+    dap_tx_plot_index = 1
+    for(target_param in target_params){
+      param_lambdas <- lambda_current[[target_param]]
+      lambda_count <- length(param_lambdas)
+      for(i in 1:lambda_count){
+        lambda_colname <- paste(target_param, names(param_lambdas)[i], sep = "_")
+        t_df[[lambda_colname]] <- c(t_df[[lambda_colname]], param_lambdas[[lambda_colname]])
       }
-      message(sprintf("Iteration %d - cjs_dist for parameter %f", iter_num,cjs_record))
-      if(cjs_record >= 0.5 * cjs_prev){
-        stop <- TRUE
+      if (dist_types[[target_param]] == "normal"){
+        prior_dist_samples <- rnorm(length(dap_result$draws_etas[[target_param]]), mean=param_lambdas$mu, sd=param_lambdas$sigma)
       }
-    }else{
-      # lambda_current <- list(mu=mu_current, logsigma=log(sigma_current), sigma=sigma_current)
-      lambda_current <- list(logalpha=log(alpha_current), logbeta=log(beta_current))
-
-      if(iter_num == 1 || iter_num %% 10 == 0){
-        #plot_df <- data.frame(dap=dap_result$draws_eta, prior=rnorm(length(dap_result$draws_eta), shape=mu_current, rate=sigma_current))
-        plot_df <- data.frame(dap=dap_result$draws_eta, prior=rgamma(length(dap_result$draws_eta), shape=alpha_current, rate=beta_current))
-        mx <- ggplot(plot_df)
-        mx <- mx  + geom_density(aes(x=dap), color="red") + geom_density(aes(x=prior)) + ggtitle("red = dap")
-        print(mx)
-        #ggsave(sprintf("iter_%d.png", iter_num))
+      else if (dist_types[[target_param]] == "gamma"){
+        prior_dist_samples <- rgamma(length(dap_result$draws_etas[[target_param]]), shape=param_lambdas$alpha, r=param_lambdas$beta)
       }
 
-
-      if(updator == "gradient"){
-        lambda_new <- gradient_update(dap_result, lambda_current)
-      }else if(updator == "heuristic"){
-        lambda_new <- heuristic_update(dap_result, lambda_current)
-      }
-      else if(updator == "heuristic_cubic"){
-        heuristic_max_diff_mu <- max(heuristic_max_diff_mu, abs(dap_result$mu - lambda_current$mu) * 1.1)
-        heuristic_max_diff_logsigma <- max(heuristic_max_diff_logsigma, abs(dap_result$logsigma - lambda_current$logsigma) * 1.1)
-        lambda_new <- heuristic_update_cubic(dap_result, lambda_current, heuristic_max_diff_mu, heuristic_max_diff_logsigma)
-      }else if(updator == "normal_str_update"){
-        lambda_new <- normal_str_update(dap_result, lambda_current, gamma)
-      }
-
-      # t_df$B_mu <- c(t_df$B_mu, lambda_new$mu)
-      # t_df$B_sigmasq <- c(t_df$B_sigmasq, exp(lambda_new$logsigma)^2)
-      t_df$B_alpha <- c(t_df$B_alpha, exp(lambda_new$logalpha))
-      t_df$B_beta <- c(t_df$B_beta, exp(lambda_new$logbeta))
-
-      #mu_new <- lambda_new$mu
-      #sigma_new <- exp(lambda_new$logsigma)
-      alpha_new <- exp(lambda_new$logalpha)
-      beta_new <- exp(lambda_new$logbeta)
-      #if (abs(mu_current - dap_result$mu) < tol & abs(log(sigma_current) - log(dap_result$sigma)) < tol){
-      if (abs(log(alpha_current) - dap_result$logalpha) < tol & abs(log(beta_current) - dap_result$logbeta) < tol){
-        stop <- TRUE
-      }
-
-      t_df$lambda_loss <- c(t_df$lambda_loss, lambda_loss(dap_result, lambda_current))
-      t_df$eta_loss <- c(t_df$eta_loss, eta_loss(dap_result$draws_eta, lambda_current))
-      #message(sprintf("Iteration %d - lambda loss: %f eta loss: %f normal_kl_divergence: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current), normal_kl_divergence(dap_result, lambda_current)))
-      message(sprintf("Iteration %d - lambda loss: %f eta loss: %f", iter_num, lambda_loss(dap_result, lambda_current), eta_loss(dap_result$draws_eta, lambda_current)))
+      plot_df <- data.frame(dap=dap_result$draws_etas[[target_param]], prior=prior_dist_samples)
+      plot <- ggplot2::ggplot(plot_df) + ggplot2::geom_density(aes(x=dap), color="red") + ggplot2::geom_density(aes(x=prior)) + ggplot2::ggtitle(sprintf("%s (red=dap)", target_param))
+      dap_tx_plot_list[[dap_tx_plot_index]] <- plot
+      dap_tx_plot_index <- dap_tx_plot_index + 1
     }
 
-    # mu_current <- mu_new
-    # sigma_current <- sigma_new
-    alpha_current <- alpha_new
-    beta_current <- beta_new
+      if(iter_num == 1 || iter_num %% 10 == 0){
+        print(cowplot::plot_grid(dap_tx_plot_list))
+      }
+
+    if(updator == "normal_str_update"){
+      stop("Unfinished implementation")
+      lambda_new <- normal_str_update(dap_result$return_lambdas, lambda_current, gamma)
+    }
+    else if(updator == "mc_update"){
+      lambda_new <- mc_update(dap_result$return_lambdas, lambda_current)
+    }
+
+    message(sprintf("Iteration %d:", iter_num))
+    for(target_param in target_params){
+      param_lambdas <- lambda_new[[target_param]]
+
+      param_lambda_loss <- lambda_loss(dap_result$return_lambdas[[target_param]], param_lambdas)
+      param_eta_loss <-  eta_loss(dap_result$draws_etas[[target_param]], param_lambdas)
+
+      t_df[[paste(target_param, "lambda_loss", sep="_")]] <- c(t_df[[paste(target_param, "lambda_loss", sep="_")]], param_lambda_loss)
+      t_df[[paste(target_param, "eta_loss", sep="_")]] <- c(t_df[[paste(target_param, "eta_loss", sep="_")]], param_eta_loss)
+      message(sprintf("parameter %s - lambda loss: %f eta_loss: %f", target_param, param_lambda_loss, param_eta_loss))
+      if(all(abs(unlist(param_lambdas[[target_param]]) - unlist(dap_result$return_lambdas[[target_param]])) < tol)){
+        stop <- TRUE && stop
+      }
+      else{
+        stop <- FALSE
+      }
+    }
+    lambda_current <- lambda_new
 
     if(stop){
       message(sprintf("Terminating self_calib on iteration %d", iter_num))
@@ -311,9 +156,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_param, init_
     }
   }
   t_df <- as.data.frame(t_df)
-  #print(t_df)
-  #return(list(mu=mu_current, sigma=sigma_current, t_df=t_df))
-  return(list(alpha=alpha_current, beta=beta_current, t_df=t_df))
+  return(list(lambda=lambda_current, t_df=t_df))
 }
 
 
