@@ -1,5 +1,5 @@
 ---
-title: "self-calibration-adaptive"
+title: "self-calibration-adaptive for Gamma regression"
 author: "Hyunji Moon, Shinyoung Kim"
 output:
   html_document: default
@@ -27,29 +27,7 @@ options(SBC.min_chunk_size = 5)
 ```{R, warning=FALSE, error=FALSE}
 ## Generator settings
 # number of SBC simulations per iteration (generator)
-nsims <- 200
-
-# number of observations
-nobs <- 10#2
-
-# link function (1 = logit, 2 = probit, 3 = cloglog)
-link <- 1
-
-# number of binomial trials per observation
-nsize <- 10
-
-## Backend settings
-# number of draws per posterior approximation 
-ndraws <- 100
-
-# number of chains for hmc posterior approximation
-nchains <- 2
-```
-
-```{R, warning=FALSE, error=FALSE}
-## Generator settings
-# number of SBC simulations per iteration (generator)
-nsims <- 200
+nsims <- 100
 
 # number of observations
 nobs <- 10#2
@@ -69,6 +47,9 @@ nchains <- 2
 ```
 
 # Inspecting DAP of gamma-regression-hmc
+
+We will calibrate the `shape` parameter, by changing the prior distribution for `shape`, as well as `a`
+
 ```{R, warning=FALSE, error=FALSE}
 generator_gr <- function(lambdas, fixed_args){
   # fixed value across simulated datasets
@@ -120,9 +101,9 @@ generator_gr <- function(lambdas, fixed_args){
   }
 }
 
-fixed_args_gr <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="gamma", a="normal"))
-cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
-backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+# fixed_args_gr <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="gamma", a="normal"))
+# cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
+# backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = 4, iter_sampling = ndraws / 4) # thin = 10
 #prior_dap_gr <- list(mu_1 = c(), mu_2 = c(),  dap_mu_1 = c(), dap_mu_2 = c(), dap_middle = c())
 # prior_dap_gr <- list()
 # for (mu in seq(-3, 3, by = 1)){
@@ -140,7 +121,7 @@ backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = 4, iter_sa
 # ggplot(prior_dap_gr) +  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
 ```
 
-# Run self-calibration for gamma-hmc model
+We start at an initially badly calibrated region:
 
 ```{R, warning=FALSE, error=FALSE}
 updator = "mc_update"
@@ -156,7 +137,7 @@ gamma <- 1.5 # 0.5 for gradient update, 10 for normal_str_update
 nobs <- 10
 # prior hyperparameters
 lambda_init_gamma <- list(
-  shape = list(alpha=0.01, beta=0.01),
+  shape = list(alpha=0.1, beta=0.1),
   a = list(mu=2, sigma=5)
 )
 fixed_args_gamma <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="gamma", a="normal"))
@@ -174,19 +155,26 @@ backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = 4, iter_sa
 # initial badly calibrated
 result_gr_hmc <- compute_results(datasets_gamma, backend_gr_hmc)
 plot_rank_hist(result_gr_hmc)
+```
 
+We now run self-calibration
+
+```{R, warning=FALSE, error=FALSE}
+knitr::opts_chunk$set(error = TRUE)
 sc_opt_gr <- self_calib_adaptive(calib_generator, backend_gr_hmc, updator, c("shape", "a"), lambda_init_gamma, nsims, gamma, tol, fixed_args = fixed_args_gamma)
-
-# after calibration
-datasets_gr_new <- generate_datasets(SBC_generator_function(generator_gr, sc_opt_gr$alpha, sc_opt_gr$beta, fixed_args_gamma), n_datasets = fixed_args_gamma$nsims)
-result_gr_hmc_new <- compute_results(datasets_gr_new, backend_gr_hmc)
-    
-plot_rank_hist(result_gr_hmc_new)
-ggplot(sc_opt_gr$t_df) + geom_point(aes(x=iter, y=lambda_loss))
 ```
 
 ### Iteration details:
 
 ```{R, warning=FALSE, error=FALSE}
 sc_opt_gr$t_df
+```
+
+```{R, warning=FALSE, error=FALSE}
+# after calibration
+datasets_gr_new <- generate_datasets(SBC_generator_function(generator_gr, sc_opt_gr$lambda, fixed_args_gamma), n_datasets = fixed_args_gamma$nsims)
+result_gr_hmc_new <- compute_results(datasets_gr_new, backend_gr_hmc)
+    
+plot_rank_hist(result_gr_hmc_new)
+ggplot(sc_opt_gr$t_df) + geom_point(aes(x=iter, y=shape_lambda_loss))
 ```

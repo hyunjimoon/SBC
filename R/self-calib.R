@@ -16,6 +16,24 @@
 self_calib_adaptive <- function(generator, backend, updator, target_params, init_lambdas, nsims, gamma, tol, fixed_args){
   dist_types <- fixed_args$dist_types
 
+  ############3
+  gamma_estimator <- function(x){
+    # mle estimate of shape, scale parameter for gamma distribution
+    N <- length(x)
+    sum_x <- sum(x)
+    sum_log_x <- sum(log(x))
+    sum_x_mul_log_x <- sum(x * log(x))
+
+    k_hat <- (N * sum_x) / (N * sum_x_mul_log_x - sum_log_x * sum_x)
+    theta_hat <- 1 / N ^ 2 * (N * sum_x_mul_log_x - sum_log_x * sum_x)
+
+    # bias correction
+    theta_hat <- N  / (N - 1) * theta_hat
+    k_hat <- k_hat - 1 / N * (3 * k_hat - 2/3 * (k_hat / (1 + k_hat)) - 4/5 * (k_hat / (1 + k_hat) ^ 2))
+
+    return(list(alpha=k_hat, beta=1 / theta_hat))
+  }
+
   calculate_dap <- function(current_lambdas){
     nsims <- fixed_args$nsims
     datasets <- do.call(generator, list(current_lambdas, fixed_args = fixed_args))
@@ -25,22 +43,32 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
     for(fit in sbc_result$fits){
       samples <- SBC_fit_to_draws_matrix(fit)
       for(target_param in target_params){
-        draws_etas[[target_param]] <- c(draws_etas$target_param, posterior::extract_variable(samples, target_param))
+
+        draws_etas[[target_param]] <- c(draws_etas[[target_param]], posterior::extract_variable(samples, target_param))
       }
     }
     for(target_param in target_params){
       if(fixed_args$dist_type[[target_param]] == "normal"){
-        print(paste("normal", target_param))
         mu <- mean(draws_etas[[target_param]])
         sigma <- sd(draws_etas[[target_param]])
         return_lambdas[[target_param]] <- list(mu=mu, sigma=sigma)
       }
       else if(fixed_args$dist_type[[target_param]] == "gamma"){
-        print(paste("gamma", target_param))
-        gamma_est <- MASS::fitdistr(draws_etas[[target_param]], "gamma", start=list(shape=1, rate=1))$estimate
-        alpha <- as.numeric(gamma_est["shape"])
-        beta <- as.numeric(gamma_est["rate"])
-        return_lambdas[[target_param]] <- list(alpha=alpha, beta=beta)
+        gamma_params <- tryCatch(
+          {
+            gamma_est = MASS::fitdistr(draws_etas[[target_param]], "gamma")$estimate#, start=list(shape=current_lambdas[[target_param]]$alpha, rate=current_lambdas[[target_param]]$beta))$estimate
+            alpha = as.numeric(gamma_est["shape"])
+            beta = as.numeric(gamma_est["rate"])
+            return(list(alpha=alpha, beta=beta))
+          },
+          error=function(err){
+            message(err)
+            message(sprintf("\ngamma mle estimation for parameter %s failed. Falling back to closed form approximation", target_param))
+            return(gamma_estimator(draws_etas[[target_param]]))
+          }
+        )
+
+        return_lambdas[[target_param]] <- gamma_params
       }
     }
     return(list(return_lambdas = return_lambdas, draws_etas = draws_etas))
@@ -63,7 +91,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
   }
 
   mc_update <- function(draws_dap_lambdas, lambdas){
-    lambdas
+    draws_dap_lambdas
   }
 
   ###############
@@ -104,7 +132,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
       lambda_count <- length(param_lambdas)
       for(i in 1:lambda_count){
         lambda_colname <- paste(target_param, names(param_lambdas)[i], sep = "_")
-        t_df[[lambda_colname]] <- c(t_df[[lambda_colname]], param_lambdas[[lambda_colname]])
+        t_df[[lambda_colname]] <- c(t_df[[lambda_colname]], param_lambdas[[names(param_lambdas)[i]]])
       }
       if (dist_types[[target_param]] == "normal"){
         prior_dist_samples <- rnorm(length(dap_result$draws_etas[[target_param]]), mean=param_lambdas$mu, sd=param_lambdas$sigma)
@@ -115,13 +143,17 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
 
       plot_df <- data.frame(dap=dap_result$draws_etas[[target_param]], prior=prior_dist_samples)
       plot <- ggplot2::ggplot(plot_df) + ggplot2::geom_density(aes(x=dap), color="red") + ggplot2::geom_density(aes(x=prior)) + ggplot2::ggtitle(sprintf("%s (red=dap)", target_param))
+      if(iter_num == 1 || iter_num %% 10 == 0){
+        print(plot)
+      }
       dap_tx_plot_list[[dap_tx_plot_index]] <- plot
       dap_tx_plot_index <- dap_tx_plot_index + 1
     }
 
-      if(iter_num == 1 || iter_num %% 10 == 0){
-        print(cowplot::plot_grid(dap_tx_plot_list))
-      }
+      # if(iter_num == 1 || iter_num %% 10 == 0){
+      #   cowplot::plot_grid(dap_tx_plot_list)
+      #   print(cowplot::plot_grid(dap_tx_plot_list))
+      # }
 
     if(updator == "normal_str_update"){
       stop("Unfinished implementation")
@@ -133,7 +165,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
 
     message(sprintf("Iteration %d:", iter_num))
     for(target_param in target_params){
-      param_lambdas <- lambda_new[[target_param]]
+      param_lambdas <- lambda_current[[target_param]]
 
       param_lambda_loss <- lambda_loss(dap_result$return_lambdas[[target_param]], param_lambdas)
       param_eta_loss <-  eta_loss(dap_result$draws_etas[[target_param]], param_lambdas)
@@ -141,19 +173,19 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
       t_df[[paste(target_param, "lambda_loss", sep="_")]] <- c(t_df[[paste(target_param, "lambda_loss", sep="_")]], param_lambda_loss)
       t_df[[paste(target_param, "eta_loss", sep="_")]] <- c(t_df[[paste(target_param, "eta_loss", sep="_")]], param_eta_loss)
       message(sprintf("parameter %s - lambda loss: %f eta_loss: %f", target_param, param_lambda_loss, param_eta_loss))
-      if(all(abs(unlist(param_lambdas[[target_param]]) - unlist(dap_result$return_lambdas[[target_param]])) < tol)){
+      if(all(abs(unlist(param_lambdas) - unlist(dap_result$return_lambdas[[target_param]])) < tol)){
         stop <- TRUE && stop
       }
       else{
         stop <- FALSE
       }
     }
-    lambda_current <- lambda_new
 
     if(stop){
       message(sprintf("Terminating self_calib on iteration %d", iter_num))
       break
     }
+    lambda_current <- lambda_new
   }
   t_df <- as.data.frame(t_df)
   return(list(lambda=lambda_current, t_df=t_df))

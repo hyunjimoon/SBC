@@ -50,32 +50,9 @@ ndraws <- 100
 nchains <- 2
 ```
 
-```{R, warning=FALSE, error=FALSE}
-## Generator settings
-# number of SBC simulations per iteration (generator)
-nsims <- 200
-
-# number of observations
-nobs <- 10#2
-
-# link function (1 = logit, 2 = probit, 3 = cloglog)
-link <- 1
-
-# number of binomial trials per observation
-nsize <- 10
-
-## Backend settings
-# number of draws per posterior approximation 
-ndraws <- 100
-
-# number of chains for hmc posterior approximation
-nchains <- 2
-```
-
 # Inspecting DAP of binom-laplace 
 ```{R, warning=FALSE, error=FALSE}
 generator_binom <- function(lambdas, fixed_args){
-  print(fixed_args)
   # fixed value across simulated datasets
   # experiment settings
   nobs <- fixed_args$nobs
@@ -105,48 +82,13 @@ generator_binom <- function(lambdas, fixed_args){
   list(
     parameters = list(eta = eta),
     generated = list(nobs= nobs, nsize = nsize, link = link_type,
-                     dist_types = match(unlist(dist_types), unique(unlist(dist_types))), lambda_arg1 = lambda_arg1, lambda_arg2 = lambda_arg2, 
+                     dist_types = match(unlist(dist_types), c("normal", "gamma")), lambda_arg1 = lambda_arg1, lambda_arg2 = lambda_arg2, 
                      Y = Y)
   )
 }
 
 fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws, dist_types=list(eta="normal"))
 
-# step2: inferring posterior
-rstan_binom_mod <- stan_model("models/binom-laplace.stan")
-cmdstan_binom_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
-backend_binom_opt <- SBC_backend_rstan_optimizing(rstan_binom_mod, draws = ndraws)
-
-#backend_binom_hmc <- SBC_backend_cmdstan_sample(backend_binom_opt, chains = 4, iter_sampling = ndraws / 4) # thin = 10
-
-calculate_dap <- function(mu, sigma, generator, backened, fixed_args){
-  datasets <- generate_datasets(SBC_generator_function(generator, mu, sigma, fixed_args), n_datasets = fixed_args$nsims)
-  sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
-  draws_eta <- c()
-  for(fit in sbc_result$fits){
-    samples <- SBC_fit_to_draws_matrix(fit)
-    draws_eta <- c(draws_eta, posterior::extract_variable(samples, "eta"))
-  }
-  # assume normal for dap
-  mu <- mean(draws_eta)
-  sigma <- sd(draws_eta)
-  return(list(mu=mu, sigma=sigma, draws_eta=draws_eta))
-}
-# 
-# prior_dap_b <- list(mu = c(), sigma = c(), dap_mu = c(), dap_sigma = c(), mu_loss = c(), sigma_loss = c())
-# for (mu in seq(-5, 5, by = 1)){
-#   for(sigma in seq(1, 9, by = 1)){
-#     prior_dap_b$mu <- c(prior_dap_b$mu, mu)
-#     prior_dap_b$sigma <- c(prior_dap_b$sigma, sigma)
-#     dap <- calculate_dap(mu, sigma, generator_binom, backend_binom_opt, fixed_args_binom)
-#     prior_dap_b$dap_mu <- c(prior_dap_b$dap_mu, dap$mu)
-#     prior_dap_b$dap_sigma <- c(prior_dap_b$dap_sigma, dap$sigma)
-#     prior_dap_b$mu_loss <- c(prior_dap_b$mu_loss, mu - dap$mu)
-#     prior_dap_b$sigma_loss <- c(prior_dap_b$sigma_loss, sigma - dap$sigma)
-#   }
-# }
-# prior_dap_b <- data.frame(prior_dap_b)
-# ggplot(prior_dap_b)+  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
 ```
 
 # Self-calibration of binomial-laplace
@@ -159,7 +101,7 @@ lambda_init_binom <- list(
 datasets_binom <- generate_datasets(SBC_generator_function(generator_binom, lambda_init_binom, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
 
 # hyperparameter update algorithm 
-updator = "normal_str_update"
+updator = "mc_update"
 
 # maximal number of SBC iterations
 niter <- 100
@@ -187,19 +129,27 @@ plot_rank_hist(result_binom_opt)
 # Run self-calibration for binomial-laplace approximation model
 
 ```{R, warning=FALSE, error=FALSE}
-# step3: updating hyperparmeters
+knitr::opts_chunk$set(error = TRUE)
 # wrapper function to follow `self_calib_adaptive` interface
-calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
-  generate_datasets(SBC_generator_function(generator_binom, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
+calib_generator <- function(lambdas, fixed_args){
+  generate_datasets(SBC_generator_function(generator_binom, lambdas, fixed_args), n_datasets = fixed_args$nsims)
 }
-sc_binom_opt <- self_calib_adaptive(calib_generator, backend_binom_opt, updator, "eta", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_binom)
-datasets_binom_new <- generate_datasets(SBC_generator_function(generator_binom, sc_binom_opt$mu, sc_binom_opt$sigma, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
-result_binom_opt_new <- compute_results(datasets_binom_new, backend_binom_opt, thin_ranks = 1)
-    
-plot_rank_hist(result_binom_opt_new)
-ggplot(sc_binom_opt$t_df) + geom_point(aes(x=iter, y=lambda_loss))
+sc_binom_opt <- self_calib_adaptive(calib_generator, backend_binom_opt, updator, c("eta"), lambda_init_binom, nsims, gamma, tol, fixed_args = fixed_args_binom)
 ```
 ### Iteration details:
 ```{R, warning=FALSE, error=FALSE}
 sc_binom_opt$t_df
+```
+
+```{R}
+ggplot(sc_binom_opt$t_df) + geom_point(aes(x=iter, y=eta_lambda_loss))
+```
+
+### Calculate rank from calibrated lambdas
+
+```{R, warning=FALSE, error=FALSE}
+datasets_binom_new <- generate_datasets(SBC_generator_function(generator_binom, sc_binom_opt$lambda, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+result_binom_opt_new <- compute_results(datasets_binom_new, backend_binom_opt, thin_ranks = 1)
+    
+plot_rank_hist(result_binom_opt_new)
 ```

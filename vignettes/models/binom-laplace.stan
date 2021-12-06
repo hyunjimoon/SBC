@@ -2,10 +2,10 @@ data {
   int<lower=1> nobs;  // total number of observations
   int Y[nobs];  // outcome
   int <lower =1> nsize;
-  real lambda_mu;
-  real lambda_log_sigma;
   int<lower=1,upper=3> link;
-  int eta_dist_type;  // 1 == normal, 2 == gamma
+  int dist_types;
+  real lambda_arg1;
+  real lambda_arg2;
 
 }
 parameters {
@@ -23,6 +23,13 @@ transformed parameters {
   }
 }
 model {
-  eta ~ normal(lambda_mu, exp(lambda_log_sigma));
+  if(dist_types == 1){
+    eta ~ normal(lambda_arg1, lambda_arg2);
+  }
+  else if(dist_types == 1){
+    eta ~ gamma(lambda_arg1, lambda_arg2);
+  }
+
+
   Y ~ binomial(nsize, p);
 }
