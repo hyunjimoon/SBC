@@ -9,8 +9,8 @@ SBC_backend_cmdstan_variational(model, ...)
 \arguments{
 \item{model}{an object of class \code{CmdStanModel} (as created by \code{cmdstanr::cmdstan_model})}
 
-\item{...}{other arguments passed to the \verb{$variational()} method of the model. The \code{data} and
-\code{parallel_chains} arguments cannot be set this way as they need to be controlled by the SBC
+\item{...}{other arguments passed to the \verb{$variational()} method of the model.
+The \code{data} argument cannot be set this way as they need to be controlled by the SBC
 package.}
 }
 \description{

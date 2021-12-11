@@ -226,7 +226,7 @@ length.SBC_results <- function(x) {
 #'
 #' Parallel processing is supported via the `future` package, for most uses, it is most sensible
 #'  to just call `plan(multisession)` once in your R session and  all
-#'  cores your computer has will be used. For more details refer to the documentation
+#'  cores your computer will be used. For more details refer to the documentation
 #'  of the `future` package.
 #'
 #' # Thinning

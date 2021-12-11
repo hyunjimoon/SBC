@@ -72,7 +72,7 @@ Performs the main SBC routine given datasets and a backend.
 \section{Paralellization}{
 Parallel processing is supported via the \code{future} package, for most uses, it is most sensible
 to just call \code{plan(multisession)} once in your R session and  all
-cores your computer has will be used. For more details refer to the documentation
+cores your computer will be used. For more details refer to the documentation
 of the \code{future} package.
 }
 
