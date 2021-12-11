@@ -10,3 +10,4 @@ rdunif(n, a, b)
 Internal, should not be exported.
 Based on https://stats.stackexchange.com/a/3939/73129
 }
+\keyword{internal}

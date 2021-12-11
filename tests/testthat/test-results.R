@@ -94,15 +94,16 @@ test_that("calculate_sds_draws_matrix", {
 
 test_that("statistics_from_single_fit", {
     params <- posterior::as_draws_matrix(
-        posterior::as_draws_rvars(list(
-            mu = 4,
-            tau = 4,
-            theta = seq(3.5, 6.5, length.out = 8))))
+        posterior::draws_rvars(
+            mu = posterior::rvar(4) ,
+            tau = posterior::rvar(4),
+            theta = posterior::rvar(array(seq(3.5, 6.5, length.out = 8), dim = c(1,8)))))
 
     # Can't really check correctness, only
     # testing that no error is thrown and structure is OK
     res <- statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
-                               parameters = params, thin_ranks = 1)
+                               parameters = params, thin_ranks = 1, gen_quants = NULL,
+                               backend = SBC_backend_mock())
 
     expect_equal(length(unique(res$max_rank)), 1)
     expect_true(all(res$rank >= 0 & res$rank < res$max_rank))

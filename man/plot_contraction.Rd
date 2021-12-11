@@ -25,5 +25,7 @@ or \code{"var"} for variance.}
 a ggplot2 plot object
 }
 \description{
-Prior/posterior contraction plot.
+The rationale for this plot and its interpretaion is explained in
+Mike Betancourt's
+\href{https://betanalpha.github.io/assets/case_studies/principled_bayesian_workflow.html#132_A_Bayesian_Eye_Chart}{Towards A Principled Bayesian Workflow}.
 }
