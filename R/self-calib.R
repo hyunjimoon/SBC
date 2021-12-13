@@ -173,7 +173,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
       t_df[[paste(target_param, "lambda_loss", sep="_")]] <- c(t_df[[paste(target_param, "lambda_loss", sep="_")]], param_lambda_loss)
       t_df[[paste(target_param, "eta_loss", sep="_")]] <- c(t_df[[paste(target_param, "eta_loss", sep="_")]], param_eta_loss)
       message(sprintf("parameter %s - lambda loss: %f eta_loss: %f", target_param, param_lambda_loss, param_eta_loss))
-      if(all(abs(unlist(param_lambdas) - unlist(dap_result$return_lambdas[[target_param]])) < tol)){
+      if(all(abs(unlist(param_lambdas) - unlist(dap_result$return_lambdas[[target_param]])) < tol) && iter_num > 1){
         stop <- TRUE && stop
       }
       else{
