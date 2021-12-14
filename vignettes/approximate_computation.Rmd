@@ -1,25 +1,53 @@
 ---
-title: "approximate_compuation"
-output: html_document
-author: Hyunji Moon
+title: "SBC for approximate methods in Stan  (ADVI, optimizing)"
+author: "Hyunji Moon, Martin Modrák"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: yes
+vignette: >
+  %\VignetteIndexEntry{SBC for approximate methods in Stan  (ADVI, optimizing)}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
 ---
 
-```{r setup, include=FALSE}
-library(SBC) #devtools::install_github("hyunjimoon/SBC")
-library(cmdstanr)
-library(bayesplot)
-library(posterior)
-library(future)
-library(ggplot2)
+
+```{r setup, message=FALSE,warning=FALSE, results="hide"}
+library(SBC); 
+use_cmdstanr <- TRUE # Set to false to use rstan instead
+
+if(use_cmdstanr) {
+  library(cmdstanr)
+} else {
+  library(rstan)
+}
 
 options(mc.cores = parallel::detectCores())
-plan(multisession)
+
+# Parallel processing
+
+# library(future)
+# plan(multisession)
+
+# The fits are very fast,
+# so we force a minimum chunk size to reduce overhead of
+# paralellization and decrease computation time.
 options(SBC.min_chunk_size = 5)
-set.seed(1984)
+
+
+# Setup caching of results
+cache_dir <- "./approximate_computation_SBC_cache"
+if(!dir.exists(cache_dir)) {
+  dir.create(cache_dir)
+}
+
 ```
 
+
 # 1. Intro.
-HMC can be slow either from large data or difficult geometry, where approximate computations such as variational inference are helpful. SBC provides one standard to test this replacement. Modularized replacement of this inferencce engine is possible through SBC's `backend` component and first example is on ADVI. Hyperparameters of each engine greatly affect its performance and we recommended users to supply customized argument as will shown below.
+
+HMC can be slow either from large data or difficult geometry. For simple geometries (and large data) the ADVI (automatic differentiation variational inference) approximation can be helpful. SBC provides one standard to test whether ADVI works well for your model without ever needing to run full
+HMC for your model. 
 
 # 2. Comparing HMC and ADVI 
 Simple model with location and scale parameter for normal distirbution is used and coded into generator and backend (stan file).
@@ -81,20 +109,21 @@ Begin stochastic gradient ascent.
 ```
 
 ```{R}
-S = 1000
+library(posterior)
+S = 30
 N = 20
 M = 100
 s_thin_ranks = 10
 v_thin_ranks = 1
 chains = 4
 backend_tn <- SBC_backend_cmdstan_sample(mod_two_norm, chains = chains, iter_sampling = M * s_thin_ranks / chains)
-backend_tn_vb <- SBC_backend_cmdstan_variational(mod_two_norm, grad_samples = 200, init = 0.5)
+backend_tn_vb <- SBC_backend_cmdstan_variational(mod_two_norm, grad_samples = 200, init = 0.5, n_retries_dropped = 3)
 prior_width = 1
 datasets_tn <- generator(
   hyperparam = list(prior_width = prior_width, N = N),
   param = draws_rvars(loc = rvar(rnorm(S, 0, prior_width)), scale = rvar(exp(rnorm(S, 0, prior_width))))
 )
-result_tn <- compute_results(datasets_tn, backend_tn)
+#result_tn <- compute_results(datasets_tn, backend_tn)
 result_tn_vb <- compute_results(datasets_tn, backend_tn_vb, thin_ranks = v_thin_ranks)
 ```
 
