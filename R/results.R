@@ -583,7 +583,7 @@ compute_results_single <- function(params_and_generated, backend, cores,
           backend = backend)
 
         res$backend_diagnostics <- SBC::SBC_fit_to_diagnostics(
-          fit, res$outuput, res$messages, res$warnings)
+          fit, res$output, res$messages, res$warnings)
         NULL
       }, error = identity)
     })
