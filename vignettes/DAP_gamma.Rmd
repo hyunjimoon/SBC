@@ -54,6 +54,11 @@ A1. |x-T(x)| is Convex
 A2. T is a contraction: |T(x) - T(Tx)| < |x-T(x)|, i.e., T is a "contraction".
 With update algorithm B(x) = px+qT(x) (p+q = 1),
 |px+qT(x) - T(px+qT(x))|  < p |x-T(x)| + q |T(x) - T(T(x))| (A1)< |x-T(x)|   (A2) and therefore the gap decreases. We empirically inspect this on Gamma-regression case.
+- convex (global) vs continuos (wiggly, can  )
+For $f^-1([0,\epsilon])$ to be compact, f needs to be convex. 
+
+A1 is about blackbox T (reward).
+A2 is about the quality of our update T (action).
 
 # Inspecting DAP of gamma-regression-hmc
 ## Goal: CRP convex set (2d conditioned from 4d) construction
@@ -93,11 +98,11 @@ generator_gr <- function(lambdas, fixed_args){
       lambda_arg1 <- c(lambda_arg1, lambdas$a$alpha)
       lambda_arg2 <- c(lambda_arg2, lambdas$a$beta)
     }
-    
     #a <- rnorm(1, mean = 2, sd = 5)
     logmu <- as.numeric(a + X %*% b)
     mu <- exp(logmu)
     Y <- rgamma(nobs, shape = shape, rate = shape / mu)
+    
     if(!any(Y <= 1e-32)){
       return(list(
               parameters = list(shape = shape),
@@ -109,7 +114,7 @@ generator_gr <- function(lambdas, fixed_args){
   }
 }
 
-fixed_args_gr <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="gamma", a="normal"))
+fixed_args_gr <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="normal", a="normal"))
 cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
 rstan_mod_gr <- stan_model("models/gamma-reg.stan")
 backend_gr_opt <- SBC_backend_rstan_optimizing(rstan_mod_gr, draws = ndraws)
@@ -144,47 +149,44 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
   # var = alpha / beta^2
   return(list(mu=mu, var=var, draws_eta=draws_eta))
 }
-
-mu_vals <- seq(10, 15, length.out = 5)
-var_vals <- seq(1, 5,length.out = 5)
+true_mu <- 20
+true_var <- 2
+mu_vals <- true_mu + seq(-10, 10, length.out = 6)
+var_vals <- true_var + seq(-1, 1, length.out = 3) 
 results <- rep(NA, length(mu_vals))
 dap_mu <- rep(NA, length(mu_vals))
-# convexity of |x-T(x)| with different norms
-convex <-array(rep(NA, length(mu_vals) * length(var_vals)), dim = c(length(mu_vals), length(var_vals)))
-convex_v <-array(rep(NA, length(mu_vals) * length(var_vals)), dim = c(length(mu_vals), length(var_vals)))
+
+# (x-T(x)^2
+calib <-array(rep(NA, length(mu_vals) * length(var_vals)), dim = c(length(mu_vals), length(var_vals)))
+# (x-r)^2
+real <- array(rep(NA, length(mu_vals) * length(var_vals)), dim = c(length(mu_vals), length(var_vals)))
+# convex objective
+convex <- array(rep(NA, length(mu_vals) * length(var_vals)), dim = c(length(mu_vals), length(var_vals)))
 # contraction of T i.e. |T(x)-T(T(x))| <  |x-T(x)| with different norms
 contraction <- array(rep(NA, length(mu_vals) * length(var_vals)), dim = c(length(mu_vals), length(var_vals)))
-contraction_v <- array(rep(NA, length(mu_vals) * length(var_vals)), dim = c(length(mu_vals), length(var_vals)))
+
+colnames(calib) <- var_vals
+rownames(calib) <- mu_vals
+colnames(real) <- var_vals
+rownames(real) <- mu_vals
 colnames(convex) <- var_vals
 rownames(convex) <- mu_vals
-colnames(convex_v) <- var_vals
-rownames(convex_v) <- mu_vals
 colnames(contraction) <- var_vals
 rownames(contraction) <- mu_vals
-colnames(contraction_v) <- var_vals
-rownames(contraction_v) <- mu_vals
 
 for(i in 1:length(mu_vals)){
   for(j in 1:length(var_vals)){
     dap <- calculate_dap(mu_vals[[i]],var_vals[[j]] , calib_generator, backend_gr_opt, fixed_args_gr)
-    dapdap <- calculate_dap(dap$mu,dap$var , calib_generator, backend_gr_opt, fixed_args_gr)
-    convex[i,j] <- (mu_vals[[i]] - dap$mu)^2 + (var_vals[[j]] - dap$var)^2
-    convex_v[i,j] <- (mu_vals[[i]] - dap$mu)^2 + (var_vals[[j]]^2 - dap$var)^2
-    
+    dapdap <- calculate_dap(dap$mu, dap$var, calib_generator, backend_gr_opt, fixed_args_gr)
+    calib[i,j] <- (mu_vals[[i]] - dap$mu)^2 + (var_vals[[j]] - dap$var)^2 
+    real[i,j] <- (mu_vals[[i]] - 50)^2 + (var_vals[[i]] - 5)^2
+    convex[i,j] <- calib[i,j] + real[i,j]
     contraction[i,j] <- (mu_vals[[i]] - dap$mu)^2 + (var_vals[[j]] - dap$var)^2 - ((dap$mu- dapdap$mu)^2 + (dap$var - dapdap$var)^2)
-    
-    contraction_v[i,j] <- (mu_vals[[i]] - dap$mu)^2 + (var_vals[[j]]^2 - dap$var^2)^2 - ((dap$mu- dapdap$mu)^2 + (dap$var^2 - dapdap$var^2)^2)
   }
 }
 
-persp3D(x=mu_vals, y=var_vals, z = convex, theta=75, phi=0, xlab="mu", ylab="sigma", zlab="convex", ticks=5, ticktype="detailed")
-persp3D(x=mu_vals, y=var_vals, z = convex_v, theta=75, phi=0, xlab="mu", ylab="sigma", zlab="convex_v", ticks=5, ticktype="detailed")
-
-prior_dap <- data.frame(prior_dap)
-ggplot(prior_dap)+  geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue")
-ggplot(prior_dap_b) + geom_density_2d(aes(x=mu, y = sigma)) + geom_density_2d(aes(x=dap_mu, y = dap_sigma), color = "red")
-
-persp3D(x=prior_dap$dap_mu, y=var_vals, z = convex_v, theta=30, phi=50, xlab="mu", ylab="var", zlab="convex")
+persp3D(x=mu_vals, y=var_vals, z = convex, theta=55, phi=10, xlab="mu", ylab="sigma", zlab="convex if ", ticks=5, ticktype="detailed")
+persp3D(x=mu_vals, y=var_vals, z = contraction, theta=55, phi=10, xlab="mu", ylab="var", zlab="contraction", ticks=5, ticktype="detailed")
 ```
 ### 2. Condition on one hyperparameter (sigma)
 calc_dap return sigma as always fixed value (a~ gibbs sampler) shape mu  vs intercept mu
@@ -222,5 +224,4 @@ calculate_dap <- function(shape_mu, a_mu, generator, backened, fixed_args){
   var <- 1
   return(list(shape_mu=shape_mu, a_mu=a_mu, var=var, draws_shape=draws_shape, draws_a=draws_a))
 }
-
 ```
