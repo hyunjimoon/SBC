@@ -19,8 +19,6 @@ library(rstanarm)
 library(ggplot2)
 library(mclust)
 options(mc.cores = parallel::detectCores())
-plan(multisession)
-options(SBC.min_chunk_size = 5)
 #set.seed(1984)
 ```
 
@@ -90,7 +88,7 @@ generator_gr <- function(lambdas, fixed_args){
     logmu <- as.numeric(a + X %*% b)
     mu <- exp(logmu)
     Y <- rgamma(nobs, shape = shape, rate = shape / mu)
-    if(!any(Y <= 10e-15)){
+    if(!any(Y <= 1e-32)){
       return(list(
               parameters = list(shape = shape),
               generated = list(nobs= nobs, K = K, X = X, dist_types = match(unlist(dist_types), c("normal", "gamma")), 
@@ -101,24 +99,10 @@ generator_gr <- function(lambdas, fixed_args){
   }
 }
 
-# fixed_args_gr <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="gamma", a="normal"))
-# cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
-# backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = 4, iter_sampling = ndraws / 4) # thin = 10
-# prior_dap_gr <- list(mu_1 = c(), mu_2 = c(),  dap_mu_1 = c(), dap_mu_2 = c(), dap_middle = c())
-# prior_dap_gr <- list()
-# for (mu in seq(-3, 3, by = 1)){
-#   for(sigma in seq(1, 51, by = 10)){
-#     prior_dap_gr$mu <- c(prior_dap_gr$mu, mu)
-#     prior_dap_gr$sigma <- c(prior_dap_gr$sigma, sigma)
-#     dap <- calculate_dap(mu, sigma, generator_gr, backend_gr_hmc, fixed_args_gr)
-#     prior_dap_gr$dap_mu <- c(prior_dap_gr$dap_mu, dap$mu)
-#     prior_dap_gr$dap_sigma <- c(prior_dap_gr$dap_sigma, dap$sigma)
-#     prior_dap_gr$mu_loss <- c(prior_dap_gr$mu_loss, mu - dap$mu)
-#     prior_dap_gr$sigma_loss <- c(prior_dap_gr$sigma_loss, sigma - dap$sigma)
-#   }
-# }
-# prior_dap_gr <- data.frame(prior_dap_gr)
-# ggplot(prior_dap_gr) +  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
+fixed_args_gr <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="gamma", a="normal"))
+cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
+backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = nchains, iter_sampling = ndraws / nchains) # thin = 10
+
 ```
 
 We start at an initially badly calibrated region:
@@ -157,6 +141,44 @@ result_gr_hmc <- compute_results(datasets_gamma, backend_gr_hmc)
 plot_rank_hist(result_gr_hmc)
 ```
 
+Plot for convex set
+```{R, warning = FALSE, error = FALSE}
+calculate_dap <- function(mu, sigma, generator, backened, fixed_args){
+  lambda_init_gamma <- list(
+    shape = list(alpha= mu^2 / sigma^2, beta= mu / sigma^2),
+    a = list(mu=2, sigma=1)
+  )
+  datasets <- do.call(generator, list(lambda_init_gamma, fixed_args = fixed_args))
+  sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
+  draws_eta <- c()
+  for(fit in sbc_result$fits){
+    samples <- SBC_fit_to_draws_matrix(fit)
+    draws_eta <- c(draws_eta, posterior::extract_variable(samples, "eta"))
+  }
+  # assume normal for dap
+  mu <- mean(draws_eta)
+  var <- sd(draws_eta)^2
+  return(list(mu=mu, var=var, draws_eta=draws_eta))
+}
+
+prior_dap <- list(mu = c(), var = c(), dap_mu = c(), dap_var = c(), mu_loss = c(), var_loss = c())
+for (mu in seq(0, 2, by = 1)){
+  for(var in seq(0.1, 0.3, by = .1)){
+    prior_dap$mu <- c(prior_dap$mu, mu)
+    prior_dap$var <- c(prior_dap$var, var)
+    dap <- calculate_dap(mu, sqrt(var), calib_generator, backend_gr_hmc, fixed_args_gr)
+    prior_dap$dap_mu <- c(prior_dap$dap_mu, dap$mu)
+    prior_dap$dap_var <- c(prior_dap$dap_var, dap$var)
+    prior_dap$mu_loss <- c(prior_dap$mu_loss, mu - dap$mu)
+    prior_dap$var_loss <- c(prior_dap$var_loss, var - dap$var)
+  }
+}
+prior_dap <- data.frame(prior_dap)
+ggplot(prior_dap)+  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
+
+prior_dap_gr <- data.frame(prior_dap_gr)
+ggplot(prior_dap_gr) +  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
+```
 We now run self-calibration
 
 ```{R, warning=FALSE, error=FALSE}
