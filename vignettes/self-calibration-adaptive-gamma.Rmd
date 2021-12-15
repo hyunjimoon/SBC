@@ -98,7 +98,6 @@ generator_gr <- function(lambdas, fixed_args){
     }
   }
 }
-
 fixed_args_gr <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="gamma", a="normal"))
 cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
 rstan_mod_gr <- stan_model("models/gamma-reg.stan")
@@ -127,6 +126,7 @@ lambda_init_gamma <- list(
 )
 fixed_args_gamma <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="gamma", a="normal"))
 datasets_gamma <- generate_datasets(SBC_generator_function(generator_gr, lambda_init_gamma, fixed_args_gamma), n_datasets = nsims)
+# combines target hp values with other hyperparameter settings
 calib_generator <- function(lambda_init_gamma, fixed_args){
   generate_datasets(SBC_generator_function(generator_gr, lambda_init_gamma, fixed_args), n_datasets = fixed_args_gamma$nsims)
 }
@@ -142,18 +142,13 @@ result_gr_hmc <- compute_results(datasets_gamma, backend_gr_hmc)
 plot_rank_hist(result_gr_hmc)
 ```
 
-## Goal: CRP convex set (2d conditioned from 4d) construction
 
-### 1. Condition calibrated region for one param:
-plot l (x-T(x))^2 for shape mu  vs intercept mu
-p1) fix intercept as  (2,1)
-p2) fix intercept as (2,5)
 
 ```{R, warning = FALSE, error = FALSE}
-calculate_dap <- function(mu, sigma, generator, backened, fixed_args){
+calculate_dap <- function(mu, var, generator, backened, fixed_args){
   lambda_init_gamma <- list(
-    shape = list(alpha= mu^2 / sigma^2, beta= mu / sigma^2),
-    a = list(mu=2, sigma=1)
+    shape = list(alpha= mu^2 / var, beta= mu / var),
+    a = list(mu=2, var=1)
   )
   datasets <- do.call(generator, list(lambda_init_gamma, fixed_args = fixed_args))
   sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
@@ -163,17 +158,22 @@ calculate_dap <- function(mu, sigma, generator, backened, fixed_args){
     draws_eta <- c(draws_eta, posterior::extract_variable(samples, "shape"))
   }
   # assume normal for dap
-  mu <- mean(draws_eta)
-  var <- sd(draws_eta)^2
+  # mu <- mean(draws_eta)
+  # var <- sd(draws_eta)^2
+  gamma_est <- MASS::fitdistr(draws_eta, "gamma", start=list(shape=1, rate=1))$estimate
+  alpha <- as.numeric(gamma_est["shape"])
+  beta <- as.numeric(gamma_est["rate"])
+  mu = alpha / beta
+  var = alpha / beta^2
   return(list(mu=mu, var=var, draws_eta=draws_eta))
 }
 
 prior_dap <- list(mu = c(), var = c(), dap_mu = c(), dap_var = c(), mu_loss = c(), var_loss = c())
-for (mu in seq(1, 5, length.out = 4)){
-  for(var in seq(1, 5, length.out = 4)){
+for (mu in seq(.1, .5, length.out = 4)){
+  for(var in seq(.1, .5, length.out = 4)){
     prior_dap$mu <- c(prior_dap$mu, mu)
     prior_dap$var <- c(prior_dap$var, var)
-    dap <- calculate_dap(mu, sqrt(var), calib_generator, backend_gr_opt, fixed_args_gr)
+    dap <- calculate_dap(mu, var, calib_generator, backend_gr_opt, fixed_args_gr)
     prior_dap$dap_mu <- c(prior_dap$dap_mu, dap$mu)
     prior_dap$dap_var <- c(prior_dap$dap_var, dap$var)
     prior_dap$mu_loss <- c(prior_dap$mu_loss, mu - dap$mu)
@@ -181,51 +181,10 @@ for (mu in seq(1, 5, length.out = 4)){
   }
 }
 prior_dap <- data.frame(prior_dap)
-ggplot(prior_dap)+  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
-
-prior_dap_gr <- data.frame(prior_dap_gr)
-ggplot(prior_dap_gr) +  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
-```
-### 2. Condition on one hyperparameter (sigma)
-calc_dap return sigma as always fixed value (a~ gibbs sampler) shape mu  vs intercept mu
-p3) sigma 1
-p4) sigma 0.1
-```{R, warning = FALSE, error = FALSE}
-calculate_dap <- function(shape_mu, a_mu, generator, backened, fixed_args){
-    lambda_init_gamma <- list(
-    shape = list(alpha= shape_mu^2 / 1^2, beta= shape_mu / 1^2),
-    a = list(alpha= a_mu^2 / 1^2, beta= a_mu / 1^2)
-  )
-  datasets <- do.call(generator, list(lambda_init_gamma, fixed_args = fixed_args))
-  sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
-  draws_eta <- c()
-  for(fit in sbc_result$fits){
-    samples <- SBC_fit_to_draws_matrix(fit)
-    draws_eta <- c(draws_eta, posterior::extract_variable(samples, "shape")) ### TODO
-  }
-  # assume fixed varss for dap
-  mu <- mean(draws_eta)
-  var <- 1               
-  return(list(mu=mu, var=var, draws_eta=draws_eta))
-}
-
-prior_dap <- list(mu = c(), var = c(), dap_mu = c(), dap_var = c(), mu_loss = c(), var_loss = c())
-for (mu in seq(1, 5, length.out = 4)){
-  for(var in seq(1, 5, length.out = 4)){
-    prior_dap$mu <- c(prior_dap$mu, mu)
-    prior_dap$var <- c(prior_dap$var, var)
-    dap <- calculate_dap(mu, sqrt(var), calib_generator, backend_gr_opt, fixed_args_gr)
-    prior_dap$dap_mu <- c(prior_dap$dap_mu, dap$mu)
-    prior_dap$dap_var <- c(prior_dap$dap_var, dap$var)
-    prior_dap$mu_loss <- c(prior_dap$mu_loss, mu - dap$mu)
-    prior_dap$var_loss <- c(prior_dap$var_loss, var - dap$var)
-  }
-}
-prior_dap <- data.frame(prior_dap)
-ggplot(prior_dap)+  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
-
-prior_dap_gr <- data.frame(prior_dap_gr)
-ggplot(prior_dap_gr) +  geom_point(aes(x=mu, y=sigma), color = "red") + geom_point(aes(x=dap_mu, y = dap_sigma), color = "blue")
+ggplot(prior_dap)+  geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue")
+ggplot(prior_dap_b) + geom_density_2d(aes(x=mu, y = sigma)) + geom_density_2d(aes(x=dap_mu, y = dap_sigma), color = "red")
+library(plot3D)
+persp3D(x=prior_dap$dap_mu, y=sigma_vals, z = convex_v, theta=30, phi=50, xlab="mu", ylab="var", zlab="convex")
 ```
 
 We now run self-calibration
