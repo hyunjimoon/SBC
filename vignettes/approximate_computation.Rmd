@@ -26,8 +26,8 @@ options(mc.cores = parallel::detectCores())
 
 # Parallel processing
 
-# library(future)
-# plan(multisession)
+library(future)
+plan(multisession)
 
 # The fits are very fast,
 # so we force a minimum chunk size to reduce overhead of
@@ -51,6 +51,175 @@ HMC for your model.
 
 # 2. Comparing HMC and ADVI 
 Simple model with location and scale parameter for normal distirbution is used and coded into generator and backend (stan file).
+
+
+```{r}
+generator_contamination <- function(N) {
+  mu_background <- rlnorm(1, -2, 0.2)
+  mu_signal <- rlnorm(1, 2, 1)
+
+  p_signal <- rbeta(1, 2, 2)
+
+  mu <- c(mu_background, mu_background + mu_signal)
+  y <- rpois(N, ifelse(runif(N) < p_signal, mu_background + mu_signal, mu_background))
+  
+  list(
+    parameters = list(
+      mu_signal = mu_signal,
+      mu_background = mu_background,
+      p_signal = p_signal
+    ),
+    generated = list(
+      N = N,
+      y = y
+    )
+  )
+}
+
+
+model_contamination <- cmdstan_model("stan/contaminated_poisson.stan")
+backend_contamination <- SBC_backend_cmdstan_variational(model_contamination, n_retries_init = 3)
+
+```
+
+```{r}
+set.seed(46522641)
+ds_contamination <- generate_datasets(SBC_generator_function(generator_contamination, N = 100), n_datasets = 100)
+res_contamination <- compute_results(ds_contamination, backend_contamination, cache_mode = "results", cache_location = file.path(cache_dir, "contamination"))
+```
+
+```{r}
+plot_ecdf_diff(res_contamination)
+plot_rank_hist(res_contamination)
+plot_sim_estimated(res_contamination)
+```
+
+```{r}
+set.seed(12365455)
+ds_contamination_2 <- generate_datasets(SBC_generator_function(generator_contamination, N = 100), n_datasets = 900)
+res_contamination_2 <- bind_results(
+  res_contamination,
+  compute_results(ds_contamination_2, backend_contamination, cache_mode = "results", cache_location = file.path(cache_dir, "contamination_2"))
+)
+  
+```
+
+
+```{r}
+plot_ecdf_diff(res_contamination_2)
+plot_rank_hist(res_contamination_2)
+plot_sim_estimated(res_contamination_2, alpha = 0.2)
+```
+
+
+```{r}
+plot_coverage(res_contamination_2)
+```
+
+```{r}
+res_contamination_fullrank <- compute_results(bind_datasets(ds_contamination, ds_contamination_2), SBC_backend_cmdstan_variational(model_contamination, n_retries_init = 3, algorithm = "fullrank"),
+                                              cache_mode = "results",
+                                              cache_location = file.path(cache_dir, "contamination_fullrank"))
+```
+
+```{r}
+plot_ecdf_diff(res_contamination_fullrank)
+plot_rank_hist(res_contamination_fullrank)
+plot_sim_estimated(res_contamination_fullrank)
+```
+
+```{r}
+plot_coverage(res_contamination_fullrank)
+```
+
+
+```{r}
+res_contamination_mcmc <- compute_results(bind_datasets(ds_contamination, ds_contamination_2), SBC_backend_cmdstan_sample(model_contamination, chains = 2),
+                                          keep_fits = FALSE,
+                                          cache_mode = "results",
+                                          cache_location = file.path(cache_dir, "contamination_mcmc"))
+```
+
+```{r}
+plot_ecdf_diff(res_contamination_mcmc)
+plot_rank_hist(res_contamination_mcmc)
+plot_sim_estimated(res_contamination_mcmc)
+```
+
+
+https://mc-stan.org/users/documentation/case-studies/hmm-example.html
+
+Simplified to two states and slightly tighter prior on transition probs
+
+```{r}
+generator_HMM <- function(N) {
+  # You can simulate i.i.d. ordered vector just by sorting
+  mu_background <- rlnorm(1, -2, 0.2)
+  mu_signal <- rlnorm(1, 2, 1)
+
+  # Draw the transition probabilities
+  t1 <- MCMCpack::rdirichlet(1, c(3, 3))
+  t2 <- MCMCpack::rdirichlet(1, c(3, 3))
+
+  states = rep(NA_integer_, N)
+  # Draw from initial state distribution
+  rho <- MCMCpack::rdirichlet(1, c(1, 10))
+
+  states[1] = sample(1:2, size = 1, prob = rho)
+  for(n in 2:length(states)) {
+    if(states[n - 1] == 1)
+      states[n] = sample(c(1, 2), size = 1, prob = t1)
+    else if(states[n - 1] == 2)
+      states[n] = sample(c(1, 2), size = 1, prob = t2)
+  }  
+  
+  mu <- c(mu_background, mu_background + mu_signal)
+  y <- rpois(N, mu[states])
+  
+  list(
+    parameters = list(
+      mu_signal = mu_signal,
+      mu_background = mu_background,
+      # rdirichlet returns matrices, convert to 1D vectors
+      t1 = as.numeric(t1),
+      t2 = as.numeric(t2),
+      rho = as.numeric(rho)
+    ),
+    generated = list(
+      N = N,
+      y = y
+    )
+  )
+}
+
+
+model_HMM <- cmdstan_model("stan/hmm_contaminated_poisson.stan")
+backend_HMM <- SBC_backend_cmdstan_variational(model_HMM, n_retries_init = 3)
+
+```
+
+```{r}
+set.seed(2165498)
+ds_hmm <- generate_datasets(SBC_generator_function(generator_HMM, N = 100), n_datasets = 20)
+res_hmm <- compute_results(ds_hmm, backend_HMM,
+                           cache_mode = "results", cache_location = file.path(cache_dir, "hmm"))
+```
+
+```{r}
+plot_ecdf_diff(res_hmm)
+plot_rank_hist(res_hmm)
+plot_sim_estimated(res_hmm)
+```
+```{r}
+res_mcmc <- compute_results(ds, SBC_backend_cmdstan_sample(model_HMM, chains = 2))
+```
+
+```{r}
+plot_ecdf_diff(res_mcmc)
+plot_rank_hist(res_mcmc)
+plot_sim_estimated(res_mcmc)
+```
+
 
 ```{R generator and backend}
 generator <- function(hyperparam, param, predictor = NULL){
@@ -117,7 +286,7 @@ s_thin_ranks = 10
 v_thin_ranks = 1
 chains = 4
 backend_tn <- SBC_backend_cmdstan_sample(mod_two_norm, chains = chains, iter_sampling = M * s_thin_ranks / chains)
-backend_tn_vb <- SBC_backend_cmdstan_variational(mod_two_norm, grad_samples = 200, init = 0.5, n_retries_dropped = 3)
+backend_tn_vb <- SBC_backend_cmdstan_variational(mod_two_norm, grad_samples = 200, init = 0.5, n_retries_init = 3)
 prior_width = 1
 datasets_tn <- generator(
   hyperparam = list(prior_width = prior_width, N = N),

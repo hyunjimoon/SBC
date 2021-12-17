@@ -355,14 +355,16 @@ SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages, fi
 #' Backend based on variational approximation via `cmdstanr`.
 #'
 #' @param model an object of class `CmdStanModel` (as created by `cmdstanr::cmdstan_model`)
-#' @param n_retries_dropped number of times to retry the variational fit if the algorithm
-#' has too many dropped evaluations
-#' (see https://discourse.mc-stan.org/t/advi-too-many-dropped-evaluations-even-for-well-behaved-models/24338)
+#' @param n_retries_init number of times to retry the variational fit if the algorithm
+#' has trouble initializing (e.g. too many dropped evaluations
+#' (see https://discourse.mc-stan.org/t/advi-too-many-dropped-evaluations-even-for-well-behaved-models/24338),
+#' or "cannot compute ELBO using the initial variational distribution")
 #' @param ... other arguments passed to the `$variational()` method of the model.
 #' The `data` argument cannot be set this way as they need to be controlled by the SBC
 #'   package.
 #' @export
-SBC_backend_cmdstan_variational <- function(model, ..., n_retries_dropped = 1) {
+SBC_backend_cmdstan_variational <- function(model, ...,
+                                            n_retries_init = 1) {
   require_cmdstanr_version("cmdstan backend")
 
   stopifnot(inherits(model, "CmdStanModel"))
@@ -377,7 +379,7 @@ SBC_backend_cmdstan_variational <- function(model, ..., n_retries_dropped = 1) {
                 "by the SBC package"))
   }
 
-  structure(list(model = model, n_retries_dropped = n_retries_dropped, args = args), class = "SBC_backend_cmdstan_variational")
+  structure(list(model = model, n_retries_init = n_retries_init, args = args), class = "SBC_backend_cmdstan_variational")
 }
 
 stan_variational_elbo_converged <- function(fit_output) {
@@ -387,10 +389,10 @@ stan_variational_elbo_converged <- function(fit_output) {
 #' @export
 SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
   fit_outputs <- list()
-  for(i in 1:backend$n_retries_dropped) {
+  for(i in 1:backend$n_retries_init) {
     # Need to do my own output capturing as the calling code
     # also captures output and interferes with CmdStanVB$output()
-    fit_outputs[[i]] <- capture.output({
+    fit_outputs[[i]] <- capture_all_outputs({
       if(i > 1) {
         cat("==== SBC backend retrying ===== \n")
       }
@@ -398,19 +400,31 @@ SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
                      combine_args(backend$args,
                                   list(
                                     data = generated)))
-    }, type = "output")
+    })
 
-    # Only retry if the error is "too many dropped evaluations"
-    if(fit$return_codes() != 0 && any(grepl("dropped evaluations.*maximum", fit_outputs[[i]]))) {
+    # Only retry if the error is "too many dropped evaluations" or
+    # Cannot compute initial ELBO
+    if(fit$return_codes() != 0 &&
+       (any(grepl("dropped evaluations.*maximum", fit_outputs[[i]]$messages))
+        || any(grepl("Cannot compute ELBO.*initial", fit_outputs[[i]]$messages))
+        )
+       ) {
       next
     } else {
       break
     }
   }
 
-
-  all_output <- do.call(c, args = fit_outputs)
-  cat(all_output, sep = "\n")
+  #Re-emit outputs, warnings, messages
+  for(i in 1:length(fit_outputs)) {
+    cat(fit_outputs[[i]]$output, sep = "\n")
+    for(m in 1:length(fit_outputs[[i]]$messages)) {
+      message(fit_outputs[[i]]$messages[m])
+    }
+    for(w in 1:length(fit_outputs[[i]]$warnings)) {
+      warning(fit_outputs[[i]]$warnings[w])
+    }
+  }
 
   if(all(fit$return_codes() != 0)) {
     stop("Variational inference did not finish succesfully")
@@ -422,7 +436,7 @@ SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
 
 #' @export
 SBC_backend_hash_for_cache.SBC_backend_cmdstan_variational <- function(backend) {
-  rlang::hash(list(model = backend$model$code(), n_retries_dropped = backend$n_retries_dropped, args = backend$args))
+  rlang::hash(list(model = backend$model$code(), n_retries_init = backend$n_retries_init, args = backend$args))
 }
 
 
