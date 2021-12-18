@@ -224,4 +224,33 @@ calculate_dap <- function(shape_mu, a_mu, generator, backened, fixed_args){
   var <- 1
   return(list(shape_mu=shape_mu, a_mu=a_mu, var=var, draws_shape=draws_shape, draws_a=draws_a))
 }
+
+fixed_args_gr <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="normal", a="normal"))
+prior_dap <- list(shape_mu = c(), a_mu = c(), dap_shape_mu = c(), dap_a_mu = c(), dap_var = c(), shape_mu_loss = c(), a_mu_loss = c(), var_loss = c())
+for (shape_mu in seq(10, 100, length.out = 10)){
+  for(a_mu in seq(1, 5, length.out = 10)){
+    prior_dap$shape_mu <- c(prior_dap$shape_mu, shape_mu)
+    prior_dap$a_mu <- c(prior_dap$a_mu, a_mu)
+    dap <- calculate_dap(shape_mu, a_mu, calib_generator, backend_gr_hmc, fixed_args_gr)
+    prior_dap$dap_shape_mu <- c(prior_dap$dap_shape_mu, dap$shape_mu)
+    prior_dap$dap_a_mu <- c(prior_dap$dap_a_mu, dap$a_mu)
+    prior_dap$dap_var <- c(prior_dap$dap_var, dap$var)
+    prior_dap$shape_mu_loss <- c(prior_dap$shape_mu_loss, shape_mu - dap$shape_mu)
+    prior_dap$a_mu_loss <- c(prior_dap$a_mu_loss, a_mu - dap$a_mu)
+    prior_dap$var_loss <- c(prior_dap$var_loss, 1 - dap$var)
+  }
+}
+
+
+shape_mu_loss_mat <- array(rep(NA, 10), dim=c(10, 10))
+rownames(shape_mu_loss_mat) <- seq(10, 100, length.out = 10)
+colnames(shape_mu_loss_mat) <- seq(1, 5, length.out = 10)
+for(i in 1:10){
+  for(j in 1:10){
+    shape_mu_loss_mat[i, j] <- prior_dap$shape_mu_loss[10 * (i - 1) + j]^2 + prior_dap$a_mu_loss[10 * (i - 1) + j]^2
+    shape_mu_loss_mat[i, j] <- shape_mu_loss_mat[i, j] + (prior_dap$dap_shape_mu[10 * (i - 1) + j] - 50)^2 + (prior_dap$dap_a_mu[10 * (i - 1) + j] - 3)^2
+  }
+}
+library(plot3D)
+persp3D(x=seq(10, 100, length.out = 10), y=seq(1, 5, length.out = 10), z = shape_mu_loss_mat, theta=-30, phi=50, xlab="shape_mu", ylab="a_mu", zlab="convex")
 ```
