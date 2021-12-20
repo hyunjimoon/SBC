@@ -34,6 +34,13 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
     return(list(alpha=k_hat, beta=1 / theta_hat))
   }
 
+  lognormal_estimator <- function(x){
+    n <- length(x)
+    mu_hat <- sum(log(x)) / n
+    sigma_hat <- sum((log(x) - mu_hat) ^ 2) / (n - 1)
+    return(list(mu=mu_hat, sigma=sigma_hat))
+  }
+
   calculate_dap <- function(current_lambdas){
     nsims <- fixed_args$nsims
     datasets <- do.call(generator, list(current_lambdas, fixed_args = fixed_args))
@@ -69,6 +76,23 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
         )
 
         return_lambdas[[target_param]] <- gamma_params
+      }
+      else if(fixed_args$dist_type[[target_param]] == "lognormal"){
+        lognormal_params <- tryCatch(
+          {
+            gamma_est = MASS::fitdistr(draws_etas[[target_param]], "lognormal")$estimate
+            mean = as.numeric(gamma_est["meanlog"])
+            sd = as.numeric(gamma_est["sdlog"])
+            return(list(mu=mean, sigma=sd))
+          },
+          error=function(err){
+            message(err)
+            message(sprintf("\nlognormal mle estimation for parameter %s failed. Falling back to closed form approximation", target_param))
+            return(lognormal_estimator(draws_etas[[target_param]]))
+          }
+        )
+
+        return_lambdas[[target_param]] <- lognormal_params
       }
     }
     return(list(return_lambdas = return_lambdas, draws_etas = draws_etas))
@@ -140,6 +164,9 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
       else if (dist_types[[target_param]] == "gamma"){
         prior_dist_samples <- rgamma(length(dap_result$draws_etas[[target_param]]), shape=param_lambdas$alpha, r=param_lambdas$beta)
       }
+      else if (dist_types[[target_param]] == "lognormal"){
+        prior_dist_samples <- rlnorm(length(dap_result$draws_etas[[target_param]]), meanlog = param_lambdas$mu, sdlog = param_lambdas$sigma)
+      }
 
       plot_df <- data.frame(dap=dap_result$draws_etas[[target_param]], prior=prior_dist_samples)
       plot <- ggplot2::ggplot(plot_df) + ggplot2::geom_density(aes(x=dap), color="red") + ggplot2::geom_density(aes(x=prior)) + ggplot2::ggtitle(sprintf("%s (red=dap)", target_param))
@@ -149,11 +176,6 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
       dap_tx_plot_list[[dap_tx_plot_index]] <- plot
       dap_tx_plot_index <- dap_tx_plot_index + 1
     }
-
-      # if(iter_num == 1 || iter_num %% 10 == 0){
-      #   cowplot::plot_grid(dap_tx_plot_list)
-      #   print(cowplot::plot_grid(dap_tx_plot_list))
-      # }
 
     if(updator == "normal_str_update"){
       stop("Unfinished implementation")
