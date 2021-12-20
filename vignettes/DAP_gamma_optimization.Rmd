@@ -1,0 +1,246 @@
+---
+title: "self-calibration-adaptive"
+author: "Hyunji Moon, Shinyoung Kim"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE, warning=FALSE}
+library(SBC)
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(dplyr)
+library(rstan)
+library(future)
+library(ggpubr)
+library(rstanarm)
+library(ggplot2)
+library(mclust)
+library(plot3D)
+options(mc.cores = parallel::detectCores())
+options(SBC.min_chunk_size = 5)
+#set.seed(1984)
+```
+
+
+```{R, warning=FALSE, error=FALSE}
+## Generator settings
+# number of SBC simulations per iteration (generator)
+nsims <- 200
+
+# number of observations
+nobs <- 10
+
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# number of binomial trials per observation
+nsize <- 10
+
+## Backend settings
+# number of draws per posterior approximation 
+ndraws <- 100
+
+# number of chains for hmc posterior approximation
+nchains <- 2
+```
+
+```{R}
+generator_gr <- function(lambdas, fixed_args){
+  # fixed value across simulated datasets
+  ## meta
+  nobs <- fixed_args$nobs
+  K <- fixed_args$K
+  dist_types <- fixed_args$dist_types
+  while(TRUE){
+    # predictor
+    X <- array(rnorm(nobs * K, mean = 1, sd = 0.5), dim = c(nobs, K))
+    b <- rnorm(K, mean = 0, sd = 1)
+    # generate
+    lambda_arg1 <- c()
+    lambda_arg2 <- c()
+    if(dist_types$shape == "normal"){
+      shape <- rnorm(1, mean = lambdas$shape$mu, sd=lambdas$shape$sigma)
+      lambda_arg1 <- c(lambda_arg1, lambdas$shape$mu)
+      lambda_arg2 <- c(lambda_arg2, lambdas$shape$sigma)
+    }
+    else if(dist_types$shape == "gamma"){
+      shape <- rgamma(1, shape = lambdas$shape$alpha, rate = lambdas$shape$beta)
+      lambda_arg1 <- c(lambda_arg1, lambdas$shape$alpha)
+      lambda_arg2 <- c(lambda_arg2, lambdas$shape$beta)
+    }
+    else if(dist_types$shape == "lognormal"){
+      shape <- rlnorm(1, meanlog = lambdas$shape$mu, sdlog = lambdas$shape$sigma)
+      lambda_arg1 <- c(lambda_arg1, lambdas$shape$mu)
+      lambda_arg2 <- c(lambda_arg2, lambdas$shape$sigma)
+    }
+    
+    if(dist_types$a == "normal"){
+      a <- rnorm(1, mean = lambdas$a$mu, sd=lambdas$a$sigma)
+      lambda_arg1 <- c(lambda_arg1, lambdas$a$mu)
+      lambda_arg2 <- c(lambda_arg2, lambdas$a$sigma)
+    }
+    #a <- rnorm(1, mean = 2, sd = 5)
+    logmu <- as.numeric(a + X %*% b)
+    mu <- exp(logmu)
+    Y <- rgamma(nobs, shape = shape, rate = shape / mu)
+    
+    if(!any(Y <= 1e-32)){
+      return(list(
+              parameters = list(shape = shape),
+              generated = list(nobs= nobs, K = K, X = X, dist_types = match(unlist(dist_types), c("normal", "gamma", "lognormal")), 
+                               lambda_arg1 = lambda_arg1, lambda_arg2 = lambda_arg2, Y = Y)
+              )
+             )
+    }
+  }
+}
+
+fixed_args_gr <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="lognormal", a="normal"))
+cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
+rstan_mod_gr <- stan_model("models/gamma-reg.stan")
+backend_gr_opt <- SBC_backend_rstan_optimizing(rstan_mod_gr, draws = ndraws)
+backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = nchains, iter_sampling = ndraws / nchains) 
+
+# combines target hp values with other hyperparameter settings
+calib_generator <- function(lambda_init_gamma, fixed_args){
+  generate_datasets(SBC_generator_function(generator_gr, lambda_init_gamma, fixed_args), n_datasets = fixed_args_gr$nsims)
+}
+
+calculate_dap <- function(mu, var, generator, backened, fixed_args){
+  lambda_init_gamma <- list(
+    shape = list(mu= mu, sigma = sqrt(var)), #list(alpha= mu^2 / var, beta= mu / var),
+    a = list(mu= 2, sigma = 1)
+  )
+  datasets <- do.call(generator, list(lambda_init_gamma, fixed_args = fixed_args))
+  sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
+  draws_eta <- c()
+  for(fit in sbc_result$fits){
+    samples <- SBC_fit_to_draws_matrix(fit)
+    draws_eta <- c(draws_eta, posterior::extract_variable(samples, "shape"))
+  }
+  # assume normal for dap
+  mu <- mean(draws_eta)
+  var <- sd(draws_eta)^2
+  # gamma_est <- MASS::fitdistr(draws_eta, "gamma", start=list(shape=1, rate=1))$estimate
+  # alpha <- as.numeric(gamma_est["shape"])
+  # beta <- as.numeric(gamma_est["rate"])
+  # mu = alpha / beta
+  # var = alpha / beta^2
+  return(list(mu=mu, var=var, draws_eta=draws_eta))
+}
+```
+
+##
+
+```{r}
+mu_seq <- seq(1, 1.2, length.out = 10)
+var_seq <- seq(0.01, 0.04, length.out = 10)
+grid_size <- length(mu_seq) * length(var_seq)
+contraction_arr <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
+rownames(contraction_arr) <- mu_seq
+colnames(contraction_arr) <- var_seq
+for(i in 1:length(mu_seq)){
+  for(j in 1:length(var_seq)){
+    dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, backend_gr_opt, fixed_args_gr)
+    contraction_arr[i,j] <- (mu_seq[[i]] - dap$mu)^2 + (var_seq[[j]] - dap$var)^2
+  }
+}
+```
+
+
+```{R}
+persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=90, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
+
+```
+
+
+Define objective and constraint functions
+
+```{R}
+# maximize entropy
+# partial derivative is: -log p_w - 1
+calc_entropy <- function(p){
+  return(as.numeric((p + 1e-8) %*% -log(p + 1e-8)) - 1000000 * (sum(p) - 1)^2)
+}
+
+calc_entropy_grad <- function(p){
+  return(-log(p + 1e-8) - 1 - 2000 * (p + 1e-8))
+}
+
+# equal to minimize negative entropy
+neg_entropy <- function(p){
+  return(-calc_entropy(p))
+}
+
+neg_entropy_grad <- function(p){
+  return(-calc_entropy_grad(p))
+}
+
+theta <- 14
+# partial derivative is contraction_arr_{w}
+p_v_product_constraint <- function(p){
+  # equality constraint should equal 0
+  return(as.numeric(p %*% as.vector(contraction_arr)) - 5)
+}
+
+p_v_product_constraint_grad <- function(p){
+  return(as.vector(contraction_arr))
+}
+
+probability_simplex_constraint <- function(p){
+  return(sum(p) - 1)
+}
+
+probability_simplex_constraint_grad <- function(p){
+  return(rep(1, length(p)))
+}
+
+# calculate theta and p_init
+# start at uniform
+p_init <- as.numeric(c(rep(1e-8, grid_size - 1), 1))
+
+prob_ineq_constraints <- function(p){
+  #constraints <- c(p_v_product_constraint(p), probability_simplex_constraint(p))
+  #grad <- c(p_v_product_constraint_grad(p), probability_simplex_constraint_grad(p))
+  constraints <- c(p_v_product_constraint(p))
+  grad <- c(p_v_product_constraint_grad(p))
+  return( list(constraints=constraints, jacobian=grad) )
+}
+
+#If you want to use equality constraints, then you should use one of these algorithms NLOPT_LD_AUGLAG, NLOPT_LN_AUGLAG, NLOPT_LD_AUGLAG_EQ, NLOPT_LN_AUGLAG_EQ, NLOPT_GN_ISRES, NLOPT_LD_SLSQP
+
+probability_simplex_opts <- list(algorithm="NLOPT_LD_SLSQP", print_level=1, xtol_rel=1e-8, maxeval=500)
+prob_lb <- rep(0.0, length(p_init))
+prob_ub <- rep(1.0, length(p_init))
+prob_opt <- nloptr::nloptr(p_init, 
+                           neg_entropy, 
+                           eval_grad_f = neg_entropy_grad, 
+                           eval_g_eq = prob_ineq_constraints, 
+                           opts = probability_simplex_opts, 
+                           lb=prob_lb, ub=prob_ub)
+```
+
+```{R}
+
+result_out <- array(prob_opt$solution, dim = c(length(mu_seq), length(var_seq)))
+rownames(result_out) <- mu_seq
+colnames(result_out) <- var_seq
+persp3D(x=mu_seq, y=var_seq, z = result_out, theta=25, phi=10, xlab="mu", ylab="var", zlab="prob_opt_result", ticks=5, ticktype="detailed")
+persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=25, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
+```
+
+```{R}
+N = 10000
+sampled_probs <- sample(1:grid_size, N, prob=as.vector(result_out), replace=TRUE)
+mu <- rep(mu_seq, length(var_seq))
+sigma <- rep(var_seq, each=length(mu_seq))
+combined <- data.frame(mu=mu, sigma=sigma)
+thetas <- c()
+for(i in 1:N){
+  thetas[i] <- rnorm(1, combined[sampled_probs[i], "mu"], combined[sampled_probs[i], "sigma"])
+}
+hist(thetas, probability=TRUE, breaks=30)
+```

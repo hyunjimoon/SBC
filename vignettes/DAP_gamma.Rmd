@@ -87,16 +87,16 @@ generator_gr <- function(lambdas, fixed_args){
       lambda_arg1 <- c(lambda_arg1, lambdas$shape$alpha)
       lambda_arg2 <- c(lambda_arg2, lambdas$shape$beta)
     }
+    else if(dist_types$shape == "lognormal"){
+      shape <- rlnorm(1, meanlog = lambdas$shape$mu, sdlog = lambdas$shape$sigma)
+      lambda_arg1 <- c(lambda_arg1, lambdas$shape$mu)
+      lambda_arg2 <- c(lambda_arg2, lambdas$shape$sigma)
+    }
     
     if(dist_types$a == "normal"){
       a <- rnorm(1, mean = lambdas$a$mu, sd=lambdas$a$sigma)
       lambda_arg1 <- c(lambda_arg1, lambdas$a$mu)
       lambda_arg2 <- c(lambda_arg2, lambdas$a$sigma)
-    }
-    else if(dist_types$a == "gamma"){
-      a <- rgamma(1, shape = lambdas$a$alpha, rate = lambdas$a$beta)
-      lambda_arg1 <- c(lambda_arg1, lambdas$a$alpha)
-      lambda_arg2 <- c(lambda_arg2, lambdas$a$beta)
     }
     #a <- rnorm(1, mean = 2, sd = 5)
     logmu <- as.numeric(a + X %*% b)

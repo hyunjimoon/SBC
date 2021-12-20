@@ -141,8 +141,8 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
 ##
 
 ```{r}
-mu_seq <- seq(0, 5, length.out = 5)
-var_seq <- seq(1, 25, length.out = 5)
+mu_seq <- seq(0, 5, length.out = 20)
+var_seq <- seq(1, 25, length.out = 20)
 grid_size <- length(mu_seq) * length(var_seq)
 contraction_arr <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
 rownames(contraction_arr) <- mu_seq
@@ -162,41 +162,6 @@ persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=55, phi=10, xlab="mu", y
 
 ```
 
-Define simplex transformation functions
-https://github.com/stan-dev/math/blob/develop/stan/math/prim/fun/simplex_constrain.hpp
-https://github.com/stan-dev/math/blob/develop/stan/math/prim/fun/simplex_free.hpp
-
-```{r}
-to_simplex <- function(unconstrained){
-  # input vector size K
-  # output vector size K + 1
-  Km1 <- length(unconstrained)
-  x <- c()
-  stick_len <- 1.0
-  for(k in 0:(Km1 - 1)){
-    z <- rstanarm::invlogit(unconstrained[k + 1] - log(Km1 - k))
-    x[k + 1] <- stick_len * z
-    stick_len <- stick_len - x[k + 1]
-  }
-  x[Km1 + 1] <- stick_len
-  return(x)
-}
-
-unconstrain_simplex <- function(simplex){
-  # input vector size K
-  # output vector size K - 1
-  y <- c()
-  Km1 = length(simplex) - 1
-  stick_len <- simplex[Km1 + 1]
-  for(k in (Km1 - 1):0){
-    stick_len <- stick_len + simplex[k + 1]
-    z_k <- simplex[k + 1] / stick_len
-    y[k + 1] <- rstanarm::logit(z_k) + log(Km1 - k)
-  }
-  return(y)
-}
-
-```
 
 Define objective and constraint functions
 
@@ -224,58 +189,16 @@ theta <- 14
 # partial derivative is contraction_arr_{w}
 p_v_product_constraint <- function(p){
   # equality constraint should equal 0
-  return(as.numeric(p %*% as.vector(contraction_arr)) - 7)
+  return(as.numeric(p %*% as.vector(contraction_arr)) - 6)
 }
 
 p_v_product_constraint_grad <- function(p){
   return(as.vector(contraction_arr))
 }
-```
 
-Generate initial parameters
-
-```{R}
 # calculate theta and p_init
 # start at uniform
-p_v_dot <- as.numeric(c(1, rep(0, grid_size - 1)) %*% as.vector(contraction_arr))
-
-theta <- p_v_dot
-
-p_unconstrained_init <- unconstrain_simplex(rep(1 / grid_size, grid_size))
-# unconstrained param
-```
-
-## Run optimization on R^n
-
-```{R}
-unconstrained_objective <- function(unconstrained_p){
-  p <- to_simplex(unconstrained_p)
-  return(neg_entropy(p))
-}
-
-unconstrained_eq_constraint <- function(unconstrained_p){
-  p <- to_simplex(unconstrained_p)
-  return(equality_constraint(p))
-}
-
-#If you want to use equality constraints, then you should use one of these algorithms NLOPT_LD_AUGLAG, NLOPT_LN_AUGLAG, NLOPT_LD_AUGLAG_EQ, NLOPT_LN_AUGLAG_EQ, NLOPT_GN_ISRES, NLOPT_LD_SLSQP
-
-unconstrained_opts <- list(algorithm="NLOPT_GN_ISRES", local_opts = list(algorithm="NLOPT_GN_ISRES"), print_level=3)
-nloptr::nloptr(p_unconstrained_init, unconstrained_objective, eval_g_eq = unconstrained_eq_constraint, opts = unconstrained_opts)
-```
-## Run optimization on probability simplex
-```{R}
-#p_init <- rep(1 / grid_size, grid_size)
 p_init <- as.numeric(c(rep(1e-8, grid_size - 1), 1))
-# partial derivative is 1
-probability_simplex_constraint <- function(p) {
-  return(sum(p) - 1)
-}
-
-probability_simplex_constraint_grad <- function(p){
-  return(rep(1, length(p)))
-}
-
 
 prob_ineq_constraints <- function(p){
   # constraints <- c(p_v_product_constraint(p), probability_simplex_constraint(p))
@@ -305,4 +228,17 @@ rownames(result_out) <- mu_seq
 colnames(result_out) <- var_seq
 persp3D(x=mu_seq, y=var_seq, z = result_out, theta=55, phi=10, xlab="mu", ylab="var", zlab="prob_opt_result", ticks=5, ticktype="detailed")
 persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=25, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
+```
+
+```{R}
+N = 10000
+sampled_probs <- sample(1:grid_size, N, prob=as.vector(result_out), replace=TRUE)
+mu <- rep(mu_seq, length(var_seq))
+sigma <- rep(var_seq, each=length(mu_seq))
+combined <- data.frame(mu=mu, sigma=sigma)
+thetas <- c()
+for(i in 1:N){
+  thetas[i] <- rnorm(1, combined[sampled_probs[i], "mu"], combined[sampled_probs[i], "sigma"])
+}
+hist(thetas, probability=TRUE, breaks=30)
 ```

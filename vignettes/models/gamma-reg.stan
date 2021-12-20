@@ -53,8 +53,11 @@ model {
   if (dist_types[1] == 1){ // shape
     target += normal_lpdf(shape | lambda_arg1[1], lambda_arg2[1]);
   }
-  else if(dist_types[2] == 2){
+  else if(dist_types[1] == 2){
     target += gamma_lpdf(shape | lambda_arg1[1], lambda_arg2[1]);
+  }
+  else if(dist_types[1] == 3){
+    target += lognormal_lpdf(shape | lambda_arg1[1], lambda_arg2[1]);
   }
 
 
@@ -62,6 +65,9 @@ model {
     target += normal_lpdf(a | lambda_arg1[2], lambda_arg2[2]);
   }
   else if(dist_types[2] == 2){
-    target += normal_lpdf(a | lambda_arg1[2], lambda_arg2[2]);
+    target += gamma_lpdf(a | lambda_arg1[2], lambda_arg2[2]);
+  }
+  else if(dist_types[2] == 3){
+    target += lognormal_lpdf(a | lambda_arg1[2], lambda_arg2[2]);
   }
 }
