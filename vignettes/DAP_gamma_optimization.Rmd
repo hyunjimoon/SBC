@@ -117,6 +117,10 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
   datasets <- do.call(generator, list(lambda_init_gamma, fixed_args = fixed_args))
   sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
   draws_eta <- c()
+  draws_Y <- c()
+  for(i in 1:nsims){
+    draws_Y <- c(draws_Y, datasets$generated[[i]]$Y)
+  }
   for(fit in sbc_result$fits){
     samples <- SBC_fit_to_draws_matrix(fit)
     draws_eta <- c(draws_eta, posterior::extract_variable(samples, "shape"))
@@ -129,23 +133,28 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
   # beta <- as.numeric(gamma_est["rate"])
   # mu = alpha / beta
   # var = alpha / beta^2
-  return(list(mu=mu, var=var, draws_eta=draws_eta))
+  return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y))
 }
 ```
 
 ##
 
 ```{r}
-mu_seq <- seq(1, 1.2, length.out = 10)
-var_seq <- seq(0.01, 0.04, length.out = 10)
+mu_seq <- seq(1, 3, length.out = 10)
+var_seq <- seq(1, 2, length.out = 10)
 grid_size <- length(mu_seq) * length(var_seq)
 contraction_arr <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
 rownames(contraction_arr) <- mu_seq
 colnames(contraction_arr) <- var_seq
+
+generated_Y <- array(rep(NA, nsims * nobs * 10 * 10), dim=c(nsims * nobs, 10, 10) )
+dimnames(generated_Y)[[2]] <- mu_seq
+dimnames(generated_Y)[[3]] <- var_seq
 for(i in 1:length(mu_seq)){
   for(j in 1:length(var_seq)){
     dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, backend_gr_opt, fixed_args_gr)
     contraction_arr[i,j] <- (mu_seq[[i]] - dap$mu)^2 + (var_seq[[j]] - dap$var)^2
+    generated_Y[, i, j] <- dap$draws_Y
   }
 }
 ```
@@ -155,7 +164,9 @@ for(i in 1:length(mu_seq)){
 persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=90, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
 
 ```
-
+```{R}
+persp3D(x=mu_seq, y=var_seq, z=apply(generated_Y, c(2, 3), stats::var), theta=90, phi=10, ticks=5, ticktype="detailed")
+```
 
 Define objective and constraint functions
 
@@ -163,11 +174,20 @@ Define objective and constraint functions
 # maximize entropy
 # partial derivative is: -log p_w - 1
 calc_entropy <- function(p){
-  return(as.numeric((p + 1e-8) %*% -log(p + 1e-8)) - 1000000 * (sum(p) - 1)^2)
+  return(as.numeric((p + 1e-8) %*% -log(p + 1e-8)) - 1000 * (sum(p) - 1)^2)
 }
 
 calc_entropy_grad <- function(p){
   return(-log(p + 1e-8) - 1 - 2000 * (p + 1e-8))
+}
+
+calc_min_sum <- function(p){
+  #return(sum(p - as.vector(contraction_arr)) + 100000 * (sum(p) - 1)^2)
+  return(sum(p - as.vector(contraction_arr)))
+}
+calc_min_sum_grad  <- function(p){
+  #return(1 +200000 * p)
+  return(rep(1, length(p)))
 }
 
 # equal to minimize negative entropy
@@ -210,6 +230,12 @@ prob_ineq_constraints <- function(p){
   return( list(constraints=constraints, jacobian=grad) )
 }
 
+prob_eq_constraints <- function(p){
+  constraints <- c(probability_simplex_constraint(p))
+  grad <- c(probability_simplex_constraint_grad(p))
+  return( list(constraints=constraints, jacobian=grad) )
+}
+
 #If you want to use equality constraints, then you should use one of these algorithms NLOPT_LD_AUGLAG, NLOPT_LN_AUGLAG, NLOPT_LD_AUGLAG_EQ, NLOPT_LN_AUGLAG_EQ, NLOPT_GN_ISRES, NLOPT_LD_SLSQP
 
 probability_simplex_opts <- list(algorithm="NLOPT_LD_SLSQP", print_level=1, xtol_rel=1e-8, maxeval=500)
@@ -218,9 +244,18 @@ prob_ub <- rep(1.0, length(p_init))
 prob_opt <- nloptr::nloptr(p_init, 
                            neg_entropy, 
                            eval_grad_f = neg_entropy_grad, 
-                           eval_g_eq = prob_ineq_constraints, 
+                           eval_g_ineq = prob_ineq_constraints, 
                            opts = probability_simplex_opts, 
                            lb=prob_lb, ub=prob_ub)
+
+min_sum_opts <- nloptr::nloptr(rep(1 / length(p_init), length(p_init)),
+                               calc_min_sum,
+                               eval_grad_f = calc_min_sum_grad,
+                               eval_g_ineq = prob_ineq_constraints,
+                               eval_g_eq = prob_eq_constraints,
+                               opts = probability_simplex_opts,
+                               lb=prob_lb, ub=prob_ub)
+
 ```
 
 ```{R}
@@ -231,6 +266,13 @@ colnames(result_out) <- var_seq
 persp3D(x=mu_seq, y=var_seq, z = result_out, theta=25, phi=10, xlab="mu", ylab="var", zlab="prob_opt_result", ticks=5, ticktype="detailed")
 persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=25, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
 ```
+```{R}
+result_dot_out <- array(min_sum_opts$solution, dim = c(length(mu_seq), length(var_seq)))
+rownames(result_dot_out) <- mu_seq
+colnames(result_dot_out) <- var_seq
+persp3D(x=mu_seq, y=var_seq, z = result_dot_out, theta=25, phi=10, xlab="mu", ylab="var", zlab="prob_opt_result", ticks=5, ticktype="detailed")
+```
+
 
 ```{R}
 N = 10000
@@ -243,4 +285,55 @@ for(i in 1:N){
   thetas[i] <- rnorm(1, combined[sampled_probs[i], "mu"], combined[sampled_probs[i], "sigma"])
 }
 hist(thetas, probability=TRUE, breaks=30)
+```
+
+
+```{R}
+library(ggnewscale)
+n_bins = 10
+lambdas <- data.frame(mu=numeric(), var=numeric(), density_entropy=numeric())
+for(i in 1:10){
+  for(j in 1:10){
+    lambdas[nrow(lambdas) + 1,] = list(mu=rownames(result_out)[i], var=colnames(result_out)[j], density_entropy=result_out[i, j])
+  }
+}
+aggregated <- aggregate(lambdas$density_entropy, by=list(mu=lambdas$mu, var=lambdas$var), FUN=sum)
+colnames(aggregated)[3] <- "density_entropy"
+
+lambdas_min_sum <- data.frame(mu=numeric(), var=numeric(), density_point=numeric())
+for(i in 1:10){
+  for(j in 1:10){
+    lambdas_min_sum[nrow(lambdas_min_sum) + 1,] = list(mu=rownames(result_dot_out)[i], var=colnames(result_dot_out)[j], density_point=result_dot_out[i, j])
+  }
+}
+aggregated_min_sum <- aggregate(lambdas_min_sum$density_point, by=list(mu=lambdas_min_sum$mu, var=lambdas_min_sum$var), FUN=sum)
+colnames(aggregated_min_sum)[3] <- "density_point"
+
+contraction_arr_df <- data.frame(mu=numeric(), var=numeric(), distance=numeric())
+for(i in 1:10){
+  for(j in 1:10){
+    contraction_arr_df[nrow(contraction_arr_df) + 1,] = list(mu=rownames(contraction_arr)[i], var=colnames(contraction_arr)[j], distance=contraction_arr[i, j])
+  }
+}
+aggregated_contraction_arr <- aggregate(contraction_arr_df$distance, by=list(mu=contraction_arr_df$mu, var=contraction_arr_df$var), FUN=sum)
+colnames(aggregated_contraction_arr)[3] <- "distance"
+range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+aggregated_contraction_arr$distance <- range01(aggregated_contraction_arr$distance)
+
+aggregated$density_point <- aggregated_min_sum$density_point
+
+scaleFUN <- function(x) sprintf("%.2f", as.numeric(x))
+ggplot(mapping=aes(x, y)) + geom_tile(data=aggregated, mapping=aes(x=mu, y=var, alpha=density_entropy), fill="goldenrod1") +
+  new_scale("alpha") + geom_tile(data=aggregated, mapping=aes(x=mu, y=var, alpha=density_point), fill="dodgerblue3") +
+  new_scale("alpha") + geom_tile(data=aggregated_contraction_arr, mapping=aes(x=mu, y=var, alpha=distance), fill = "brown1") +
+  xlab("mu") + ylab("sigma") + scale_x_discrete(labels=scaleFUN) + scale_y_discrete(labels=scaleFUN)
+
+
+ggplot(mapping=aes(x, y)) + geom_tile(data=aggregated, mapping=aes(x=mu, y=var, alpha=density_point), fill="dodgerblue3") +
+  new_scale("alpha") + geom_tile(data=aggregated_contraction_arr, mapping=aes(x=mu, y=var, alpha=distance), fill = "brown1") +
+  xlab("mu") + ylab("sigma") + scale_x_discrete(labels=scaleFUN) + scale_y_discrete(labels=scaleFUN)
+
+ggplot(mapping=aes(x, y)) + geom_tile(data=aggregated, mapping=aes(x=mu, y=var, alpha=density_entropy), fill="goldenrod1") +
+  new_scale("alpha") + geom_tile(data=aggregated_contraction_arr, mapping=aes(x=mu, y=var, alpha=distance), fill = "brown1") +
+  xlab("mu") + ylab("sigma") + scale_x_discrete(labels=scaleFUN) + scale_y_discrete(labels=scaleFUN)
 ```
