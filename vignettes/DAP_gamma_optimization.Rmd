@@ -140,28 +140,65 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
 ##
 
 ```{r}
-mu_seq <- seq(1, 3, length.out = 10)
-var_seq <- seq(1, 2, length.out = 10)
+gridsize <- 5
+mu_seq <- seq(1, 3, length.out = gridsize)
+var_seq <- seq(1, 2, length.out = gridsize)
 grid_size <- length(mu_seq) * length(var_seq)
-contraction_arr <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
-rownames(contraction_arr) <- mu_seq
-colnames(contraction_arr) <- var_seq
 
-generated_Y <- array(rep(NA, nsims * nobs * 10 * 10), dim=c(nsims * nobs, 10, 10) )
+squared_lambda_diff <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
+rownames(squared_lambda_diff) <- mu_seq
+colnames(squared_lambda_diff) <- var_seq
+
+lambda_diff <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
+rownames(lambda_diff) <- mu_seq
+colnames(lambda_diff) <- var_seq
+
+dap_lambda_mu <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
+dap_lambda_var <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
+rownames(dap_lambda_mu) <- mu_seq
+rownames(dap_lambda_var) <- mu_seq
+colnames(dap_lambda_mu) <- var_seq
+colnames(dap_lambda_var) <- var_seq
+
+lambda_mu <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
+lambda_var <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
+rownames(lambda_mu) <- mu_seq
+rownames(lambda_var) <- mu_seq
+colnames(lambda_mu) <- var_seq
+colnames(lambda_var) <- var_seq
+
+generated_Y <- array(rep(NA, nsims * nobs * gridsize * gridsize), dim=c(nsims * nobs, gridsize, gridsize) )
 dimnames(generated_Y)[[2]] <- mu_seq
 dimnames(generated_Y)[[3]] <- var_seq
 for(i in 1:length(mu_seq)){
   for(j in 1:length(var_seq)){
     dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, backend_gr_opt, fixed_args_gr)
-    contraction_arr[i,j] <- (mu_seq[[i]] - dap$mu)^2 + (var_seq[[j]] - dap$var)^2
+    squared_lambda_diff[i,j] <- sqrt((mu_seq[[i]] - dap$mu)^2 + (var_seq[[j]] - dap$var)^2)
+    lambda_diff[i,j] <- (mu_seq[[i]] - dap$mu) + (var_seq[[j]] - dap$var)
+    dap_lambda_mu[i, j] <- dap$mu
+    dap_lambda_var[i, j] <- dap$var
+    lambda_mu[i, j] <- mu_seq[[i]]
+    lambda_var[i, j] <- var_seq[[j]]
     generated_Y[, i, j] <- dap$draws_Y
   }
 }
+saved_dap <- new.env()
+saved_dap[["gridsize"]] <- gridsize
+saved_dap[["grid_size"]] <- grid_size
+saved_dap[["squared_lambda_diff"]] <- squared_lambda_diff
+saved_dap[["lambda_diff"]] <- lambda_diff
+saved_dap[["dap_lambda_mu"]] <- dap_lambda_mu
+saved_dap[["dap_lambda_var"]] <- dap_lambda_var
+saved_dap[["lambda_mu"]] <- lambda_mu
+saved_dap[["generated_Y"]] <- generated_Y
+save(saved_dap, file="dap_backup.Rdata")
+
+# use load("dap_backup.Rata") if you want to load computed dap instead of running this chunk
 ```
 
 
 ```{R}
-persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=90, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
+persp3D(x=mu_seq, y=var_seq, z = squared_lambda_diff, theta=90, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
 
 ```
 ```{R}
@@ -181,13 +218,25 @@ calc_entropy_grad <- function(p){
   return(-log(p + 1e-8) - 1 - 2000 * (p + 1e-8))
 }
 
-calc_min_sum <- function(p){
-  #return(sum(p - as.vector(contraction_arr)) + 100000 * (sum(p) - 1)^2)
-  return(sum(p - as.vector(contraction_arr)))
+calc_mse <- function(p){
+  return(sum(p * as.vector(squared_lambda_diff)))
 }
-calc_min_sum_grad  <- function(p){
-  #return(1 +200000 * p)
-  return(rep(1, length(p)))
+calc_mse_grad  <- function(p){
+  return(as.vector(squared_lambda_diff))
+}
+
+calc_mse2 <- function(p2){
+  t_lambda <- c(as.vector(dap_lambda_mu), as.vector(dap_lambda_var))
+  lambda <- c(as.vector(lambda_mu), as.vector(lambda_var))
+  diff <- t_lambda - lambda
+  sum(p2 * diff)^2 + sum(p2 * (t_lambda - sum(p2 * t_lambda))^2)
+}
+
+calc_mse2_grad <- function(p2){
+  t_lambda <- c(as.vector(dap_lambda_mu), as.vector(dap_lambda_var))
+  lambda <- c(as.vector(lambda_mu), as.vector(lambda_var))
+  diff <- t_lambda - lambda
+  2 * sum(p2 * diff) * diff + 2 * (t_lambda - sum(p2 * t_lambda)) * -((p2^2 * t_lambda)/2)
 }
 
 # equal to minimize negative entropy
@@ -200,14 +249,14 @@ neg_entropy_grad <- function(p){
 }
 
 theta <- 14
-# partial derivative is contraction_arr_{w}
+# partial derivative is squared_lambda_diff_{w}
 p_v_product_constraint <- function(p){
   # equality constraint should equal 0
-  return(as.numeric(p %*% as.vector(contraction_arr)) - 5)
+  return(as.numeric(p %*% as.vector(squared_lambda_diff)) - 5)
 }
 
 p_v_product_constraint_grad <- function(p){
-  return(as.vector(contraction_arr))
+  return(as.vector(squared_lambda_diff))
 }
 
 probability_simplex_constraint <- function(p){
@@ -219,8 +268,7 @@ probability_simplex_constraint_grad <- function(p){
 }
 
 # calculate theta and p_init
-# start at uniform
-p_init <- as.numeric(c(rep(1e-8, grid_size - 1), 1))
+
 
 prob_ineq_constraints <- function(p){
   #constraints <- c(p_v_product_constraint(p), probability_simplex_constraint(p))
@@ -236,11 +284,37 @@ prob_eq_constraints <- function(p){
   return( list(constraints=constraints, jacobian=grad) )
 }
 
+mse2_eq_constraints <- function(p){
+  N <- length(p)
+  n <- N/2
+  constraints <- c()
+  jacobian <- array(rep(NA * N * (n+2)), dim=c(n+2, N))
+  
+  for(i in 1:n){
+    constraints[i] <- p[i] - p[n + i]
+    grad_vec <- rep(0, N)
+    grad_vec[i] <- 1
+    grad_vec[n + i] <- -1
+    jacobian[i, ]  <- grad_vec
+  }
+  constraints[length(constraints) + 1] <- sum(p[1:n]) - 1
+  jacobian[i+1, ] <- c(rep(1, n), rep(0, n))
+  
+  constraints[length(constraints) + 1] <- sum(p[(n+1):N]) - 1
+  jacobian[i + 2, ] <- c(rep(0, n), rep(1, n))
+  return( list(constraints=constraints, jacobian=jacobian) )
+}
+
 #If you want to use equality constraints, then you should use one of these algorithms NLOPT_LD_AUGLAG, NLOPT_LN_AUGLAG, NLOPT_LD_AUGLAG_EQ, NLOPT_LN_AUGLAG_EQ, NLOPT_GN_ISRES, NLOPT_LD_SLSQP
 
-probability_simplex_opts <- list(algorithm="NLOPT_LD_SLSQP", print_level=1, xtol_rel=1e-8, maxeval=500)
+
+# start at uniform
+p_init <- as.numeric(c(rep(1e-8, grid_size - 1), 1))
+
 prob_lb <- rep(0.0, length(p_init))
 prob_ub <- rep(1.0, length(p_init))
+
+probability_simplex_opts <- list(algorithm="NLOPT_LD_SLSQP", print_level=1, xtol_rel=1e-8, maxeval=1000, check_derivatives=TRUE)
 prob_opt <- nloptr::nloptr(p_init, 
                            neg_entropy, 
                            eval_grad_f = neg_entropy_grad, 
@@ -248,13 +322,25 @@ prob_opt <- nloptr::nloptr(p_init,
                            opts = probability_simplex_opts, 
                            lb=prob_lb, ub=prob_ub)
 
-min_sum_opts <- nloptr::nloptr(rep(1 / length(p_init), length(p_init)),
-                               calc_min_sum,
-                               eval_grad_f = calc_min_sum_grad,
-                               eval_g_ineq = prob_ineq_constraints,
+
+local_opts <- list(algorithm="NLOPT_LD_LBFGS", xtol_rel = 1.0e-8)
+penalty_opts <- list(algorithm="NLOPT_LD_AUGLAG_EQ", print_level=1, xtol_rel=1e-8, maxeval=200, check_derivatives=TRUE, local_opts=local_opts)
+mse_opts <- nloptr::nloptr(rep(1 / length(p_init), length(p_init)),
+                               calc_mse,
+                               eval_grad_f = calc_mse_grad,
                                eval_g_eq = prob_eq_constraints,
-                               opts = probability_simplex_opts,
+                               opts = penalty_opts,
                                lb=prob_lb, ub=prob_ub)
+
+
+local_opts <- list(algorithm="NLOPT_LD_LBFGS", xtol_rel = 1.0e-8)
+penalty_opts <- list(algorithm="NLOPT_LD_AUGLAG_EQ", print_level=1, xtol_rel=1e-8, maxeval=20, check_derivatives=TRUE, local_opts=local_opts)
+mse_opts2 <- nloptr::nloptr(rep(rep(1 / length(p_init), length(p_init)), 2),
+                               calc_mse2,
+                               eval_grad_f = calc_mse2_grad,
+                               eval_g_eq = mse2_eq_constraints,
+                               opts = penalty_opts,
+                               lb=rep(prob_lb, 2), ub=rep(prob_ub, 2))
 
 ```
 
@@ -264,7 +350,7 @@ result_out <- array(prob_opt$solution, dim = c(length(mu_seq), length(var_seq)))
 rownames(result_out) <- mu_seq
 colnames(result_out) <- var_seq
 persp3D(x=mu_seq, y=var_seq, z = result_out, theta=25, phi=10, xlab="mu", ylab="var", zlab="prob_opt_result", ticks=5, ticktype="detailed")
-persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=25, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
+persp3D(x=mu_seq, y=var_seq, z = squared_lambda_diff, theta=25, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
 ```
 ```{R}
 result_dot_out <- array(min_sum_opts$solution, dim = c(length(mu_seq), length(var_seq)))
@@ -290,10 +376,10 @@ hist(thetas, probability=TRUE, breaks=30)
 
 ```{R}
 library(ggnewscale)
-n_bins = 10
+n_bins = gridsize
 lambdas <- data.frame(mu=numeric(), var=numeric(), density_entropy=numeric())
-for(i in 1:10){
-  for(j in 1:10){
+for(i in 1:gridsize){
+  for(j in 1:gridsize){
     lambdas[nrow(lambdas) + 1,] = list(mu=rownames(result_out)[i], var=colnames(result_out)[j], density_entropy=result_out[i, j])
   }
 }
@@ -301,39 +387,39 @@ aggregated <- aggregate(lambdas$density_entropy, by=list(mu=lambdas$mu, var=lamb
 colnames(aggregated)[3] <- "density_entropy"
 
 lambdas_min_sum <- data.frame(mu=numeric(), var=numeric(), density_point=numeric())
-for(i in 1:10){
-  for(j in 1:10){
+for(i in 1:gridsize){
+  for(j in 1:gridsize){
     lambdas_min_sum[nrow(lambdas_min_sum) + 1,] = list(mu=rownames(result_dot_out)[i], var=colnames(result_dot_out)[j], density_point=result_dot_out[i, j])
   }
 }
 aggregated_min_sum <- aggregate(lambdas_min_sum$density_point, by=list(mu=lambdas_min_sum$mu, var=lambdas_min_sum$var), FUN=sum)
 colnames(aggregated_min_sum)[3] <- "density_point"
 
-contraction_arr_df <- data.frame(mu=numeric(), var=numeric(), distance=numeric())
-for(i in 1:10){
-  for(j in 1:10){
-    contraction_arr_df[nrow(contraction_arr_df) + 1,] = list(mu=rownames(contraction_arr)[i], var=colnames(contraction_arr)[j], distance=contraction_arr[i, j])
+squared_lambda_diff_df <- data.frame(mu=numeric(), var=numeric(), distance=numeric())
+for(i in 1:gridsize){
+  for(j in 1:gridsize){
+    squared_lambda_diff_df[nrow(squared_lambda_diff_df) + 1,] = list(mu=rownames(squared_lambda_diff)[i], var=colnames(squared_lambda_diff)[j], distance=squared_lambda_diff[i, j])
   }
 }
-aggregated_contraction_arr <- aggregate(contraction_arr_df$distance, by=list(mu=contraction_arr_df$mu, var=contraction_arr_df$var), FUN=sum)
-colnames(aggregated_contraction_arr)[3] <- "distance"
+aggregated_squared_lambda_diff <- aggregate(squared_lambda_diff_df$distance, by=list(mu=squared_lambda_diff_df$mu, var=squared_lambda_diff_df$var), FUN=sum)
+colnames(aggregated_squared_lambda_diff)[3] <- "distance"
 range01 <- function(x){(x-min(x))/(max(x)-min(x))}
-aggregated_contraction_arr$distance <- range01(aggregated_contraction_arr$distance)
+aggregated_squared_lambda_diff$distance <- range01(aggregated_squared_lambda_diff$distance)
 
 aggregated$density_point <- aggregated_min_sum$density_point
 
 scaleFUN <- function(x) sprintf("%.2f", as.numeric(x))
 ggplot(mapping=aes(x, y)) + geom_tile(data=aggregated, mapping=aes(x=mu, y=var, alpha=density_entropy), fill="goldenrod1") +
   new_scale("alpha") + geom_tile(data=aggregated, mapping=aes(x=mu, y=var, alpha=density_point), fill="dodgerblue3") +
-  new_scale("alpha") + geom_tile(data=aggregated_contraction_arr, mapping=aes(x=mu, y=var, alpha=distance), fill = "brown1") +
+  new_scale("alpha") + geom_tile(data=aggregated_squared_lambda_diff, mapping=aes(x=mu, y=var, alpha=distance), fill = "brown1") +
   xlab("mu") + ylab("sigma") + scale_x_discrete(labels=scaleFUN) + scale_y_discrete(labels=scaleFUN)
 
 
 ggplot(mapping=aes(x, y)) + geom_tile(data=aggregated, mapping=aes(x=mu, y=var, alpha=density_point), fill="dodgerblue3") +
-  new_scale("alpha") + geom_tile(data=aggregated_contraction_arr, mapping=aes(x=mu, y=var, alpha=distance), fill = "brown1") +
+  new_scale("alpha") + geom_tile(data=aggregated_squared_lambda_diff, mapping=aes(x=mu, y=var, alpha=distance), fill = "brown1") +
   xlab("mu") + ylab("sigma") + scale_x_discrete(labels=scaleFUN) + scale_y_discrete(labels=scaleFUN)
 
 ggplot(mapping=aes(x, y)) + geom_tile(data=aggregated, mapping=aes(x=mu, y=var, alpha=density_entropy), fill="goldenrod1") +
-  new_scale("alpha") + geom_tile(data=aggregated_contraction_arr, mapping=aes(x=mu, y=var, alpha=distance), fill = "brown1") +
+  new_scale("alpha") + geom_tile(data=aggregated_squared_lambda_diff, mapping=aes(x=mu, y=var, alpha=distance), fill = "brown1") +
   xlab("mu") + ylab("sigma") + scale_x_discrete(labels=scaleFUN) + scale_y_discrete(labels=scaleFUN)
 ```
