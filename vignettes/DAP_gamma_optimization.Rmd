@@ -174,7 +174,7 @@ for(i in 1:length(mu_seq)){
   for(j in 1:length(var_seq)){
     dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, backend_gr_opt, fixed_args_gr)
     squared_lambda_diff[i,j] <- sqrt((mu_seq[[i]] - dap$mu)^2 + (var_seq[[j]] - dap$var)^2)
-    lambda_diff[i,j] <- (mu_seq[[i]] - dap$mu) + (var_seq[[j]] - dap$var)
+    lambda_diff[i,j] <- (dap$mu - mu_seq[[i]]) + (dap$var - var_seq[[j]])
     dap_lambda_mu[i, j] <- dap$mu
     dap_lambda_var[i, j] <- dap$var
     lambda_mu[i, j] <- mu_seq[[i]]
@@ -190,10 +190,12 @@ saved_dap[["lambda_diff"]] <- lambda_diff
 saved_dap[["dap_lambda_mu"]] <- dap_lambda_mu
 saved_dap[["dap_lambda_var"]] <- dap_lambda_var
 saved_dap[["lambda_mu"]] <- lambda_mu
+saved_dap[["lambda_var"]] <- lambda_var
 saved_dap[["generated_Y"]] <- generated_Y
 save(saved_dap, file="dap_backup.Rdata")
 
 # use load("dap_backup.Rata") if you want to load computed dap instead of running this chunk
+
 ```
 
 
@@ -202,7 +204,7 @@ persp3D(x=mu_seq, y=var_seq, z = squared_lambda_diff, theta=90, phi=10, xlab="mu
 
 ```
 ```{R}
-persp3D(x=mu_seq, y=var_seq, z=apply(generated_Y, c(2, 3), stats::var), theta=90, phi=10, ticks=5, ticktype="detailed")
+persp3D(x=mu_seq, y=var_seq, z=lambda_diff, theta=90, phi=10, ticks=5, ticktype="detailed")
 ```
 
 Define objective and constraint functions
@@ -219,24 +221,46 @@ calc_entropy_grad <- function(p){
 }
 
 calc_mse <- function(p){
-  return(sum(p * as.vector(squared_lambda_diff)))
+  mean((p *(dap_lambda_mu - lambda_mu))^2 + (p *(dap_lambda_var - lambda_var))^2)
 }
 calc_mse_grad  <- function(p){
-  return(as.vector(squared_lambda_diff))
+  n_p = length(p)
+  (2 * (p *(dap_lambda_mu - lambda_mu) * (dap_lambda_mu - lambda_mu)) + (2 * (p *(dap_lambda_var - lambda_var)) * (dap_lambda_var - lambda_var))) / n_p
 }
 
-calc_mse2 <- function(p2){
-  t_lambda <- c(as.vector(dap_lambda_mu), as.vector(dap_lambda_var))
-  lambda <- c(as.vector(lambda_mu), as.vector(lambda_var))
-  diff <- t_lambda - lambda
-  sum(p2 * diff)^2 + sum(p2 * (t_lambda - sum(p2 * t_lambda))^2)
+calc_mse2 <- function(p){
+  n <- length(p)
+  dap_lambda_mu_vec <- as.vector(dap_lambda_mu)
+  dap_lambda_var_vec <- as.vector(dap_lambda_var)
+  lambda_mu_vec <- as.vector(lambda_mu)
+  lambda_var_vec <- as.vector(lambda_var)
+  
+  bias_squared_term <- mean(p * (dap_lambda_mu_vec - lambda_mu_vec))^2 + mean(p * (dap_lambda_var_vec - lambda_var_vec))^2
+  
+  variance_term <- (var(p * (dap_lambda_mu_vec - lambda_mu_vec)) + var(p * (dap_lambda_var_vec - lambda_var_vec))) * (n - 1)/n
+  return(bias_squared_term + variance_term)
 }
 
-calc_mse2_grad <- function(p2){
-  t_lambda <- c(as.vector(dap_lambda_mu), as.vector(dap_lambda_var))
-  lambda <- c(as.vector(lambda_mu), as.vector(lambda_var))
-  diff <- t_lambda - lambda
-  2 * sum(p2 * diff) * diff + 2 * (t_lambda - sum(p2 * t_lambda)) * -((p2^2 * t_lambda)/2)
+calc_mse2_grad <- function(p){
+  n_p <- length(p)
+  dap_lambda_mu_vec <- as.vector(dap_lambda_mu)
+  dap_lambda_var_vec <- as.vector(dap_lambda_var)
+  lambda_mu_vec <- as.vector(lambda_mu)
+  lambda_var_vec <- as.vector(lambda_var)
+  
+  bias_square_grad_mu <- 2 * ( mean(p * (dap_lambda_mu_vec - lambda_mu_vec))) * (dap_lambda_mu_vec - lambda_mu_vec) / n_p
+  bias_square_grad_var <- 2 * ( mean(p * (dap_lambda_var_vec - lambda_var_vec))) * (dap_lambda_var_vec - lambda_var_vec) / n_p
+  
+  
+  #var_grad_mu <- 2/n_p * (p * dap_lambda_mu_vec - mean(p * dap_lambda_mu_vec)) * (dap_lambda_mu_vec - dap_lambda_mu_vec/n_p)
+  
+  var_grad_mu <- (2 * (p * dap_lambda_mu_vec - mean(p * dap_lambda_mu_vec)) * (dap_lambda_mu_vec - dap_lambda_mu_vec/n_p)) / n_p
+  var_grad_lambda <- (2 * (p * dap_lambda_var_vec - mean(p * dap_lambda_var_vec)) * (dap_lambda_var_vec - dap_lambda_var_vec/n_p)) / n_p
+  return(bias_square_grad_mu + bias_square_grad_var + var_grad_mu + var_grad_lambda)
+    
+  
+  # grad backup (bias^2 + var)
+  #2 * sum(p2 * diff) * diff + 2 * (t_lambda - sum(p2 * t_lambda)) * -(p2 * t_lambda) + (t_lambda - sum(p2 * t_lambda))^2
 }
 
 # equal to minimize negative entropy
@@ -334,13 +358,13 @@ mse_opts <- nloptr::nloptr(rep(1 / length(p_init), length(p_init)),
 
 
 local_opts <- list(algorithm="NLOPT_LD_LBFGS", xtol_rel = 1.0e-8)
-penalty_opts <- list(algorithm="NLOPT_LD_AUGLAG_EQ", print_level=1, xtol_rel=1e-8, maxeval=20, check_derivatives=TRUE, local_opts=local_opts)
-mse_opts2 <- nloptr::nloptr(rep(rep(1 / length(p_init), length(p_init)), 2),
+penalty_opts <- list(algorithm="NLOPT_LD_AUGLAG_EQ", print_level=1, xtol_rel=1e-8, maxeval=100, check_derivatives=TRUE, local_opts=local_opts)
+mse_opts2 <- nloptr::nloptr(rep(1 / length(p_init), length(p_init)),
                                calc_mse2,
                                eval_grad_f = calc_mse2_grad,
-                               eval_g_eq = mse2_eq_constraints,
+                               eval_g_eq = prob_eq_constraints,
                                opts = penalty_opts,
-                               lb=rep(prob_lb, 2), ub=rep(prob_ub, 2))
+                               lb=prob_lb, ub=prob_ub)
 
 ```
 
