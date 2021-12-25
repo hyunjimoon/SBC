@@ -230,33 +230,42 @@ calc_mse_grad  <- function(p){
 
 calc_mse2 <- function(p){
   n <- length(p)
-  dap_lambda_mu_vec <- as.vector(dap_lambda_mu)
-  dap_lambda_var_vec <- as.vector(dap_lambda_var)
-  lambda_mu_vec <- as.vector(lambda_mu)
-  lambda_var_vec <- as.vector(lambda_var)
+  p <- array(p, dim=c(1, n))
+  dap_lambda_mu_vec <- array(dap_lambda_mu, dim=c(1, n))
+  dap_lambda_var_vec <- array(dap_lambda_var, dim=c(1, n))
+  lambda_mu_vec <- array(lambda_mu, dim=c(1, n))
+  lambda_var_vec <- array(lambda_var, dim=c(1, n))
   
-  bias_squared_term <- mean(p * (dap_lambda_mu_vec - lambda_mu_vec))^2 + mean(p * (dap_lambda_var_vec - lambda_var_vec))^2
+  estimator_mu_vec <- p * t(dap_lambda_mu_vec - lambda_mu_vec)  # dim(1, n)
+  estimator_var_vec <- p * t(dap_lambda_var_vec - lambda_var_vec)
   
-  variance_term <- (var(p * (dap_lambda_mu_vec - lambda_mu_vec)) + var(p * (dap_lambda_var_vec - lambda_var_vec))) * (n - 1)/n
-  return(bias_squared_term + variance_term)
+  bias_squared_term <- mean(estimator_mu_vec)^2 + mean(estimator_var_vec)^2
+  
+  variance_term <- (var(estimator_mu_vec) + var(estimator_var_vec)) * (n - 1)/n
+  return(bias_squared_term)# + variance_term)
 }
 
 calc_mse2_grad <- function(p){
-  n_p <- length(p)
-  dap_lambda_mu_vec <- as.vector(dap_lambda_mu)
-  dap_lambda_var_vec <- as.vector(dap_lambda_var)
-  lambda_mu_vec <- as.vector(lambda_mu)
-  lambda_var_vec <- as.vector(lambda_var)
+  n <- length(p)
+  p <- array(p, dim=c(1, n))
+  dap_lambda_mu_vec <- array(dap_lambda_mu, dim=c(1, n))
+  dap_lambda_var_vec <- array(dap_lambda_var, dim=c(1, n))
+  lambda_mu_vec <- array(lambda_mu, dim=c(1, n))
+  lambda_var_vec <- array(lambda_var, dim=c(1, n))
   
-  bias_square_grad_mu <- 2 * ( mean(p * (dap_lambda_mu_vec - lambda_mu_vec))) * (dap_lambda_mu_vec - lambda_mu_vec) / n_p
-  bias_square_grad_var <- 2 * ( mean(p * (dap_lambda_var_vec - lambda_var_vec))) * (dap_lambda_var_vec - lambda_var_vec) / n_p
+  const_mu_vec <- (dap_lambda_mu_vec - lambda_mu_vec)  # dim(1, n)
+  const_var_vec <- (dap_lambda_var_vec - lambda_var_vec)
+  
+  
+  bias_square_grad_mu <- (2 * t(p) %*% const_mu_vec %*% t(const_mu_vec)) / n^2
+  bias_square_grad_var <- (2 * t(p) %*% const_var_vec %*% t(const_var_vec)) / n^2
   
   
   #var_grad_mu <- 2/n_p * (p * dap_lambda_mu_vec - mean(p * dap_lambda_mu_vec)) * (dap_lambda_mu_vec - dap_lambda_mu_vec/n_p)
   
-  var_grad_mu <- (2 * (p * dap_lambda_mu_vec - mean(p * dap_lambda_mu_vec)) * (dap_lambda_mu_vec - dap_lambda_mu_vec/n_p)) / n_p
-  var_grad_lambda <- (2 * (p * dap_lambda_var_vec - mean(p * dap_lambda_var_vec)) * (dap_lambda_var_vec - dap_lambda_var_vec/n_p)) / n_p
-  return(bias_square_grad_mu + bias_square_grad_var + var_grad_mu + var_grad_lambda)
+  var_grad_mu <- (2 * (p * dap_lambda_mu_vec - mean(p * dap_lambda_mu_vec)) * (dap_lambda_mu_vec - dap_lambda_mu_vec/n)) / n
+  var_grad_lambda <- (2 * (p * dap_lambda_var_vec - mean(p * dap_lambda_var_vec)) * (dap_lambda_var_vec - dap_lambda_var_vec/n)) / n
+  return(bias_square_grad_mu + bias_square_grad_var)# + var_grad_mu + var_grad_lambda)
     
   
   # grad backup (bias^2 + var)
