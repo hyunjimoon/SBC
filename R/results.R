@@ -371,7 +371,20 @@ compute_results <- function(datasets, backend,
   if(is.null(gen_quants)) {
     future.globals <- globals
   } else {
-    future.globals <- c(globals, attr(gen_quants, "globals"))
+    gq_globals <- attr(gen_quants, "globals")
+    if(length(globals) > 0 && length(gq_globals > 0)) {
+      if(is.list(gq_globals) && !is.list(globals)) {
+        stop(SBC_error("Not implemented: Currently, when globals in generated quantites are a list, globals argument has to be also a list  (not a character vector)."))
+      } else if(!is.list(gq_globals) && is.list(globals)) {
+        stop(SBC_error("Not implemented: Currently, when globals is a list, globals in generated quantites have to be also a list (not a character vector)."))
+      }
+      future.globals <- c(globals, gq_globals)
+    }
+    if(length(gq_globals) > 0) {
+      future.globals <- gq_globals
+    } else {
+      future.globals <- globals
+    }
   }
 
   results_raw <- future.apply::future_lapply(
