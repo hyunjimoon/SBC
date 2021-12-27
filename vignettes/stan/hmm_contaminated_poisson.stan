@@ -28,8 +28,8 @@ model {
   for (n in 1 : N) {
     // The observation model could change with n, or vary in a number of
     //  different ways (which is why log_omega is passed in as an argument)
-    log_omega[1, n] = poisson_log_lpmf(y[n] | mu_background);
-    log_omega[2, n] = poisson_log_lpmf(y[n] | mu_background + mu_signal);
+    log_omega[1, n] = poisson_lpmf(y[n] | mu_background);
+    log_omega[2, n] = poisson_lpmf(y[n] | mu_background + mu_signal);
   }
 
   mu_background ~ lognormal(-2, 0.2);

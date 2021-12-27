@@ -12,8 +12,18 @@ vignette: >
 ---
 
 
+
+# Introduction
+
+HMC can be slow either from large data or difficult geometry. For simple geometries (and potentially large data) the ADVI (automatic differentiation variational inference) approximation can be helpful. 
+SBC provides one standard to test whether ADVI works well for your model without ever needing to run full
+HMC for your model. 
+
+To show a few examples, let's start by setting up our environment.
+
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC); 
+library(ggplot2)
 use_cmdstanr <- TRUE # Set to false to use rstan instead
 
 if(use_cmdstanr) {
@@ -44,14 +54,32 @@ if(!dir.exists(cache_dir)) {
 ```
 
 
-# 1. Intro.
+# Example I - Poisson mixture
 
-HMC can be slow either from large data or difficult geometry. For simple geometries (and large data) the ADVI (automatic differentiation variational inference) approximation can be helpful. SBC provides one standard to test whether ADVI works well for your model without ever needing to run full
-HMC for your model. 
+In this example, we have collected a set of counts of particles emmitted by 
+a specimen in a relatively large number of experimental runs. We however noticed 
+that there is a suspiciously large number of low counts. Inspecting the 
+equipment, it turns out that the experiment was not setup properly and
+in some of the runs, our detector could only register background noise.
+We however don't know which runs were errorneous. 
 
-# 2. Comparing HMC and ADVI 
-Simple model with location and scale parameter for normal distirbution is used and coded into generator and backend (stan file).
+This naturally calls for a mixture model, where we assume that a proportion 
+(`p_signal`) of experiments
+contains both background noise and the signal of interest and the rest
+contains just the background. For simplicity we assume a Poisson distribution
+for the counts. 
+We also assume that in our hypothetical example, the expected background noise
+is well understood, which let's us to put a narrow prior on the amount of 
+particles we would expect to detect just from the background.
 
+So here's our model:
+
+```{r, comment = ""}
+cat(readLines("stan/contaminated_poisson.stan"), sep = "\n")
+```
+
+
+And here's R code that generates data matching that model:
 
 ```{r}
 generator_contamination <- function(N) {
@@ -75,85 +103,266 @@ generator_contamination <- function(N) {
     )
   )
 }
+```
 
+## Default ADVI (small problems)
 
+We'll start with the Stan's ADVI with all default parameters, i.e. a meanfield
+variational approximation. 
+We compile the model and create a variational SBC backend.
+
+```{r}
 model_contamination <- cmdstan_model("stan/contaminated_poisson.stan")
 backend_contamination <- SBC_backend_cmdstan_variational(model_contamination, n_retries_init = 3)
-
 ```
+
+Note that we allow the backend to retry initialization several times (`n_retries_init`),
+as the ADVI implementation in Stan can sometimes fail to start properly on the first try.
+
+
+Since we are feeling confident that our model is implemented correctly (and the model runs quickly), we start with 100 simulations and assume 100 observations for each.
+If you are developing a new model, it might be useful to start with fewer simulations, as discussed in the 
+[small model workflow vignette](https://hyunjimoon.github.io/SBC/articles/small_model_workflow.html).
+
+Throughout the vignette we'll also use caching for the results.
 
 ```{r}
 set.seed(46522641)
 ds_contamination <- generate_datasets(SBC_generator_function(generator_contamination, N = 100), n_datasets = 100)
 res_contamination <- compute_results(ds_contamination, backend_contamination, cache_mode = "results", cache_location = file.path(cache_dir, "contamination"))
 ```
+The ECDF diff plot and the ranks plot look quite good, although we can notice that the `mu_signal` parameter 
+has a bit too many large ranks - the resolution we get from 100 simulations is
+however too low to be sure if that's a problem or just a fluke.
 
-```{r}
+```{r ecdf_rank_contamination}
 plot_ecdf_diff(res_contamination)
 plot_rank_hist(res_contamination)
+```
+
+We'll also look at how well are we able to estimate the various paremeters by
+plotting the estimated values + uncertainty intervals against the "true" simulated
+values. We have a lot of data and both the `mu_signal` and `p_signal` are well
+constrained by the data. Unsurprisingly we learn a bit less about `mu_background`,
+because a) we put a strong prior on it and b) it requires a lot of observations 
+to learn the precise rate of rare events as most observations will be just 0.
+
+
+```{r contamination_sim_estimated}
 plot_sim_estimated(res_contamination)
 ```
+
+To understand how large problems could still be lurking in the model/approximation,
+we can also show the observed coverage of central uncertainty intervals:
+
+```{r }
+plot_coverage(res_contamination)
+```
+
+This doesn't show a big problem, but we see that the remaining uncertainty is still 
+quite large. 
+
+```{r}
+coverage_contamination <- empirical_coverage(res_contamination$stats, width = 0.9)[, c("parameter", "ci_low", "ci_high")]
+coverage_contamination
+```
+For example for the 90% central, the 90% interval for `mu_signal` could actually
+contain between `r scales::percent(coverage_contamination$ci_low[2])` and 
+`scales::percent(coverage_contamination$ci_high[2])` of true values.
+
+So we ran 900 more simulation and combine them with the previous results.
+
 
 ```{r}
 set.seed(12365455)
 ds_contamination_2 <- generate_datasets(SBC_generator_function(generator_contamination, N = 100), n_datasets = 900)
+res_contamination_more <- compute_results(ds_contamination_2, backend_contamination, 
+                  keep_fits = FALSE,
+                  cache_mode = "results", 
+                  cache_location = file.path(cache_dir, "contamination_2"))
+
 res_contamination_2 <- bind_results(
   res_contamination,
-  compute_results(ds_contamination_2, backend_contamination, cache_mode = "results", cache_location = file.path(cache_dir, "contamination_2"))
-)
+  res_contamination_more
+  )
+
   
 ```
 
+It turns out there is a problem:
 
-```{r}
+```{r contamination_2_ecdf_rank}
 plot_ecdf_diff(res_contamination_2)
 plot_rank_hist(res_contamination_2)
-plot_sim_estimated(res_contamination_2, alpha = 0.2)
 ```
 
+The increased resolution of total of 1000 simulations shows that the variational
+approximation to the posterior is underdispersed for `mu_signal` (the true parameter is too often
+in the extreme tails of the posterior) and - to a lesser extent - also for `p_signal`,
+where we see an overabundance of true values larger than all of the posterior samples,
+but not too many low ranks.
+
+To see how big of a problem this introduces, let's look at the coverage plot.
+We see that for `mu_signal` the observed coverage is noticeable lower than
+expected - for `p_signal` this seems to be much less of a problem.
 
 ```{r}
 plot_coverage(res_contamination_2)
 ```
 
-```{r}
-res_contamination_fullrank <- compute_results(bind_datasets(ds_contamination, ds_contamination_2), SBC_backend_cmdstan_variational(model_contamination, n_retries_init = 3, algorithm = "fullrank"),
-                                              cache_mode = "results",
-                                              cache_location = file.path(cache_dir, "contamination_fullrank"))
-```
+This is what we get when we focus on the 90% interval once again:
 
 ```{r}
+coverage_contamination_2 <- empirical_coverage(res_contamination_2$stats, width = 0.9)[, c("parameter", "ci_low", "ci_high")]
+coverage_contamination_2
+```
+
+The 90% central credible interval for `mu_background` likely
+contains less than `r scales::percent(coverage_contamination$ci_high[2])` of true values.
+
+So for a crude result the default ADVI setup we just tested is not terrible: we don't
+expect to see a strong bias and the model will be somewhat overconfident, but
+not catastrophically so.
+
+## Fullrank approximation (smaller problems)
+
+We may also try the more flexible fullrank variational approximation.
+
+So in the next we build a fullrank variational backend and compute SBC
+for the same 1000 datasets we used earlier. This is primarily for brevity -
+in actual practice you would probably want to start with fewer datasets to
+discover big problems quickly.
+
+```{r}
+res_contamination_fullrank <- compute_results(
+  bind_datasets(ds_contamination, ds_contamination_2), 
+  SBC_backend_cmdstan_variational(model_contamination, n_retries_init = 3, algorithm = "fullrank"),
+  keep_fits = FALSE,
+  cache_mode = "results",
+  cache_location = file.path(cache_dir, "contamination_fullrank"))
+```
+The ECDF and rank plots actually look a bit better than with the meanfield approximation.
+Interestingly, the rank plots show a bit of a "frowning" shape, meaning the
+meanfield approximation is slightly underconfident for `p_signal` and a bit also
+for `mu_background`. For `mu_signal`, the model is both slightly underconfident 
+in the bulk of the posterior, but still has overly light tails and is overconfident
+for the extreme quantiles. 
+
+```{r contamination_fullrank_ecdf_rank}
 plot_ecdf_diff(res_contamination_fullrank)
 plot_rank_hist(res_contamination_fullrank)
-plot_sim_estimated(res_contamination_fullrank)
+
 ```
 
-```{r}
+The coverage of the central intervals is still visibly imperfect, but
+the imprecisions are smaller:
+
+```{r contamination_fullrank_coverage}
 plot_coverage(res_contamination_fullrank)
 ```
 
+## Meanfield + lower tolerance (even better)
+
+In some cases, it might also help to reduce the tolerance (`tol_rel_obj`) of the algorithm.
+Here we'll use the default meanfield algorithm, but decrease the `tol_rel_obj` 
+(the default value is 0.01).
 
 ```{r}
-res_contamination_mcmc <- compute_results(bind_datasets(ds_contamination, ds_contamination_2), SBC_backend_cmdstan_sample(model_contamination, chains = 2),
-                                          keep_fits = FALSE,
-                                          cache_mode = "results",
-                                          cache_location = file.path(cache_dir, "contamination_mcmc"))
+res_contamination_lowtol <- compute_results(
+  bind_datasets(ds_contamination, ds_contamination_2), 
+  SBC_backend_cmdstan_variational(model_contamination, n_retries_init = 3, 
+                                  tol_rel_obj = 0.001
+                                  ),
+  keep_fits = FALSE,
+  cache_mode = "results",
+  cache_location = file.path(cache_dir, "contamination_lowtol"))
 ```
+Reducing tolerance leads to a small proportion of the fits not converging. In
+our experience, increasing the `grad_samples` parameter can decrease probability of non-convergence,
+but since the number is relatively low, we'll just remove the non-converging fits
+from the SBC results (this is OK as long as we would discard non-converging
+fits for real data, see the [rejection sampling vignette](https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html)).
 
 ```{r}
-plot_ecdf_diff(res_contamination_mcmc)
-plot_rank_hist(res_contamination_mcmc)
-plot_sim_estimated(res_contamination_mcmc)
+res_contamination_lowtol_conv <- res_contamination_lowtol[res_contamination_lowtol$backend_diagnostics$elbo_converged] 
+```
+
+Let's look at the ECDF and rank plots. We see some overabundance of very large ranks
+for `mu_signal` and `p_signal` and somewhat underconfident bulk of `p_signal`,
+but the problems are even smaller than before.
+
+```{r contamination_lowtol_ecdf_rank}
+plot_ecdf_diff(res_contamination_lowtol_conv)
+plot_rank_hist(res_contamination_lowtol_conv)
+```
+The empirical coverage also tracks the expected coverage quite nicely across
+the whole range of credible interval widths.
+
+```{r contamination_lowtol_coverage}
+plot_coverage(res_contamination_lowtol)
 ```
 
 
-https://mc-stan.org/users/documentation/case-studies/hmm-example.html
+## Summary
 
-Simplified to two states and slightly tighter prior on transition probs
+
+Overall, the ADVI approximations for this model can be made to work well
+and are not completely useless even on the default settings. 
+As we'll see in the next example, this cannot be taken for granted.
+
+However, have we actually gained speed by using an approximation?
+
+To have a comparison, we'll run Stan's HMC as well, but just for the
+first 50 datasets. 
+We'll assume we have multiple cores, so the fact that Stan runs 4 chains doesn't
+bother us - we'll just look at the time the longest chain took.
+
+```{r}
+res_contamination_sample <- compute_results(
+  ds_contamination[1:50], 
+  SBC_backend_cmdstan_sample(model_contamination),
+  keep_fits = FALSE,
+  cache_mode = "results",
+  cache_location = file.path(cache_dir, "contamination_sample"))
+```
+
+We've also run the sampling for more datasets and promise the rank
+and ECDF plots it produces are very nice :-)
+
+For the machine we built the vignette on, here are the distributions
+of times (for ADVI) and time of longest chain (for HMC):
+
+```{r}
+contamination_time <- 
+  rbind(data.frame(alg = "Meanfield", time = res_contamination_2$backend_diagnostics$time),
+        data.frame(alg = "Fullrank", time = res_contamination_fullrank$backend_diagnostics$time),
+        data.frame(alg = "Meanfield + low tol.", time = res_contamination_lowtol$backend_diagnostics$time),
+        data.frame(alg = "Sampling (longest chain)", time = res_contamination_sample$backend_diagnostics$max_chain_time))
+ 
+ggplot(contamination_time, aes(x = time)) + geom_histogram(aes(y = ..density..)) + facet_wrap(~alg, ncol = 1) +
+  scale_x_continuous("Time [seconds]")
+```
+
+Depressingly, while using lower tolerance let us get almost as good uncertainty
+quantification as sampling, it also erased most of the performance advantage variational
+inference had over sampling for this simple model.
+
+# Example II - Hidden Markov Model
+
+Continuing from our first example, let's say we realized that in fact
+observing background only vs. signal in individual data points is not independent
+and we want to model how the experimental setup switches between these two states over
+time. We add additional structure to the model to account for this autocorrelation.
+
+One possible choice for such structure are hidden Markov models (HMMs) where
+we assume the probability of transitioning from one state to another is identical
+across all time points. The [case study for HMMs](https://mc-stan.org/users/documentation/case-studies/hmm-example.html)
+has a more thorough discussion and also shows how to code those in Stan.
+
+Maybe the simplest way to describe the model is to show how we simulate the data:
 
 ```{r}
 generator_HMM <- function(N) {
-  # You can simulate i.i.d. ordered vector just by sorting
   mu_background <- rlnorm(1, -2, 0.2)
   mu_signal <- rlnorm(1, 2, 1)
 
@@ -191,133 +400,123 @@ generator_HMM <- function(N) {
     )
   )
 }
-
-
-model_HMM <- cmdstan_model("stan/hmm_contaminated_poisson.stan")
-backend_HMM <- SBC_backend_cmdstan_variational(model_HMM, n_retries_init = 3)
-
 ```
 
+And here is the Stan code that models this process (it is based on the example
+from the HMM case study but simplified and modified).
+
+```{r, comment = ""}
+cat(readLines("stan/hmm_contaminated_poisson.stan"), sep = "\n")
+```
+
+## Fitting ADVI
+
+Once again, we build a default (meanfield) variational backend via Stan:
+
 ```{r}
-set.seed(2165498)
-ds_hmm <- generate_datasets(SBC_generator_function(generator_HMM, N = 100), n_datasets = 20)
+model_HMM <- cmdstan_model("stan/hmm_contaminated_poisson.stan")
+backend_HMM <- SBC_backend_cmdstan_variational(model_HMM, n_retries_init = 3)
+```
+
+And compute results - starting with just 20 datasets:
+
+```{r}
+set.seed(464855)
+ds_hmm <- generate_datasets(SBC_generator_function(generator_HMM, N = 100), n_datasets = 500)
 res_hmm <- compute_results(ds_hmm, backend_HMM,
                            cache_mode = "results", cache_location = file.path(cache_dir, "hmm"))
 ```
+Already with 20 datasets, we see huge problems for most parameters:
 
-```{r}
+```{r hmm_ecdf_ranks}
 plot_ecdf_diff(res_hmm)
 plot_rank_hist(res_hmm)
+```
+
+```{r}
+plot_coverage(res_hmm)
+```
+
+
+We may also try fullrank - let's run it for the same 20 datasets.
+
+```{r}
+res_hmm_fullrank <- compute_results(
+  ds_hmm, 
+  SBC_backend_cmdstan_variational(model_HMM, algorithm = "fullrank", n_retries_init = 3),
+  cache_mode = "results", cache_location = file.path(cache_dir, "hmm_fullrank"))
+```
+
+```{r}
+plot_coverage(res_hmm_fullrank)
+
+```
+
+
+Once again, the calibration is very bad.
+
+```{r hmm_fullrank_ecdf_ranks}
+plot_ecdf_diff(res_hmm_fullrank)
+plot_rank_hist(res_hmm_fullrank)
+```
+
+And we may also try meanfield but with lower tolerance
+
+```{r}
+res_hmm_lowtol <- compute_results(
+  ds_hmm, 
+  SBC_backend_cmdstan_variational(model_HMM, tol_rel_obj = 0.001, n_retries_init = 3),
+  cache_mode = "results", cache_location = file.path(cache_dir, "hmm_lowtol"))
+```
+
+But the problems don't go away.
+
+```{r hmm_lowtol_ecdf_ranks}
+plot_ecdf_diff(res_hmm_lowtol)
+plot_rank_hist(res_hmm_lowtol)
+```
+
+```{r}
+plot_coverage(res_hmm_lowtol)
+```
+```{r}
+empirical_coverage(res_hmm_lowtol$stats, width = c(0.8,0.9,0.95))
+```
+
+
+
+## Summary
+
+To summarise, the HMM model turns out to pose big problems for all ADVI
+variants we tested and inferences drawn from using ADVI on such a model
+are likely useless.
+
+
+```{r}
+res_hmm_sample <- compute_results(
+  ds_hmm[1], 
+  SBC_backend_cmdstan_sample(model_HMM),
+  cache_mode = "results", cache_location = file.path(cache_dir, "hmm_sample"))
+```
+
+```{r hmm_sample_ecdf_ranks}
+plot_ecdf_diff(res_hmm_sample)
+plot_rank_hist(res_hmm_sample)
+```
+
+
+
+```{r}
 plot_sim_estimated(res_hmm)
 ```
-```{r}
-res_mcmc <- compute_results(ds, SBC_backend_cmdstan_sample(model_HMM, chains = 2))
-```
 
-```{r}
-plot_ecdf_diff(res_mcmc)
-plot_rank_hist(res_mcmc)
-plot_sim_estimated(res_mcmc)
-```
-
-
-```{R generator and backend}
-generator <- function(hyperparam, param, predictor = NULL){
-  # hyperparamter
-  N = hyperparam$N
-  prior_width = hyperparam$prior_width
-  # paramter
-  loc = param$loc
-  scale = param$scale
-  # predictor
-  # generate
-  S = ndraws(param[[1]])
-  y <- rfun(rnorm) (n = N, mean = loc, sd = scale) 
-  gen_rvars <- draws_rvars(N = N, y = y, prior_width = prior_width)
-  # SBC-type reshape e.g. loc rvar<S>[1] distributed to each parallel simulation as rvar<1>[1]
-  SBC_datasets(
-    parameters = as_draws_matrix(param), 
-    generated = draws_rvars_to_standata(gen_rvars)
-  )
-}
-
-tn <- "
-data {
-  int N;
-  vector[N] y;
-  real<lower=0> prior_width;
-}
-
-parameters {
-  real loc;
-  real <lower = 0> scale;
-}
-
-model {
-  loc ~ normal(0, prior_width);
-  scale ~ lognormal(0, prior_width);
-  y ~ normal(loc, scale);
-}
-"
-mod_two_norm = cmdstanr::cmdstan_model(stan_file = write_stan_file(tn))
-```
-
-Comparing SBC with two different backends (HMC and ADVI), the latter is around five times faster (3 and 0.6 min.) for (S, M) = (1000, 100) where `S` is the number of initial parameter values (datasets) and `M` is posterior samples. Current Stan ADVI implementation samples from iid normal which explains the difference in `s_thin_ranks` and `v_thin_ranks` as 10 and 1. If certian correlation is detected, thinning is possible with `recompute_statistics` function without refitting. See appendix for instructions on VI variants aiming for first or higher order corrections.
-
-The following messages is ADVI-specific and explains how ELBO value and its gradient evolved with the heuristically set stepsize `eta`. For further ADVI diagnostics, see [this](https://mc-stan.org/docs/2_27/reference-manual/stochastic-gradient-ascent.html) Stan manual. 
-```
-Iteration:   1 / 250 [  0%]  (Adaptation) 
-Iteration:  50 / 250 [ 20%]  (Adaptation) 
-Iteration: 100 / 250 [ 40%]  (Adaptation) 
-Success! Found best value [eta = 100] earlier than expected. 
-Begin stochastic gradient ascent. 
-  iter             ELBO   delta_ELBO_mean   delta_ELBO_med   notes  
-   100          -57.517             1.000            1.000 
-   200         -528.092             0.946            1.000 
-   300         -239.071             1.033            1.000 
-```
-
-```{R}
-library(posterior)
-S = 30
-N = 20
-M = 100
-s_thin_ranks = 10
-v_thin_ranks = 1
-chains = 4
-backend_tn <- SBC_backend_cmdstan_sample(mod_two_norm, chains = chains, iter_sampling = M * s_thin_ranks / chains)
-backend_tn_vb <- SBC_backend_cmdstan_variational(mod_two_norm, grad_samples = 200, init = 0.5, n_retries_init = 3)
-prior_width = 1
-datasets_tn <- generator(
-  hyperparam = list(prior_width = prior_width, N = N),
-  param = draws_rvars(loc = rvar(rnorm(S, 0, prior_width)), scale = rvar(exp(rnorm(S, 0, prior_width))))
-)
-#result_tn <- compute_results(datasets_tn, backend_tn)
-result_tn_vb <- compute_results(datasets_tn, backend_tn_vb, thin_ranks = v_thin_ranks)
-```
-
-Rank results for HMC is acceptable while for ADVI indicates under-dispersion. Variational inference that measures the divergence based on the true distribution (e.g. KL(approx.||true)) is known for its compactness (Turner, 2010) and therefore have tendency to be under-dispersed. However, Yao et al. (2018) notes VI posteriors can be both over-dispersed and under-dispersed, on which parameter region SBC is exploring. Rank plot indicates that ADVI for this problem setting could be inappropriate i.e. the three components, given parameter values, outcome model, and inference engine are not self-consistent. Adjusting the computation algorithm via hyperparameters that determine convergence standards can be one solution. 
-
-```{r}
-plot_rank_hist(result_tn) + ggtitle("HMC")
-plot_ecdf_diff(result_tn) + ggtitle("HMC")
-plot_rank_hist(result_tn_vb) + ggtitle("Variational - meanfield")
-plot_ecdf_diff(result_tn_vb) + ggtitle("Variational - meanfield")
-```
-
-# 3. Adjusting algorithm hyperparameters
-One ADVI hyperparater is `tol_rel_obj` which is a convergence tolerance on the relative norm of the objective. Stan's default is 0.001 so decreasing it to 0.0001 takes longer (fifth power didn't end) but provides better rank plots.
-
-```{R}
-backend_tn_vb_dot1pw4tol <- SBC_backend_cmdstan_variational(mod_two_norm, tol_rel_obj = 0.0001, grad_samples = 200, init = 0.5)
-result_tn_vb_dot1pw4tol <- compute_results(datasets_tn, backend_tn_vb_dot1pw4tol)
-plot_rank_hist(result_tn_vb_dot1pw4tol)
-plot_ecdf_diff(result_tn_vb_dot1pw4tol)
-```
 
 # Notes on VI variants
-If importance resampling is used to reduce the bias of ADVI, there is dependency, as some original draws can be drawn many times. Instead of thinning, a specific type of stratified importance resampling could be used to produce a sample that has ESS close to the nominal size. Base on experiments if ESS is within +-10% of the nominal size, bias in extreme ranks is already quite small which is why ESS for several quantiles needs checking. For instance, ESS for mean can be much higher than ESS for tails and the final ESS is recommended to target for the worst performing statistics (i.e. ranks computable variables).
 
-# Reference
+If importance resampling is used to reduce the bias of ADVI, there is dependency, as some original draws can be drawn many times. Instead of thinning, a specific type of stratified importance resampling could be used to produce a sample that has ESS close to the nominal size. This resampling is currently not implemented in the SBC package.
+Based on experiments if ESS is within +-10% of the nominal size, bias in extreme ranks is already quite small which is why ESS for several quantiles needs checking. For instance, ESS for mean can be much higher than ESS for tails and the final ESS is recommended to target for the worst performing statistics (i.e. ranks computable variables).
+
+# References
+
 - Turner and Sahani (2010) http://www.gatsby.ucl.ac.uk/~maneesh/papers/turner-sahani-2010-ildn.pdf
 - Yao et al. (2018) http://proceedings.mlr.press/v80/yao18a/yao18a.pdf
