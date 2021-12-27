@@ -41,7 +41,7 @@ nsize <- 10
 
 ## Backend settings
 # number of draws per posterior approximation 
-ndraws <- 100
+ndraws <- 1000
 
 # number of chains for hmc posterior approximation
 nchains <- 2
@@ -118,60 +118,78 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
   sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
   draws_eta <- c()
   draws_Y <- c()
+  prior_thetas <- posterior::extract_variable(datasets$parameters, "shape")
+  var_theta_tilde_bar <- 0
+  var_theta_tilde <- 0
+  theta_bar <- mean(prior_thetas)
   for(i in 1:nsims){
     draws_Y <- c(draws_Y, datasets$generated[[i]]$Y)
+    samples <- SBC_fit_to_draws_matrix(sbc_result$fits[[i]])
+    etas <- posterior::extract_variable(samples, "shape")
+    draws_eta <- c(draws_eta, etas)
+    
+    var_theta_tilde_bar <- var_theta_tilde_bar + (mean(draws_eta) - mean(prior_thetas))^2
+    var_theta_tilde <- var_theta_tilde + sum(draws_eta - mean(draws_eta))^2
   }
-  for(fit in sbc_result$fits){
-    samples <- SBC_fit_to_draws_matrix(fit)
-    draws_eta <- c(draws_eta, posterior::extract_variable(samples, "shape"))
-  }
+  
+  var_theta_tilde_bar <- var_theta_tilde_bar# / fixed_args$nsims
+  var_theta_tilde <- var_theta_tilde# / (fixed_args$nsims * ndraws)
   # assume normal for dap
   mu <- mean(draws_eta)
-  var <- sd(draws_eta)^2
-  # gamma_est <- MASS::fitdistr(draws_eta, "gamma", start=list(shape=1, rate=1))$estimate
-  # alpha <- as.numeric(gamma_est["shape"])
-  # beta <- as.numeric(gamma_est["rate"])
-  # mu = alpha / beta
-  # var = alpha / beta^2
-  return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y))
+  #var <- sd(draws_eta)^2
+  var <- 100
+  
+  return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y, var_theta_tilde_bar=var_theta_tilde_bar, var_theta_tilde=var_theta_tilde, theta_bar=theta_bar))
 }
 ```
 
 ##
 
 ```{r}
-gridsize <- 5
-mu_seq <- seq(1, 3, length.out = gridsize)
-var_seq <- seq(1, 2, length.out = gridsize)
+gridsize_mu <- 5
+gridsize_var <- 1
+mu_seq <- seq(1, 3, length.out = gridsize_mu)
+var_seq <- rep(100, gridsize_var)#seq(1, 2, length.out = gridsize)
 grid_size <- length(mu_seq) * length(var_seq)
 
-squared_lambda_diff <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
+squared_lambda_diff <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
 rownames(squared_lambda_diff) <- mu_seq
 colnames(squared_lambda_diff) <- var_seq
 
-lambda_diff <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
+lambda_diff <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
 rownames(lambda_diff) <- mu_seq
 colnames(lambda_diff) <- var_seq
 
-dap_lambda_mu <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
-dap_lambda_var <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
+dap_lambda_mu <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+dap_lambda_var <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
 rownames(dap_lambda_mu) <- mu_seq
 rownames(dap_lambda_var) <- mu_seq
 colnames(dap_lambda_mu) <- var_seq
 colnames(dap_lambda_var) <- var_seq
 
-lambda_mu <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
-lambda_var <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
+lambda_mu <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+lambda_var <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
 rownames(lambda_mu) <- mu_seq
 rownames(lambda_var) <- mu_seq
 colnames(lambda_mu) <- var_seq
 colnames(lambda_var) <- var_seq
 
-generated_Y <- array(rep(NA, nsims * nobs * gridsize * gridsize), dim=c(nsims * nobs, gridsize, gridsize) )
+var_theta_tilde_bar <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+var_theta_tilde <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(var_theta_tilde_bar) <- mu_seq
+rownames(var_theta_tilde_bar) <- mu_seq
+colnames(var_theta_tilde) <- var_seq
+colnames(var_theta_tilde) <- var_seq
+
+theta_bar <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(theta_bar) <- mu_seq
+rownames(theta_bar) <- mu_seq
+
+generated_Y <- array(rep(NA, nsims * nobs * gridsize * gridsize), dim=c(nsims * nobs, gridsize_mu, gridsize_var) )
 dimnames(generated_Y)[[2]] <- mu_seq
 dimnames(generated_Y)[[3]] <- var_seq
-for(i in 1:length(mu_seq)){
-  for(j in 1:length(var_seq)){
+for(j in 1:length(var_seq)){
+  for(i in 1:length(mu_seq)){
     dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, backend_gr_opt, fixed_args_gr)
     squared_lambda_diff[i,j] <- sqrt((mu_seq[[i]] - dap$mu)^2 + (var_seq[[j]] - dap$var)^2)
     lambda_diff[i,j] <- (dap$mu - mu_seq[[i]]) + (dap$var - var_seq[[j]])
@@ -180,10 +198,12 @@ for(i in 1:length(mu_seq)){
     lambda_mu[i, j] <- mu_seq[[i]]
     lambda_var[i, j] <- var_seq[[j]]
     generated_Y[, i, j] <- dap$draws_Y
+    var_theta_tilde_bar[i, j] <- dap$var_theta_tilde_bar
+    var_theta_tilde[i, j] <- dap$var_theta_tilde
+    theta_bar[i, j] <- dap$theta_bar
   }
 }
 saved_dap <- new.env()
-saved_dap[["gridsize"]] <- gridsize
 saved_dap[["grid_size"]] <- grid_size
 saved_dap[["squared_lambda_diff"]] <- squared_lambda_diff
 saved_dap[["lambda_diff"]] <- lambda_diff
@@ -194,9 +214,19 @@ saved_dap[["lambda_var"]] <- lambda_var
 saved_dap[["generated_Y"]] <- generated_Y
 save(saved_dap, file="dap_backup.Rdata")
 
-# use load("dap_backup.Rata") if you want to load computed dap instead of running this chunk
+# use load("dap_backup.Rdata", envir=.GlobalEnv) if you want to load computed dap instead of running this chunk
+# gridsize <- saved_dap[["gridsize"]]
+# squared_lambda_diff <- saved_dap[["squared_lambda_diff"]]
+# lambda_diff <- saved_dap[["lambda_diff"]]
+# dap_lambda_mu <- saved_dap[["dap_lambda_mu"]]
+# dap_lambda_var <- saved_dap[["dap_lambda_var"]]
+# lambda_mu <- saved_dap[["lambda_mu"]]
+# lambda_var <- saved_dap[["lambda_var"]]
+# generated_Y <- saved_dap[["generated_Y"]]
 
 ```
+
+
 
 
 ```{R}
@@ -205,6 +235,19 @@ persp3D(x=mu_seq, y=var_seq, z = squared_lambda_diff, theta=90, phi=10, xlab="mu
 ```
 ```{R}
 persp3D(x=mu_seq, y=var_seq, z=lambda_diff, theta=90, phi=10, ticks=5, ticktype="detailed")
+```
+
+```{R}
+for(j in 1:length(var_seq)){
+  for(i in 1:length(mu_seq)){
+    print(sprintf("mu: %f var: %f", lambda_mu[i, j], lambda_var[i, j]))
+    bias_term <- sum((theta_bar[i, j] - lambda_mu[i, j])^2)
+    var_term_1 <- sum(var_theta_tilde_bar[i, j])
+    var_term_2 <- sum(var_theta_tilde[i, j])
+    total <- bias_term + var_term_1 + var_term_2
+    print(sprintf("term1: %f term2: %f term3: %f total: %f", bias_term / total, var_term_1 / total , var_term_2 /total, total))
+  }
+}
 ```
 
 Define objective and constraint functions
@@ -231,43 +274,33 @@ calc_mse_grad  <- function(p){
 calc_mse2 <- function(p){
   n <- length(p)
   p <- array(p, dim=c(1, n))
-  dap_lambda_mu_vec <- array(dap_lambda_mu, dim=c(1, n))
-  dap_lambda_var_vec <- array(dap_lambda_var, dim=c(1, n))
+  
   lambda_mu_vec <- array(lambda_mu, dim=c(1, n))
-  lambda_var_vec <- array(lambda_var, dim=c(1, n))
+  theta_bar_vec <- array(theta_bar, dim=c(1, n))
+  var_theta_tilde_bar_vec <- array(var_theta_tilde_bar, dim=c(1, n))
+  var_theta_tilde_vec <- array(var_theta_tilde, dim=c(1, n))
   
-  estimator_mu_vec <- p * t(dap_lambda_mu_vec - lambda_mu_vec)  # dim(1, n)
-  estimator_var_vec <- p * t(dap_lambda_var_vec - lambda_var_vec)
+  bias_term <- sum(p * (theta_bar_vec - lambda_mu_vec)^2)
+  var_term <- sum(p * var_theta_tilde_bar_vec) + sum(p * var_theta_tilde_vec)
   
-  bias_squared_term <- mean(estimator_mu_vec)^2 + mean(estimator_var_vec)^2
-  
-  variance_term <- (var(estimator_mu_vec) + var(estimator_var_vec)) * (n - 1)/n
-  return(bias_squared_term)# + variance_term)
+  return(bias_term + var_term)
 }
 
 calc_mse2_grad <- function(p){
   n <- length(p)
-  p <- array(p, dim=c(1, n))
-  dap_lambda_mu_vec <- array(dap_lambda_mu, dim=c(1, n))
-  dap_lambda_var_vec <- array(dap_lambda_var, dim=c(1, n))
+  p <- array(p, dim=c(1, n)) # dim(1, n)
+  
   lambda_mu_vec <- array(lambda_mu, dim=c(1, n))
-  lambda_var_vec <- array(lambda_var, dim=c(1, n))
-  
-  const_mu_vec <- (dap_lambda_mu_vec - lambda_mu_vec)  # dim(1, n)
-  const_var_vec <- (dap_lambda_var_vec - lambda_var_vec)
-  
-  
-  bias_square_grad_mu <- (2 * t(p) %*% const_mu_vec %*% t(const_mu_vec)) / n^2
-  bias_square_grad_var <- (2 * t(p) %*% const_var_vec %*% t(const_var_vec)) / n^2
+  theta_bar_vec <- array(theta_bar, dim=c(1, n))
+  var_theta_tilde_bar_vec <- array(var_theta_tilde_bar, dim=c(1, n))
+  var_theta_tilde_vec <- array(var_theta_tilde, dim=c(1, n))
   
   
-  #var_grad_mu <- 2/n_p * (p * dap_lambda_mu_vec - mean(p * dap_lambda_mu_vec)) * (dap_lambda_mu_vec - dap_lambda_mu_vec/n_p)
+  bias_grad <- (theta_bar_vec - lambda_mu_vec)^2 / n
+  var_grad <- var_theta_tilde_bar_vec / n + var_theta_tilde_vec
   
-  var_grad_mu <- (2 * (p * dap_lambda_mu_vec - mean(p * dap_lambda_mu_vec)) * (dap_lambda_mu_vec - dap_lambda_mu_vec/n)) / n
-  var_grad_lambda <- (2 * (p * dap_lambda_var_vec - mean(p * dap_lambda_var_vec)) * (dap_lambda_var_vec - dap_lambda_var_vec/n)) / n
-  return(bias_square_grad_mu + bias_square_grad_var)# + var_grad_mu + var_grad_lambda)
-    
-  
+  return(bias_grad + var_grad)
+
   # grad backup (bias^2 + var)
   #2 * sum(p2 * diff) * diff + 2 * (t_lambda - sum(p2 * t_lambda)) * -(p2 * t_lambda) + (t_lambda - sum(p2 * t_lambda))^2
 }
@@ -379,14 +412,14 @@ mse_opts2 <- nloptr::nloptr(rep(1 / length(p_init), length(p_init)),
 
 ```{R}
 
-result_out <- array(prob_opt$solution, dim = c(length(mu_seq), length(var_seq)))
+result_out <- array(prob_opt$solution, dim = c(gridsize_mu, gridsize_var))
 rownames(result_out) <- mu_seq
 colnames(result_out) <- var_seq
 persp3D(x=mu_seq, y=var_seq, z = result_out, theta=25, phi=10, xlab="mu", ylab="var", zlab="prob_opt_result", ticks=5, ticktype="detailed")
 persp3D(x=mu_seq, y=var_seq, z = squared_lambda_diff, theta=25, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
 ```
 ```{R}
-result_dot_out <- array(min_sum_opts$solution, dim = c(length(mu_seq), length(var_seq)))
+result_dot_out <- array(min_sum_opts$solution, dim = c(gridsize_mu, gridsize_var))
 rownames(result_dot_out) <- mu_seq
 colnames(result_dot_out) <- var_seq
 persp3D(x=mu_seq, y=var_seq, z = result_dot_out, theta=25, phi=10, xlab="mu", ylab="var", zlab="prob_opt_result", ticks=5, ticktype="detailed")

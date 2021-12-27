@@ -43,7 +43,7 @@ nsize <- 10
 
 ## Backend settings
 # number of draws per posterior approximation 
-ndraws <- 100
+ndraws <- 1000
 
 # number of chains for hmc posterior approximation
 nchains <- 2
@@ -114,7 +114,7 @@ rstan_binom_mod <- stan_model("models/binom-laplace.stan")
 cmdstan_binom_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
 
 backend_binom_opt <- SBC_backend_rstan_optimizing(rstan_binom_mod, draws = ndraws)
-#backend_binom_hmc <- SBC_backend_cmdstan_sample(cmdstan_binom_mod, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+backend_binom_hmc <- SBC_backend_cmdstan_sample(cmdstan_binom_mod, chains = 4, iter_sampling = ndraws / 4) # thin = 10
 calib_generator <- function(lambdas, fixed_args){
   generate_datasets(SBC_generator_function(generator_binom, lambdas, fixed_args), n_datasets = fixed_args$nsims)
 }
@@ -126,32 +126,90 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
   datasets <- do.call(generator, list(lambda_init_binom, fixed_args = fixed_args))
   sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
   draws_eta <- c()
-  for(fit in sbc_result$fits){
-    samples <- SBC_fit_to_draws_matrix(fit)
-    draws_eta <- c(draws_eta, posterior::extract_variable(samples, "eta"))
+  draws_Y <- c()
+  prior_thetas <- posterior::extract_variable(datasets$parameters, "eta")
+  var_theta_tilde_bar <- 0
+  var_theta_tilde <- 0
+  theta_bar <- mean(prior_thetas)
+  for(i in 1:nsims){
+    draws_Y <- c(draws_Y, datasets$generated[[i]]$Y)
+    samples <- SBC_fit_to_draws_matrix(sbc_result$fits[[i]])
+    etas <- posterior::extract_variable(samples, "eta")
+    draws_eta <- c(draws_eta, etas)
+    
+    var_theta_tilde_bar <- var_theta_tilde_bar + (mean(draws_eta) - mean(prior_thetas))^2
+    var_theta_tilde <- var_theta_tilde + sum((draws_eta - mean(draws_eta))^2)
   }
+  
+  var_theta_tilde_bar <- var_theta_tilde_bar / fixed_args$nsims
+  var_theta_tilde <- var_theta_tilde / (fixed_args$nsims * ndraws)
   # assume normal for dap
   mu <- mean(draws_eta)
-  var <- sd(draws_eta)^2
-  return(list(mu=mu, var=var, draws_eta=draws_eta))
+  #var <- sd(draws_eta)^2
+  var <- 100
+  
+  return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y, var_theta_tilde_bar=var_theta_tilde_bar, var_theta_tilde=var_theta_tilde, theta_bar=theta_bar))
 }
-
 ```
 
 ##
 
 ```{r}
-mu_seq <- seq(0, 5, length.out = 20)
-var_seq <- seq(1, 25, length.out = 20)
+gridsize_mu <- 2
+gridsize_var <- 2
+mu_seq <- seq(1, 5, length.out = gridsize_mu)
+var_seq <- seq(1, 5, length.out = gridsize_var)
 grid_size <- length(mu_seq) * length(var_seq)
-contraction_arr <- array(rep(NA, length(mu_seq) * length(var_seq)), dim = c(length(mu_seq), length(var_seq)))
-rownames(contraction_arr) <- mu_seq
-colnames(contraction_arr) <- var_seq
-for(i in 1:length(mu_seq)){
-  for(j in 1:length(var_seq)){
+
+squared_lambda_diff <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(squared_lambda_diff) <- mu_seq
+colnames(squared_lambda_diff) <- var_seq
+
+lambda_diff <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(lambda_diff) <- mu_seq
+colnames(lambda_diff) <- var_seq
+
+dap_lambda_mu <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+dap_lambda_var <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(dap_lambda_mu) <- mu_seq
+rownames(dap_lambda_var) <- mu_seq
+colnames(dap_lambda_mu) <- var_seq
+colnames(dap_lambda_var) <- var_seq
+
+lambda_mu <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+lambda_var <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(lambda_mu) <- mu_seq
+rownames(lambda_var) <- mu_seq
+colnames(lambda_mu) <- var_seq
+colnames(lambda_var) <- var_seq
+
+var_theta_tilde_bar <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+var_theta_tilde <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(var_theta_tilde_bar) <- mu_seq
+rownames(var_theta_tilde_bar) <- mu_seq
+colnames(var_theta_tilde) <- var_seq
+colnames(var_theta_tilde) <- var_seq
+
+theta_bar <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(theta_bar) <- mu_seq
+rownames(theta_bar) <- mu_seq
+
+generated_Y <- array(rep(NA, nsims * nobs * gridsize * gridsize), dim=c(nsims * nobs, gridsize_mu, gridsize_var) )
+dimnames(generated_Y)[[2]] <- mu_seq
+dimnames(generated_Y)[[3]] <- var_seq
+for(j in 1:length(var_seq)){
+  for(i in 1:length(mu_seq)){
     dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, backend_binom_opt, fixed_args_binom)
-    dapdap <- calculate_dap(dap$mu, dap$var, calib_generator, backend_binom_opt, fixed_args_binom)
-    contraction_arr[i,j] <- (mu_seq[[i]] - dap$mu)^2 + (var_seq[[j]] - dap$var)^2# - ((dap$mu- dapdap$mu)^2 + (dap$var - dapdap$var)^2)
+    squared_lambda_diff[i,j] <- sqrt((mu_seq[[i]] - dap$mu)^2 + (var_seq[[j]] - dap$var)^2)
+    lambda_diff[i,j] <- (dap$mu - mu_seq[[i]]) + (dap$var - var_seq[[j]])
+    dap_lambda_mu[i, j] <- dap$mu
+    dap_lambda_var[i, j] <- dap$var
+    lambda_mu[i, j] <- mu_seq[[i]]
+    lambda_var[i, j] <- var_seq[[j]]
+    generated_Y[, i, j] <- dap$draws_Y
+    var_theta_tilde_bar[i, j] <- dap$var_theta_tilde_bar
+    var_theta_tilde[i, j] <- dap$var_theta_tilde
+    theta_bar[i, j] <- dap$theta_bar
   }
 }
 ```
@@ -160,6 +218,19 @@ for(i in 1:length(mu_seq)){
 ```{R}
 persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=55, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
 
+```
+
+```{R}
+for(j in 1:length(var_seq)){
+  for(i in 1:length(mu_seq)){
+    print(sprintf("mu: %f var: %f", lambda_mu[i, j], lambda_var[i, j]))
+    bias_term <- sum((theta_bar[i, j] - lambda_mu[i, j])^2)
+    var_term_1 <- sum(var_theta_tilde_bar[i, j])
+    var_term_2 <- sum(var_theta_tilde[i, j])
+    total <- bias_term + var_term_1 + var_term_2
+    print(sprintf("term1: %f term2: %f term3: %f total: %f", bias_term / total, var_term_1 / total, var_term_2 /total, total))
+  }
+}
 ```
 
 
