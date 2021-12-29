@@ -45,6 +45,18 @@ We observe the number of droppings at multiple locations and record some environ
 (e.g. temperature, altitude) and want to learn something about the association between
 those covariates and the prevalence of either subspecie.
 
+$$
+\begin{align*}
+    y_i &\sim \mathrm{Poisson}(\mu_{z_i}) \\
+    z_i &\sim \mathrm{Bernoulli}(\mathrm{logit}^{-1}(\theta_i)) \\
+    \theta_i &= \alpha + \sum_k \beta_k \mathbf{X}_{i,k} \\
+    \log \mu_{\{1,2\}} &\sim \mathrm{N(3, 1)} \\
+    \alpha &\sim N(0, 2) \\
+    \beta_k &\sim N(0, 1) 
+\end{align*}
+
+$$
+
 ## Big picture
 
 This model naturally decomposes into two components: 
@@ -81,9 +93,13 @@ use_cmdstanr <- TRUE # Set to false to use rstan instead
 library(cmdstanr)
 library(bayesplot)
 library(posterior)
+library(ggplot2)
+library(patchwork) #Needed only for saving plots for the book
 
 library(future)
 plan(multisession) 
+
+theme_set(theme_minimal())
 
 options(SBC.min_chunk_size = 5)
 
@@ -150,7 +166,7 @@ generator_first <- SBC_generator_function(generator_func_first, N = 50)
 Let's start with just a single dataset:
 
 ```{r}
-set.seed(68455554)
+set.seed(4456654)
 datasets_first <- generate_datasets(generator_first, 1)
 ```
 
@@ -163,7 +179,9 @@ results_first <- compute_results(datasets_first, backend_first,
 Oh, we have convergence problems, let us examine the pairs plots
 
 ```{r mixture_first_convergence}
-mcmc_pairs(results_first$fits[[1]]$draws())
+mixture_first_pairs <- mcmc_pairs(results_first$fits[[1]]$draws(), np = nuts_params(results_first$fits[[1]]))
+mixture_first_pairs
+ggsave(file.path(cache_dir, "sbcworkflow_mixture_first_pairs.pdf"), plot = mixture_first_pairs)
 ```
 
 One thing that stands out is that either `mu1` is tightly determined and `mu2` is allowed the full prior range or the other way around. We also don't learn anything about theta.
@@ -222,7 +240,9 @@ hist(results_fixed_log_mix_2$stats$rhat)
 Let's examine a single pairs plot:
 
 ```{r mixture_fixed_log_mix_pairs}
-mcmc_pairs(results_fixed_log_mix_2$fits[[1]]$draws())
+mixture_fixed_log_mix_pairs <- mcmc_pairs(results_fixed_log_mix_2$fits[[1]]$draws())
+mixture_fixed_log_mix_pairs
+ggsave(file.path(cache_dir, "sbcworkflow_mixture_fixed_log_mix_pairs.pdf"), mixture_fixed_log_mix_pairs)
 ```
 
 We clearly see two modes in the posterior. And upon reflection, we can see why: swapping `mu1` with `mu2` while also changing `theta` for `1 - theta` gives _exactly_ the same likelihood - because the ordering does not matter. A more detailed explanation of this type of problem is at https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html
@@ -299,7 +319,9 @@ One of the fits has quite a lot of divergent transitions. Let's look at the pair
 ```{r mixture_fixed_ordered_pairs}
 problematic_fit_id <- 2
 problematic_fit <- results_fixed_ordered$fits[[problematic_fit_id]]
-mcmc_pairs(problematic_fit$draws(), np = nuts_params(problematic_fit))
+mixture_fixed_ordered_pairs <- mcmc_pairs(problematic_fit$draws(), np = nuts_params(problematic_fit), max_treedepth = 10)
+mixture_fixed_ordered_pairs
+ggsave(file.path(cache_dir, "sbcworkflow_mixture_fixed_ordered_pairs.pdf"), mixture_fixed_ordered_pairs)
 ```
 
 There is a lot of ugly stuff going on. Notably, one can notice that the posterior of theta is bimodal, preferring either almost 0 or almost 1 - and when that happens, the mean of one of the components is almost unconstrained. 
@@ -407,8 +429,13 @@ And we can use `bind_results` to combine the new results with the previous fits 
 results_fixed_ordered_combined <- bind_results(
   results_fixed_ordered_subset, results_fixed_ordered_100_subset)
 
-plot_rank_hist(results_fixed_ordered_combined)
-plot_ecdf_diff(results_fixed_ordered_combined)
+ordered_combined_rank_hist <-  plot_rank_hist(results_fixed_ordered_combined)
+ordered_combined_rank_hist
+ordered_combined_ecdf_diff <- plot_ecdf_diff(results_fixed_ordered_combined)
+ordered_combined_ecdf_diff
+
+combined <- ordered_combined_rank_hist / ordered_combined_ecdf_diff
+ggsave(file.path(cache_dir, "sbcworkflow_results_fixed_ordered_combined_results.pdf"), combined)
 ```
 
 Seems fairly well within the expected bounds. We could definitely run more iterations if we wanted to have a more strict check, but for now, we are happy and the remaining uncertainty about the coverage of our posterior intervals is no longer huge, so it is highly unlikely there is some big bug lurking down there. While we see a potential problem where the coverage for `mu[1]` and `mu[2]` is no longer consistent with perfect calibration, the `ecdf_diff` plot takes precedence as the uncertainty in the coverage plot is only approximate and we thus cannot take it too seriously (see `help("empirical_coverage")` for some more details).
@@ -487,12 +514,19 @@ results_logistic_first_10 <- compute_results(datasets_logistic_first, backend_lo
 We get a single fit with divergent transitions and the ranks look mostly OK:
 
 ```{r logistic_first_results}
-plot_rank_hist(results_logistic_first_10)
-plot_ecdf_diff(results_logistic_first_10)
+logistic_first_ranks <- plot_rank_hist(results_logistic_first_10)
+logistic_first_ranks
+logistic_first_ecdf <- plot_ecdf_diff(results_logistic_first_10)
+logistic_first_ecdf
+
+combined <- logistic_first_ranks / logistic_first_ecdf
+ggsave(file.path(cache_dir, "sbcworkflow_logistic_first_results.pdf"), combined)
 ```
 
-```{r}
-plot_sim_estimated(results_logistic_first_10)
+```{r logistic_first_sim_estimated}
+logistic_first_sim_estimated <- plot_sim_estimated(results_logistic_first_10)
+logistic_first_sim_estimated
+ggsave(file.path(cache_dir, "sbcworkflow_logistic_first_sim_estimated.pdf"), logistic_first_sim_estimated)
 ```
 
 ```{r}
@@ -505,10 +539,19 @@ results_logistic_first_10_gq <-
                        gen_quants = logistic_loglik_gq)
 ```
 
-```{r}
+```{r logistic_first_gq_results}
 plot_rank_hist(results_logistic_first_10_gq)
 plot_ecdf_diff(results_logistic_first_10_gq)
 ```
+
+```{r}
+results_gq_loglik_only <- plot_rank_hist(results_logistic_first_10_gq, parameters = "log_lik") | plot_ecdf_diff(results_logistic_first_10_gq, parameters = "log_lik")
+
+ggsave(file.path(cache_dir, "sbcworkflow_results_gq_loglik_only.pdf"), results_gq_loglik_only, width = 6, height = 1.8)
+
+
+```
+
 
 
 ```{r}
@@ -567,9 +610,14 @@ results_logistic_matrix_10 <- compute_results(
   cache_location = file.path(cache_dir, "logistic_matrix_10"))
 ```
 
-```{r}
-plot_rank_hist(results_logistic_matrix_10)
-plot_ecdf_diff(results_logistic_matrix_10)
+```{r logistic_matrix_results}
+logistic_matrix_ranks <-  plot_rank_hist(results_logistic_matrix_10)
+logistic_matrix_ranks
+logistic_matrix_ecdf <- plot_ecdf_diff(results_logistic_matrix_10)
+logistic_matrix_ecdf
+
+combined <- logistic_matrix_ranks | logistic_matrix_ecdf
+ggsave(file.path(cache_dir, "sbcworkflow_logistic_matrix_results.pdf"), combined)
 ```
 
 ```{r}
@@ -710,19 +758,24 @@ The main advantage is that if we can do this, we can avoid wasting computation o
 How to build such a criterion here? We'll note that for Poisson-distributed variables the ratio of mean to variance (a.k.a the Fano factor) is always 1. So if the components are too similar, the data should resemble a Poisson distribution and have Fano factor of 1, while if the components are distinct the Fano factor will be larger. 
 
 Below is a plot of fano factors versus the number of divergences we've seen:
+All the divergence are for low fano factors - this is the histogram of Fano factor for diverging fits:
 
 ```{r combined_fanos}
 fanos <- vapply(dataset_combined$generated, 
                 function(dataset) { var(dataset$y) / mean(dataset$y) }, 
                 FUN.VALUE = 0)
-plot(fanos, results_combined$backend_diagnostics$n_divergent)
+fanos_df <- data.frame(fano = fanos, 
+                       type = ifelse(results_combined$backend_diagnostics$n_divergent > 0,
+                                      "Has divergent transitions", "No divergent transitions"))
+
+fanos_plot <-  ggplot(fanos_df, aes(x = fano)) + 
+  geom_histogram(binwidth = 0.1) + 
+  geom_vline(xintercept = 1.5, color = "blue", size = 2) +
+  scale_x_log10("Fano factor") + facet_wrap(~type, ncol = 1)
+fanos_plot
+ggsave(file.path(cache_dir, "sbcworkflow_fanos.pdf"), fanos_plot)
 ```
 
-All the divergence are for low fano factors - this is the histogram of Fano factor for diverging fits:
-
-```{r fanos_divergent}
-hist(fanos[results_combined$backend_diagnostics$n_divergent > 0])
-```
 
 So what we'll do is that we'll reject any dataset with Fano factor < 1.5. In practice a simple way to implement this is to wrap our generator code in a loop and break from the loop only when the generated dataset meets our criteria (i.e. is not rejected). This is our code:
 
@@ -841,7 +894,9 @@ plot_ecdf_diff(results_combined_reject_more)
 ```
 
 ```{r results_combined_reject_more_coverage}
-plot_coverage(results_combined_reject_more)
+combined_reject_coverage <- plot_coverage(results_combined_reject_more)
+combined_reject_coverage
+ggsave(file.path(cache_dir, "sbcworkflow_combined_reject_coverage.pdf"), combined_reject_coverage)
 ```
 
 ```{r}
@@ -857,12 +912,14 @@ Still, this might warrant further investigation if small discrepancies in `mu` a
 Finally, we can also use this simulation exercise to understand what would we be likely to learn from an experiment matching the simulations (50 observations, 3 predictors) and plot the true values (simulated by the generator) against estimated mean + 90% posterior credible interval:
 
 ```{r sim_estimated_final}
-plot_sim_estimated(results_combined_reject_more, alpha = 0.2)
+sim_estimated_final <- plot_sim_estimated(results_combined_reject_more, alpha = 0.2)
+sim_estimated_final
+ggsave(file.path(cache_dir, "sbcworkflow_sim_estimated_final.pdf"), sim_estimated_final)
 ```
 
 We see that we get very precise information about `mu` and a decent picture about all `beta` elements, but the reamining uncertainty is large. We could for example compute the probability
 that the posterior 90% interval for `beta[2]` excludes zero, i.e. that we learn something about the sign of the association
-with a continous predictor: 
+with a continuous predictor: 
 
 ```{r}
 stats_beta2 <- 
