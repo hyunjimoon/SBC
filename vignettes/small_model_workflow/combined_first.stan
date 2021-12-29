@@ -3,7 +3,7 @@ data {
   int y[N_obs];
 
   int<lower=1> N_predictors;
-  matrix[N_predictors, N_obs] x;
+  matrix[N_obs, N_predictors] X;
 }
 
 parameters {
@@ -13,7 +13,7 @@ parameters {
 }
 
 model {
-  vector[N_obs] theta = inv_logit(transpose(x) * beta);
+  vector[N_obs] theta = inv_logit(X * beta);
 
 
   for(n in 1:N_obs) {
@@ -22,6 +22,7 @@ model {
                       poisson_log_lpmf(y[n] | mu[2]));
   }
   target += normal_lpdf(mu | 3, 1);
-  target += normal_lpdf(beta | 0, 1);
+  target += normal_lpdf(beta[1] | 0, 2);
+  target += normal_lpdf(beta[2:N_predictors] | 0, 1);
 }
 
