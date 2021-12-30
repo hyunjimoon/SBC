@@ -30,7 +30,7 @@ options(SBC.min_chunk_size = 5)
 ```{R, warning=FALSE, error=FALSE}
 ## Generator settings
 # number of SBC simulations per iteration (generator)
-nsims <- 200
+nsims <- 2000
 
 # number of observations
 nobs <- 10#2
@@ -43,7 +43,7 @@ nsize <- 10
 
 ## Backend settings
 # number of draws per posterior approximation 
-ndraws <- 1000
+ndraws <- 4000
 
 # number of chains for hmc posterior approximation
 nchains <- 2
@@ -131,6 +131,10 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
   var_theta_tilde_bar <- 0
   var_theta_tilde <- 0
   theta_bar <- mean(prior_thetas)
+  
+  B <- 0
+  V_2 <- 0
+  V_3 <- 0
   for(i in 1:nsims){
     draws_Y <- c(draws_Y, datasets$generated[[i]]$Y)
     samples <- SBC_fit_to_draws_matrix(sbc_result$fits[[i]])
@@ -139,24 +143,33 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
     
     var_theta_tilde_bar <- var_theta_tilde_bar + (mean(draws_eta) - mean(prior_thetas))^2
     var_theta_tilde <- var_theta_tilde + sum((draws_eta - mean(draws_eta))^2)
+    
+    B <- B + mean(draws_eta) - prior_thetas[i]
+    V_2 <- V_2 + sum((draws_eta - mean(draws_eta))^2)
+    V_3 <- V_3 + (mean(draws_eta) - prior_thetas[i])
   }
   
   var_theta_tilde_bar <- var_theta_tilde_bar / fixed_args$nsims
   var_theta_tilde <- var_theta_tilde / (fixed_args$nsims * ndraws)
+  
+  B <- B / fixed_args$nsims
+  V_2 <- V_2 / (fixed_args$nsims * ndraws)
+  V_3 <- (V_3 / fixed_args$nsims)^2
+  
   # assume normal for dap
   mu <- mean(draws_eta)
   #var <- sd(draws_eta)^2
   var <- 100
   
-  return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y, var_theta_tilde_bar=var_theta_tilde_bar, var_theta_tilde=var_theta_tilde, theta_bar=theta_bar))
+  return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y, var_theta_tilde_bar=var_theta_tilde_bar, var_theta_tilde=var_theta_tilde, theta_bar=theta_bar, B=B, V=var_theta_tilde_bar+V_2-V_3))
 }
 ```
 
 ##
 
 ```{r}
-gridsize_mu <- 2
-gridsize_var <- 2
+gridsize_mu <- 5
+gridsize_var <- 1
 mu_seq <- seq(1, 5, length.out = gridsize_mu)
 var_seq <- seq(1, 5, length.out = gridsize_var)
 grid_size <- length(mu_seq) * length(var_seq)
@@ -190,11 +203,27 @@ rownames(var_theta_tilde_bar) <- mu_seq
 colnames(var_theta_tilde) <- var_seq
 colnames(var_theta_tilde) <- var_seq
 
+B <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+V <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(B) <- mu_seq
+rownames(V) <- mu_seq
+colnames(B) <- var_seq
+colnames(V) <- var_seq
+
+B_g <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+V_g <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(B_g) <- mu_seq
+rownames(V_g) <- mu_seq
+colnames(B_g) <- var_seq
+colnames(V_g) <- var_seq
+
+
+
 theta_bar <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
 rownames(theta_bar) <- mu_seq
 rownames(theta_bar) <- mu_seq
 
-generated_Y <- array(rep(NA, nsims * nobs * gridsize * gridsize), dim=c(nsims * nobs, gridsize_mu, gridsize_var) )
+generated_Y <- array(rep(NA, nsims * nobs * grid_size), dim=c(nsims * nobs, gridsize_mu, gridsize_var) )
 dimnames(generated_Y)[[2]] <- mu_seq
 dimnames(generated_Y)[[3]] <- var_seq
 for(j in 1:length(var_seq)){
@@ -210,10 +239,48 @@ for(j in 1:length(var_seq)){
     var_theta_tilde_bar[i, j] <- dap$var_theta_tilde_bar
     var_theta_tilde[i, j] <- dap$var_theta_tilde
     theta_bar[i, j] <- dap$theta_bar
+    B[i, j] <- dap$B
+    V[i, j] <- dap$V
+    dap_hmc <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, backend_binom_hmc, fixed_args_binom)
+    B_g[i, j] <- dap_hmc$B
+    V_g[i, j] <- dap_hmc$V
   }
 }
 ```
 
+
+```{R}
+B_df <- as.data.frame.table(B)
+colnames(B_df)[colnames(B_df) == "Var1"] <- "Mu"
+colnames(B_df)[colnames(B_df) == "Var2"] <- "Var"
+colnames(B_df)[colnames(B_df) == "Freq"] <- "B_ghat"
+
+B_g_df <- as.data.frame.table(B_g)
+colnames(B_g_df)[colnames(B_g_df) == "Var1"] <- "Mu"
+colnames(B_g_df)[colnames(B_g_df) == "Var2"] <- "Var"
+colnames(B_g_df)[colnames(B_g_df) == "Freq"] <- "B_g"
+
+B_df[, "B_g"] <- B_g_df[, "B_g"]
+
+ggplot(B_df) + geom_point(aes(x=Mu, y=B_ghat, color="red")) + geom_line(aes(x=Mu, y=B_ghat, color="red", group=1)) + ggtitle("B") + geom_point(aes(x=Mu, y=B_g, color="green")) + geom_line(aes(x=Mu, y=B_g, group=2, color="green")) + theme(legend.position="none")
+
+```
+```{R}
+V_df <- as.data.frame.table(V)
+colnames(V_df)[colnames(V_df) == "Var1"] <- "Mu"
+colnames(V_df)[colnames(V_df) == "Var2"] <- "Var"
+colnames(V_df)[colnames(V_df) == "Freq"] <- "V_ghat"
+
+V_g_df <- as.data.frame.table(V_g)
+colnames(V_g_df)[colnames(V_g_df) == "Var1"] <- "Mu"
+colnames(V_g_df)[colnames(V_g_df) == "Var2"] <- "Var"
+colnames(V_g_df)[colnames(V_g_df) == "Freq"] <- "V_g"
+
+V_df[, "V_g"] <- V_g_df[, "V_g"]
+
+ggplot(V_df) + geom_point(aes(x=Mu, y=V_ghat, color="red")) + geom_line(aes(x=Mu, y=V_ghat, color="red", group=1)) + ggtitle("V(red=ghat)") + geom_point(aes(x=Mu, y=V_g, color="green")) + geom_line(aes(x=Mu, y=V_g, group=2, color="green")) + theme(legend.position="none")
+
+```
 
 ```{R}
 persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=55, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
