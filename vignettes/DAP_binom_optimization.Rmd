@@ -30,7 +30,7 @@ options(SBC.min_chunk_size = 5)
 ```{R, warning=FALSE, error=FALSE}
 ## Generator settings
 # number of SBC simulations per iteration (generator)
-nsims <- 2000
+nsims <- 100
 
 # number of observations
 nobs <- 10#2
@@ -158,8 +158,8 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
   
   # assume normal for dap
   mu <- mean(draws_eta)
-  #var <- sd(draws_eta)^2
-  var <- 100
+  var <- sd(draws_eta)^2
+  #var <- 100
   
   return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y, var_theta_tilde_bar=var_theta_tilde_bar, var_theta_tilde=var_theta_tilde, theta_bar=theta_bar, B=B, V=var_theta_tilde_bar+V_2-V_3))
 }
@@ -168,10 +168,10 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
 ##
 
 ```{r}
-gridsize_mu <- 5
-gridsize_var <- 1
-mu_seq <- seq(1, 5, length.out = gridsize_mu)
-var_seq <- seq(1, 5, length.out = gridsize_var)
+gridsize_mu <- 10
+gridsize_var <- 10
+mu_seq <- seq(-5, 5, length.out = gridsize_mu)
+var_seq <- seq(1, 100, length.out = gridsize_var)
 grid_size <- length(mu_seq) * length(var_seq)
 
 squared_lambda_diff <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
@@ -248,6 +248,18 @@ for(j in 1:length(var_seq)){
 }
 ```
 
+```{R}
+scaleFUN <- function(x) sprintf("%.2f", x)
+dap_df <- as.data.frame.table(dap_lambda_mu)
+colnames(dap_df)[1] <- "mu"
+colnames(dap_df)[2] <- "var"
+dap_df[, "mu"] <- as.numeric(as.vector(dap_df[, "mu"]))  # not using as.vector converts the factor indices
+dap_df[, "var"] <- as.numeric(as.vector(dap_df[, "var"]))
+colnames(dap_df)[3] <- "dap_mu"
+dap_lambda_df <- as.data.frame.table(dap_lambda_var)
+dap_df[, "dap_var"] <- as.numeric(dap_lambda_df$Freq)
+ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2) + xlab("mu") + ylab("var") + ggtitle("binom + HMC, nsims=100")
+```
 
 ```{R}
 B_df <- as.data.frame.table(B)
@@ -262,7 +274,7 @@ colnames(B_g_df)[colnames(B_g_df) == "Freq"] <- "B_g"
 
 B_df[, "B_g"] <- B_g_df[, "B_g"]
 
-ggplot(B_df) + geom_point(aes(x=Mu, y=B_ghat, color="red")) + geom_line(aes(x=Mu, y=B_ghat, color="red", group=1)) + ggtitle("B") + geom_point(aes(x=Mu, y=B_g, color="green")) + geom_line(aes(x=Mu, y=B_g, group=2, color="green")) + theme(legend.position="none")
+ggplot(B_df) + geom_point(aes(x=Var, y=B_ghat, color="red")) + geom_line(aes(x=Var, y=B_ghat, color="red", group=1)) + ggtitle("B(red=ghat)") + geom_point(aes(x=Var, y=B_g, color="green")) + geom_line(aes(x=Var, y=B_g, group=2, color="green")) + theme(legend.position="none")
 
 ```
 ```{R}
@@ -278,7 +290,7 @@ colnames(V_g_df)[colnames(V_g_df) == "Freq"] <- "V_g"
 
 V_df[, "V_g"] <- V_g_df[, "V_g"]
 
-ggplot(V_df) + geom_point(aes(x=Mu, y=V_ghat, color="red")) + geom_line(aes(x=Mu, y=V_ghat, color="red", group=1)) + ggtitle("V(red=ghat)") + geom_point(aes(x=Mu, y=V_g, color="green")) + geom_line(aes(x=Mu, y=V_g, group=2, color="green")) + theme(legend.position="none")
+ggplot(V_df) + geom_point(aes(x=Var, y=V_ghat, color="red")) + geom_line(aes(x=Var, y=V_ghat, color="red", group=1)) + ggtitle("V(red=ghat)") + geom_point(aes(x=Var, y=V_g, color="green")) + geom_line(aes(x=Var, y=V_g, group=2, color="green")) + theme(legend.position="none")
 
 ```
 
