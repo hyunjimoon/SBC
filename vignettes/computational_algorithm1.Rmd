@@ -10,22 +10,22 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
-the fact that KL divergence under-penalizes approximation with
-too-light tails,
+
+
 
 # Summary 
-Computational algorithm such as variational inference (VI) can fail due to the
+Computational algorithms such as variational inference (VI) can fail due to the
 inability of the approximation family to capture the true posterior, under/over
 penalizing tendencies of convergence metric, and slow convergence of the
 optimization process. We show two examples where VI is discouraged due to speed
 (Zero-inflated Poisson) and accuracy (HMM) reasons. The trade-off is illustrated
-by adjusting convergence-related parameter such as tolerance: longer run
-achieves improved accurcy which sometimes becomes even slower than HMC. However,
+by adjusting convergence-related parameters such as tolerance: longer run
+achieves improved accuracy which sometimes becomes even slower than HMC. However,
 when the fit between posterior and approximation family, convergence metric and
 its process are checked so that efficiency is gained without sacrificing
 accuracy too much, VI can be applied. On top of its role as "the test"
-computational algorithm should pass, SBC provide informative inferential results
-which directly affects workflow decisions.
+computational algorithms should pass, SBC provides informative inferential results
+which directly affect workflow decisions.
 
 
 # Introduction
@@ -35,13 +35,13 @@ prior, and likelihood) and the user's goal, deterministic approximation
 algorithms can be an aid. To be specific, if the joint posterior is well-formed
 enough for reliable approximation (symmetric for ADVI which has normal
 approximation family) or the user only needs point estimate (i.e. specification
-upto distribution-level is not needed) users can consider the deterministic
+up to distribution-level is not needed) users can consider the deterministic
 alternatives for their inference tool such as ADVI supported by Stan. Note that
 Pathfinder (Zhang, 2021) which blends deterministic algorithm's efficiency and
-stochastic algorithm's accuracy in a timely manner is under-development. SBC
+stochastic algorithm's accuracy in a timely manner is under development. SBC
 provides one standard to test whether ADVI works well for your model without
 ever needing to run full HMC for your model. To show a few examples, let's start
-by setting up our environment.
+by setting up our environment. For brevity, computational algorithm is shortened as computation.
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC); 
@@ -62,7 +62,7 @@ library(future)
 plan(multisession)
 
 # The fits are very fast,
-# so we force a minimum chunk size to reduce overhead of
+# so we force a minimum chunk size to reduce the overhead of
 # paralellization and decrease computation time.
 options(SBC.min_chunk_size = 5)
 
@@ -78,20 +78,20 @@ if(!dir.exists(cache_dir)) {
 
 # Example I - Poisson mixture
 
-In this example, we have collected a set of counts of particles emmitted by 
+In this example, we have collected a set of counts of particles emitted by 
 a specimen in a relatively large number of experimental runs. We however noticed 
 that there is a suspiciously large number of low counts. Inspecting the 
-equipment, it turns out that the experiment was not setup properly and
+equipment, it turns out that the experiment was not set up properly and
 in some of the runs, our detector could only register background noise.
-We however don't know which runs were errorneous. 
+We however don't know which runs were erroneous. 
 
 This naturally calls for a mixture model, where we assume that a proportion 
 (`p_signal`) of experiments
 contains both background noise and the signal of interest and the rest
-contains just the background. For simplicity we assume a Poisson distribution
+contains just the background. For simplicity, we assume a Poisson distribution
 for the counts. 
 We also assume that in our hypothetical example, the expected background noise
-is well understood, which let's us to put a narrow prior on the amount of 
+is well understood, which lets us to put a narrow prior on the amount of 
 particles we would expect to detect just from the background.
 
 So here's our model:
@@ -129,7 +129,7 @@ generator_contamination <- function(N) {
 
 ## Default ADVI (small problems)
 
-We'll start with the Stan's ADVI with all default parameters, i.e. a meanfield
+We'll start with Stan's ADVI with all default parameters, i.e. a mean-field
 variational approximation. 
 We compile the model and create a variational SBC backend.
 
@@ -146,7 +146,7 @@ Since we are feeling confident that our model is implemented correctly (and the 
 If you are developing a new model, it might be useful to start with fewer simulations, as discussed in the 
 [small model workflow vignette](https://hyunjimoon.github.io/SBC/articles/small_model_workflow.html).
 
-Throughout the vignette we'll also use caching for the results.
+Throughout the vignette, we'll also use caching for the results.
 
 ```{r}
 set.seed(46522641)
@@ -162,7 +162,7 @@ plot_ecdf_diff(res_contamination)
 plot_rank_hist(res_contamination)
 ```
 
-We'll also look at how well are we able to estimate the various paremeters by
+We'll also look at how well are we able to estimate the various parameters by
 plotting the estimated values + uncertainty intervals against the "true" simulated
 values. We have a lot of data and both the `mu_signal` and `p_signal` are well
 constrained by the data. Unsurprisingly we learn a bit less about `mu_background`,
@@ -192,7 +192,7 @@ For example for the 90% central, the 90% interval for `mu_signal` could actually
 contain between `r scales::percent(coverage_contamination$ci_low[2])` and 
 `scales::percent(coverage_contamination$ci_high[2])` of true values.
 
-So we ran 900 more simulation and combine them with the previous results.
+So we ran 900 more simulations and combine them with the previous results.
 
 
 ```{r}
@@ -218,16 +218,16 @@ plot_ecdf_diff(res_contamination_2)
 plot_rank_hist(res_contamination_2)
 ```
 
-The increased resolution of total of 1000 simulations shows that the variational
-approximation to the posterior is underdispersed for `mu_signal` (the true parameter is too often
+The increased resolution of a total of 1000 simulations shows that the variational
+approximation to the posterior is under dispersed for `mu_signal` (the true parameter is too often
 in the extreme tails of the posterior) and - to a lesser extent - also for `p_signal`,
 where we see an overabundance of true values larger than all of the posterior samples,
 but not too many low ranks.
 
-Note that when user is aiming for point estimate of either mean or certain
-quantile, VI posterior can be used to produce a good point estimate even when it
+Note that when the user is aiming for a point estimate of either mean or certain
+quantile, a summary of VI posterior provides a good point estimate even when it
 is far from the true posterior. VSBC, an extended diagnostic that concentrates
-on bias in mariginal quantity, is developed (Yao et. al., 2018). Other
+on bias in marginal quantity, is developed (Yao et. al., 2018). Other
 diagnostic such as PSIS-based which is associated with specific data and test
 quantity, is less flexible for target-testing.
 
@@ -249,17 +249,17 @@ coverage_contamination_2
 The 90% central credible interval for `mu_background` likely
 contains less than `r scales::percent(coverage_contamination$ci_high[2])` of true values.
 
-So for a crude result the default ADVI setup we just tested is not terrible: we don't
+So for a crude result, the default ADVI setup we just tested is not terrible: we don't
 expect to see a strong bias and the model will be somewhat overconfident, but
 not catastrophically so.
 
-## Fullrank approximation (smaller problems)
+## Full-rank approximation (smaller problems)
 
-We may also try the more flexible fullrank variational approximation.
+We may also try the more flexible full-rank variational approximation.
 
-So in the next we build a fullrank variational backend and compute SBC
+So we next build a full-rank variational backend and compute SBC
 for the same 1000 datasets we used earlier. This is primarily for brevity -
-in actual practice you would probably want to start with fewer datasets to
+in actual practice, you would probably want to start with fewer datasets to
 discover big problems quickly.
 
 ```{r}
@@ -270,9 +270,9 @@ res_contamination_fullrank <- compute_results(
   cache_mode = "results",
   cache_location = file.path(cache_dir, "contamination_fullrank"))
 ```
-The ECDF and rank plots actually look a bit better than with the meanfield approximation.
+The ECDF and rank plots actually look a bit better than with the mean-field approximation.
 Interestingly, the rank plots show a bit of a "frowning" shape, meaning the
-meanfield approximation is slightly underconfident for `p_signal` and a bit also
+mean-field approximation is slightly underconfident for `p_signal` and a bit also
 for `mu_background`. For `mu_signal`, the model is both slightly underconfident 
 in the bulk of the posterior, but still has overly light tails and is overconfident
 for the extreme quantiles.
@@ -293,8 +293,8 @@ plot_coverage(res_contamination_fullrank)
 ## Meanfield + lower tolerance (even better)
 
 In some cases, it might also help to reduce the tolerance (`tol_rel_obj`) of the
-algorithm. This is a restriction on evidence lower bound (ELBO) and make
-optimization convergence tighter. Here we'll use the default meanfield
+algorithm. This is a restriction on evidence lower bound (ELBO) for tighter
+optimization convergence. Here we'll use the default mean-field
 algorithm, but decrease the `tol_rel_obj` (the default value is 0.01).
 
 ```{r}
@@ -386,7 +386,7 @@ observing background only vs. signal in individual data points is not independen
 and we want to model how the experimental setup switches between these two states over
 time. We add additional structure to the model to account for this autocorrelation.
 
-One possible choice for such structure are hidden Markov models (HMMs) where
+One possible choice for such structure is hidden Markov models (HMMs) where
 we assume the probability of transitioning from one state to another is identical
 across all time points. The [case study for HMMs](https://mc-stan.org/users/documentation/case-studies/hmm-example.html)
 has a more thorough discussion and also shows how to code those in Stan.
@@ -470,7 +470,7 @@ plot_coverage(res_hmm)
 ```
 
 
-We may also try fullrank - let's run it for the same 20 datasets.
+We may also try full-rank - let's run it for the same 20 datasets.
 
 ```{r}
 res_hmm_fullrank <- compute_results(
@@ -492,7 +492,7 @@ plot_ecdf_diff(res_hmm_fullrank)
 plot_rank_hist(res_hmm_fullrank)
 ```
 
-And we may also try meanfield but with lower tolerance
+And we may also try mean-field but with lower tolerance
 
 ```{r}
 res_hmm_lowtol <- compute_results(
@@ -554,11 +554,12 @@ are likely useless.
 
 
 # Next step: Evolving computation and diagnostic.
-In another vigenette, we will focus on hopeful aspects of approximate
-computation. Principles behind evolving computation and diagnostic are discussed
-which can give insight to computation designers aiming to pass SBC. For
-illustration, when and how VI can be used is discussed which include customized
-SBC and first or second order fixes.
+In computational_algorithm2, we will focus on hopeful aspects of approximate
+computation. The adversarial relation between computation and diagnostic is
+introduced based on which mutual evolvement happens. This can give insight to
+computational algorithm designers aiming to pass SBC. For illustration, when and
+how VI can be used is discussed which include customized SBC (e.g. VSBC) and first or
+second-order correction.
 
 # References
 - Zhang et. al. (2021) Pathfinder: Parallel quasi-Newton variational inference https://arxiv.org/abs/2108.03782
