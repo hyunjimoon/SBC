@@ -1,25 +1,47 @@
 ---
-title: "SBC for approximate methods in Stan  (ADVI, optimizing)"
+title: "SBC for computational algorithm 1"
 author: "Hyunji Moon, Martin Modrák"
 date: "`r Sys.Date()`"
 output: 
   rmarkdown::html_vignette:
     toc: yes
 vignette: >
-  %\VignetteIndexEntry{SBC for approximate methods in Stan  (ADVI, optimizing)}
+  %\VignetteIndexEntry{SBC for computational algorithm 1}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
+the fact that KL divergence under-penalizes approximation with
+too-light tails,
 
+# Summary 
+Computational algorithm such as variational inference (VI) can fail due to the
+inability of the approximation family to capture the true posterior, under/over
+penalizing tendencies of convergence metric, and slow convergence of the
+optimization process. We show two examples where VI is discouraged due to speed
+(Zero-inflated Poisson) and accuracy (HMM) reasons. The trade-off is illustrated
+by adjusting convergence-related parameter such as tolerance: longer run
+achieves improved accurcy which sometimes becomes even slower than HMC. However,
+when the fit between posterior and approximation family, convergence metric and
+its process are checked so that efficiency is gained without sacrificing
+accuracy too much, VI can be applied. On top of its role as "the test"
+computational algorithm should pass, SBC provide informative inferential results
+which directly affects workflow decisions.
 
 
 # Introduction
 
-HMC can be slow either from large data or difficult geometry. For simple geometries (and potentially large data) the ADVI (automatic differentiation variational inference) approximation can be helpful. 
-SBC provides one standard to test whether ADVI works well for your model without ever needing to run full
-HMC for your model. 
-
-To show a few examples, let's start by setting up our environment.
+HMC can be slow and depending on the joint posterior (as a combination of data,
+prior, and likelihood) and the user's goal, deterministic approximation
+algorithms can be an aid. To be specific, if the joint posterior is well-formed
+enough for reliable approximation (symmetric for ADVI which has normal
+approximation family) or the user only needs point estimate (i.e. specification
+upto distribution-level is not needed) users can consider the deterministic
+alternatives for their inference tool such as ADVI supported by Stan. Note that
+Pathfinder (Zhang, 2021) which blends deterministic algorithm's efficiency and
+stochastic algorithm's accuracy in a timely manner is under-development. SBC
+provides one standard to test whether ADVI works well for your model without
+ever needing to run full HMC for your model. To show a few examples, let's start
+by setting up our environment.
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC); 
@@ -129,7 +151,7 @@ Throughout the vignette we'll also use caching for the results.
 ```{r}
 set.seed(46522641)
 ds_contamination <- generate_datasets(SBC_generator_function(generator_contamination, N = 100), n_datasets = 100)
-res_contamination <- compute_results(ds_contamination, backend_contamination, cache_mode = "results", cache_location = file.path(cache_dir, "contamination"))
+res_contamination <- compute_results(ds_contamination, backend_contamination, cache_mode = "none", cache_location = file.path(cache_dir, "contamination"))
 ```
 The ECDF diff plot and the ranks plot look quite good, although we can notice that the `mu_signal` parameter 
 has a bit too many large ranks - the resolution we get from 100 simulations is
@@ -202,8 +224,15 @@ in the extreme tails of the posterior) and - to a lesser extent - also for `p_si
 where we see an overabundance of true values larger than all of the posterior samples,
 but not too many low ranks.
 
+Note that when user is aiming for point estimate of either mean or certain
+quantile, VI posterior can be used to produce a good point estimate even when it
+is far from the true posterior. VSBC, an extended diagnostic that concentrates
+on bias in mariginal quantity, is developed (Yao et. al., 2018). Other
+diagnostic such as PSIS-based which is associated with specific data and test
+quantity, is less flexible for target-testing.
+
 To see how big of a problem this introduces, let's look at the coverage plot.
-We see that for `mu_signal` the observed coverage is noticeable lower than
+We see that for `mu_signal` the observed coverage is noticeably lower than
 expected - for `p_signal` this seems to be much less of a problem.
 
 ```{r}
@@ -246,7 +275,7 @@ Interestingly, the rank plots show a bit of a "frowning" shape, meaning the
 meanfield approximation is slightly underconfident for `p_signal` and a bit also
 for `mu_background`. For `mu_signal`, the model is both slightly underconfident 
 in the bulk of the posterior, but still has overly light tails and is overconfident
-for the extreme quantiles. 
+for the extreme quantiles.
 
 ```{r contamination_fullrank_ecdf_rank}
 plot_ecdf_diff(res_contamination_fullrank)
@@ -263,9 +292,10 @@ plot_coverage(res_contamination_fullrank)
 
 ## Meanfield + lower tolerance (even better)
 
-In some cases, it might also help to reduce the tolerance (`tol_rel_obj`) of the algorithm.
-Here we'll use the default meanfield algorithm, but decrease the `tol_rel_obj` 
-(the default value is 0.01).
+In some cases, it might also help to reduce the tolerance (`tol_rel_obj`) of the
+algorithm. This is a restriction on evidence lower bound (ELBO) and make
+optimization convergence tighter. Here we'll use the default meanfield
+algorithm, but decrease the `tol_rel_obj` (the default value is 0.01).
 
 ```{r}
 res_contamination_lowtol <- compute_results(
@@ -277,11 +307,13 @@ res_contamination_lowtol <- compute_results(
   cache_mode = "results",
   cache_location = file.path(cache_dir, "contamination_lowtol"))
 ```
-Reducing tolerance leads to a small proportion of the fits not converging. In
-our experience, increasing the `grad_samples` parameter can decrease probability of non-convergence,
-but since the number is relatively low, we'll just remove the non-converging fits
-from the SBC results (this is OK as long as we would discard non-converging
-fits for real data, see the [rejection sampling vignette](https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html)).
+Reducing tolerance leads to a small proportion of non-converging fits. In
+theory, increasing `grad_samples` improve non-convergence but in our experience,
+current ADVI (2021) convergence does not easily change with this adjustment.
+Also, since the non-converged cases are relatively rare, we'll just remove the
+non-converging fits from the SBC results (this is OK as long as we would discard
+non-converging fits for real data, see the [rejection sampling
+vignette](https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html)).
 
 ```{r}
 res_contamination_lowtol_conv <- res_contamination_lowtol[res_contamination_lowtol$backend_diagnostics$elbo_converged] 
@@ -422,7 +454,7 @@ And compute results - starting with just 20 datasets:
 
 ```{r}
 set.seed(464855)
-ds_hmm <- generate_datasets(SBC_generator_function(generator_HMM, N = 100), n_datasets = 500)
+ds_hmm <- generate_datasets(SBC_generator_function(generator_HMM, N = 100), n_datasets = 20)
 res_hmm <- compute_results(ds_hmm, backend_HMM,
                            cache_mode = "results", cache_location = file.path(cache_dir, "hmm"))
 ```
@@ -484,14 +516,6 @@ empirical_coverage(res_hmm_lowtol$stats, width = c(0.8,0.9,0.95))
 ```
 
 
-
-## Summary
-
-To summarise, the HMM model turns out to pose big problems for all ADVI
-variants we tested and inferences drawn from using ADVI on such a model
-are likely useless.
-
-
 ```{r}
 res_hmm_sample <- compute_results(
   ds_hmm[1], 
@@ -504,19 +528,40 @@ plot_ecdf_diff(res_hmm_sample)
 plot_rank_hist(res_hmm_sample)
 ```
 
+In comparison, HMC works well.
+```{r}
+res_hmm_sample <- compute_results(
+  ds_hmm[1], 
+  SBC_backend_cmdstan_sample(model_HMM),
+  cache_mode = "results", cache_location = file.path(cache_dir, "hmm_sample"))
+```
 
+```{r hmm_sample_ecdf_ranks}
+plot_ecdf_diff(res_hmm_sample)
+plot_rank_hist(res_hmm_sample)
+```
 
 ```{r}
 plot_sim_estimated(res_hmm)
 ```
 
 
-# Notes on VI variants
+## Summary
 
-If importance resampling is used to reduce the bias of ADVI, there is dependency, as some original draws can be drawn many times. Instead of thinning, a specific type of stratified importance resampling could be used to produce a sample that has ESS close to the nominal size. This resampling is currently not implemented in the SBC package.
-Based on experiments if ESS is within +-10% of the nominal size, bias in extreme ranks is already quite small which is why ESS for several quantiles needs checking. For instance, ESS for mean can be much higher than ESS for tails and the final ESS is recommended to target for the worst performing statistics (i.e. ranks computable variables).
+To summarise, the HMM model turns out to pose big problems for all ADVI
+variants we tested and inferences drawn from using ADVI on such a model
+are likely useless.
+
+
+# Next step: Evolving computation and diagnostic.
+In another vigenette, we will focus on hopeful aspects of approximate
+computation. Principles behind evolving computation and diagnostic are discussed
+which can give insight to computation designers aiming to pass SBC. For
+illustration, when and how VI can be used is discussed which include customized
+SBC and first or second order fixes.
 
 # References
-
-- Turner and Sahani (2010) http://www.gatsby.ucl.ac.uk/~maneesh/papers/turner-sahani-2010-ildn.pdf
-- Yao et al. (2018) http://proceedings.mlr.press/v80/yao18a/yao18a.pdf
+- Zhang et. al. (2021) Pathfinder: Parallel quasi-Newton variational inference https://arxiv.org/abs/2108.03782
+- Turner and Sahani (2010) Two problems with variational expectation maximisation for
+time-series models http://www.gatsby.ucl.ac.uk/~maneesh/papers/turner-sahani-2010-ildn.pdf
+- Yao et. al. (2018) Yes, but Did It Work?: Evaluating Variational Inference http://proceedings.mlr.press/v80/yao18a/yao18a.pdf
