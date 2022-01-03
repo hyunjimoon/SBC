@@ -47,6 +47,8 @@ ndraws <- 4000
 
 # number of chains for hmc posterior approximation
 nchains <- 2
+
+fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws, dist_types=list(eta="normal"))
 ```
 
 # Inspecting DAP of binom-laplace 
@@ -86,7 +88,7 @@ generator_binom <- function(lambdas, fixed_args){
   )
 }
 
-fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws, dist_types=list(eta="normal"))
+
 
 ```
 
@@ -259,46 +261,6 @@ ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), colo
 ```
 
 
-
-```{R}
-B_g_df <- as.data.frame.table(B_g)
-colnames(B_g_df)[colnames(B_g_df) == "Var1"] <- "Mu"
-colnames(B_g_df)[colnames(B_g_df) == "Var2"] <- "Var"
-colnames(B_g_df)[colnames(B_g_df) == "Freq"] <- "B_g"
-
-B_ghat_df <- as.data.frame.table(B_ghat)
-colnames(B_ghat_df)[colnames(B_ghat_df) == "Var1"] <- "Mu"
-colnames(B_ghat_df)[colnames(B_ghat_df) == "Var2"] <- "Var"
-colnames(B_ghat_df)[colnames(B_ghat_df) == "Freq"] <- "B_ghat"
-
-B_ghat_df[, "B_g"] <- B_g_df[, "B_g"]
-B_ghat_df[, "sd"] <- sqrt(as.numeric(as.vector(B_ghat_df$Var)))
-
-B_ghat_df[, "coords"] <- paste(B_ghat_df[, "Mu"], B_ghat_df[, "Var"], sep=",")
-B_ghat_df[, "coords"] <- factor(B_ghat_df$coords, levels=unique(B_ghat_df$coords))
-
-mu_good <- 0
-var_good <- 1
-mu_bad <- 1
-var_bad <- 10
-
-result_good <- filter(B_ghat_df, Mu == mu_good & Var == var_good)
-result_bad <- filter(B_ghat_df, Mu == mu_bad & Var == var_bad)
-
-B_g_good <- result_good$B_g
-B_ghat_good <- result_good$B_ghat
-
-B_g_bad <- result_bad$B_g
-B_ghat_bad <- result_bad$B_ghat
-
-lambda_axis <- c(0, 1)
-g_axis <- c(0, 1)
-z_arr <- array(c(B_g_good, B_ghat_good, B_g_bad, B_ghat_bad), dim=c(2, 2))
-
-persp3D(x=lambda_axis, y=g_axis, z = z_arr, theta=55, phi=10, xlab="lambda", ylab="g", zlab="B", ticks=5, ticktype="detailed")
-
-```
-
 ```{R, fig.width = 14}
 B_g_df <- as.data.frame.table(B_g)
 colnames(B_g_df)[colnames(B_g_df) == "Var1"] <- "Mu"
@@ -338,6 +300,50 @@ V_ghat_df[, "coords"] <- factor(V_ghat_df$coords, levels=unique(V_ghat_df$coords
 
 ggplot(V_ghat_df) + geom_point(aes(x=coords, y=V_g, color="red")) + ggtitle("V(red=g(hmc), green=ghat(opt)") + geom_point(aes(x=coords, y=V_ghat, color="green")) + geom_segment(aes(x=coords, y=V_g, xend=coords, yend=V_ghat), size=0.2) + theme(axis.title.x = element_text(margin=unit(c(10, 0, 0, 0), "mm"))) + xlab("mu, var") + ylab("V") + theme(legend.position = "none")
 
+```
+
+
+```{R}
+# mu 0 5 10 20 30 40 60
+# var 1 15 30 45 60
+test_mu <- 5
+test_var <- 1
+lambda_test <- list(
+  eta = list(mu=test_mu, sigma=sqrt(test_var))
+)
+test_dataset <- generate_datasets(SBC_generator_function(generator_binom, lambda_test, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+sbc_result <- compute_results(test_dataset, backend_binom_opt, thin_ranks = 1)
+
+# plot_ecdf_diff(sbc_result)
+# plot_rank_hist(sbc_result)
+# plot_sim_estimated(sbc_result)
+# plot_sim_estimated(sbc_result, estimate="median")
+test_eta <- c()
+fit_matrix <- matrix(data=rep(NA, nsims * ndraws), nrow = nsims, ncol = ndraws)
+for(i in 1:nsims){
+  samples <- sbc_result$fits[[i]]
+  draws <- SBC_fit_to_draws_matrix(samples)
+  eta_vals <- posterior::extract_variable(draws, "eta")
+  fit_matrix[i, ] <- eta_vals
+  test_eta <- c(test_eta, eta_vals)
+}
+
+x <- seq(-10, 40, length.out=10000)
+eta_rep <- rnorm(ndraws, test_mu, sqrt(test_var))
+ppc_dens_overlay(eta_rep, fit_matrix)
+
+```
+
+
+```{R}
+
+
+
+
+
+normal_pdf <- dnorm(x, test_mu, sqrt(test_var))
+eta_draws <- sbc_result$fits[[5]]$fit_list$theta_tilde[, "eta"]
+#ggplot(pdf_df) + geom_line(aes(x=x, y=normal_pdf, colour="red"))  + geom_density(data=data.frame(val=eta_draws), aes(val, color="blue"))
 ```
 
 ```{R}
