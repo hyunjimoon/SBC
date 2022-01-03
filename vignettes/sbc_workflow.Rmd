@@ -99,7 +99,7 @@ library(patchwork) #Needed only for saving plots for the book
 library(future)
 plan(multisession) 
 
-theme_set(theme_minimal())
+theme_set(bayesplot::theme_default(base_family = "sans"))
 
 options(SBC.min_chunk_size = 5)
 
