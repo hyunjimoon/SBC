@@ -17,5 +17,8 @@ Most backends (e.g. those based on variatns of MCMC) don't produce
 independent samples and thus diagnostics like Rhat and ESS are important
 and samples may need thinning. Backends that already produce independent
 samples (e.g. ADVI/optimizing) can implement this method to return \code{TRUE}
-to signal this is the case. The default implementation returns \code{FALSE}.
+to signal this is the case. If this method returns \code{TRUE}, ESS and Rhat will
+always attain their best possible values and \code{\link[=SBC_backend_default_thin_ranks]{SBC_backend_default_thin_ranks()}}
+will return \code{1}.
+The default implementation returns \code{FALSE}.
 }

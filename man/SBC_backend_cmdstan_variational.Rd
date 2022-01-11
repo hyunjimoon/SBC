@@ -4,7 +4,7 @@
 \alias{SBC_backend_cmdstan_variational}
 \title{Backend based on variational approximation via \code{cmdstanr}.}
 \usage{
-SBC_backend_cmdstan_variational(model, ...)
+SBC_backend_cmdstan_variational(model, ..., n_retries_init = 1)
 }
 \arguments{
 \item{model}{an object of class \code{CmdStanModel} (as created by \code{cmdstanr::cmdstan_model})}
@@ -12,6 +12,11 @@ SBC_backend_cmdstan_variational(model, ...)
 \item{...}{other arguments passed to the \verb{$variational()} method of the model.
 The \code{data} argument cannot be set this way as they need to be controlled by the SBC
 package.}
+
+\item{n_retries_init}{number of times to retry the variational fit if the algorithm
+has trouble initializing (e.g. too many dropped evaluations
+(see https://discourse.mc-stan.org/t/advi-too-many-dropped-evaluations-even-for-well-behaved-models/24338),
+or "cannot compute ELBO using the initial variational distribution")}
 }
 \description{
 Backend based on variational approximation via \code{cmdstanr}.

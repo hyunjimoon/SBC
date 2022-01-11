@@ -61,7 +61,10 @@ SBC_backend_hash_for_cache.default <- function(backend) {
 #' independent samples and thus diagnostics like Rhat and ESS are important
 #' and samples may need thinning. Backends that already produce independent
 #' samples (e.g. ADVI/optimizing) can implement this method to return `TRUE`
-#' to signal this is the case. The default implementation returns `FALSE`.
+#' to signal this is the case. If this method returns `TRUE`, ESS and Rhat will
+#' always attain their best possible values and [SBC_backend_default_thin_ranks()]
+#' will return `1`.
+#'  The default implementation returns `FALSE`.
 #' @param backend to check
 #' @export
 SBC_backend_iid_samples <- function(backend) {
