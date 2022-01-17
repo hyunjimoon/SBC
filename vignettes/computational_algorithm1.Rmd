@@ -395,8 +395,14 @@ Maybe the simplest way to describe the model is to show how we simulate the data
 
 ```{r}
 generator_HMM <- function(N) {
-  mu_background <- rlnorm(1, -2, 0.2)
-  mu_signal <- rlnorm(1, 2, 1)
+  
+  # Rejection sampling for ordered mu with the correct priors
+  repeat {
+    mu <- c(rlnorm(1, 1, 1), rlnorm(1, 2, 1))
+    if(mu[1] < mu[2]) {
+      break;
+    }
+  }
 
   # Draw the transition probabilities
   t1 <- MCMCpack::rdirichlet(1, c(3, 3))
@@ -414,13 +420,11 @@ generator_HMM <- function(N) {
       states[n] = sample(c(1, 2), size = 1, prob = t2)
   }  
   
-  mu <- c(mu_background, mu_background + mu_signal)
   y <- rpois(N, mu[states])
   
   list(
     parameters = list(
-      mu_signal = mu_signal,
-      mu_background = mu_background,
+      mu = mu,
       # rdirichlet returns matrices, convert to 1D vectors
       t1 = as.numeric(t1),
       t2 = as.numeric(t2),
@@ -454,7 +458,7 @@ And compute results - starting with just 20 datasets:
 
 ```{r}
 set.seed(464855)
-ds_hmm <- generate_datasets(SBC_generator_function(generator_HMM, N = 100), n_datasets = 20)
+ds_hmm <- generate_datasets(SBC_generator_function(generator_HMM, N = 15), n_datasets = 200)
 res_hmm <- compute_results(ds_hmm, backend_HMM,
                            cache_mode = "results", cache_location = file.path(cache_dir, "hmm"))
 ```
@@ -467,6 +471,22 @@ plot_rank_hist(res_hmm)
 
 ```{r}
 plot_coverage(res_hmm)
+```
+```{r}
+model_HMM2 <- cmdstan_model("stan/hmm_contaminated_poisson_2.stan")
+backend_HMM2 <- SBC_backend_cmdstan_variational(model_HMM, n_retries_init = 3)
+```
+
+And compute results - starting with just 20 datasets:
+
+```{r}
+res_hmm2 <- compute_results(ds_hmm, backend_HMM2,
+                           cache_mode = "results", cache_location = file.path(cache_dir, "hmm2"))
+```
+
+```{r}
+plot_ecdf_diff(res_hmm2)
+plot_rank_hist(res_hmm2)
 ```
 
 
@@ -518,7 +538,7 @@ empirical_coverage(res_hmm_lowtol$stats, width = c(0.8,0.9,0.95))
 
 ```{r}
 res_hmm_sample <- compute_results(
-  ds_hmm[1], 
+  ds_hmm, 
   SBC_backend_cmdstan_sample(model_HMM),
   cache_mode = "results", cache_location = file.path(cache_dir, "hmm_sample"))
 ```
@@ -529,17 +549,6 @@ plot_rank_hist(res_hmm_sample)
 ```
 
 In comparison, HMC works well.
-```{r}
-res_hmm_sample <- compute_results(
-  ds_hmm[1], 
-  SBC_backend_cmdstan_sample(model_HMM),
-  cache_mode = "results", cache_location = file.path(cache_dir, "hmm_sample"))
-```
-
-```{r hmm_sample_ecdf_ranks}
-plot_ecdf_diff(res_hmm_sample)
-plot_rank_hist(res_hmm_sample)
-```
 
 ```{r}
 plot_sim_estimated(res_hmm)

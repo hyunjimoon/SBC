@@ -4,7 +4,7 @@ data {
 }
 parameters {
   // Parameters of measurement model
-  positive_ordered[2] mu;
+  ordered[2] log_mu;
 
   // Initial state
   simplex[2] rho;
@@ -27,12 +27,12 @@ model {
   for (n in 1 : N) {
     // The observation model could change with n, or vary in a number of
     //  different ways (which is why log_omega is passed in as an argument)
-    log_omega[1, n] = poisson_lpmf(y[n] | mu[1]);
-    log_omega[2, n] = poisson_lpmf(y[n] | mu[2]);
+    log_omega[1, n] = poisson_log_lpmf(y[n] | log_mu[1]);
+    log_omega[2, n] = poisson_log_lpmf(y[n] | log_mu[2]);
   }
 
-  mu[1] ~ lognormal(1, 1);
-  mu[2] ~ lognormal(2, 1);
+  log_mu[1] ~ normal(1, 1);
+  log_mu[2] ~ normal(2, 1);
 
   // Initial state - we're quite sure we started with the source working
   rho ~ dirichlet([1, 10]);
@@ -41,4 +41,9 @@ model {
   t2 ~ dirichlet([3, 3]);
 
   target += hmm_marginal(log_omega, Gamma, rho);
+}
+
+
+generated quantities {
+  positive_ordered[2] mu = exp(log_mu);
 }
