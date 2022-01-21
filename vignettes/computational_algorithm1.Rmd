@@ -130,10 +130,13 @@ Since the model runs quickly and is simple, we start with 1000 simulations.
 
 ```{r}
 set.seed(46522641)
-ds_poisson <- generate_datasets(SBC_generator_function(poisson_generator_single, N = 20), n_datasets = 1000)
-res_poisson <- compute_results(ds_poisson, backend_poisson, 
-                               keep_fits = FALSE,
-                               cache_mode = "none", cache_location = file.path(cache_dir, "poisson"))
+ds_poisson <- generate_datasets(
+  SBC_generator_function(poisson_generator_single, N = 20), 
+  n_datasets = 1000)
+res_poisson <- 
+  compute_results(
+    ds_poisson, backend_poisson, keep_fits = FALSE,
+    cache_mode = "results", cache_location = file.path(cache_dir, "poisson"))
 ```
 
 Even with the quite high precision afforded by 1000 simulations, the ECDF diff plot and the ranks show no problems - the model is quite well calibrated, although the wavy shape of the ECDF suggest a minor overconfidence of the approximation:
@@ -155,10 +158,12 @@ One would expect that the normal approximation implemented in ADVI becomes bette
 
 ```{r}
 set.seed(23546224)
-ds_poisson_100 <- generate_datasets(SBC_generator_function(poisson_generator_single, N = 100), n_datasets = 1000)
-res_poisson_100 <- compute_results(ds_poisson_100, backend_poisson, 
-                               keep_fits = FALSE,
-                               cache_mode = "none", cache_location = file.path(cache_dir, "poisson_100"))
+ds_poisson_100 <- generate_datasets(
+  SBC_generator_function(poisson_generator_single, N = 100), 
+  n_datasets = 1000)
+res_poisson_100 <- 
+  compute_results(ds_poisson_100, backend_poisson, keep_fits = FALSE,
+                  cache_mode = "none", cache_location = file.path(cache_dir, "poisson_100"))
 ```
 
 In this case the model becomes clearly overconfident:
@@ -333,7 +338,7 @@ coverage_hmm
 ```
 
 So the 90% central credible interval for `mu_signal` likely
-contains less than `r scales::percent(coverage_contamination$ci_high[2])` of true values.
+contains less than `r scales::percent(coverage_hmm$ci_high[2])` of true values.
 
 For a crude result, the default ADVI setup we just tested is not terrible: we don't
 expect to see a strong bias and the model will be somewhat overconfident, but
@@ -376,7 +381,8 @@ plot_coverage(res_hmm_fullrank)
 Or alternatively looking at the numerical values for coverage of the central 90% interval
 
 ```{r}
-coverage_hmm_fullrank <- empirical_coverage(res_hmm_fullrank$stats, width = 0.9)[, c("parameter", "ci_low", "ci_high")]
+coverage_hmm_fullrank <- 
+  empirical_coverage(res_hmm_fullrank$stats, width = 0.9)[, c("parameter", "ci_low", "ci_high")]
 coverage_hmm_fullrank
 ```
 
@@ -456,14 +462,20 @@ plot_rank_hist(res_hmm_sample)
 For the machine we built the vignette on, here are the distributions
 of times (for ADVI) and time of longest chain (for HMC):
 
-```{r}
-contamination_time <- 
-  rbind(data.frame(alg = "Meanfield", time = res_hmm$backend_diagnostics$time),
-        data.frame(alg = "Fullrank", time = res_hmm_fullrank$backend_diagnostics$time),
-        data.frame(alg = "Meanfield + low tol.", time = res_hmm_lowtol$backend_diagnostics$time),
-        data.frame(alg = "Sampling (longest chain)", time = res_hmm_sample$backend_diagnostics$max_chain_time))
+```{r hmm_time}
+hmm_time <- 
+  rbind(data.frame(alg = "Meanfield", 
+                   time = res_hmm$backend_diagnostics$time),
+        data.frame(alg = "Fullrank", 
+                   time = res_hmm_fullrank$backend_diagnostics$time),
+        data.frame(alg = "Meanfield + low tol.", 
+                   time = res_hmm_lowtol$backend_diagnostics$time),
+        data.frame(alg = "Sampling (longest chain)", 
+                   time = res_hmm_sample$backend_diagnostics$max_chain_time))
  
-ggplot(contamination_time, aes(x = time)) + geom_histogram(aes(y = ..density..)) + facet_wrap(~alg, ncol = 1) +
+ggplot(hmm_time, aes(x = time)) + 
+  geom_histogram(aes(y = ..density..), bins = 20) + 
+  facet_wrap(~alg, ncol = 1) +
   scale_x_continuous("Time [seconds]")
 ```
 
@@ -545,9 +557,13 @@ backend_HMM_ordered <- SBC_backend_cmdstan_variational(model_HMM_ordered, n_retr
 
 ```{r}
 set.seed(12333654)
-ds_hmm_ordered <- generate_datasets(SBC_generator_function(generator_HMM_ordered, N = 100), n_datasets = 20)
-res_hmm_ordered <- compute_results(ds_hmm_ordered, backend_HMM_ordered,
-                           cache_mode = "results", cache_location = file.path(cache_dir, "hmm_ordered"))
+ds_hmm_ordered <- generate_datasets(
+  SBC_generator_function(generator_HMM_ordered, N = 100), 
+  n_datasets = 20)
+
+res_hmm_ordered <- 
+  compute_results(ds_hmm_ordered, backend_HMM_ordered,
+                  cache_mode = "results", cache_location = file.path(cache_dir, "hmm_ordered"))
 ```
 
 
@@ -567,10 +583,13 @@ in the model in Example II, Stan will internally work with `mu_background__ = lo
 Even trying the fullrank variant does not help:
 
 ```{r}
-backend_HMM_ordered_fullrank <- SBC_backend_cmdstan_variational(model_HMM_ordered,
-                                                                algorithm = "fullrank", n_retries_init = 3)
-res_hmm_ordered_fullrank <- compute_results(ds_hmm_ordered, backend_HMM_ordered,
-                           cache_mode = "results", cache_location = file.path(cache_dir, "hmm_ordered_fullrank"))
+backend_HMM_ordered_fullrank <- 
+  SBC_backend_cmdstan_variational(model_HMM_ordered,
+                                  algorithm = "fullrank", n_retries_init = 3)
+
+res_hmm_ordered_fullrank <- 
+  compute_results(ds_hmm_ordered, backend_HMM_ordered,
+                  cache_mode = "results", cache_location = file.path(cache_dir, "hmm_ordered_fullrank"))
 ```
 
 

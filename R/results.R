@@ -353,7 +353,11 @@ compute_results <- function(datasets, backend,
         }
       }
     }
-  } else if(cache_mode != "none") {
+  } else if(cache_mode == "none") {
+    if(!is.null(cache_location)) {
+      warning("cache_location is provided, but cache_mode is set to 'none' - no caching will take place.")
+    }
+  } else {
     stop(SBC_error("SBC_invalid_argument_error", "Unrecognized cache mode"))
   }
   ## End of caching
