@@ -9,7 +9,7 @@ plot_sim_estimated(
   parameters = NULL,
   estimate = "mean",
   uncertainty = c("q5", "q95"),
-  alpha = 0.8
+  alpha = NULL
 )
 }
 \arguments{

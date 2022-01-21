@@ -61,7 +61,10 @@ SBC_backend_hash_for_cache.default <- function(backend) {
 #' independent samples and thus diagnostics like Rhat and ESS are important
 #' and samples may need thinning. Backends that already produce independent
 #' samples (e.g. ADVI/optimizing) can implement this method to return `TRUE`
-#' to signal this is the case. The default implementation returns `FALSE`.
+#' to signal this is the case. If this method returns `TRUE`, ESS and Rhat will
+#' always attain their best possible values and [SBC_backend_default_thin_ranks()]
+#' will return `1`.
+#'  The default implementation returns `FALSE`.
 #' @param backend to check
 #' @export
 SBC_backend_iid_samples <- function(backend) {
@@ -355,11 +358,16 @@ SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages, fi
 #' Backend based on variational approximation via `cmdstanr`.
 #'
 #' @param model an object of class `CmdStanModel` (as created by `cmdstanr::cmdstan_model`)
-#' @param ... other arguments passed to the `$variational()` method of the model. The `data` and
-#'   `parallel_chains` arguments cannot be set this way as they need to be controlled by the SBC
+#' @param n_retries_init number of times to retry the variational fit if the algorithm
+#' has trouble initializing (e.g. too many dropped evaluations
+#' (see https://discourse.mc-stan.org/t/advi-too-many-dropped-evaluations-even-for-well-behaved-models/24338),
+#' or "cannot compute ELBO using the initial variational distribution")
+#' @param ... other arguments passed to the `$variational()` method of the model.
+#' The `data` argument cannot be set this way as they need to be controlled by the SBC
 #'   package.
 #' @export
-SBC_backend_cmdstan_variational <- function(model, ...) {
+SBC_backend_cmdstan_variational <- function(model, ...,
+                                            n_retries_init = 1) {
   require_cmdstanr_version("cmdstan backend")
 
   stopifnot(inherits(model, "CmdStanModel"))
@@ -373,15 +381,53 @@ SBC_backend_cmdstan_variational <- function(model, ...) {
                 " cannot be provided when defining a backend as they need to be set ",
                 "by the SBC package"))
   }
-  structure(list(model = model, args = args), class = "SBC_backend_cmdstan_variational")
+
+  structure(list(model = model, n_retries_init = n_retries_init, args = args), class = "SBC_backend_cmdstan_variational")
+}
+
+stan_variational_elbo_converged <- function(fit_output) {
+  any(grepl("ELBO CONVERGED", fit_output))
 }
 
 #' @export
 SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
-  fit <- do.call(backend$model$variational,
-                 combine_args(backend$args,
-                              list(
-                                data = generated)))
+  fit_outputs <- list()
+  for(i in 1:backend$n_retries_init) {
+    # Need to do my own output capturing as the calling code
+    # also captures output and interferes with CmdStanVB$output()
+    fit_outputs[[i]] <- capture_all_outputs({
+      if(i > 1) {
+        cat("==== SBC backend retrying ===== \n")
+      }
+      fit <- do.call(backend$model$variational,
+                     combine_args(backend$args,
+                                  list(
+                                    data = generated)))
+    })
+
+    # Only retry if the error is "too many dropped evaluations" or
+    # Cannot compute initial ELBO
+    if(fit$return_codes() != 0 &&
+       (any(grepl("dropped evaluations.*maximum", fit_outputs[[i]]$messages))
+        || any(grepl("Cannot compute ELBO.*initial", fit_outputs[[i]]$messages))
+        )
+       ) {
+      next
+    } else {
+      break
+    }
+  }
+
+  #Re-emit outputs, warnings, messages
+  for(i in 1:length(fit_outputs)) {
+    cat(fit_outputs[[i]]$output, sep = "\n")
+    for(m in 1:length(fit_outputs[[i]]$messages)) {
+      message(fit_outputs[[i]]$messages[m])
+    }
+    for(w in 1:length(fit_outputs[[i]]$warnings)) {
+      warning(fit_outputs[[i]]$warnings[w])
+    }
+  }
 
   if(all(fit$return_codes() != 0)) {
     stop("Variational inference did not finish succesfully")
@@ -390,12 +436,84 @@ SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
   fit
 }
 
+
+#' @export
+SBC_backend_hash_for_cache.SBC_backend_cmdstan_variational <- function(backend) {
+  rlang::hash(list(model = backend$model$code(), n_retries_init = backend$n_retries_init, args = backend$args))
+}
+
+
 #' @export
 SBC_fit_to_draws_matrix.CmdStanVB <- function(fit) {
   fit$draws(format = "draws_matrix")
-
 }
 
+#' @export
+SBC_backend_iid_samples.SBC_backend_cmdstan_variational <- function(backend) {
+  TRUE
+}
+
+
+#' @export
+SBC_fit_to_diagnostics.CmdStanVB <- function(fit, fit_output, fit_messages, fit_warnings) {
+  res <- data.frame(
+    elbo_converged = stan_variational_elbo_converged(fit_output),
+    n_rejects = sum(grepl("reject", fit_messages)) + sum(grepl("reject", fit_warnings)),
+    time = fit$time()$total
+  )
+
+  class(res) <- c("SBC_ADVI_diagnostics", class(res))
+  res
+}
+
+#' @export
+summary.SBC_ADVI_diagnostics <- function(x) {
+  summ <- list(
+    n_fits = nrow(x),
+    n_elbo_not_converged = sum(!x$elbo_converged),
+    has_rejects = sum(x$n_rejects > 0),
+    max_rejects = max(x$n_rejects),
+    max_time = max(x$time)
+
+  )
+
+  structure(summ, class = "SBC_ADVI_diagnostics_summary")
+}
+
+#' @export
+get_diagnostic_messages.SBC_ADVI_diagnostics <- function(x) {
+  get_diagnostic_messages(summary(x))
+}
+
+
+#' @export
+get_diagnostic_messages.SBC_ADVI_diagnostics_summary <- function(x) {
+  message_list <- list()
+
+  if(x$n_elbo_not_converged == 0) {
+    message_list[[1]] <-
+      data.frame(ok = TRUE, message = "All fits converged.")
+  } else {
+    message_list[[1]] <-
+      data.frame(ok = FALSE,
+                 message = paste0(
+                   x$n_elbo_not_converged, " (", round(100 * x$n_elbo_not_converged / x$n_fits),
+                   "%) of fits did not converge."))
+  }
+
+
+  if(x$has_rejects > 0) {
+    msg <- paste0(x$has_rejects, " (", round(100 * x$has_rejects / x$n_fits), "%) fits had some steps ",
+                  "rejected. Maximum number of rejections was ", x$max_rejects, ".")
+    message_list[[2]] <- data.frame(ok = FALSE, message = msg)
+  } else {
+    message_list[[2]] <- data.frame(ok = TRUE, message = "No fits had steps rejected.")
+  }
+
+  message_list[[3]] <- data.frame(ok = TRUE, message = paste0("Maximum time was ", x$max_time, " sec."))
+
+  SBC_diagnostic_messages(do.call(rbind, message_list))
+}
 
 # For internal use, creates brms backend.
 new_SBC_backend_brms <- function(compiled_model,

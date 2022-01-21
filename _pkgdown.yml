@@ -63,6 +63,7 @@ articles:
   - title: "Additional use cases and advanced topics"
     contents:
       - limits_of_SBC
+      - computational_algorithm1
       - implementing_backends
       - brms
       - discrete_params
