@@ -125,7 +125,7 @@ SBC_backend_rstan_sample <- function(model, ...) {
 
 #' @export
 SBC_fit.SBC_backend_rstan_sample <- function(backend, generated, cores) {
-  do.call(rstan::sampling,
+  fit <- do.call(rstan::sampling,
           combine_args(list(object = backend$model,
                  data = generated,
                  ## TODO: Forcing a single core until we can capture output with multiple cores
@@ -133,6 +133,12 @@ SBC_fit.SBC_backend_rstan_sample <- function(backend, generated, cores) {
                  cores = 1),
             backend$args
             ))
+
+  if(fit@mode != 0) {
+    stop("Fit does not contain samples.")
+  }
+
+  fit
 }
 
 #' @export
@@ -521,8 +527,18 @@ new_SBC_backend_brms <- function(compiled_model,
 ) {
   require_brms_version("brms backend")
 
-  arg_names_for_stan <- c("chains", "inits", "iter", "warmup", "thin")
+  arg_names_for_stan <- c("chains", "inits", "init", "iter", "warmup", "thin")
   args_for_stan <- args[intersect(names(args), arg_names_for_stan)]
+
+  args_for_stan_renames <- c("inits" = "init")
+  for(i in 1:length(args_for_stan_renames)) {
+    orig <- names(args_for_stan_renames)[i]
+    new <- args_for_stan_renames[i]
+    if(!is.null(args_for_stan[[orig]])) {
+      args_for_stan[[new]] <- args_for_stan[[orig]]
+      args_for_stan[[orig]] <- NULL
+    }
+  }
   stan_backend <- sampling_backend_from_stanmodel(compiled_model, args_for_stan)
 
   structure(list(stan_backend = stan_backend, args = args), class = "SBC_backend_brms")

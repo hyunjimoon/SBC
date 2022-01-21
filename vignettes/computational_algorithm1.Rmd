@@ -53,13 +53,14 @@ Let's start by setting up our environment.
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC); 
 library(ggplot2)
-use_cmdstanr <- TRUE # Set to false to use rstan instead
-
-if(use_cmdstanr) {
-  library(cmdstanr)
-} else {
-  library(rstan)
-}
+# use_cmdstanr <- TRUE # Set to false to use rstan instead
+# 
+# if(use_cmdstanr) {
+#   library(cmdstanr)
+# } else {
+#   library(rstan)
+# }
+library(cmdstanr)
 
 options(mc.cores = parallel::detectCores())
 

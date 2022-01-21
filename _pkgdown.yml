@@ -4,7 +4,7 @@ template:
     bootswatch: cosmo
 
 navbar:
-  title: "brms"
+  title: "SBC"
   left:
     - text: "Vignettes"
       href: articles/index.html

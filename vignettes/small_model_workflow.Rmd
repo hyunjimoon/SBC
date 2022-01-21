@@ -71,14 +71,15 @@ Let's setup and get our hands dirty:
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 
-use_cmdstanr <- TRUE # Set to false to use rstan instead
+use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
-# if(use_cmdstanr) {
-#   library(cmdstanr)
-# } else {
-#   library(rstan)
-# }
-library(cmdstanr)
+if(use_cmdstanr) {
+  library(cmdstanr)
+} else {
+  library(rstan)
+  rstan_options(auto_write = TRUE)
+}
+
 library(bayesplot)
 library(posterior)
 
@@ -88,7 +89,11 @@ plan(multisession)
 options(SBC.min_chunk_size = 5)
 
 # Setup caching of results
-cache_dir <- "./small_model_worklow_SBC_cache"
+if(use_cmdstanr) {
+  cache_dir <- "./small_model_worklow_SBC_cache"
+} else {
+  cache_dir <- "./small_model_worklow_rstan_SBC_cache"
+}
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
@@ -110,8 +115,13 @@ cat(readLines("small_model_workflow/mixture_first.stan"), sep = "\n")
 
 
 ```{r}
-model_first <- cmdstan_model("small_model_workflow/mixture_first.stan")
-backend_first <- SBC_backend_cmdstan_sample(model_first) 
+if(use_cmdstanr) {
+  model_first <- cmdstan_model("small_model_workflow/mixture_first.stan")
+  backend_first <- SBC_backend_cmdstan_sample(model_first) 
+} else {
+  model_first <- stan_model("small_model_workflow/mixture_first.stan")
+  backend_first <- SBC_backend_rstan_sample(model_first) 
+}
 ```
 
 And this is our code to simulate data for this model:
@@ -163,7 +173,11 @@ results_first <- compute_results(datasets_first, backend_first,
 Oh, we have convergence problems, let us examine the pairs plots
 
 ```{r mixture_first_convergence}
-mcmc_pairs(results_first$fits[[1]]$draws())
+if(use_cmdstanr) {
+  mcmc_pairs(results_first$fits[[1]]$draws())
+} else {
+  mcmc_pairs(results_first$fits[[1]])  
+}
 ```
 
 One thing that stands out is that either `mu1` is tightly determined and `mu2` is allowed the full prior range or the other way around. We also don't learn anything about theta.
@@ -181,8 +195,14 @@ cat(readLines("small_model_workflow/mixture_fixed_log_mix.stan"), sep = "\n")
 ```
 
 ```{r}
-model_fixed_log_mix <- cmdstan_model("small_model_workflow/mixture_fixed_log_mix.stan")
-backend_fixed_log_mix <- SBC_backend_cmdstan_sample(model_fixed_log_mix)
+if(use_cmdstanr) {
+  model_fixed_log_mix <- cmdstan_model("small_model_workflow/mixture_fixed_log_mix.stan")
+  backend_fixed_log_mix <- SBC_backend_cmdstan_sample(model_fixed_log_mix)
+} else {
+  model_fixed_log_mix <- stan_model("small_model_workflow/mixture_fixed_log_mix.stan")
+  backend_fixed_log_mix <- SBC_backend_rstan_sample(model_fixed_log_mix)
+  
+}
 ```
 
 So let's try once again with the same single dataset:
@@ -222,7 +242,11 @@ hist(results_fixed_log_mix_2$stats$rhat)
 Let's examine a single pairs plot:
 
 ```{r mixture_fixed_log_mix_pairs}
-mcmc_pairs(results_fixed_log_mix_2$fits[[1]]$draws())
+if(use_cmdstanr) {
+  mcmc_pairs(results_fixed_log_mix_2$fits[[1]]$draws())
+} else {
+  mcmc_pairs(results_fixed_log_mix_2$fits[[1]])  
+}
 ```
 
 We clearly see two modes in the posterior. And upon reflection, we can see why: swapping `mu1` with `mu2` while also changing `theta` for `1 - theta` gives _exactly_ the same likelihood - because the ordering does not matter. A more detailed explanation of this type of problem is at https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html
@@ -237,8 +261,13 @@ cat(readLines("small_model_workflow/mixture_fixed_ordered.stan"), sep = "\n")
 
 
 ```{r}
-model_fixed_ordered <- cmdstan_model("small_model_workflow/mixture_fixed_ordered.stan")
-backend_fixed_ordered <- SBC_backend_cmdstan_sample(model_fixed_ordered) 
+if(use_cmdstanr) {
+  model_fixed_ordered <- cmdstan_model("small_model_workflow/mixture_fixed_ordered.stan")
+  backend_fixed_ordered <- SBC_backend_cmdstan_sample(model_fixed_ordered) 
+} else {
+  model_fixed_ordered <- stan_model("small_model_workflow/mixture_fixed_ordered.stan")
+  backend_fixed_ordered <- SBC_backend_rstan_sample(model_fixed_ordered)   
+}
 ```
 We also need to update the generator to match the new names and ordering constant:
 
@@ -299,7 +328,11 @@ One of the fits has quite a lot of divergent transitions. Let's look at the pair
 ```{r mixture_fixed_ordered_pairs}
 problematic_fit_id <- 2
 problematic_fit <- results_fixed_ordered$fits[[problematic_fit_id]]
-mcmc_pairs(problematic_fit$draws(), np = nuts_params(problematic_fit))
+if(use_cmdstanr) {
+  mcmc_pairs(problematic_fit$draws(), np = nuts_params(problematic_fit))
+} else {
+  mcmc_pairs(problematic_fit, np = nuts_params(problematic_fit))
+}
 ```
 
 There is a lot of ugly stuff going on. Notably, one can notice that the posterior of theta is bimodal, preferring either almost 0 or almost 1 - and when that happens, the mean of one of the components is almost unconstrained. 
@@ -434,8 +467,13 @@ cat(readLines("small_model_workflow/beta_first.stan"), sep = "\n")
 ```
 
 ```{r}
-model_beta_first <- cmdstan_model("small_model_workflow/beta_first.stan")
-backend_beta_first <- SBC_backend_cmdstan_sample(model_beta_first) 
+if(use_cmdstanr) {
+  model_beta_first <- cmdstan_model("small_model_workflow/beta_first.stan")
+  backend_beta_first <- SBC_backend_cmdstan_sample(model_beta_first) 
+} else {
+  model_beta_first <- stan_model("small_model_workflow/beta_first.stan")
+  backend_beta_first <- SBC_backend_rstan_sample(model_beta_first)   
+}
 ```
 
 We also write a matching generator (microoptimization tip: I usually write Stan models first so that I can work on the generator code while the Stan model compiles):
@@ -509,7 +547,11 @@ plot_ecdf_diff(results_beta_first_10)
 Let's inspect the pairs plot for the offending fit:
 
 ```{r beta_first_10_pairs}
-mcmc_pairs(results_beta_first_10$fits[[3]]$draws())
+if(use_cmdstanr) {
+  mcmc_pairs(results_beta_first_10$fits[[3]]$draws())
+} else {
+  mcmc_pairs(results_beta_first_10$fits[[3]])
+}
 ```
 
 This is a very crowded plot and it is hard to resolve details, but we see some correlations between the corresponding beta elements (e.g. `beta[1,1]` and `beta[2,1]`), let's have a closer look and show the same pairs plot for five of our fits:
@@ -517,7 +559,12 @@ This is a very crowded plot and it is hard to resolve details, but we see some c
 ```{r beta_first_10_pairs_subset}
 for(i in 1:5) {
   fit <- results_beta_first_10$fits[[i]]
-  print(mcmc_pairs(fit$draws(), pars = c("beta[1,1]", "beta[2,1]","beta[1,2]", "beta[2,2]")))
+  if(use_cmdstanr) {
+    pairs_input <- fit$draws()
+  } else {
+    pairs_input <- fit
+  }
+  print(mcmc_pairs(pairs_input, pars = c("beta[1,1]", "beta[2,1]","beta[1,2]", "beta[2,2]")))
 }
 ```
 
@@ -544,9 +591,14 @@ cat(readLines("small_model_workflow/beta_precision.stan"), sep = "\n")
 ```
 
 ```{r}
-model_beta_precision <- cmdstan_model("small_model_workflow/beta_precision.stan")
-backend_beta_precision <- SBC_backend_cmdstan_sample(model_beta_precision) 
-
+if(use_cmdstanr) {
+  model_beta_precision <- cmdstan_model("small_model_workflow/beta_precision.stan")
+  backend_beta_precision <- SBC_backend_cmdstan_sample(model_beta_precision) 
+} else {
+  model_beta_precision <- stan_model("small_model_workflow/beta_precision.stan")
+  backend_beta_precision <- SBC_backend_rstan_sample(model_beta_precision) 
+  
+}
 ```
 
 And we need to update the generator to match:
@@ -656,9 +708,15 @@ cat(readLines("small_model_workflow/beta_precision_fixed_prior.stan"), sep = "\n
 ```
 
 ```{r}
-model_beta_precision_fixed_prior <-
-  cmdstan_model("small_model_workflow/beta_precision_fixed_prior.stan")
-backend_beta_precision_fixed_prior <- SBC_backend_cmdstan_sample(model_beta_precision_fixed_prior) 
+if(use_cmdstanr) {
+  model_beta_precision_fixed_prior <-
+    cmdstan_model("small_model_workflow/beta_precision_fixed_prior.stan")
+  backend_beta_precision_fixed_prior <- SBC_backend_cmdstan_sample(model_beta_precision_fixed_prior) 
+} else {
+  model_beta_precision_fixed_prior <-
+    stan_model("small_model_workflow/beta_precision_fixed_prior.stan")
+  backend_beta_precision_fixed_prior <- SBC_backend_rstan_sample(model_beta_precision_fixed_prior)   
+}
 ```
 
 And recompute for all 100 datasets at once (as we don't expect adding prior to introduce huge problems).
@@ -712,8 +770,13 @@ cat(readLines("small_model_workflow/combined_first.stan"), sep = "\n")
 ```
 
 ```{r}
-model_combined <- cmdstan_model("small_model_workflow/combined_first.stan")
-backend_combined <- SBC_backend_cmdstan_sample(model_combined)
+if(use_cmdstanr) {
+  model_combined <- cmdstan_model("small_model_workflow/combined_first.stan")
+  backend_combined <- SBC_backend_cmdstan_sample(model_combined)
+} else {
+  model_combined <- stan_model("small_model_workflow/combined_first.stan")
+  backend_combined <- SBC_backend_rstan_sample(model_combined)  
+}
 ```
 
 And this is our generator for the full model:

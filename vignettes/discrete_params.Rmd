@@ -19,12 +19,13 @@ are directly represented (e.g. in JAGS) or marginalized out (as is usual in Stan
 library(SBC); 
 library(ggplot2)
 
-use_cmdstanr <- TRUE # Set to false to use rstan instead
+use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
 if(use_cmdstanr) {
   library(cmdstanr)
 } else {
   library(rstan)
+  rstan_options(auto_write = TRUE)
 }
 
 # Multiprocessing support
@@ -37,7 +38,11 @@ plan(multisession)
 options(SBC.min_chunk_size = 5)
 
 # Setup caching of results
-cache_dir <- "./discrete_params_SBC_cache"
+if(use_cmdstanr) {
+  cache_dir <- "./discrete_params_SBC_cache"
+} else {
+  cache_dir <- "./discrete_params_rstan_SBC_cache"
+}
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }

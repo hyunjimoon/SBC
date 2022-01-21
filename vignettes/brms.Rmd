@@ -18,8 +18,15 @@ Let's setup the environment:
 library(SBC)
 library(brms)
 library(ggplot2)
-options(brms.backend = "cmdstanr")
-# options(brms.backend = "rstan") # Uncomment to use rstan instead
+
+use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
+
+if(use_cmdstanr) {
+  options(brms.backend = "cmdstanr")
+} else {
+  options(brms.backend = "rstan") 
+  rstan::rstan_options(auto_write = TRUE)
+}
 
 # Using parallel processing
 library(future)
@@ -31,7 +38,11 @@ plan(multisession)
 options(SBC.min_chunk_size = 5)
 
 # Setup caching of results
-cache_dir <- "./brms_SBC_cache"
+if(use_cmdstanr) {
+  cache_dir <- "./brms_SBC_cache"
+} else { 
+  cache_dir <- "./brms_rstan_SBC_cache"
+}
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
@@ -82,7 +93,8 @@ generator)
 
 ```{r}
 backend <- SBC_backend_brms_from_generator(generator, chains = 1, thin = 1,
-                            init = 0.1)
+                            warmup = 500, iter = 1500,               
+                            inits = 0.1)
 
 # More verbose alternative that results in exactly the same backend:
 # backend <- SBC_backend_brms(y ~ x, template_dataset = template_data, prior = priors, warmup = 500, iter = 1000, chains = 1, thin = 1
@@ -93,7 +105,7 @@ backend <- SBC_backend_brms_from_generator(generator, chains = 1, thin = 1,
 Compute the actual results
 
 ```{r}
-results <- compute_results(datasets, backend, thin_ranks = 10, 
+results <- compute_results(datasets, backend,
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "first"))
 ```
@@ -202,7 +214,7 @@ backend_func <- SBC_backend_brms(y ~ x + (1 | group),
 So we can happily compute:
 
 ```{r}
-results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10, 
+results_func <- compute_results(datasets_func, backend_func, 
                                 gen_quants = log_lik_gq_func, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "func"))
@@ -246,7 +258,7 @@ backend_func2 <- SBC_backend_brms(y ~ 0 + Intercept + x + (1 | group),
 Let's fit the same datasets with the new backend.
 
 ```{r}
-results_func2 <- compute_results(datasets_func, backend_func2, thin_ranks = 10, 
+results_func2 <- compute_results(datasets_func, backend_func2, 
                                  gen_quants = log_lik_gq_func, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "func2"))
