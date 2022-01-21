@@ -25,7 +25,7 @@ The workflow described here focuses on small models.
 "Small" means that the model is relatively fast to fit and we don't have to worry about computation too much.
 Once running ~100 fits of the model becomes too costly, there are additional tricks and considerations
 that we hope to delve into in a "Building a complex model" vignette (which currently doesn't exist).
-Still many of the approaches here also apply to complex models (especially starting small and building each component separately), and with proper separation of the model into components,
+Still many of the approaches here also apply to complex models (especially starting small and building smaller submodels separately), and with proper separation of the model into submodels,
 one can validate big chunks of Stan code while working with small models only.
 
 We expect the reader to be familiar with basics of the package. If not,
@@ -47,16 +47,16 @@ those covariates and the prevalence of either subspecie.
 
 ## Big picture
 
-This model naturally decomposes into two components: 
+This model naturally decomposes into two submodels: 
 
-1) the mixture component where the mixing ratio is the same
+1) the mixture submodel where the mixing ratio is the same
 for all variables
 
 2) a beta regression where we take covariates and make a prediction of a probability,
 assuming we (noisily) observe the probability.
 
 It is good practice to start small and implement and validate each of those 
-components separately and then put them together and validate the bigger model.
+submodels separately and then put them together and validate the bigger model.
 This makes is substantially easier to locate bugs. 
 You'll notice that the process ends up involving a lot of steps, 
 but the fact is that we still ignore all the completely invalid models I
@@ -95,13 +95,13 @@ if(!dir.exists(cache_dir)) {
 
 ```
 
-## Mixture component
+## Mixture submodel
 
 There is a good [guide to mixtures](https://mc-stan.org/docs/2_27/stan-users-guide/mixture-modeling-chapter.html) in the Stan user's guide.
 Following the user's guide would save us from a lot of mistakes, but for the sake of example, we will pretend we didn't really read it - and we'll see the problems can be discovered 
 via simulations.
 
-So this is our first try at implementing the mixture component:
+So this is our first try at implementing the mixture submodel:
 
 
 ```{r, comment = ""}
@@ -421,10 +421,10 @@ plot_coverage(results_fixed_ordered_combined)
 
 Note: it turns out that extending the model to more components becomes somewhat tricky as the model can become sensitive to initialization. Also the problems with data that can be explained by fewer components than the model assumes become more prevalent.
 
-## Beta regression component
+## Beta regression submodel
 
-Let's move to the beta regression component of our model. After spending a bunch of time
-implementing this, I realized, that maybe treating this as a logistic regression component would have been wiser (and sufficient). But I am gonna keep it in - it just demonstrates that a real workflow can be messy and let's us show some additional classes of problems and how they manifest in SBC.
+Let's move to the beta regression submodel of our model. After spending a bunch of time
+implementing this, I realized, that maybe treating this as a logistic regression submodel would have been wiser (and sufficient). But I am gonna keep it in - it just demonstrates that a real workflow can be messy and let's us show some additional classes of problems and how they manifest in SBC.
 
 
 Checking the wiki page for Beta distribution, we notice that it has two parameters, both bounded to be positive. So our first attempt at beta regression just creates two linear predictors - one for each parameter of the distribution. We then exponentiate the predictors to make them positive and we have a model:
@@ -521,7 +521,7 @@ for(i in 1:5) {
 }
 ```
 
-Turns out the correlations are in all fits, although sometimes they are relatively weak and the sampler is able to handle the posterior, it is potentially troubling. The main issue is that we plan to integrate this model with other components and problems that can be tolerated in a single component might interact with other components and make the model intractable.
+Turns out the correlations are in all fits, although sometimes they are relatively weak and the sampler is able to handle the posterior, it is potentially troubling. The main issue is that we plan to integrate this model with other submodels and problems that can be tolerated in a single submodel might interact with other submodels and make the model intractable.
 
 
 We can even understand the reason for the positive correlation - it is because predicted means of our response beta distribution is the `exp(linpred[1,]) / ( exp(linpred[1,]) + exp(linpred[2,]))` vector.
@@ -535,7 +535,7 @@ predictor values for the first shape parameter are allowed to vary quite a bit a
 
 The simplest way to resolve the issue with the correlations is to explicitly parametrize the beta distribution by its mean ($0 < \mu < 1$). The more common parametrization than adds a precision parameter ($\phi > 0$), so we then have $y \sim \mathrm{Beta}(\mu \phi, (1 - \mu) \phi)$
 
-This also makes much more sense for the bigger task - combining with the mixture component, as we really want to predict just a single probability. So we'll rewrite our predictors to predict only the logit of the mean (as in logistic regression) and keep the precision as a constant between observations. We could definitely also decide whether to keep the full flexibility and allow predictors for precision, we just don't do it here.
+This also makes much more sense for the bigger task - combining with the mixture submodel, as we really want to predict just a single probability. So we'll rewrite our predictors to predict only the logit of the mean (as in logistic regression) and keep the precision as a constant between observations. We could definitely also decide whether to keep the full flexibility and allow predictors for precision, we just don't do it here.
 
 This is then our updated model:
 
@@ -701,7 +701,7 @@ is in quite tight agreement with theory:
 plot_coverage(results_beta_precision_fixed_prior_200)
 ```
 
-So for now we are also happy about the beta regression component.
+So for now we are also happy about the beta regression submodel.
 
 ## Putting it together
 
