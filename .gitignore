@@ -7,3 +7,5 @@ Meta
 *.exe
 
 *_SBC_cache
+vignettes/stan/*.rds
+vignettes/small_model_workflow/*.rds

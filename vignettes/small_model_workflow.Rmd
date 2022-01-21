@@ -25,7 +25,7 @@ The workflow described here focuses on small models.
 "Small" means that the model is relatively fast to fit and we don't have to worry about computation too much.
 Once running ~100 fits of the model becomes too costly, there are additional tricks and considerations
 that we hope to delve into in a "Building a complex model" vignette (which currently doesn't exist).
-Still many of the approaches here also apply to complex models (especially starting small and building each component separately), and with proper separation of the model into components,
+Still many of the approaches here also apply to complex models (especially starting small and building smaller submodels separately), and with proper separation of the model into submodels,
 one can validate big chunks of Stan code while working with small models only.
 
 We expect the reader to be familiar with basics of the package. If not,
@@ -47,16 +47,16 @@ those covariates and the prevalence of either subspecie.
 
 ## Big picture
 
-This model naturally decomposes into two components: 
+This model naturally decomposes into two submodels: 
 
-1) the mixture component where the mixing ratio is the same
+1) the mixture submodel where the mixing ratio is the same
 for all variables
 
 2) a beta regression where we take covariates and make a prediction of a probability,
 assuming we (noisily) observe the probability.
 
 It is good practice to start small and implement and validate each of those 
-components separately and then put them together and validate the bigger model.
+submodels separately and then put them together and validate the bigger model.
 This makes is substantially easier to locate bugs. 
 You'll notice that the process ends up involving a lot of steps, 
 but the fact is that we still ignore all the completely invalid models I
@@ -71,14 +71,15 @@ Let's setup and get our hands dirty:
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 
-use_cmdstanr <- TRUE # Set to false to use rstan instead
+use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
-# if(use_cmdstanr) {
-#   library(cmdstanr)
-# } else {
-#   library(rstan)
-# }
-library(cmdstanr)
+if(use_cmdstanr) {
+  library(cmdstanr)
+} else {
+  library(rstan)
+  rstan_options(auto_write = TRUE)
+}
+
 library(bayesplot)
 library(posterior)
 
@@ -88,20 +89,24 @@ plan(multisession)
 options(SBC.min_chunk_size = 5)
 
 # Setup caching of results
-cache_dir <- "./small_model_worklow_SBC_cache"
+if(use_cmdstanr) {
+  cache_dir <- "./small_model_worklow_SBC_cache"
+} else {
+  cache_dir <- "./small_model_worklow_rstan_SBC_cache"
+}
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
 
 ```
 
-## Mixture component
+## Mixture submodel
 
 There is a good [guide to mixtures](https://mc-stan.org/docs/2_27/stan-users-guide/mixture-modeling-chapter.html) in the Stan user's guide.
 Following the user's guide would save us from a lot of mistakes, but for the sake of example, we will pretend we didn't really read it - and we'll see the problems can be discovered 
 via simulations.
 
-So this is our first try at implementing the mixture component:
+So this is our first try at implementing the mixture submodel:
 
 
 ```{r, comment = ""}
@@ -110,8 +115,13 @@ cat(readLines("small_model_workflow/mixture_first.stan"), sep = "\n")
 
 
 ```{r}
-model_first <- cmdstan_model("small_model_workflow/mixture_first.stan")
-backend_first <- SBC_backend_cmdstan_sample(model_first) 
+if(use_cmdstanr) {
+  model_first <- cmdstan_model("small_model_workflow/mixture_first.stan")
+  backend_first <- SBC_backend_cmdstan_sample(model_first) 
+} else {
+  model_first <- stan_model("small_model_workflow/mixture_first.stan")
+  backend_first <- SBC_backend_rstan_sample(model_first) 
+}
 ```
 
 And this is our code to simulate data for this model:
@@ -163,7 +173,11 @@ results_first <- compute_results(datasets_first, backend_first,
 Oh, we have convergence problems, let us examine the pairs plots
 
 ```{r mixture_first_convergence}
-mcmc_pairs(results_first$fits[[1]]$draws())
+if(use_cmdstanr) {
+  mcmc_pairs(results_first$fits[[1]]$draws())
+} else {
+  mcmc_pairs(results_first$fits[[1]])  
+}
 ```
 
 One thing that stands out is that either `mu1` is tightly determined and `mu2` is allowed the full prior range or the other way around. We also don't learn anything about theta.
@@ -181,8 +195,14 @@ cat(readLines("small_model_workflow/mixture_fixed_log_mix.stan"), sep = "\n")
 ```
 
 ```{r}
-model_fixed_log_mix <- cmdstan_model("small_model_workflow/mixture_fixed_log_mix.stan")
-backend_fixed_log_mix <- SBC_backend_cmdstan_sample(model_fixed_log_mix)
+if(use_cmdstanr) {
+  model_fixed_log_mix <- cmdstan_model("small_model_workflow/mixture_fixed_log_mix.stan")
+  backend_fixed_log_mix <- SBC_backend_cmdstan_sample(model_fixed_log_mix)
+} else {
+  model_fixed_log_mix <- stan_model("small_model_workflow/mixture_fixed_log_mix.stan")
+  backend_fixed_log_mix <- SBC_backend_rstan_sample(model_fixed_log_mix)
+  
+}
 ```
 
 So let's try once again with the same single dataset:
@@ -222,7 +242,11 @@ hist(results_fixed_log_mix_2$stats$rhat)
 Let's examine a single pairs plot:
 
 ```{r mixture_fixed_log_mix_pairs}
-mcmc_pairs(results_fixed_log_mix_2$fits[[1]]$draws())
+if(use_cmdstanr) {
+  mcmc_pairs(results_fixed_log_mix_2$fits[[1]]$draws())
+} else {
+  mcmc_pairs(results_fixed_log_mix_2$fits[[1]])  
+}
 ```
 
 We clearly see two modes in the posterior. And upon reflection, we can see why: swapping `mu1` with `mu2` while also changing `theta` for `1 - theta` gives _exactly_ the same likelihood - because the ordering does not matter. A more detailed explanation of this type of problem is at https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html
@@ -237,8 +261,13 @@ cat(readLines("small_model_workflow/mixture_fixed_ordered.stan"), sep = "\n")
 
 
 ```{r}
-model_fixed_ordered <- cmdstan_model("small_model_workflow/mixture_fixed_ordered.stan")
-backend_fixed_ordered <- SBC_backend_cmdstan_sample(model_fixed_ordered) 
+if(use_cmdstanr) {
+  model_fixed_ordered <- cmdstan_model("small_model_workflow/mixture_fixed_ordered.stan")
+  backend_fixed_ordered <- SBC_backend_cmdstan_sample(model_fixed_ordered) 
+} else {
+  model_fixed_ordered <- stan_model("small_model_workflow/mixture_fixed_ordered.stan")
+  backend_fixed_ordered <- SBC_backend_rstan_sample(model_fixed_ordered)   
+}
 ```
 We also need to update the generator to match the new names and ordering constant:
 
@@ -299,7 +328,11 @@ One of the fits has quite a lot of divergent transitions. Let's look at the pair
 ```{r mixture_fixed_ordered_pairs}
 problematic_fit_id <- 2
 problematic_fit <- results_fixed_ordered$fits[[problematic_fit_id]]
-mcmc_pairs(problematic_fit$draws(), np = nuts_params(problematic_fit))
+if(use_cmdstanr) {
+  mcmc_pairs(problematic_fit$draws(), np = nuts_params(problematic_fit))
+} else {
+  mcmc_pairs(problematic_fit, np = nuts_params(problematic_fit))
+}
 ```
 
 There is a lot of ugly stuff going on. Notably, one can notice that the posterior of theta is bimodal, preferring either almost 0 or almost 1 - and when that happens, the mean of one of the components is almost unconstrained. 
@@ -421,10 +454,10 @@ plot_coverage(results_fixed_ordered_combined)
 
 Note: it turns out that extending the model to more components becomes somewhat tricky as the model can become sensitive to initialization. Also the problems with data that can be explained by fewer components than the model assumes become more prevalent.
 
-## Beta regression component
+## Beta regression submodel
 
-Let's move to the beta regression component of our model. After spending a bunch of time
-implementing this, I realized, that maybe treating this as a logistic regression component would have been wiser (and sufficient). But I am gonna keep it in - it just demonstrates that a real workflow can be messy and let's us show some additional classes of problems and how they manifest in SBC.
+Let's move to the beta regression submodel of our model. After spending a bunch of time
+implementing this, I realized, that maybe treating this as a logistic regression submodel would have been wiser (and sufficient). But I am gonna keep it in - it just demonstrates that a real workflow can be messy and let's us show some additional classes of problems and how they manifest in SBC.
 
 
 Checking the wiki page for Beta distribution, we notice that it has two parameters, both bounded to be positive. So our first attempt at beta regression just creates two linear predictors - one for each parameter of the distribution. We then exponentiate the predictors to make them positive and we have a model:
@@ -434,8 +467,13 @@ cat(readLines("small_model_workflow/beta_first.stan"), sep = "\n")
 ```
 
 ```{r}
-model_beta_first <- cmdstan_model("small_model_workflow/beta_first.stan")
-backend_beta_first <- SBC_backend_cmdstan_sample(model_beta_first) 
+if(use_cmdstanr) {
+  model_beta_first <- cmdstan_model("small_model_workflow/beta_first.stan")
+  backend_beta_first <- SBC_backend_cmdstan_sample(model_beta_first) 
+} else {
+  model_beta_first <- stan_model("small_model_workflow/beta_first.stan")
+  backend_beta_first <- SBC_backend_rstan_sample(model_beta_first)   
+}
 ```
 
 We also write a matching generator (microoptimization tip: I usually write Stan models first so that I can work on the generator code while the Stan model compiles):
@@ -509,7 +547,11 @@ plot_ecdf_diff(results_beta_first_10)
 Let's inspect the pairs plot for the offending fit:
 
 ```{r beta_first_10_pairs}
-mcmc_pairs(results_beta_first_10$fits[[3]]$draws())
+if(use_cmdstanr) {
+  mcmc_pairs(results_beta_first_10$fits[[3]]$draws())
+} else {
+  mcmc_pairs(results_beta_first_10$fits[[3]])
+}
 ```
 
 This is a very crowded plot and it is hard to resolve details, but we see some correlations between the corresponding beta elements (e.g. `beta[1,1]` and `beta[2,1]`), let's have a closer look and show the same pairs plot for five of our fits:
@@ -517,11 +559,16 @@ This is a very crowded plot and it is hard to resolve details, but we see some c
 ```{r beta_first_10_pairs_subset}
 for(i in 1:5) {
   fit <- results_beta_first_10$fits[[i]]
-  print(mcmc_pairs(fit$draws(), pars = c("beta[1,1]", "beta[2,1]","beta[1,2]", "beta[2,2]")))
+  if(use_cmdstanr) {
+    pairs_input <- fit$draws()
+  } else {
+    pairs_input <- fit
+  }
+  print(mcmc_pairs(pairs_input, pars = c("beta[1,1]", "beta[2,1]","beta[1,2]", "beta[2,2]")))
 }
 ```
 
-Turns out the correlations are in all fits, although sometimes they are relatively weak and the sampler is able to handle the posterior, it is potentially troubling. The main issue is that we plan to integrate this model with other components and problems that can be tolerated in a single component might interact with other components and make the model intractable.
+Turns out the correlations are in all fits, although sometimes they are relatively weak and the sampler is able to handle the posterior, it is potentially troubling. The main issue is that we plan to integrate this model with other submodels and problems that can be tolerated in a single submodel might interact with other submodels and make the model intractable.
 
 
 We can even understand the reason for the positive correlation - it is because predicted means of our response beta distribution is the `exp(linpred[1,]) / ( exp(linpred[1,]) + exp(linpred[2,]))` vector.
@@ -535,7 +582,7 @@ predictor values for the first shape parameter are allowed to vary quite a bit a
 
 The simplest way to resolve the issue with the correlations is to explicitly parametrize the beta distribution by its mean ($0 < \mu < 1$). The more common parametrization than adds a precision parameter ($\phi > 0$), so we then have $y \sim \mathrm{Beta}(\mu \phi, (1 - \mu) \phi)$
 
-This also makes much more sense for the bigger task - combining with the mixture component, as we really want to predict just a single probability. So we'll rewrite our predictors to predict only the logit of the mean (as in logistic regression) and keep the precision as a constant between observations. We could definitely also decide whether to keep the full flexibility and allow predictors for precision, we just don't do it here.
+This also makes much more sense for the bigger task - combining with the mixture submodel, as we really want to predict just a single probability. So we'll rewrite our predictors to predict only the logit of the mean (as in logistic regression) and keep the precision as a constant between observations. We could definitely also decide whether to keep the full flexibility and allow predictors for precision, we just don't do it here.
 
 This is then our updated model:
 
@@ -544,9 +591,14 @@ cat(readLines("small_model_workflow/beta_precision.stan"), sep = "\n")
 ```
 
 ```{r}
-model_beta_precision <- cmdstan_model("small_model_workflow/beta_precision.stan")
-backend_beta_precision <- SBC_backend_cmdstan_sample(model_beta_precision) 
-
+if(use_cmdstanr) {
+  model_beta_precision <- cmdstan_model("small_model_workflow/beta_precision.stan")
+  backend_beta_precision <- SBC_backend_cmdstan_sample(model_beta_precision) 
+} else {
+  model_beta_precision <- stan_model("small_model_workflow/beta_precision.stan")
+  backend_beta_precision <- SBC_backend_rstan_sample(model_beta_precision) 
+  
+}
 ```
 
 And we need to update the generator to match:
@@ -656,9 +708,15 @@ cat(readLines("small_model_workflow/beta_precision_fixed_prior.stan"), sep = "\n
 ```
 
 ```{r}
-model_beta_precision_fixed_prior <-
-  cmdstan_model("small_model_workflow/beta_precision_fixed_prior.stan")
-backend_beta_precision_fixed_prior <- SBC_backend_cmdstan_sample(model_beta_precision_fixed_prior) 
+if(use_cmdstanr) {
+  model_beta_precision_fixed_prior <-
+    cmdstan_model("small_model_workflow/beta_precision_fixed_prior.stan")
+  backend_beta_precision_fixed_prior <- SBC_backend_cmdstan_sample(model_beta_precision_fixed_prior) 
+} else {
+  model_beta_precision_fixed_prior <-
+    stan_model("small_model_workflow/beta_precision_fixed_prior.stan")
+  backend_beta_precision_fixed_prior <- SBC_backend_rstan_sample(model_beta_precision_fixed_prior)   
+}
 ```
 
 And recompute for all 100 datasets at once (as we don't expect adding prior to introduce huge problems).
@@ -701,7 +759,7 @@ is in quite tight agreement with theory:
 plot_coverage(results_beta_precision_fixed_prior_200)
 ```
 
-So for now we are also happy about the beta regression component.
+So for now we are also happy about the beta regression submodel.
 
 ## Putting it together
 
@@ -712,8 +770,13 @@ cat(readLines("small_model_workflow/combined_first.stan"), sep = "\n")
 ```
 
 ```{r}
-model_combined <- cmdstan_model("small_model_workflow/combined_first.stan")
-backend_combined <- SBC_backend_cmdstan_sample(model_combined)
+if(use_cmdstanr) {
+  model_combined <- cmdstan_model("small_model_workflow/combined_first.stan")
+  backend_combined <- SBC_backend_cmdstan_sample(model_combined)
+} else {
+  model_combined <- stan_model("small_model_workflow/combined_first.stan")
+  backend_combined <- SBC_backend_rstan_sample(model_combined)  
+}
 ```
 
 And this is our generator for the full model:

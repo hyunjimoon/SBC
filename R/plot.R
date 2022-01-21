@@ -411,14 +411,14 @@ plot_contraction.data.frame <- function(x, prior_sd, parameters = NULL, scale = 
 #' @export
 plot_sim_estimated <- function(x, parameters = NULL, estimate = "mean",
                                uncertainty = c("q5", "q95"),
-                               alpha = 0.8) {
+                               alpha = NULL) {
   UseMethod("plot_sim_estimated")
 }
 
 #' @export
 plot_sim_estimated.SBC_results <- function(x, parameters = NULL, estimate = "mean",
                                            uncertainty = c("q5", "q95"),
-                                           alpha = 0.8) {
+                                           alpha = NULL) {
   plot_sim_estimated(x$stats, parameters = parameters, estimate = estimate,
                      uncertainty = uncertainty, alpha = alpha)
 }
@@ -426,13 +426,20 @@ plot_sim_estimated.SBC_results <- function(x, parameters = NULL, estimate = "mea
 #' @export
 plot_sim_estimated.data.frame <- function(x, parameters = NULL, estimate = "mean",
                                           uncertainty = c("q5", "q95"),
-                                          alpha = 0.8) {
+                                          alpha = NULL) {
   if(!all(c("parameter", estimate, uncertainty) %in% names(x))) {
     stop("The data.frame needs a 'parameter' and '", estimate, "' columns")
   }
 
   if(!is.null(parameters)) {
     x <- dplyr::filter(x, parameter %in% parameters)
+  }
+
+  if(is.null(alpha)) {
+    n_points <- dplyr::summarise(dplyr::group_by(x, parameter), count = dplyr::n())
+    max_points <- max(n_points$count)
+    alpha_guess <- 1 / ((max_points * 0.06) + 1)
+    alpha <-  max(0.05, alpha_guess)
   }
 
   x$estimate__ <- x[[estimate]]
