@@ -18,6 +18,6 @@ objects available on all workers.}
 When the expression contains non-library functions/objects, and parallel processing
 is enabled, those must be
 named in the \code{.globals} parameter (hopefully we'll be able to detect those
-automatically in the future). Note that \code{\link[=recompute_statistics]{recompute_statistics()}} currently
+automatically in the future). Note that \code{\link[=recompute_SBC_statistics]{recompute_SBC_statistics()}} currently
 does not use parallel processing, so \code{.globals} don't need to be set.
 }

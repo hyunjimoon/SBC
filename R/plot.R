@@ -30,7 +30,7 @@ plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 
   n_simulations <- unique(n_simulations)
 
   if(is.null(bins)){
-    bins <- guess_bins(max_rank, n_simulations)
+    bins <- guess_rank_hist_bins(max_rank, n_simulations)
   } else if(bins > max_rank + 1) {
     stop("Cannot use more bins than max_rank + 1")
   }
@@ -82,7 +82,7 @@ plot_rank_hist.SBC_results <- function(x, parameters = NULL, bins = NULL, prob =
 #' Guess the number of bins for [plot_rank_hist()].
 #' @param N the number of ranks observed
 #' @param max_rank the maximum rank observed
-guess_bins <- function(max_rank, N) {
+guess_rank_hist_bins <- function(max_rank, N) {
   min(max_rank + 1, max(floor(N / 10), 5))
 }
 

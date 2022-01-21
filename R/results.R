@@ -218,6 +218,24 @@ length.SBC_results <- function(x) {
 }
 
 
+#' @title Compute SBC results
+#' @description Delegates directly to `compute_SBC()`.
+#'
+#' @name compute_results-deprecated
+#' @seealso \code{\link{SBC-deprecated}}
+#' @keywords internal
+NULL
+
+#' @rdname SBC-deprecated
+#' @section \code{compute_results}:
+#' Instead of \code{compute_results}, use \code{\link{compute_SBC}}.
+#'
+#' @export
+compute_results <- function(...) {
+  warning("compute_results() is deprecated, use compute_SBC instead.")
+  compute_SBC(...)
+}
+
 #' Fit datasets and evaluate diagnostics and SBC metrics.
 #'
 #' Performs the main SBC routine given datasets and a backend.
@@ -259,7 +277,7 @@ length.SBC_results <- function(x) {
 #'    than you have cores. See [default_cores_per_fit()].
 #' @param keep_fits boolean, when `FALSE` full fits are discarded from memory -
 #'    reduces memory consumption and increases speed (when processing in parallel), but
-#'    prevents you from inspecting the fits and using [recompute_statistics()].
+#'    prevents you from inspecting the fits and using [recompute_SBC_statistics()].
 #'    We recommend to set to `TRUE` in early phases of workflow, when you run just a few fits.
 #'    Once the model is stable and you want to run a lot of iterations, we recommend setting
 #'    to `FALSE` (even for quite a simple model, 1000 fits can easily exhaust 32GB of RAM).
@@ -287,7 +305,7 @@ length.SBC_results <- function(x) {
 #' objects available on all workers.
 #' @return An object of class [SBC_results()].
 #' @export
-compute_results <- function(datasets, backend,
+compute_SBC <- function(datasets, backend,
                             cores_per_fit = default_cores_per_fit(length(datasets)),
                             keep_fits = TRUE,
                             thin_ranks = SBC_backend_default_thin_ranks(backend),
@@ -340,8 +358,8 @@ compute_results <- function(datasets, backend,
           } else {
             message(paste0("Results loaded from cache file '", cache_basename,
                            "' but it was computed with different thin_ranks/gen_quants.\n",
-                           "Calling recompute_statistics."))
-            return(recompute_statistics(old_results = result, datasets = datasets,
+                           "Calling recompute_SBC_statistics."))
+            return(recompute_SBC_statistics(old_results = result, datasets = datasets,
                                         thin_ranks = thin_ranks, gen_quants = gen_quants,
                                         backend = backend))
           }
@@ -392,7 +410,7 @@ compute_results <- function(datasets, backend,
   }
 
   results_raw <- future.apply::future_lapply(
-    params_and_generated_list, SBC:::compute_results_single,
+    params_and_generated_list, SBC:::compute_SBC_single,
     backend = backend, cores = cores_per_fit,
     keep_fit = keep_fits, thin_ranks = thin_ranks,
     gen_quants = gen_quants,
@@ -446,7 +464,7 @@ compute_results <- function(datasets, backend,
           message("\n ---- End of output for dataset ", i, " -----")
         } else {
           message("Dataset ", i, " resulted in error when post-processing the fit.\n",
-                  "Calling `recompute_statistics` after you've found and fixed the problem could ",
+                  "Calling `recompute_SBC_statistics` after you've found and fixed the problem could ",
                   "let you move further without refitting")
           message(results_raw[[i]]$error, "\n")
         }
@@ -569,7 +587,7 @@ capture_all_outputs <- function(expr) {
 }
 
 
-compute_results_single <- function(params_and_generated, backend, cores,
+compute_SBC_single <- function(params_and_generated, backend, cores,
                                    keep_fit, thin_ranks, gen_quants) {
 
   parameters <- params_and_generated$parameters
@@ -633,11 +651,11 @@ compute_results_single <- function(params_and_generated, backend, cores,
 #' Recompute SBC statistics given a single fit.
 #'
 #' Potentially useful for doing some advanced stuff, but should not
-#' be used in regular workflow. Use [recompute_statistics()] to update
+#' be used in regular workflow. Use [recompute_SBC_statistics()] to update
 #' an `[SBC_results]` objects with different `thin_ranks` or other settings.
 #'
 #' @export
-#' @seealso [recompute_statistics()]
+#' @seealso [recompute_SBC_statistics()]
 statistics_from_single_fit <- function(fit, parameters, generated,
                                        thin_ranks, gen_quants,
                                        backend) {
@@ -692,7 +710,7 @@ statistics_from_single_fit <- function(fit, parameters, generated,
   stats
 }
 
-# check that the computed stats data frame hs problems
+# check that the computed stats data frame has problems
 check_stats <- function(stats, datasets, thin_ranks) {
   unique_max_ranks <- unique(stats$max_rank)
   if(length(unique_max_ranks) != 1) {
@@ -726,7 +744,7 @@ check_stats <- function(stats, datasets, thin_ranks) {
 #' When the expression contains non-library functions/objects, and parallel processing
 #' is enabled, those must be
 #' named in the `.globals` parameter (hopefully we'll be able to detect those
-#' automatically in the future). Note that [recompute_statistics()] currently
+#' automatically in the future). Note that [recompute_SBC_statistics()] currently
 #' does not use parallel processing, so `.globals` don't need to be set.
 #'
 #' @param ... named expressions representing the quantitites
@@ -768,6 +786,24 @@ compute_gen_quants <- function(draws, generated, gen_quants) {
   do.call(posterior::draws_rvars, rvars)
 }
 
+#' @title Recompute SBC statistics without refitting models.
+#' @description Delegates directly to `recompute_SBC_statistics()`.
+#'
+#' @name recompute_statistics-deprecated
+#' @seealso \code{\link{SBC-deprecated}}
+#' @keywords internal
+NULL
+
+#' @rdname SBC-deprecated
+#' @section \code{recompute_statistics}:
+#' Instead of \code{recompute_statistics}, use \code{\link{recompute_SBC_statistics}}.
+#'
+#' @export
+recompute_statistics <- function(...) {
+  warning("recompute_statistics() is deprecated, use recompute_SBC_statistics instead.")
+  recompute_SBC_statistics(...)
+}
+
 #' Recompute SBC statistics without refitting models.
 #'
 #' Useful for example to recompute SBC ranks with a different choice of `thin_ranks`
@@ -776,7 +812,7 @@ compute_gen_quants <- function(draws, generated, gen_quants) {
 #' @param backend backend used to fit the results. Used to pull various defaults
 #'   and other setting influencing the computation of statistics.
 #' @export
-recompute_statistics <- function(old_results, datasets, backend,
+recompute_SBC_statistics <- function(old_results, datasets, backend,
                                  thin_ranks = SBC_backend_default_thin_ranks(backend),
                                  gen_quants = NULL) {
   validate_SBC_results(old_results)
@@ -1003,7 +1039,7 @@ get_diagnostic_messages.SBC_results_summary <- function(x) {
   if(x$n_low_ess_to_rank > 0) {
     msg <- paste0(x$n_low_ess_to_rank, " (", round(100 * x$n_low_ess_to_rank / x$n_fits), "%) fits had tail ESS undefined or less than ",
                   "half of the maximum rank, potentially skewing \nthe rank statistics. The lowest tail ESS was ", round(x$min_min_ess_tail),
-                  ".\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_statistics) \nor number of posterior samples (by refitting) might help.")
+                  ".\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) \nor number of posterior samples (by refitting) might help.")
     message_list[[i]] <- data.frame(ok = FALSE, message = msg)
   } else {
     message_list[[i]] <- data.frame(ok = TRUE, message = "All fits had tail ESS > half of the maximum rank.")

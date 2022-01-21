@@ -84,10 +84,10 @@ reference:
 - title: Computation & results
   desc: Functions related to running the SBC computation and handling the results.
 - contents:
-  - compute_results
+  - compute_SBC_results
   - generated_quantities
   - statistics_from_single_fit
-  - recompute_statistics
+  - recompute_SBC_statistics
   - contains("results")
   - calculate_ranks_draws_matrix
   - contains("diagnostic")
@@ -96,7 +96,7 @@ reference:
   desc: Plotting and summarising results
 - contents:
   - contains("plot")
-  - guess_bins
+  - guess_rank_hist_bins
   - empirical_coverage
 - title: Miscellaneous
 - contents:

@@ -16,7 +16,7 @@ test_that("Integration test with mock backend", {
   true_result <- posterior::draws_matrix(a = a_vals_true, b = b_vals_true)
   datasets <- SBC_datasets(true_result,generated = rep(list(NULL), N_sims))
 
-  res <- compute_results(datasets, backend, thin_ranks = 1)
+  res <- compute_SBC(datasets, backend, thin_ranks = 1)
 
   expected_ranks <- rep(1:N_sims, each = 2)
   expect_equivalent(sort(res$stats$rank), expected_ranks)
@@ -28,7 +28,7 @@ test_that("Integration test with mock backend", {
 
   backend2 <- backend
   backend2$error <- SBC:::SBC_error("SBC_test_error", "ERR")
-  res2_with_outputs <- SBC:::capture_all_outputs(compute_results(datasets, backend2, thin_ranks = 1))
+  res2_with_outputs <- SBC:::capture_all_outputs(compute_SBC(datasets, backend2, thin_ranks = 1))
   res2 <- res2_with_outputs$result
   expect_identical(res2$errors, rep(list(backend2$error), N_sims))
   expect_identical(res2$fits, rep(list(NULL), N_sims))
@@ -51,13 +51,13 @@ test_that("Result caching", {
   cache_file <- tempfile(fileext = ".rds")
 
   res_first <- SBC:::capture_all_outputs(
-    compute_results(datasets, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file))
+    compute_SBC(datasets, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file))
 
   expect_false(any(grepl("cache",  c(res_first$output, res_first$messages, res_first$warnings))))
 
   # Succesful load from cache
   expect_message(
-    compute_results(datasets, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
+    compute_SBC(datasets, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
     "loaded from cache"
     )
 
@@ -65,13 +65,13 @@ test_that("Result caching", {
   datasets_changed <- datasets
   datasets_changed[[3]] <- "a"
   expect_message(
-    compute_results(datasets_changed, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
+    compute_SBC(datasets_changed, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
     "datasets.*differ.*recompute"
     )
 
   # Now should be succesful
   expect_message(
-    compute_results(datasets_changed, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
+    compute_SBC(datasets_changed, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
     "loaded from cache"
   )
 
@@ -79,7 +79,7 @@ test_that("Result caching", {
   backend_changed <- backend
   backend_changed$result[5, "a"] <- 0
   expect_message(
-    compute_results(datasets_changed, backend_changed, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
+    compute_SBC(datasets_changed, backend_changed, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
     "backend.*differ.*recompute"
   )
 
