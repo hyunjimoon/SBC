@@ -31,7 +31,7 @@ model {
     log_omega[2, n] = poisson_log_lpmf(y[n] | log_mu[2]);
   }
 
-  log_mu[1] ~ normal(1, 1);
+  log_mu[1] ~ normal(-2, 1);
   log_mu[2] ~ normal(2, 1);
 
   // Initial state - we're quite sure we started with the source working
