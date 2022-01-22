@@ -1,12 +1,12 @@
 ---
-title: "SBC for ADVI in Stan (+HMMs)"
+title: "SBC for ADVI and optimizing in Stan (+HMMs)"
 author: "Hyunji Moon, Martin Modrák"
 date: "`r Sys.Date()`"
 output: 
   rmarkdown::html_vignette:
     toc: yes
 vignette: >
-  %\VignetteIndexEntry{SBC for ADVI in Stan (+HMMs)}
+  %\VignetteIndexEntry{SBC for ADVI and optimizing in Stan (+HMMs)}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---

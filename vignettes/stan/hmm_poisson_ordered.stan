@@ -1,6 +1,6 @@
 data {
   int N; // Number of observations
-  int y[N];
+  array[N] int y;
 }
 parameters {
   // Parameters of measurement model

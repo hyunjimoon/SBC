@@ -1,6 +1,6 @@
 data {
   int N; // Number of observations
-  int y[N];
+  array[N] int y;
 }
 parameters {
   // Parameters of measurement model
@@ -36,10 +36,10 @@ model {
   mu_signal ~ lognormal(2, 1);
 
   // Initial state - we're quite sure we started with the source working
-  rho ~ dirichlet([1, 10]');
+  rho ~ dirichlet([1, 10]);
 
-  t1 ~ dirichlet([3, 3]');
-  t2 ~ dirichlet([3, 3]');
+  t1 ~ dirichlet([3, 3]);
+  t2 ~ dirichlet([3, 3]);
 
   target += hmm_marginal(log_omega, Gamma, rho);
 }
