@@ -160,6 +160,99 @@ SBC_backend_hash_for_cache.SBC_backend_rstan_sample <- function(backend) {
   rlang::hash(list(model = backend$model@model_code, args = backend$args))
 }
 
+
+#' SBC backend using the `optimizing` method from `rstan`.
+#'
+#' @param model a `stanmodel` object (created via `rstan::stan_model`)
+#' @param ... other arguments passed to `optimizing` (number of iterations, ...).
+#'   Argument `data` cannot be set this way as they need to be
+#'   controlled by the package.
+#' @export
+SBC_backend_rstan_optimizing <- function(model, ...) {
+  stopifnot(inherits(model, "stanmodel"))
+  args <- list(...)
+  unacceptable_params <- c("data", "hessian")
+  if(any(names(args) %in% unacceptable_params)) {
+    stop(paste0("Parameters ", paste0("'", unacceptable_params, "'", collapse = ", "),
+                " cannot be provided when defining a backend as they need to be set ",
+                "by the SBC package"))
+  }
+
+  args$hessian <- TRUE
+  if(is.null(args$draws)) {
+    args$draws <- 1000
+  }
+  structure(list(model = model, args = args), class = "SBC_backend_rstan_optimizing")
+}
+
+
+#' @export
+SBC_fit.SBC_backend_rstan_optimizing <- function(backend, generated, cores) {
+  start <- proc.time()
+  fit <- do.call(rstan::optimizing,
+                 combine_args(list(object = backend$model,
+                                   data = generated),
+                              backend$args)
+  )
+  end <- proc.time()
+
+  if(fit$return_code != 0) {
+    stop("Optimizing was not succesful")
+  }
+
+  fit$time <- (end - start)["elapsed"]
+
+  structure(fit, class = "RStanOptimizingFit")
+}
+
+#' @export
+SBC_backend_hash_for_cache.SBC_backend_rstan_optimizing <- function(backend) {
+  rlang::hash(list(model = backend$model@model_code, args = backend$args))
+}
+
+#' @export
+SBC_fit_to_draws_matrix.RStanOptimizingFit <- function(fit) {
+  posterior::as_draws_matrix(fit$theta_tilde)
+}
+
+
+#' @export
+SBC_backend_iid_samples.SBC_backend_rstan_optimizing <- function(backend) {
+  TRUE
+}
+
+#' @export
+SBC_fit_to_diagnostics.RStanOptimizingFit <- function(fit, fit_output, fit_messages, fit_warnings) {
+  res <- data.frame(
+    time = fit$time
+  )
+
+  class(res) <- c("SBC_RStanOptimizing_diagnostics", class(res))
+  res
+}
+
+#' @export
+summary.SBC_RStanOptimizing_diagnostics <- function(x) {
+  summ <- list(
+    max_time = max(x$time)
+  )
+
+  structure(summ, class = "SBC_RStanOptimizing_diagnostics_summary")
+}
+
+#' @export
+get_diagnostic_messages.SBC_RStanOptimizing_diagnostics <- function(x) {
+  get_diagnostic_messages(summary(x))
+}
+
+
+#' @export
+get_diagnostic_messages.SBC_RStanOptimizing_diagnostics_summary <- function(x) {
+  SBC_diagnostic_messages(
+    data.frame(ok = TRUE, message = paste0("Maximum time was ", x$max_time, " sec."))
+  )
+}
+
 #' @export
 summary.SBC_nuts_diagnostics <- function(diagnostics) {
   summ <- list(

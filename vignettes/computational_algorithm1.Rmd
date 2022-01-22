@@ -1,12 +1,12 @@
 ---
-title: "SBC for ADVI in Stan (+HMMs)"
+title: "SBC for ADVI and optimizing in Stan (+HMMs)"
 author: "Hyunji Moon, Martin Modrák"
 date: "`r Sys.Date()`"
 output: 
   rmarkdown::html_vignette:
     toc: yes
 vignette: >
-  %\VignetteIndexEntry{SBC for ADVI in Stan (+HMMs)}
+  %\VignetteIndexEntry{SBC for ADVI and optimizing in Stan (+HMMs)}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
@@ -21,11 +21,11 @@ penalizing tendencies of convergence metric, and slow convergence of the
 optimization process. We'll discuss 3 examples: 
 
 - In Example I a simple Poisson model is shown that is
-well handled by default ADVI if the size of the data is small, but becomes miscalibrated with larger datasets.
+well handled by default ADVI if the size of the data is small, but becomes miscalibrated with larger datasets. It also turns out that for such a simple model using `optimizing` leads to very good results.
 
-- In Example II we discuss a Hidden Markov Model where the approximation by ADVI is imperfect but not very wrong. We also show how the (mis)calibration responds to changing parameters of the ADVI implementation.
+- In Example II we discuss a Hidden Markov Model where the approximation by ADVI is imperfect but not very wrong. We also show how the (mis)calibration responds to changing parameters of the ADVI implementation and that `optimizing` performs worse than ADVI.
 
-- In Example III we show that a small modification to the model from Example II  makes the ADVI approximation almost useless.
+- In Example III we show that a small modification to the model from Example II  makes the ADVI approximation perform much worse.
 
 When the fit between posterior and approximation family, convergence metric and
 its process are checked so that efficiency is gained without sacrificing
@@ -51,16 +51,13 @@ ever needing to run full HMC for your model.
 Let's start by setting up our environment. 
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
-library(SBC); 
+library(SBC)
 library(ggplot2)
-# use_cmdstanr <- TRUE # Set to false to use rstan instead
-# 
-# if(use_cmdstanr) {
-#   library(cmdstanr)
-# } else {
-#   library(rstan)
-# }
 library(cmdstanr)
+
+library(rstan)
+rstan_options(auto_write = TRUE)
+
 
 options(mc.cores = parallel::detectCores())
 
@@ -153,6 +150,8 @@ To put this in different terms we can look at the observed coverage of central 5
 empirical_coverage(res_poisson$stats,width = c(0.95, 0.8, 0.5))
 ```
 
+
+
 ## Is more data better?
 
 One would expect that the normal approximation implemented in ADVI becomes better with increased size of the data, this is however not necessarily true - let's run the same model, but increase `N` - the number of observed data points:
@@ -164,7 +163,7 @@ ds_poisson_100 <- generate_datasets(
   n_datasets = 1000)
 res_poisson_100 <- 
   compute_results(ds_poisson_100, backend_poisson, keep_fits = FALSE,
-                  cache_mode = "none", cache_location = file.path(cache_dir, "poisson_100"))
+                  cache_mode = "results", cache_location = file.path(cache_dir, "poisson_100"))
 ```
 
 In this case the model becomes clearly overconfident:
@@ -180,9 +179,55 @@ The empirical coverage of the central intervals confirms this:
 empirical_coverage(res_poisson_100$stats,width = c(0.95, 0.8, 0.5))
 ```
 
+## Optimizing
+
+If the model is so simple, maybe a simple Laplace approximation around
+the posterior mode would suffice? We can use Stan's `optimizing` mode exactly
+for that. Although unfortunately, this is currently implemented only in `rstan`
+and not for `cmdstanr` (because the underlying CmdStan does not expose the 
+Hessian of the optimizing fit).
+
+So let us build an optimizing backend
+
+```{r}
+model_poisson_rstan <- stan_model("stan/poisson.stan")
+backend_poisson_optimizing <- SBC_backend_rstan_optimizing(model_poisson_rstan)
+```
+
+and use it to fit the same datasets - first to the one with `N = 20`.
+
+```{r}
+res_poisson_optimizing <- 
+  compute_results(ds_poisson, backend_poisson_optimizing, keep_fits = FALSE,
+    cache_mode = "results", cache_location = file.path(cache_dir, "poisson_opt"))
+```
+
+The resulting ECDF and rank plots are very good.
+
+```{r ecdf_rank_poisson_optimizing}
+plot_ecdf_diff(res_poisson_optimizing)
+plot_rank_hist(res_poisson_optimizing)
+```
+
+Similarly, we can fit the `N = 100` datasets.
+
+```{r}
+res_poisson_optimizing_100 <- 
+  compute_results(ds_poisson_100, backend_poisson_optimizing, keep_fits = FALSE,
+    cache_mode = "results", cache_location = file.path(cache_dir, "poisson_opt_100"))
+```
+
+The resulting rank plot once again indicates no serious issues and we thus get
+better results here than with ADVI.
+
+```{r ecdf_rank_poisson_optimizing_100}
+plot_ecdf_diff(res_poisson_optimizing_100)
+plot_rank_hist(res_poisson_optimizing_100)
+```
+
 ## Summary
 
-We see that for simple models ADVI can provide very tight approximation to exact inference, but this cannot be taken for granted. Surprisingly, having more data does not make the ADVI approximation necessarily better.
+We see that for simple models ADVI can provide very tight approximation to exact inference, but this cannot be taken for granted. Surprisingly, having more data does not make the ADVI approximation necessarily better. Additionally, for such simple models, a simple Laplace approximation around the posterior mode works better (and likely faster) than ADVI.
 
 # Example II - Hidden Markov Model
 
@@ -439,9 +484,37 @@ empirical_coverage(res_hmm_lowtol$stats, width = 0.9)[, c("parameter", "ci_low",
 
 This variant has somewhat lower overall mismatch, but tends to be overconfident, which might in some cases be less desirable than the more conservative fullrank.
 
+## Optimizing
+
+Would optimizing provide sensible results in this case? We build an optimizng backend and run it.
+
+```{r}
+SBC:::require_package_version("rstan", "2.26", "The models in the following sections need more recent rstan than what is available on CRAN - use https://mc-stan.org/r-packages/ to get it")
+
+model_HMM_rstan <- stan_model("stan/hmm_poisson.stan")
+
+res_hmm_optimizing <- compute_results(
+  ds_hmm_all, 
+  SBC_backend_rstan_optimizing(model_HMM_rstan),
+  cache_mode = "results", cache_location = file.path(cache_dir, "hmm_optimizing"))
+```
+
+
+
+
+
+We see that while for some parameters (`mu_signal`, the transition probabilities `t[]`), the Laplace approximation is reasonably well calibrated, it is very
+badly calibrated with respect to the initial states `rho` and also for `mu_background`, where there is substantial bias. So if we were only interested in
+a subset of the parameters, the optimizing fit could still be on OK choice.
+
+```{r hmm_optimizing_ecdf_ranks}
+plot_ecdf_diff(res_hmm_optimizing)
+plot_rank_hist(res_hmm_optimizing)
+```
+
 ## Summary
 
-To summarise, the HMM model turns out to pose minor problems for ADVI that can be partially resolved by tweaking the parameters of the ADVI algorithm.
+To summarise, the HMM model turns out to pose minor problems for ADVI that can be partially resolved by tweaking the parameters of the ADVI algorithm. Just using optimizing results in much worse calibration than ADVI.
 
 Another relevant question is how much speed we gained. To have a comparison, we run full MCMC with Stan for the same datasets.
 
@@ -461,18 +534,31 @@ plot_rank_hist(res_hmm_sample)
 ```
 
 For the machine we built the vignette on, here are the distributions
-of times (for ADVI) and time of longest chain (for HMC):
+of times (for ADVI and optimizing) and time of longest chain (for HMC):
 
 ```{r hmm_time}
 hmm_time <- 
-  rbind(data.frame(alg = "Meanfield", 
-                   time = res_hmm$backend_diagnostics$time),
+  rbind(
+      data.frame(alg = "Optimizing", 
+                     time = res_hmm_optimizing$backend_diagnostics$time),
+      data.frame(alg = "Meanfield", 
+                     time = res_hmm$backend_diagnostics$time),
         data.frame(alg = "Fullrank", 
                    time = res_hmm_fullrank$backend_diagnostics$time),
         data.frame(alg = "Meanfield + low tol.", 
                    time = res_hmm_lowtol$backend_diagnostics$time),
         data.frame(alg = "Sampling (longest chain)", 
                    time = res_hmm_sample$backend_diagnostics$max_chain_time))
+
+max_time_optimizing <- round(max(res_hmm_optimizing$backend_diagnostics$time), 2)
+
+
+hmm_time$alg <- factor(hmm_time$alg, 
+                       levels = c("Optimizing",
+                                  "Meanfield",
+                                  "Fullrank",
+                                  "Meanfield + low tol.",
+                                  "Sampling (longest chain)"))
  
 ggplot(hmm_time, aes(x = time)) + 
   geom_histogram(aes(y = ..density..), bins = 20) + 
@@ -482,7 +568,7 @@ ggplot(hmm_time, aes(x = time)) +
 
 Depressingly, while using lower tolerance let us get almost as good uncertainty
 quantification as sampling, it also erased a big part of the performance advantage variational
-inference had over sampling for this model. However, both the fullrank and meanfield approximations provide not-terrible estimates and are noticeably faster than sampling.
+inference had over sampling for this model. However, both the fullrank and meanfield approximations provide not-terrible estimates and are noticeably faster than sampling. Optimizing is by far the fastest as the longest time observed is just `r max_time_optimizing` seconds.
 
 
 
@@ -601,10 +687,28 @@ plot_ecdf_diff(res_hmm_ordered_fullrank)
 plot_rank_hist(res_hmm_ordered_fullrank)
 ```
 
+To have a complete overview we may also try the optimizing fit:
+
+```{r}
+model_HMM_ordered_rstan <- stan_model("stan/hmm_poisson_ordered.stan")
+
+res_hmm_ordered_optimizing <- compute_results(
+  ds_hmm_ordered, 
+  SBC_backend_rstan_optimizing(model_HMM_ordered_rstan),
+  cache_mode = "results", cache_location = file.path(cache_dir, "hmm_ordered_optimizing"))
+```
+
+in this case, optimizing has better calibration for `log_mu`, but worse calibration for `rho` than ADVI.
+
+```{r hmm_ordered_optimizing_ecdf_ranks}
+plot_ecdf_diff(res_hmm_ordered_optimizing)
+plot_rank_hist(res_hmm_ordered_optimizing)
+```
+
 # Conclusion
 
 As this vignette has shown, for some models, ADVI will provide results that are 
-close to what we get with sampling, but it may also fail catastrophically on models that are just slightly different. Tweaking the algorithm parameters might also be necessary. ADVI cannot thus be used blindly. Fortunately SBC can be used to check against this type of problem without ever needing to run the full sampling.
+close to what we get with sampling, but it may also fail catastrophically on models that are just slightly different. Tweaking the algorithm parameters might also be necessary. For some cases where ADVI works, the Laplace approximation with optimizing will also work well. ADVI (and optimizng) cannot thus be used blindly. Fortunately SBC can be used to check against this type of problem without ever needing to run the full sampling.
 
 # Next step: Evolving computation and diagnostic.
 
