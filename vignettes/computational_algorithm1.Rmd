@@ -489,6 +489,8 @@ This variant has somewhat lower overall mismatch, but tends to be overconfident,
 Would optimizing provide sensible results in this case? We build an optimizng backend and run it.
 
 ```{r}
+SBC:::require_package_version("rstan", "2.26", "The models in the following sections need more recent rstan than what is available on CRAN - use https://mc-stan.org/r-packages/ to get it")
+
 model_HMM_rstan <- stan_model("stan/hmm_poisson.stan")
 
 res_hmm_optimizing <- compute_results(
@@ -496,6 +498,9 @@ res_hmm_optimizing <- compute_results(
   SBC_backend_rstan_optimizing(model_HMM_rstan),
   cache_mode = "results", cache_location = file.path(cache_dir, "hmm_optimizing"))
 ```
+
+
+
 
 
 We see that while for some parameters (`mu_signal`, the transition probabilities `t[]`), the Laplace approximation is reasonably well calibrated, it is very
@@ -509,7 +514,7 @@ plot_rank_hist(res_hmm_optimizing)
 
 ## Summary
 
-To summarise, the HMM model turns out to pose minor problems for ADVI that can be partially resolved by tweaking the parameters of the ADVI algorithm.
+To summarise, the HMM model turns out to pose minor problems for ADVI that can be partially resolved by tweaking the parameters of the ADVI algorithm. Just using optimizing results in much worse calibration than ADVI.
 
 Another relevant question is how much speed we gained. To have a comparison, we run full MCMC with Stan for the same datasets.
 
@@ -545,6 +550,9 @@ hmm_time <-
         data.frame(alg = "Sampling (longest chain)", 
                    time = res_hmm_sample$backend_diagnostics$max_chain_time))
 
+max_time_optimizing <- round(max(res_hmm_optimizing$backend_diagnostics$time), 2)
+
+
 hmm_time$alg <- factor(hmm_time$alg, 
                        levels = c("Optimizing",
                                   "Meanfield",
@@ -560,7 +568,7 @@ ggplot(hmm_time, aes(x = time)) +
 
 Depressingly, while using lower tolerance let us get almost as good uncertainty
 quantification as sampling, it also erased a big part of the performance advantage variational
-inference had over sampling for this model. However, both the fullrank and meanfield approximations provide not-terrible estimates and are noticeably faster than sampling.
+inference had over sampling for this model. However, both the fullrank and meanfield approximations provide not-terrible estimates and are noticeably faster than sampling. Optimizing is by far the fastest as the longest time observed is just `r max_time_optimizing` seconds.
 
 
 
@@ -679,10 +687,28 @@ plot_ecdf_diff(res_hmm_ordered_fullrank)
 plot_rank_hist(res_hmm_ordered_fullrank)
 ```
 
+To have a complete overview we may also try the optimizing fit:
+
+```{r}
+model_HMM_ordered_rstan <- stan_model("stan/hmm_poisson_ordered.stan")
+
+res_hmm_ordered_optimizing <- compute_results(
+  ds_hmm_ordered, 
+  SBC_backend_rstan_optimizing(model_HMM_ordered_rstan),
+  cache_mode = "results", cache_location = file.path(cache_dir, "hmm_ordered_optimizing"))
+```
+
+in this case, optimizing has better calibration for `log_mu`, but worse calibration for `rho` than ADVI.
+
+```{r hmm_ordered_optimizing_ecdf_ranks}
+plot_ecdf_diff(res_hmm_ordered_optimizing)
+plot_rank_hist(res_hmm_ordered_optimizing)
+```
+
 # Conclusion
 
 As this vignette has shown, for some models, ADVI will provide results that are 
-close to what we get with sampling, but it may also fail catastrophically on models that are just slightly different. Tweaking the algorithm parameters might also be necessary. ADVI cannot thus be used blindly. Fortunately SBC can be used to check against this type of problem without ever needing to run the full sampling.
+close to what we get with sampling, but it may also fail catastrophically on models that are just slightly different. Tweaking the algorithm parameters might also be necessary. For some cases where ADVI works, the Laplace approximation with optimizing will also work well. ADVI (and optimizng) cannot thus be used blindly. Fortunately SBC can be used to check against this type of problem without ever needing to run the full sampling.
 
 # Next step: Evolving computation and diagnostic.
 
