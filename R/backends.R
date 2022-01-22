@@ -55,32 +55,32 @@ SBC_backend_hash_for_cache.default <- function(backend) {
   rlang::hash(backend)
 }
 
-#' S3 generic to let backends signal that they produced independent samples.
+#' S3 generic to let backends signal that they produced independent draws.
 #'
 #' Most backends (e.g. those based on variatns of MCMC) don't produce
-#' independent samples and thus diagnostics like Rhat and ESS are important
-#' and samples may need thinning. Backends that already produce independent
-#' samples (e.g. ADVI/optimizing) can implement this method to return `TRUE`
+#' independent draws and thus diagnostics like Rhat and ESS are important
+#' and draws may need thinning. Backends that already produce independent
+#' draws (e.g. ADVI/optimizing) can implement this method to return `TRUE`
 #' to signal this is the case. If this method returns `TRUE`, ESS and Rhat will
 #' always attain their best possible values and [SBC_backend_default_thin_ranks()]
 #' will return `1`.
 #'  The default implementation returns `FALSE`.
 #' @param backend to check
 #' @export
-SBC_backend_iid_samples <- function(backend) {
-  UseMethod("SBC_backend_iid_samples")
+SBC_backend_iid_draws <- function(backend) {
+  UseMethod("SBC_backend_iid_draws")
 }
 
-#' @rdname SBC_backend_iid_samples
+#' @rdname SBC_backend_iid_draws
 #' @export
-SBC_backend_iid_samples.default <- function(backend) {
+SBC_backend_iid_draws.default <- function(backend) {
   FALSE
 }
 
 #' S3 generic to get backend-specific default thinning for rank computation.
 #'
 #' The default implementation plays it relatively safe and returns 10, unless
-#' [SBC_backend_iid_samples()] returns `TRUE` in which case it returns 1.
+#' [SBC_backend_iid_draws()] returns `TRUE` in which case it returns 1.
 #'
 #' @export
 SBC_backend_default_thin_ranks <- function(backend) {
@@ -90,7 +90,7 @@ SBC_backend_default_thin_ranks <- function(backend) {
 #' @rdname SBC_backend_default_thin_ranks
 #' @export
 SBC_backend_default_thin_ranks.default <- function(backend) {
-  if(SBC_backend_iid_samples(backend)) {
+  if(SBC_backend_iid_draws(backend)) {
     1
   } else {
     10
@@ -135,7 +135,7 @@ SBC_fit.SBC_backend_rstan_sample <- function(backend, generated, cores) {
             ))
 
   if(fit@mode != 0) {
-    stop("Fit does not contain samples.")
+    stop("Fit does not contain draws.")
   }
 
   fit
@@ -217,7 +217,7 @@ SBC_fit_to_draws_matrix.RStanOptimizingFit <- function(fit) {
 
 
 #' @export
-SBC_backend_iid_samples.SBC_backend_rstan_optimizing <- function(backend) {
+SBC_backend_iid_draws.SBC_backend_rstan_optimizing <- function(backend) {
   TRUE
 }
 
@@ -548,7 +548,7 @@ SBC_fit_to_draws_matrix.CmdStanVB <- function(fit) {
 }
 
 #' @export
-SBC_backend_iid_samples.SBC_backend_cmdstan_variational <- function(backend) {
+SBC_backend_iid_draws.SBC_backend_cmdstan_variational <- function(backend) {
   TRUE
 }
 

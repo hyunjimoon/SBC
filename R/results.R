@@ -267,7 +267,7 @@ compute_results <- function(...) {
 #' # Thinning
 #'
 #' When using backends based on MCMC, there are two possible moments when
-#' samples may need to be thinned. They can be thinned directly within the backend
+#' draws may need to be thinned. They can be thinned directly within the backend
 #' and they may be thinned only to compute the ranks for SBC as specified by the
 #' `thin_ranks` argument. The main reason those are separate is that computing the
 #' ranks requires no or negligible autocorrelation while some autocorrelation
@@ -281,7 +281,7 @@ compute_results <- function(...) {
 #' it might be sensible to thin quite aggressively already in the backend and
 #' then have some additional thinning via `thin_ranks`.
 #'
-#' Backends that don't require thining should implement [SBC_backend_iid_samples()]
+#' Backends that don't require thining should implement [SBC_backend_iid_draws()]
 #' or [SBC_backend_default_thin_ranks()] to avoid thinning by default.
 #'
 #' @param datasets an object of class `SBC_datasets`
@@ -299,9 +299,9 @@ compute_results <- function(...) {
 #'    We recommend to set to `TRUE` in early phases of workflow, when you run just a few fits.
 #'    Once the model is stable and you want to run a lot of iterations, we recommend setting
 #'    to `FALSE` (even for quite a simple model, 1000 fits can easily exhaust 32GB of RAM).
-#' @param thin_ranks how much thinning should be applied to posterior samples before computing
+#' @param thin_ranks how much thinning should be applied to posterior draws before computing
 #'    ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
-#'    thinned samples.
+#'    thinned draws See details below.
 #' @param chunk_size How many simulations within the `datasets` shall be processed in one batch
 #'    by the same worker. Relevant only when using parallel processing.
 #'    The larger the value, the smaller overhead there will be for parallel processing, but
@@ -704,8 +704,8 @@ statistics_from_single_fit <- function(fit, parameters, generated,
 
   stats <- posterior::summarise_draws(fit_matrix)
 
-  if(SBC_backend_iid_samples(backend)) {
-    ## iid samples have the bestest diagnostics by construction
+  if(SBC_backend_iid_draws(backend)) {
+    ## iid draws have the bestest diagnostics by construction
     stats$rhat <- 1
     stats$ess_bulk <- posterior::ndraws(fit_matrix)
     stats$ess_tail <- posterior::ndraws(fit_matrix)
@@ -736,8 +736,8 @@ check_stats <- function(stats, datasets, thin_ranks) {
   }
 
   if(min(unique_max_ranks) < 50) {
-    warning("Ranks were computed from fewer than 50 samples, the SBC checks will have low ",
-            "precision.\nYou may need to increase the number of samples from the backend and make sure that ",
+    warning("Ranks were computed from fewer than 50 draws, the SBC checks will have low ",
+            "precision.\nYou may need to increase the number of draws from the backend and make sure that ",
             "the combination of thinning in the backend and `thin_ranks` is sensible.\n",
             "Currently thin_ranks = ", thin_ranks, ".")
 
@@ -1057,7 +1057,7 @@ get_diagnostic_messages.SBC_results_summary <- function(x) {
   if(x$n_low_ess_to_rank > 0) {
     msg <- paste0(x$n_low_ess_to_rank, " (", round(100 * x$n_low_ess_to_rank / x$n_fits), "%) fits had tail ESS undefined or less than ",
                   "half of the maximum rank, potentially skewing \nthe rank statistics. The lowest tail ESS was ", round(x$min_min_ess_tail),
-                  ".\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) \nor number of posterior samples (by refitting) might help.")
+                  ".\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) \nor number of posterior draws (by refitting) might help.")
     message_list[[i]] <- data.frame(ok = FALSE, message = msg)
   } else {
     message_list[[i]] <- data.frame(ok = TRUE, message = "All fits had tail ESS > half of the maximum rank.")

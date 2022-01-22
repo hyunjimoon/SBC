@@ -37,9 +37,9 @@ We recommend to set to \code{TRUE} in early phases of workflow, when you run jus
 Once the model is stable and you want to run a lot of iterations, we recommend setting
 to \code{FALSE} (even for quite a simple model, 1000 fits can easily exhaust 32GB of RAM).}
 
-\item{thin_ranks}{how much thinning should be applied to posterior samples before computing
+\item{thin_ranks}{how much thinning should be applied to posterior draws before computing
 ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
-thinned samples.}
+thinned draws See details below.}
 
 \item{chunk_size}{How many simulations within the \code{datasets} shall be processed in one batch
 by the same worker. Relevant only when using parallel processing.
@@ -79,7 +79,7 @@ of the \code{future} package.
 
 \section{Thinning}{
 When using backends based on MCMC, there are two possible moments when
-samples may need to be thinned. They can be thinned directly within the backend
+draws may need to be thinned. They can be thinned directly within the backend
 and they may be thinned only to compute the ranks for SBC as specified by the
 \code{thin_ranks} argument. The main reason those are separate is that computing the
 ranks requires no or negligible autocorrelation while some autocorrelation
@@ -93,7 +93,7 @@ the residual autocorrelation. For a backend based on Metropolis-Hastings,
 it might be sensible to thin quite aggressively already in the backend and
 then have some additional thinning via \code{thin_ranks}.
 
-Backends that don't require thining should implement \code{\link[=SBC_backend_iid_samples]{SBC_backend_iid_samples()}}
+Backends that don't require thining should implement \code{\link[=SBC_backend_iid_draws]{SBC_backend_iid_draws()}}
 or \code{\link[=SBC_backend_default_thin_ranks]{SBC_backend_default_thin_ranks()}} to avoid thinning by default.
 }
 

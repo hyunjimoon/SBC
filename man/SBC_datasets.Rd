@@ -7,7 +7,7 @@
 SBC_datasets(parameters, generated)
 }
 \arguments{
-\item{parameters}{samples of "true" values of unobserved parameters.
+\item{parameters}{draws of "true" values of unobserved parameters.
 An object of class \code{draws_matrix} (from the \code{posterior} package)}
 
 \item{generated}{a list of objects that can be passed as data to the backend you plan to use.

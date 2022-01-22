@@ -2,19 +2,19 @@
 % Please edit documentation in R/metric.R
 \name{set2set}
 \alias{set2set}
-\title{Summarize relational property of overall prior and posterior samples}
+\title{Summarize relational property of overall prior and posterior draws}
 \usage{
 set2set(priors, posteriors, par, bins = 20)
 }
 \arguments{
-\item{priors}{A posterior::draws_rvars of dimension(n_iterations=1, n_chains=n_sbc_iterations, n_variables=n_variables) which stores prior samples}
+\item{priors}{A posterior::draws_rvars of dimension(n_iterations=1, n_chains=n_sbc_iterations, n_variables=n_variables) which stores prior draws}
 
-\item{posteriors}{A posterior::draws_Rvars of dimension(n_iterations=n_posterior_samples, n_chains=n_sbc_iterations, n_variables=n_variables), which stores fitted posterior samples}
+\item{posteriors}{A posterior::draws_Rvars of dimension(n_iterations=n_posterior_samples, n_chains=n_sbc_iterations, n_variables=n_variables), which stores fitted posterior draws}
 
 \item{par}{names of parameter to summarize}
 
 \item{bins}{number of bins for prior and post density}
 }
 \description{
-Summarize relational property of overall prior and posterior samples
+Summarize relational property of overall prior and posterior draws
 }

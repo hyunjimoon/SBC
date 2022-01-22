@@ -14,16 +14,16 @@ vignette: >
 SBC stands for "simulation-based calibration" and it is a tool
 to validate statistical models and/or algorithms fitting those models. 
 In SBC we are given a statistical model, 
-a method to generate samples from the prior predictive distribution 
+a method to generate draws from the prior predictive distribution 
 (i.e. generate simulated datasets that match the model's priors + likelihood) 
 and an algorithm that fits the model to data.
 
 The rough sketch of SBC is that we simulate some datasets and then for each dataset:
 
-1. Fit the model and obtain $S$ independent samples from the posterior.
+1. Fit the model and obtain $D$ independent draws from the posterior.
 2. For each parameter, take the rank of the simulated parameter value within the
-   posterior samples
-   - Where rank is defined as the number of samples < simulated value
+   posterior draws
+   - Where rank is defined as the number of draws < simulated value
 
 It can be shown that if model matched the generator and algorithm works correctly,
 then for each parameter, the ranks obtained in SBC should be uniformly distributed between $0$ and $S$.
@@ -100,14 +100,14 @@ thus tends to very small.
 
 
 To perform SBC, one needs to first generate simulated datasets and then fit the
-model to those datasets. The `SBC_datasets` object holds the simulated prior and data samples. 
+model to those datasets. The `SBC_datasets` object holds the simulated prior and data draws. 
 `SBC_datasets` objects can be created directly by the user, but it is often easier to use one
 of provided _Generator_ implementations that let you e.g. wrap a function  that returns the parameters and simulated data for a single dataset or use a `brms` specification to generate
-samples corresponding to a given `brms` model. 
+draws corresponding to a given `brms` model. 
 
 The other big part of the process is a  _backend_.
-The SBC package uses a backend object to actually fit the model to the simulated data and generate posterior samples. In short, backend bunches together the algorithm in which inference is ran (`cmdstanr`, `rstan`, `brms`, `jags`, etc.), the model, and additional platform-specific inference parameters which are necessary to run inference for the model-platform combination (e.g. number of iterations, initial values, ...). 
-In other words backend is a function that takes data as its only input and provides posterior samples.
+The SBC package uses a backend object to actually fit the model to the simulated data and generate posterior draws. In short, backend bundles together the algorithm in which inference is run (`cmdstanr`, `rstan`, `brms`, `jags`, etc.), the model, and additional platform-specific inference parameters which are necessary to run inference for the model-platform combination (e.g. number of iterations, initial values, ...). 
+In other words backend is a function that takes data as its only input and provides posterior draws.
 
 Once we have a backend and an `SBC_datasets` instance, we can call `compute_results` 
 to actually perform the SBC. The resulting object can then be passed to various plotting 
@@ -172,7 +172,7 @@ if(use_cmdstanr) {
 
 ### Generator
 
-Once we have defined the model, we can create a generator function which will generate prior and data samples:
+Once we have defined the model, we can create a generator function which will generate prior and data draws:
 
 ```{r}
 # A generator function should return a named list containing elements "parameters" and "generated"
@@ -192,7 +192,7 @@ poisson_generator_single <- function(N){  # N is the number of data points we ar
 }
 ```
 
-As you can see, the generator returns a named list containing random samples from the prior and generated data realized from the prior samples - the data are already in the format expected by Stan.
+As you can see, the generator returns a named list containing random draws from the prior and generated data realized from the prior draws - the data are already in the format expected by Stan.
 
 ### Create `SBC_Datasets` from generator
 

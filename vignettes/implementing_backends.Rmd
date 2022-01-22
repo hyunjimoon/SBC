@@ -13,7 +13,7 @@ vignette: >
 
 This vignette will discuss how to implement a new type of backend for the SBC package
 and thus allow you to integrate the SBC package with any method/algorithm that
-can produce samples.
+can produce draws from a posterior distribution or its approximation.
 As an example, we'll wrap the base R `glm` function as a backend. This will
 also let us discuss how we can treat frequentist models as approximations to
 Bayesian models and that SBC can tell us how faithful such an approximation is.
@@ -41,7 +41,7 @@ if(!dir.exists(cache_dir)) {
 ## Minimal backend support
 
 If you remember from the, [interface introduction vignette](https://hyunjimoon.github.io/SBC/articles/basic_usage.html)
-a backend for the SBC package describes a function that takes in data and produces samples,
+a backend for the SBC package describes a function that takes in data and produces posterior draws,
 i.e. the backend holds all the information other than data that are needed to 
 run the given statistical method. 
 
@@ -50,7 +50,7 @@ there is an S3 generic [`SBC_fit()`](https://hyunjimoon.github.io/SBC/reference/
 that takes a backend object, dataset and the number of cores it is allowed to use
 and produces an arbitrary object representing the fit. Additionally,
 there is an `SBC_fit_to_draws_matrix()` S3 generic that takes in the resulting fit
-and returns posterior samples in the `posterior::draws_matrix` format. 
+and returns posterior draws in the `posterior::draws_matrix` format. 
 The split here is useful because it lets the `SBC_results` object to store the
 raw fit objects, which can then be inspected by user for debugging purposes.
 The SBC package
@@ -108,7 +108,7 @@ In this way we can see `glm` as an approximate Bayesian method where:
 
 And that's exactly what we'll do: the `coef` method for `glm` fit returns the
 MLE and the `vcov` method returns the variance-covariance matrix implied by the
-Hessian, so all we need is to take a bunch of samples (here 1000) from this
+Hessian, so all we need is to take a bunch of draws (here 1000) from this
 multivariate normal. Therefore, the implementation is also very simple:
 
 ```{r}
@@ -160,7 +160,7 @@ res_poisson <- compute_results(datasets_poisson,
 ```
 
 
-We have set `thin_ranks = 1` as no thinning is needed (the samples are i.i.d. by
+We have set `thin_ranks = 1` as no thinning is needed (the draws are i.i.d. by
 construction).
 
 The rank and ecdf plots show no big problems
@@ -189,13 +189,13 @@ comfortable to use. Let's walk through the options and se and how they can be im
 `glm` wrapper.
 
 Since (unlike MCMC methods) the `glm` approximation does 
-not produce autocorrelated samples, we can implement `SBC_backend_iid_samples`
+not produce autocorrelated draws, we can implement `SBC_backend_iid_draws`
 to return `TRUE`. The SBC package will then by default use `thin_ranks = 1`
 argument to `compute_results` and will not assess convergence/autocorrelation via the
 R-hat and ESS diagnostics.
 
 ```{r}
-SBC_backend_iid_samples.SBC_backend_glm <- function(backend) {
+SBC_backend_iid_draws.SBC_backend_glm <- function(backend) {
   TRUE
 }
 ```
@@ -312,7 +312,7 @@ about parallel support.
 
 SBC uses the `future` package to allow paralellization. This means that
 when user sets up a parallel environment (e.g. via `plan(multisession)`),
-the `SBC_fit()`, `SBC_fit_to_draws_matrix()`  and `SBC_backend_iid_samples()`
+the `SBC_fit()`, `SBC_fit_to_draws_matrix()`  and `SBC_backend_iid_draws()`
 implementations will run in a fresh session. To make this work smoothly,
 the functions should call non-base R functions explicitly via namespace declaration 
 (e.g. note that we call `MASS::mvrnorm`, not just `mvrnorm`).
@@ -327,7 +327,7 @@ all workers i.e. use:
 ```
 compute_results(..., globals = c("SBC_fit.SBC_backend_glm", 
                                  "SBC_fit_to_draws_matrix.glm",
-                                 "SBC_backend_iid_samples.SBC_backend_glm"))
+                                 "SBC_backend_iid_draws.SBC_backend_glm"))
 
 ```
 

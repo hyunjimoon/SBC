@@ -2,7 +2,7 @@
 % Please edit documentation in R/metric.R
 \name{rank2unif}
 \alias{rank2unif}
-\title{Distance between binned samples (rank for SBC) and discrete uniform}
+\title{Distance between binned draws (rank for SBC) and discrete uniform}
 \usage{
 rank2unif(results, par, bins = 20)
 }
@@ -16,5 +16,5 @@ rank2unif(results, par, bins = 20)
 \item{thin}{integer in which thinning was applied}
 }
 \description{
-Distance between binned samples (rank for SBC) and discrete uniform
+Distance between binned draws (rank for SBC) and discrete uniform
 }

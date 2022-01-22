@@ -34,7 +34,7 @@ validate_SBC_datasets <- function(x) {
 #' In most cases, you may want to use `generate_datasets` to build the object, but
 #' for full control, you can also create datasets directly via this function.
 #'
-#' @param parameters samples of "true" values of unobserved parameters.
+#' @param parameters draws of "true" values of unobserved parameters.
 #' An object of class `draws_matrix` (from the `posterior` package)
 #' @param generated a list of objects that can be passed as data to the backend you plan to use.
 #' (e.g. list of values for Stan-based backends, a data frame for `SBC_backend_brms`)

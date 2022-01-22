@@ -61,7 +61,7 @@ with custom generators in a while. For now, we'll build a generator using `brms`
 
 Generating datasets with this generator requires us to compile a Stan model 
 and may thus take a while. Also the exploration is often problematic, so 
-to avoid problems, we take a lot of samples and thin the resulting samples heavily.
+to avoid problems, we take a lot of draws and thin the resulting draws heavily.
 
 ```{r}
 # We need a "template dataset" to let brms build the model.
@@ -195,7 +195,7 @@ set.seed(12239755)
 datasets_func <- generate_datasets(n_dataset_generator, 100)
 ```
 
-This is then our `brms` backend - note that `brms` requires us to provide a sample
+This is then our `brms` backend - note that `brms` requires us to provide a
 dataset that it will use to build the model (e.g. to see how many levels of 
 various varying intercepts to include):
 

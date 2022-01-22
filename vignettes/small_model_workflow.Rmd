@@ -275,7 +275,7 @@ We also need to update the generator to match the new names and ordering constan
 generator_func_ordered <- function(N) {
   # If the priors for all components of an ordered vector are the same
   # then just sorting the result of a generator is enough to create
-  # a valid sample from the ordered vector
+  # a valid draw from the ordered vector prior
   mu <- sort(rnorm(2, 3, 1)) 
   theta <- runif(1)
   
@@ -785,7 +785,7 @@ And this is our generator for the full model:
 generator_func_combined <- function(N_obs, N_predictors) {
   # If the priors for all components of an ordered vector are the same
   # then just sorting the result of a generator is enough to create
-  # a valid sample from the ordered vector
+  # a valid draw from the ordered vector prior
   mu <- sort(rnorm(2, 3, 1)) 
   
   beta <- rnorm(N_predictors, 0, 1)
@@ -886,7 +886,7 @@ generator_func_combined_reject <- function(N_obs, N_predictors) {
   repeat {
     # If the priors for all components of an ordered vector are the same
     # then just sorting the result of a generator is enough to create
-    # a valid sample from the ordered vector
+    # a valid draw from the ordered vector prior
     mu <- sort(rnorm(2, 3, 1)) 
     
     beta <- rnorm(N_predictors, 0, 1)
