@@ -478,7 +478,7 @@ This corresponds to dataset where the outcome is the same for all
 rows where the treatment was used:
 
 ```{r}
-biggest_sd_dataset <- res_indo_simple$stats$dataset_id[
+biggest_sd_dataset <- res_indo_simple$stats$sim_id[
   which.max(res_indo_simple$stats$sd)]
 table(datasets_indo_simple$generated[[biggest_sd_dataset]][c("outcome", "rx")])
 ```

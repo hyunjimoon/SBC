@@ -25,7 +25,7 @@ SBC_results <- function(stats,
 }
 
 compute_default_diagnostics <- function(stats) {
-  dplyr::summarise(dplyr::group_by(stats, dataset_id),
+  dplyr::summarise(dplyr::group_by(stats, sim_id),
                    n_params = dplyr::n(),
                    max_rhat = max(c(-Inf, rhat)),
                    min_ess_bulk = min(c(Inf, ess_bulk)),
@@ -39,6 +39,11 @@ validate_SBC_results <- function(x) {
   stopifnot(inherits(x, "SBC_results"))
   if(!is.data.frame(x$stats)) {
     stop("SBC_results object has to have a 'stats' field of type data.frame")
+  }
+
+  # Ensure backwards compatibility
+  if("dataset_id" %in% names(x$stats)) {
+    x$stats <- dplyr::rename(x$stats, sim_id = dataset_id)
   }
 
   if(!is.list(x$fits)) {
@@ -59,13 +64,13 @@ validate_SBC_results <- function(x) {
   }
 
   if(nrow(x$stats) > 0) {
-    if(!is.numeric(x$stats$dataset_id)) {
-      stop("The dataset_id column of stats needs to be a number.")
+    if(!is.numeric(x$stats$sim_id)) {
+      stop("The sim_id column of stats needs to be a number.")
     }
 
 
-    if(min(x$stats$dataset_id) < 1 || max(x$stats$dataset_id) > length(x$fits)) {
-      stop("stats$dataset_id values must be between 1 and number of fits")
+    if(min(x$stats$sim_id) < 1 || max(x$stats$sim_id) > length(x$fits)) {
+      stop("stats$sim_id values must be between 1 and number of fits")
     }
   }
 
@@ -88,24 +93,36 @@ validate_SBC_results <- function(x) {
   }
 
   if(!is.null(x$backend_diagnostics) && nrow(x$backend_diagnostics) > 0) {
-    if(!is.numeric(x$backend_diagnostics$dataset_id)) {
-      stop("The dataset_id column of 'backend_diagnostics' needs to be a number.")
+
+    # Ensure backwards compatibility
+    if("dataset_id" %in% names(x$backend_diagnostics)) {
+      x$backend_diagnostics <- dplyr::rename(x$backend_diagnostics, sim_id = dataset_id)
     }
 
 
-    if(min(x$backend_diagnostics$dataset_id) < 1 || max(x$backend_diagnostics$dataset_id > length(x$fits))) {
-      stop("backend_diagnostics$dataset_id values must be between 1 and number of fits")
+    if(!is.numeric(x$backend_diagnostics$sim_id)) {
+      stop("The sim_id column of 'backend_diagnostics' needs to be a number.")
+    }
+
+
+    if(min(x$backend_diagnostics$sim_id) < 1 || max(x$backend_diagnostics$sim_id > length(x$fits))) {
+      stop("backend_diagnostics$sim_id values must be between 1 and number of fits")
     }
   }
 
   if(nrow(x$default_diagnostics) > 0) {
-    if(!is.numeric(x$default_diagnostics$dataset_id)) {
-      stop("The dataset_id column of 'default_diagnostics' needs to be a number.")
+    # Ensure backwards compatibility
+    if("dataset_id" %in% names(x$default_diagnostics)) {
+      x$default_diagnostics <- dplyr::rename(x$default_diagnostics, sim_id = dataset_id)
+    }
+
+    if(!is.numeric(x$default_diagnostics$sim_id)) {
+      stop("The sim_id column of 'default_diagnostics' needs to be a number.")
     }
 
 
-    if(min(x$default_diagnostics$dataset_id) < 1 || max(x$default_diagnostics$dataset_id > length(x$fits))) {
-      stop("default_diagnostics$dataset_id values must be between 1 and number of fits")
+    if(min(x$default_diagnostics$sim_id) < 1 || max(x$default_diagnostics$sim_id > length(x$fits))) {
+      stop("default_diagnostics$sim_id values must be between 1 and number of fits")
     }
   }
 
@@ -120,7 +137,7 @@ validate_SBC_results <- function(x) {
 
 #' Combine multiple SBC results together.
 #'
-#' Primarily useful for iteratively adding more datasets to your SBC check.
+#' Primarily useful for iteratively adding more simulations to your SBC check.
 #'
 #' An example usage can be found in the `small_model_workflow` vignette.
 #' @param ... objects of type `SBC_results` to be combined.
@@ -140,30 +157,30 @@ bind_results <- function(...) {
   warnings_list <- purrr::map(args, function(x) x$warnings)
   outputs_list <- purrr::map(args, function(x) x$outputs)
 
-  # Ensure unique dataset_ids
-  max_ids <- as.numeric(purrr::map(stats_list, function(x) max(x$dataset_id)))
+  # Ensure unique sim_ids
+  max_ids <- as.numeric(purrr::map(stats_list, function(x) max(x$sim_id)))
   shifts <- c(0, max_ids[1:(length(max_ids)) - 1]) # Shift of IDs per dataset
 
-  shift_dataset_id <- function(x, shift) {
+  shift_sim_id <- function(x, shift) {
     if(is.null(x)) {
       x
     } else {
-      dplyr::mutate(x, dataset_id = dataset_id + shift)
+      dplyr::mutate(x, sim_id = sim_id + shift)
     }
   }
 
-  # Combines multiple data frame objects and then sorts by dataset_id
+  # Combines multiple data frame objects and then sorts by sim_id
   bind_and_rearrange_df <- function(df_list) {
     dplyr::arrange(
       do.call(rbind, df_list),
-      dataset_id
+      sim_id
     )
   }
 
   # Apply the shifts of IDs to individual stats/diagnostics data frames
-  stats_list <- purrr::map2(stats_list, shifts, shift_dataset_id)
-  backend_diagnostics_list <- purrr::map2(backend_diagnostics_list, shifts, shift_dataset_id)
-  default_diagnostics_list <- purrr::map2(default_diagnostics_list, shifts, shift_dataset_id)
+  stats_list <- purrr::map2(stats_list, shifts, shift_sim_id)
+  backend_diagnostics_list <- purrr::map2(backend_diagnostics_list, shifts, shift_sim_id)
+  default_diagnostics_list <- purrr::map2(default_diagnostics_list, shifts, shift_sim_id)
 
   # Combine all the elements into a bigger object
   SBC_results(stats = bind_and_rearrange_df(stats_list),
@@ -202,9 +219,9 @@ length.SBC_results <- function(x) {
     if(is.null(df)) {
       NULL
     }
-    filtered <- dplyr::filter(df, dataset_id %in% indices_to_keep)
-    remapped <- dplyr::mutate(filtered, dataset_id = index_map[as.character(dataset_id)])
-    dplyr::arrange(remapped, dataset_id)
+    filtered <- dplyr::filter(df, sim_id %in% indices_to_keep)
+    remapped <- dplyr::mutate(filtered, sim_id = index_map[as.character(sim_id)])
+    dplyr::arrange(remapped, sim_id)
   }
 
   SBC_results(stats = subset_run_df(x$stats),
@@ -269,7 +286,8 @@ compute_results <- function(...) {
 #'
 #' @param datasets an object of class `SBC_datasets`
 #' @param backend the model + sampling algorithm. The built-in backends can be constructed
-#'   using [SBC_backend_cmdstan_sample()], [SBC_backend_cmdstan_variational()], [SBC_backend_rstan_sample()] and [SBC_backend_brms()].
+#'   using [SBC_backend_cmdstan_sample()], [SBC_backend_cmdstan_variational()],
+#'   [SBC_backend_rstan_sample()], [SBC_backend_rstan_optimizing()] and [SBC_backend_brms()].
 #'   (more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the [SBC_fit()],
 #'   [SBC_fit_to_draws_matrix()] methods.
 #' @param cores_per_fit how many cores should the backend be allowed to use for a single fit?
@@ -284,7 +302,7 @@ compute_results <- function(...) {
 #' @param thin_ranks how much thinning should be applied to posterior samples before computing
 #'    ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
 #'    thinned samples.
-#' @param chunk_size How many fits of `datasets` shall be processed in one batch
+#' @param chunk_size How many simulations within the `datasets` shall be processed in one batch
 #'    by the same worker. Relevant only when using parallel processing.
 #'    The larger the value, the smaller overhead there will be for parallel processing, but
 #'    the work may be distributed less equally across workers. We recommend setting this high
@@ -434,25 +452,25 @@ compute_SBC <- function(datasets, backend,
     }
     if(is.null(results_raw[[i]]$error)) {
       stats_list[[i]] <- results_raw[[i]]$stats
-      stats_list[[i]]$dataset_id <- i
-      stats_list[[i]] <- dplyr::select(stats_list[[i]], dataset_id, tidyselect::everything())
+      stats_list[[i]]$sim_id <- i
+      stats_list[[i]] <- dplyr::select(stats_list[[i]], sim_id, tidyselect::everything())
       backend_diagnostics_list[[i]] <- results_raw[[i]]$backend_diagnostics
       if(!is.null(results_raw[[i]]$backend_diagnostics)){
-        backend_diagnostics_list[[i]]$dataset_id <- i
-        backend_diagnostics_list[[i]] <- dplyr::select(backend_diagnostics_list[[i]], dataset_id, tidyselect::everything())
+        backend_diagnostics_list[[i]]$sim_id <- i
+        backend_diagnostics_list[[i]] <- dplyr::select(backend_diagnostics_list[[i]], sim_id, tidyselect::everything())
       }
     }
     else {
       if(n_errors < max_errors_to_show) {
         if(is.null(results_raw[[i]]$fit)) {
-          message("Dataset ", i, " resulted in error when fitting.\n")
+          message("Simulation ", i, " resulted in error when fitting.\n")
           message(results_raw[[i]]$error, "\n")
           if(!is.null(results_raw[[i]]$warnings)) {
-            message(" --- Warnings for fit ", i, " ----")
+            message(" --- Warnings for sim ", i, " ----")
             message(paste0(results_raw[[i]]$warnings, collapse = "\n"))
           }
           if(!is.null(results_raw[[i]]$messages)) {
-            message(" --- Messages for fit ", i, " ----")
+            message(" --- Messages for sim ", i, " ----")
             message(paste0(results_raw[[i]]$messages, collapse = "\n"))
           }
           if(is.null(results_raw[[i]]$output)) {
@@ -461,16 +479,16 @@ compute_SBC <- function(datasets, backend,
             message(" ---- Model output ----")
             cat(paste0(results_raw[[i]]$output, collapse = "\n"))
           }
-          message("\n ---- End of output for dataset ", i, " -----")
+          message("\n ---- End of output for simulation ", i, " -----")
         } else {
-          message("Dataset ", i, " resulted in error when post-processing the fit.\n",
+          message("Simulation ", i, " resulted in error when post-processing the fit.\n",
                   "Calling `recompute_SBC_statistics` after you've found and fixed the problem could ",
                   "let you move further without refitting")
           message(results_raw[[i]]$error, "\n")
         }
 
       } else if(n_errors == max_errors_to_show) {
-        message("Too many datasets produced errors. Further error messages not shown.\n")
+        message("Too many simulations produced errors. Further error messages not shown.\n")
       }
       n_errors <- n_errors + 1
       errors[[i]] <- results_raw[[i]]$error
@@ -487,9 +505,9 @@ compute_SBC <- function(datasets, backend,
   }
 
   if(n_errors == length(datasets)) {
-    warning("All datasets produced error when fitting")
+    warning("All simulations produced error when fitting")
   } else if(n_errors > 0) {
-    warning("Total of ", n_errors, " datasets produced errors.")
+    warning("Total of ", n_errors, " simulations produced errors.")
   }
 
   stats <- do.call(rbind, stats_list)
@@ -499,7 +517,7 @@ compute_SBC <- function(datasets, backend,
     check_stats(stats, datasets, thin_ranks)
   } else {
     # Return dummy stats that let the rest of the code work.
-    stats <- data.frame(dataset_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
+    stats <- data.frame(sim_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
                         ess_tail = numeric(0),
                         rank = integer(0), simulated_value = numeric(0), max_rank = integer(0))
   }
@@ -726,7 +744,7 @@ check_stats <- function(stats, datasets, thin_ranks) {
   }
 
   all_pars <- dplyr::summarise(
-    dplyr::group_by(stats, dataset_id),
+    dplyr::group_by(stats, sim_id),
     all_pars = paste0(parameter, collapse = ","), .groups = "drop")
   if(length(unique(all_pars$all_pars)) != 1) {
     warning("Not all fits share the same parameters")
@@ -819,14 +837,14 @@ recompute_SBC_statistics <- function(old_results, datasets, backend,
   validate_SBC_datasets(datasets)
 
   if(length(old_results) != length(datasets)) {
-    stop("The number of fits in old_results does not match the number of datasets")
+    stop("The number of fits in old_results does not match the number of simulations")
   }
 
   new_results <- old_results
   missing_fits <- purrr::map_lgl(old_results$fits, is.null)
   if(all(missing_fits)) {
     stop("No raw fits preserved, cannot recompute. ",
-         "Either all datasets produced errors or the results were computed with keep_fits = FALSE")
+         "Either all simulations produced errors or the results were computed with keep_fits = FALSE")
   } else if(any(missing_fits)) {
     warning("Some raw fits not available. Those fits will be ignored when recomputing statistics")
   }
@@ -841,8 +859,8 @@ recompute_SBC_statistics <- function(old_results, datasets, backend,
                                                         thin_ranks = thin_ranks,
                                                         gen_quants = gen_quants,
                                                         backend = backend)
-      new_stats_list[[i]]$dataset_id <- i
-      new_stats_list[[i]] <- dplyr::select(new_stats_list[[i]], dataset_id, tidyselect::everything())
+      new_stats_list[[i]]$sim_id <- i
+      new_stats_list[[i]] <- dplyr::select(new_stats_list[[i]], sim_id, tidyselect::everything())
 
     }
   }

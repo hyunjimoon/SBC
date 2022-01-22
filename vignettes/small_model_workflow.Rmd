@@ -355,17 +355,17 @@ For more details see the [`rejection_sampling`](https://hyunjimoon.github.io/SBC
 So let us subset the results to avoid divergences:
 
 ```{r}
-dataset_ids_to_keep <- 
-  results_fixed_ordered$backend_diagnostics$dataset_id[
+sim_ids_to_keep <- 
+  results_fixed_ordered$backend_diagnostics$sim_id[
     results_fixed_ordered$backend_diagnostics$n_divergent == 0]
 
 # Equivalent tidy version if you prefer
-# dataset_ids_to_keep <- results_fixed_ordered$backend_diagnostics %>% 
+# sim_ids_to_keep <- results_fixed_ordered$backend_diagnostics %>% 
 #   dplyr::filter(n_divergent == 0) %>%
-#   dplyr::pull(dataset_id)
+#   dplyr::pull(sim_id)
 
 
-results_fixed_ordered_subset <- results_fixed_ordered[dataset_ids_to_keep]
+results_fixed_ordered_subset <- results_fixed_ordered[sim_ids_to_keep]
 summary(results_fixed_ordered_subset)
 ```
 
@@ -419,17 +419,17 @@ results_fixed_ordered_100 <- compute_results(datasets_ordered_100, backend_fixed
 Once again we subset to keep only non-divergent fits - this also removes all the problematic Rhats and ESS.
 
 ```{r}
-dataset_ids_to_keep <- 
-  results_fixed_ordered_100$backend_diagnostics$dataset_id[
+sim_ids_to_keep <- 
+  results_fixed_ordered_100$backend_diagnostics$sim_id[
     results_fixed_ordered_100$backend_diagnostics$n_divergent == 0]
 
 # Equivalent tidy version
-# dataset_ids_to_keep <- results_fixed_ordered_100$backend_diagnostics %>% 
+# sim_ids_to_keep <- results_fixed_ordered_100$backend_diagnostics %>% 
 #   dplyr::filter(n_divergent == 0) %>%
-#   dplyr::pull(dataset_id)
+#   dplyr::pull(sim_id)
 
 
-results_fixed_ordered_100_subset <- results_fixed_ordered_100[dataset_ids_to_keep]
+results_fixed_ordered_100_subset <- results_fixed_ordered_100[sim_ids_to_keep]
 summary(results_fixed_ordered_100_subset)
 ```
 

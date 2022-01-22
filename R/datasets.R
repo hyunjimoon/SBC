@@ -80,10 +80,12 @@ bind_datasets <- function(...) {
 #'
 #' @param generator a generator object - build e.g. via `SBC_generator_function` or
 #'  `SBC_generator_brms`.
+#' @param n_sims the number of simulated datasets to use
+#' @param n_datasets DEPRECATED, use `n_sims` instead.
 #' @return object of class `SBC_datasets`
 #' TODO: seed
 #' @export
-generate_datasets <- function(generator, n_datasets) {
+generate_datasets <- function(generator, n_sims, n_datasets = NULL) {
   UseMethod("generate_datasets")
 }
 
@@ -101,10 +103,16 @@ SBC_generator_function <- function(f, ...) {
 
 
 #' @export
-generate_datasets.SBC_generator_function <- function(generator, n_datasets) {
+generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datasets = NULL) {
+  if(!is.null(n_datasets)) {
+    warning("n_datasets argument is deprecated, use n_sims instead")
+    if(missing(n_sims)) {
+      n_sims <- n_datasets
+    }
+  }
   parameters_list <- list()
   generated <- list()
-  for(iter in 1:n_datasets){
+  for(iter in 1:n_sims){
     generator_output <- do.call(generator$f, generator$args)
     if(!is.list(generator_output) ||
        is.null(generator_output$parameters) ||
@@ -174,13 +182,13 @@ generate_datasets.SBC_generator_function <- function(generator, n_datasets) {
 #'
 #' ```r
 #' gen <- SBC_generator_custom(f, <<some other args>>)
-#' datasets <- generate_datasets(gen, n_datasets = my_n_datasets)
+#' datasets <- generate_datasets(gen, n_sims = my_n_sims)
 #' ```
 #'
 #' is equivalent to just running
 #'
 #' ```r
-#' datasets <- f(<<some other args>>, n_datasets = my_n_datasets)
+#' datasets <- f(<<some other args>>, n_sims = my_n_sims)
 #' ```
 #'
 #' So whenever you control the code calling `generate_datasets`,
@@ -191,7 +199,7 @@ generate_datasets.SBC_generator_function <- function(generator, n_datasets) {
 #' built-in generators do not provide you with enough flexibility.
 #'
 #'
-#' @param f function accepting at least an `n_datasets` argument and returning
+#' @param f function accepting at least an `n_sims` argument and returning
 #' and `SBC_datasets` object
 #' @param ... Additional arguments passed to `f`
 #' @export
@@ -201,8 +209,14 @@ SBC_generator_custom <- function(f, ...) {
 }
 
 #'@export
-generate_datasets.SBC_generator_custom <- function(generator, n_datasets) {
-  res <- do.call(generator$f, combine_args(generator$args, list(n_datasets = n_datasets)))
+generate_datasets.SBC_generator_custom <- function(generator, n_sims, n_datasets = NULL) {
+  if(!is.null(n_datasets)) {
+    warning("n_datasets argument is deprecated, use n_sims instead")
+    if(missing(n_sims)) {
+      n_sims <- n_datasets
+    }
+  }
+  res <- do.call(generator$f, combine_args(generator$args, list(n_sims = n_sims)))
   res <- validate_SBC_datasets(res)
   res
 }
@@ -242,7 +256,14 @@ SBC_generator_brms <- function(..., generate_lp = TRUE) {
 }
 
 #' @export
-generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
+generate_datasets.SBC_generator_brms <- function(generator, n_sims, n_datasets = NULL) {
+  if(!is.null(n_datasets)) {
+    warning("n_datasets argument is deprecated, use n_sims instead")
+    if(missing(n_sims)) {
+      n_sims <- n_datasets
+    }
+  }
+
   #TODO pass args for control, warmup, .... to sampling
   if(inherits(generator$compiled_model, "CmdStanModel")) {
       args_for_fitting <- translate_rstan_args_to_cmdstan(generator$args, include_unrecognized = FALSE)
@@ -256,7 +277,7 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
       }
 
 
-      args_for_fitting$iter_sampling <- ceiling(n_datasets / args_for_fitting$chains) * args_for_fitting$thin
+      args_for_fitting$iter_sampling <- ceiling(n_sims / args_for_fitting$chains) * args_for_fitting$thin
 
       args_for_fitting
       prior_fit <- do.call(generator$compiled_model$sample,
@@ -273,9 +294,9 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
                 "\nConsider adding warmup iterations (via 'warmup' argument).")
       }
       min_ess <- min(summ$ess_bulk)
-      if(min_ess < n_datasets / 2) {
-        message("Warning: Bulk effective sample size for some parameters is less than half the number of datasets.\n",
-                "The lowest ESS_bulk/n_datasets is ", round(min_ess / n_datasets, 2)," for ", summ$parameter[which.min(summ$ess_bulk)],
+      if(min_ess < n_sims / 2) {
+        message("Warning: Bulk effective sample size for some parameters is less than half the number of simulations.\n",
+                "The lowest ESS_bulk/n_sims is ", round(min_ess / n_sims, 2)," for ", summ$parameter[which.min(summ$ess_bulk)],
                 "\nConsider increased thinning  (via 'thin' argument) .")
       }
 
@@ -299,7 +320,7 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
       args_for_fitting$thin <- 1
     }
 
-    args_for_fitting$iter <- args_for_fitting$warmup + ceiling(n_datasets / args_for_fitting$chains) * args_for_fitting$thin
+    args_for_fitting$iter <- args_for_fitting$warmup + ceiling(n_sims / args_for_fitting$chains) * args_for_fitting$thin
 
     prior_fit <- do.call(rstan::sampling, args_for_fitting)
 
@@ -315,8 +336,8 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
   processed_formula <- prior_fit_brms$formula
 
   generated <- list()
-  log_likelihoods <- numeric(n_datasets)
-  for(i in 1:n_datasets) {
+  log_likelihoods <- numeric(n_sims)
+  for(i in 1:n_sims) {
 
     new_dataset <- original_data
     if(inherits(processed_formula, "brmsformula")) {
@@ -343,8 +364,8 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
   #       ll <- brms::log_lik(prior_fit_brms, newdata = new_dataset, subset = i, cores = 1)
   #       sum(ll)
   #       },
-  #     generated, 1:n_datasets,
-  #     future.chunk.size = default_chunk_size(n_datasets))
+  #     generated, 1:n_sims,
+  #     future.chunk.size = default_chunk_size(n_sims))
   # }
 
 
@@ -395,11 +416,11 @@ calculate_prior_sd <- function(datasets) {
   # TODO this is a hack - there has to be a better diagnostic to get whether
   # our sd estimate is good (probably via MCSE?)
   if(length(datasets) < 50) {
-    warning("Cannot reliably estimate prior_sd with less than 50 datasets.\n",
-            "Note that you can generate extra datasets that you don't actually fit and use those to estimate prior sd.")
+    warning("Cannot reliably estimate prior_sd with less than 50 simulations.\n",
+            "Note that you can generate extra simulations that you don't actually fit and use those to estimate prior sd.")
   }
   if(length(datasets) < 2) {
-    stop("Cannot estimate prior sd with less than 2 datasets")
+    stop("Cannot estimate prior sd with less than 2 simulations")
   }
 
   sds_df <- posterior::summarise_draws(datasets$parameters, sd)

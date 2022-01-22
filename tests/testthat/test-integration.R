@@ -33,7 +33,7 @@ test_that("Integration test with mock backend", {
   expect_identical(res2$errors, rep(list(backend2$error), N_sims))
   expect_identical(res2$fits, rep(list(NULL), N_sims))
 
-  expect_equal(res2_with_outputs$warnings, "All datasets produced error when fitting")
+  expect_equal(res2_with_outputs$warnings, "All simulations produced error when fitting")
 
 })
 

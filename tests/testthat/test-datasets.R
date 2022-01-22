@@ -14,7 +14,7 @@ test_that("Generating datasets via functions", {
 
   res <- generate_datasets(
     SBC_generator_function(list_function, N = 10),
-    n_datasets = 7)
+    n_sims = 7)
 
   expect_true(length(res) == 7)
 
@@ -27,16 +27,16 @@ test_that("Generating datasets via functions", {
 
   expect_equal(posterior::ndraws(res$parameters), 7)
 
-  direct_func <- function(n_datasets, base_indices = 1:length(res)) {
-      res[base_indices[rep(1:length(base_indices), length.out = n_datasets)]]
+  direct_func <- function(n_sims, base_indices = 1:length(res)) {
+      res[base_indices[rep(1:length(base_indices), length.out = n_sims)]]
     }
 
-  res_direct1 <- generate_datasets(SBC_generator_custom(direct_func),  n_datasets = 7)
+  res_direct1 <- generate_datasets(SBC_generator_custom(direct_func),  n_sims = 7)
 
   expect_equal(res, res_direct1, check.attributes = FALSE)
 
   res_direct2 <- generate_datasets(SBC_generator_custom(direct_func, base_indices = 1:3),
-  n_datasets = 5)
+  n_sims = 5)
 
   expect_identical(res[c(1,2,3,1,2)], res_direct2)
 
@@ -50,7 +50,7 @@ test_that("Generating datasets via functions - exceptions", {
 
   expect_error(generate_datasets(
     SBC_generator_function(missing_gen_function),
-    n_datasets = 1), class = "SBC_datasets_error")
+    n_sims = 1), class = "SBC_datasets_error")
 
   missing_par_function <- function() {
     list(not_parameters = list(mu = 1),
@@ -59,7 +59,7 @@ test_that("Generating datasets via functions - exceptions", {
 
   expect_error(generate_datasets(
     SBC_generator_function(missing_par_function),
-    n_datasets = 1), class = "SBC_datasets_error")
+    n_sims = 1), class = "SBC_datasets_error")
 
 
   missing_names_function <- function() {
@@ -69,7 +69,7 @@ test_that("Generating datasets via functions - exceptions", {
 
   expect_error(generate_datasets(
     SBC_generator_function(missing_names_function),
-    n_datasets = 1), class = "SBC_datasets_error")
+    n_sims = 1), class = "SBC_datasets_error")
 })
 
 test_that("subsetting datasets", {
@@ -84,7 +84,7 @@ test_that("subsetting datasets", {
 
   res <- generate_datasets(
     SBC_generator_function(list_function, N = 10),
-    n_datasets = 7)
+    n_sims = 7)
 
   res_subs <- res[3:5]
 

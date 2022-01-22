@@ -14,8 +14,8 @@ plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 
   if(!all(c("parameter", "rank") %in% names(x))) {
     stop("The data.frame needs a 'parameter' and 'rank' columns")
   }
-  n_simulations <- dplyr::summarise(dplyr::group_by(x, parameter), count = dplyr::n())$count
-  if(length(unique(n_simulations)) > 1) {
+  n_sims <- dplyr::summarise(dplyr::group_by(x, parameter), count = dplyr::n())$count
+  if(length(unique(n_sims)) > 1) {
     stop("Differing number of SBC steps per parameter not supported.")
   }
 
@@ -27,10 +27,10 @@ plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 
     stop("Differing max_rank across parameters is not supported yet.")
   }
 
-  n_simulations <- unique(n_simulations)
+  n_sims <- unique(n_sims)
 
   if(is.null(bins)){
-    bins <- guess_rank_hist_bins(max_rank, n_simulations)
+    bins <- guess_rank_hist_bins(max_rank, n_sims)
   } else if(bins > max_rank + 1) {
     stop("Cannot use more bins than max_rank + 1")
   }
@@ -50,9 +50,9 @@ plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 
   # i.e. includes lower quantile of smalelr bins and higher quantile of larger bins
   larger_bin_size <- ceiling(((max_rank + 1) / bins))
   smaller_bin_size <- floor(((max_rank + 1) / bins))
-  ci_lower = qbinom(0.5 * (1 - prob), size=n_simulations,prob  =  smaller_bin_size / max_rank)
-  ci_mean = qbinom(0.5, size=n_simulations,prob  =  1 / bins)
-  ci_upper = qbinom(0.5 * (1 + prob), size=n_simulations,prob  =  larger_bin_size / max_rank)
+  ci_lower = qbinom(0.5 * (1 - prob), size=n_sims,prob  =  smaller_bin_size / max_rank)
+  ci_mean = qbinom(0.5, size=n_sims,prob  =  1 / bins)
+  ci_upper = qbinom(0.5 * (1 + prob), size=n_sims,prob  =  larger_bin_size / max_rank)
 
   CI_polygon_x <- c(-0.1*max_rank,0,-0.1*max_rank,1.1 * max_rank,max_rank,1.1 * max_rank,-0.1 * max_rank)
   CI_polygon_y <- c(ci_lower,ci_mean,ci_upper,ci_upper,ci_mean,ci_lower,ci_lower)
@@ -271,10 +271,10 @@ data_for_ecdf_plots.data.frame <- function(x, parameters = NULL,
     stop("Not all variables have the same number of simulations.")
   }
 
-  rank <- dplyr::select(stats, dataset_id, parameter, rank)
+  rank <- dplyr::select(stats, sim_id, parameter, rank)
   rank_matrix <- tidyr::pivot_wider(rank, names_from = "parameter",
                                     values_from = "rank")
-  rank_matrix <- as.matrix(dplyr::select(rank_matrix, -dataset_id))
+  rank_matrix <- as.matrix(dplyr::select(rank_matrix, -sim_id))
 
 
   data_for_ecdf_plots(rank_matrix, max_rank = max_rank, prob = prob,

@@ -16,27 +16,27 @@ test_that("capture_all_outputs", {
 })
 
 test_that("subset_bind", {
-    res <- SBC_results(stats = data.frame(dataset_id = rep(1:3, each = 4), s = 1:12),
+    res <- SBC_results(stats = data.frame(sim_id = rep(1:3, each = 4), s = 1:12),
                        fits = list("A", NULL, "C"),
                        outputs = list(c("A1","A2"), c(), c("C1", "C4")),
                        warnings = list(c(), "XXXX", "asdfdaf"),
                        messages = list("aaaa", "ddddd", NA_character_),
                        errors = list(NULL, "customerror", NULL),
-                       default_diagnostics = data.frame(dataset_id = 1:3, qq = rnorm(3)),
-                       backend_diagnostics = data.frame(dataset_id = 1:3, rr = rnorm(3))
+                       default_diagnostics = data.frame(sim_id = 1:3, qq = rnorm(3)),
+                       backend_diagnostics = data.frame(sim_id = 1:3, rr = rnorm(3))
                        )
 
-    remove_dataset_id_names <- function(x) {
-        names(x$stats$dataset_id) <- NULL
-        names(x$default_diagnostics$dataset_id) <- NULL
-        names(x$backend_diagnostics$dataset_id) <- NULL
+    remove_sim_id_names <- function(x) {
+        names(x$stats$sim_id) <- NULL
+        names(x$default_diagnostics$sim_id) <- NULL
+        names(x$backend_diagnostics$sim_id) <- NULL
         x
     }
 
-    expect_equal(res, remove_dataset_id_names(bind_results(res[1], res[2:3])))
-    expect_equal(res, remove_dataset_id_names(bind_results(res[1:2], res[3])))
-    expect_equal(remove_dataset_id_names(res[3:1]), remove_dataset_id_names(bind_results(res[3:2], res[1])))
-    expect_equal(remove_dataset_id_names(res[2]), remove_dataset_id_names(((res[2:3])[1])))
+    expect_equal(res, remove_sim_id_names(bind_results(res[1], res[2:3])))
+    expect_equal(res, remove_sim_id_names(bind_results(res[1:2], res[3])))
+    expect_equal(remove_sim_id_names(res[3:1]), remove_sim_id_names(bind_results(res[3:2], res[1])))
+    expect_equal(remove_sim_id_names(res[2]), remove_sim_id_names(((res[2:3])[1])))
 })
 
 test_that("calculate_ranks_draws_matrix works", {

@@ -21,7 +21,8 @@ compute_SBC(
 \item{datasets}{an object of class \code{SBC_datasets}}
 
 \item{backend}{the model + sampling algorithm. The built-in backends can be constructed
-using \code{\link[=SBC_backend_cmdstan_sample]{SBC_backend_cmdstan_sample()}}, \code{\link[=SBC_backend_cmdstan_variational]{SBC_backend_cmdstan_variational()}}, \code{\link[=SBC_backend_rstan_sample]{SBC_backend_rstan_sample()}} and \code{\link[=SBC_backend_brms]{SBC_backend_brms()}}.
+using \code{\link[=SBC_backend_cmdstan_sample]{SBC_backend_cmdstan_sample()}}, \code{\link[=SBC_backend_cmdstan_variational]{SBC_backend_cmdstan_variational()}},
+\code{\link[=SBC_backend_rstan_sample]{SBC_backend_rstan_sample()}}, \code{\link[=SBC_backend_rstan_optimizing]{SBC_backend_rstan_optimizing()}} and \code{\link[=SBC_backend_brms]{SBC_backend_brms()}}.
 (more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the \code{\link[=SBC_fit]{SBC_fit()}},
 \code{\link[=SBC_fit_to_draws_matrix]{SBC_fit_to_draws_matrix()}} methods.}
 
@@ -40,7 +41,7 @@ to \code{FALSE} (even for quite a simple model, 1000 fits can easily exhaust 32G
 ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
 thinned samples.}
 
-\item{chunk_size}{How many fits of \code{datasets} shall be processed in one batch
+\item{chunk_size}{How many simulations within the \code{datasets} shall be processed in one batch
 by the same worker. Relevant only when using parallel processing.
 The larger the value, the smaller overhead there will be for parallel processing, but
 the work may be distributed less equally across workers. We recommend setting this high

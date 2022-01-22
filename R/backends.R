@@ -272,8 +272,8 @@ summary.SBC_nuts_diagnostics <- function(diagnostics) {
 
   if(!is.null(diagnostics$n_failed_chains)) {
     if(any(is.na(diagnostics$n_failed_chains))) {
-      problematic_fit_ids <- paste0(which(is.na(diagnostics$n_failed_chains)), collapse = ", ")
-      warning("Fits for datasets ", problematic_fit_ids, " had NA for n_failed_chains.")
+      problematic_sim_ids <- paste0(which(is.na(diagnostics$n_failed_chains)), collapse = ", ")
+      warning("Fits for simulations ", problematic_sim_ids, " had NA for n_failed_chains.")
     }
     summ$has_failed_chains = sum(is.na(diagnostics$n_failed_chains) | diagnostics$n_failed_chains > 0)
   }
@@ -653,13 +653,21 @@ validate_SBC_backend_brms_args <- function(args) {
 #' Build a backend based on the `brms` package.
 #'
 #' @param ... arguments passed to `brm`.
-#' @param template_dataset a representative dataset that can be used to generate code.
+#' @param template_data a representative value for the `data` argument in `brm`
+#'    that can be used to generate code.
+#' @param template_dataset DEPRECATED. Use `template_data`
 #' @export
-SBC_backend_brms <- function(..., template_dataset) {
+SBC_backend_brms <- function(..., template_data, template_dataset = NULL) {
+  if(!is.null(template_dataset)) {
+    warning("Argument 'template_dataset' is deprecated, use 'template_data' instead")
+    if(missing(template_data)) {
+      template_data <- template_dataset
+    }
+  }
   args = list(...)
   validate_SBC_backend_brms_args(args)
 
-  stanmodel <- stanmodel_for_brms(data = template_dataset, ...)
+  stanmodel <- stanmodel_for_brms(data = template_data, ...)
 
   new_SBC_backend_brms(stanmodel, args)
 }
