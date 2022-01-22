@@ -224,7 +224,7 @@ plot_ecdf_diff <- function(x,
     ) +
     xlab(NULL) +
     ylab(NULL) +
-    facet_wrap(~ parameter)
+    facet_wrap(~ parameter, scales = "free_y")
 }
 
 

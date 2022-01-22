@@ -125,7 +125,7 @@ SBC_backend_rstan_sample <- function(model, ...) {
 
 #' @export
 SBC_fit.SBC_backend_rstan_sample <- function(backend, generated, cores) {
-  do.call(rstan::sampling,
+  fit <- do.call(rstan::sampling,
           combine_args(list(object = backend$model,
                  data = generated,
                  ## TODO: Forcing a single core until we can capture output with multiple cores
@@ -133,6 +133,12 @@ SBC_fit.SBC_backend_rstan_sample <- function(backend, generated, cores) {
                  cores = 1),
             backend$args
             ))
+
+  if(fit@mode != 0) {
+    stop("Fit does not contain samples.")
+  }
+
+  fit
 }
 
 #' @export
@@ -152,6 +158,99 @@ SBC_fit_to_diagnostics.stanfit <- function(fit, fit_output, fit_messages, fit_wa
 #' @export
 SBC_backend_hash_for_cache.SBC_backend_rstan_sample <- function(backend) {
   rlang::hash(list(model = backend$model@model_code, args = backend$args))
+}
+
+
+#' SBC backend using the `optimizing` method from `rstan`.
+#'
+#' @param model a `stanmodel` object (created via `rstan::stan_model`)
+#' @param ... other arguments passed to `optimizing` (number of iterations, ...).
+#'   Argument `data` cannot be set this way as they need to be
+#'   controlled by the package.
+#' @export
+SBC_backend_rstan_optimizing <- function(model, ...) {
+  stopifnot(inherits(model, "stanmodel"))
+  args <- list(...)
+  unacceptable_params <- c("data", "hessian")
+  if(any(names(args) %in% unacceptable_params)) {
+    stop(paste0("Parameters ", paste0("'", unacceptable_params, "'", collapse = ", "),
+                " cannot be provided when defining a backend as they need to be set ",
+                "by the SBC package"))
+  }
+
+  args$hessian <- TRUE
+  if(is.null(args$draws)) {
+    args$draws <- 1000
+  }
+  structure(list(model = model, args = args), class = "SBC_backend_rstan_optimizing")
+}
+
+
+#' @export
+SBC_fit.SBC_backend_rstan_optimizing <- function(backend, generated, cores) {
+  start <- proc.time()
+  fit <- do.call(rstan::optimizing,
+                 combine_args(list(object = backend$model,
+                                   data = generated),
+                              backend$args)
+  )
+  end <- proc.time()
+
+  if(fit$return_code != 0) {
+    stop("Optimizing was not succesful")
+  }
+
+  fit$time <- (end - start)["elapsed"]
+
+  structure(fit, class = "RStanOptimizingFit")
+}
+
+#' @export
+SBC_backend_hash_for_cache.SBC_backend_rstan_optimizing <- function(backend) {
+  rlang::hash(list(model = backend$model@model_code, args = backend$args))
+}
+
+#' @export
+SBC_fit_to_draws_matrix.RStanOptimizingFit <- function(fit) {
+  posterior::as_draws_matrix(fit$theta_tilde)
+}
+
+
+#' @export
+SBC_backend_iid_samples.SBC_backend_rstan_optimizing <- function(backend) {
+  TRUE
+}
+
+#' @export
+SBC_fit_to_diagnostics.RStanOptimizingFit <- function(fit, fit_output, fit_messages, fit_warnings) {
+  res <- data.frame(
+    time = fit$time
+  )
+
+  class(res) <- c("SBC_RStanOptimizing_diagnostics", class(res))
+  res
+}
+
+#' @export
+summary.SBC_RStanOptimizing_diagnostics <- function(x) {
+  summ <- list(
+    max_time = max(x$time)
+  )
+
+  structure(summ, class = "SBC_RStanOptimizing_diagnostics_summary")
+}
+
+#' @export
+get_diagnostic_messages.SBC_RStanOptimizing_diagnostics <- function(x) {
+  get_diagnostic_messages(summary(x))
+}
+
+
+#' @export
+get_diagnostic_messages.SBC_RStanOptimizing_diagnostics_summary <- function(x) {
+  SBC_diagnostic_messages(
+    data.frame(ok = TRUE, message = paste0("Maximum time was ", x$max_time, " sec."))
+  )
 }
 
 #' @export
@@ -521,8 +620,18 @@ new_SBC_backend_brms <- function(compiled_model,
 ) {
   require_brms_version("brms backend")
 
-  arg_names_for_stan <- c("chains", "inits", "iter", "warmup", "thin")
+  arg_names_for_stan <- c("chains", "inits", "init", "iter", "warmup", "thin")
   args_for_stan <- args[intersect(names(args), arg_names_for_stan)]
+
+  args_for_stan_renames <- c("inits" = "init")
+  for(i in 1:length(args_for_stan_renames)) {
+    orig <- names(args_for_stan_renames)[i]
+    new <- args_for_stan_renames[i]
+    if(!is.null(args_for_stan[[orig]])) {
+      args_for_stan[[new]] <- args_for_stan[[orig]]
+      args_for_stan[[orig]] <- NULL
+    }
+  }
   stan_backend <- sampling_backend_from_stanmodel(compiled_model, args_for_stan)
 
   structure(list(stan_backend = stan_backend, args = args), class = "SBC_backend_brms")
