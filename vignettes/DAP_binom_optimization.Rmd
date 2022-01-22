@@ -1,5 +1,5 @@
 ---
-title: "self-calibration-adaptive"
+title: "DAP Optimization Part 1"
 author: "Hyunji Moon, Shinyoung Kim"
 output:
   html_document: default
@@ -26,6 +26,14 @@ options(SBC.min_chunk_size = 5)
 #set.seed(1984)
 ```
 
+
+Given the previous definition of the Data Averaged Posterior(DAP) and MSE decomposition, in this vignette we will investigate the effect off different inference algorithms on DAP and MSE, and how we can try and optimize a given model to have desirable traits with respect to them.
+
+The Binomial-inverseLogit model we're using in this vignette has a parameter$\eta$ in which $p = \mathrm{inverse\_logit}(\eta)$ is used as the success probability. The vignette is largely separated into 3 parts:
+
+1. Given a fixed parameterization, investigate the behavior of DAP with respect to inference algorithm.
+2. Given a fixed inference algorithm, investigate the behavior of DAP with respect to parameterization.
+3. Given a fixed distribution family for $eta$, find the hyperparameters which minimizes the MSE.
 
 ```{R, warning=FALSE, error=FALSE}
 ## Generator settings
@@ -87,9 +95,6 @@ generator_binom <- function(lambdas, fixed_args){
                      Y = Y)
   )
 }
-
-
-
 ```
 
 ```{R, warning=FALSE, error=FALSE}
@@ -247,6 +252,10 @@ for(j in 1:length(var_seq)){
 }
 ```
 
+Once we have the model and DAP generation ready, we run inference each for HMC and optimization. The hypothesis is that HMC will be less sensitive to the designated prior, and hyperparameters retrieved from the DAP should match the specified hyperparameter. On the other hand, optimization should yield more interesting results.
+
+For this example, we've parameterized $\eta$ as $\eta \sim \mathrm{normal}(\mu, \sigma^2)$. We then run inference with different combinations of the hyperparameters:
+
 ```{R}
 scaleFUN <- function(x) sprintf("%.2f", x)
 dap_df <- as.data.frame.table(dap_lambda_mu)
@@ -259,6 +268,15 @@ dap_lambda_df <- as.data.frame.table(dap_lambda_var)
 dap_df[, "dap_var"] <- as.numeric(dap_lambda_df$Freq)
 ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2) + xlab("mu") + ylab("var") + ggtitle("binom + opt, nsims=100")
 ```
+
+The red points denote the initially specified hyperparameter values. Blue points denote the hyperparameter values recovered from the computed DAP.
+
+For optimization, we can see that variance was shrunk to below around 50, and mean also exhibited similar, but less intense shrinkage. This may be due to the nature of the optimization inference: It fits a multivariate normal distribution to the MAP estimate, which is likely have smaller dispersion than the huge variance values we specified.
+
+It is also interesting to note the shrinkage of the mean is somewhat dependent on variance; when variance is set to 1, we can observe barely any shrinkage has occured.
+
+
+We now plot the DAP bias-variance decomposition with respect to the hyperparameters, and varying by inference algorithms. The goal here is to observe whether HMC provides better results than optimization as per the hypothesis, and find any systematic anomalies regarding each values.
 
 
 ```{R, fig.width = 14}
@@ -280,6 +298,8 @@ B_ghat_df[, "coords"] <- factor(B_ghat_df$coords, levels=unique(B_ghat_df$coords
 ggplot(B_ghat_df) + geom_point(aes(x=coords, y=B_g, color="red")) + ggtitle("B(red=g(hmc), green=ghat(opt))") + geom_point(aes(x=coords, y=B_ghat, color="green")) + geom_segment(aes(x=coords, y=B_g, xend=coords, yend=B_ghat), size=0.2) + theme(axis.title.x = element_text(margin=unit(c(10, 0, 0, 0), "mm"))) + xlab("mu, var") + ylab("B") + theme(legend.position = "none")
 
 ```
+
+For bias, we can see that in general, bias increases with the variance hyperparameter. The plot is admittedly hard to see, but variance hyperparameter is the big factor here when it comes to to bias.
 
 
 ```{R, fig.width = 14}
@@ -303,20 +323,22 @@ ggplot(V_ghat_df) + geom_point(aes(x=coords, y=V_g, color="red")) + ggtitle("V(r
 ```
 
 
+We now run posterior predictive checks with the intent of verifying whether the fits can faithfully recover the initial hyperparameters.
+
 ```{R}
-# mu 0 5 10 20 30 40 60
-# var 1 15 30 45 60
-test_mu <- 5
-test_var <- 1
+# mu = 0, 5, 20, 40
+# var = 1, 5, 15
+test_mu <- 40
+test_var <- 15
 lambda_test <- list(
   eta = list(mu=test_mu, sigma=sqrt(test_var))
 )
 test_dataset <- generate_datasets(SBC_generator_function(generator_binom, lambda_test, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
 sbc_result <- compute_results(test_dataset, backend_binom_opt, thin_ranks = 1)
 
-# plot_ecdf_diff(sbc_result)
-# plot_rank_hist(sbc_result)
-# plot_sim_estimated(sbc_result)
+#plot_ecdf_diff(sbc_result)
+#plot_rank_hist(sbc_result)
+#plot_sim_estimated(sbc_result)
 # plot_sim_estimated(sbc_result, estimate="median")
 test_eta <- c()
 fit_matrix <- matrix(data=rep(NA, nsims * ndraws), nrow = nsims, ncol = ndraws)
@@ -336,10 +358,6 @@ ppc_dens_overlay(eta_rep, fit_matrix)
 
 
 ```{R}
-
-
-
-
 
 normal_pdf <- dnorm(x, test_mu, sqrt(test_var))
 eta_draws <- sbc_result$fits[[5]]$fit_list$theta_tilde[, "eta"]

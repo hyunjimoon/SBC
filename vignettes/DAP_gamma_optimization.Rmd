@@ -109,12 +109,15 @@ calib_generator <- function(lambda_init_gamma, fixed_args){
   generate_datasets(SBC_generator_function(generator_gr, lambda_init_gamma, fixed_args), n_datasets = fixed_args_gr$nsims)
 }
 
-calculate_dap <- function(mu, var, generator, backened, fixed_args){
-  lambda_init_gamma <- list(
-    shape = list(mu= mu, sigma = sqrt(var)), #list(alpha= mu^2 / var, beta= mu / var),
-    a = list(mu= 2, sigma = 1)
-  )
-  datasets <- do.call(generator, list(lambda_init_gamma, fixed_args = fixed_args))
+calculate_dap <- function(mu, var, generator, datasets=NULL, backened, fixed_args){
+  if(is.null(datasets)){
+      lambda_init_gamma <- list(
+        shape = list(mu= mu, sigma = sqrt(var)), #list(alpha= mu^2 / var, beta= mu / var),
+        a = list(mu= 2, sigma = 1)
+      )
+      datasets <- do.call(generator, list(lambda_init_gamma, fixed_args = fixed_args))
+  }
+  
   sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
   draws_eta <- c()
   draws_Y <- c()
@@ -122,36 +125,30 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
   var_theta_tilde_bar <- 0
   var_theta_tilde <- 0
   B <- 0
-  V_2 <- 0
-  V_3 <- 0
-  theta_bar <- mean(prior_thetas)
+  V <- 0
   for(i in 1:nsims){
     draws_Y <- c(draws_Y, datasets$generated[[i]]$Y)
     samples <- SBC_fit_to_draws_matrix(sbc_result$fits[[i]])
     etas <- posterior::extract_variable(samples, "shape")
     draws_eta <- c(draws_eta, etas)
     
-    var_theta_tilde_bar <- var_theta_tilde_bar + (mean(draws_eta) - mean(prior_thetas))^2
-    var_theta_tilde <- var_theta_tilde + sum(draws_eta - mean(draws_eta))^2
-    B <- B + mean(draws_eta) - prior_thetas[i]
-    V_2 <- V_2 + sum((draws_eta - mean(draws_eta))^2)
-    V_3 <- V_3 + (mean(draws_eta) - prior_thetas[i])
-    print("----")
-    print(var_theta_tilde_bar)
-    print(V_2)
-    print(V_3)
+    var_theta_tilde_bar <- var_theta_tilde_bar + (mean(etas) - mean(prior_thetas))^2
+    var_theta_tilde <- var_theta_tilde + sum((etas - mean(etas))^2)
+    
+    B <- B + mean(etas)
+    V <- V + sum((etas - mean(etas))^2)
   }
-  B <- B / fixed_args$nsims
-  V_2 <- V_2 / (fixed_args$nsims * ndraws)
-  V_3 <- (V_3 / fixed_args$nsims)^2
   var_theta_tilde_bar <- var_theta_tilde_bar / fixed_args$nsims
   var_theta_tilde <- var_theta_tilde / (fixed_args$nsims * ndraws)
+  
+  B <- B / fixed_args$nsims - mean(prior_thetas)
+  V <- V / (fixed_args$nsims * ndraws)
+  
   # assume normal for dap
   mu <- mean(draws_eta)
-  #var <- sd(draws_eta)^2
-  var <- 100
+  var <- sd(draws_eta)^2
   
-  return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y, var_theta_tilde_bar=var_theta_tilde_bar, var_theta_tilde=var_theta_tilde, theta_bar=theta_bar, B=B, V=var_theta_tilde_bar+V_2-V_3))
+  return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y, B=B, V=V, datasets=datasets))
 }
 ```
 
@@ -159,9 +156,9 @@ calculate_dap <- function(mu, var, generator, backened, fixed_args){
 
 ```{r}
 gridsize_mu <- 5
-gridsize_var <- 1
-mu_seq <- seq(1, 3, length.out = gridsize_mu)
-var_seq <- rep(100, gridsize_var)#seq(1, 2, length.out = gridsize)
+gridsize_var <- 5
+mu_seq <- seq(0, 50, length.out = gridsize_mu)
+var_seq <- seq(5, 25, length.out = gridsize_var)
 grid_size <- length(mu_seq) * length(var_seq)
 
 squared_lambda_diff <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
@@ -189,28 +186,36 @@ colnames(lambda_var) <- var_seq
 var_theta_tilde_bar <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
 var_theta_tilde <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
 rownames(var_theta_tilde_bar) <- mu_seq
-rownames(var_theta_tilde) <- mu_seq
-colnames(var_theta_tilde_bar) <- var_seq
+rownames(var_theta_tilde_bar) <- mu_seq
 colnames(var_theta_tilde) <- var_seq
+colnames(var_theta_tilde) <- var_seq
+
+B_ghat <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+V_ghat <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(B_ghat) <- mu_seq
+rownames(V_ghat) <- mu_seq
+colnames(B_ghat) <- var_seq
+colnames(V_ghat) <- var_seq
+
+B_g <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+V_g <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(B_g) <- mu_seq
+rownames(V_g) <- mu_seq
+colnames(B_g) <- var_seq
+colnames(V_g) <- var_seq
+
+
 
 theta_bar <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
 rownames(theta_bar) <- mu_seq
 rownames(theta_bar) <- mu_seq
 
-generated_Y <- array(rep(NA, nsims * nobs * gridsize_mu * gridsize_var), dim=c(nsims * nobs, gridsize_mu, gridsize_var) )
+generated_Y <- array(rep(NA, nsims * nobs * grid_size), dim=c(nsims * nobs, gridsize_mu, gridsize_var) )
 dimnames(generated_Y)[[2]] <- mu_seq
 dimnames(generated_Y)[[3]] <- var_seq
-
-B <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
-V <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
-rownames(B) <- mu_seq
-rownames(V) <- mu_seq
-colnames(B) <- var_seq
-colnames(V) <- var_seq
-
 for(j in 1:length(var_seq)){
   for(i in 1:length(mu_seq)){
-    dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, backend_gr_opt, fixed_args_gr)
+    dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, NULL, backend_gr_hmc, fixed_args_gr)
     squared_lambda_diff[i,j] <- sqrt((mu_seq[[i]] - dap$mu)^2 + (var_seq[[j]] - dap$var)^2)
     lambda_diff[i,j] <- (dap$mu - mu_seq[[i]]) + (dap$var - var_seq[[j]])
     dap_lambda_mu[i, j] <- dap$mu
@@ -218,33 +223,27 @@ for(j in 1:length(var_seq)){
     lambda_mu[i, j] <- mu_seq[[i]]
     lambda_var[i, j] <- var_seq[[j]]
     generated_Y[, i, j] <- dap$draws_Y
-    var_theta_tilde_bar[i, j] <- dap$var_theta_tilde_bar
-    var_theta_tilde[i, j] <- dap$var_theta_tilde
-    theta_bar[i, j] <- dap$theta_bar
-    B[i, j] <- dap$B
-    V[i, j] <- dap$V
+    B_ghat[i, j] <- dap$B
+    V_ghat[i, j] <- dap$V
+    
+    #dap_hmc <- calculate_dap(mu_seq[[i]],var_seq[[j]], calib_generator, dap$datasets, backend_gr_hmc, fixed_args_gr)
+    B_g[i, j] <- dap$B
+    V_g[i, j] <- dap$V
   }
 }
-saved_dap <- new.env()
-saved_dap[["grid_size"]] <- grid_size
-saved_dap[["squared_lambda_diff"]] <- squared_lambda_diff
-saved_dap[["lambda_diff"]] <- lambda_diff
-saved_dap[["dap_lambda_mu"]] <- dap_lambda_mu
-saved_dap[["dap_lambda_var"]] <- dap_lambda_var
-saved_dap[["lambda_mu"]] <- lambda_mu
-saved_dap[["lambda_var"]] <- lambda_var
-saved_dap[["generated_Y"]] <- generated_Y
-save(saved_dap, file="dap_backup.Rdata")
+```
 
-# use load("dap_backup.Rdata", envir=.GlobalEnv) if you want to load computed dap instead of running this chunk
-# gridsize <- saved_dap[["gridsize"]]
-# squared_lambda_diff <- saved_dap[["squared_lambda_diff"]]
-# lambda_diff <- saved_dap[["lambda_diff"]]
-# dap_lambda_mu <- saved_dap[["dap_lambda_mu"]]
-# dap_lambda_var <- saved_dap[["dap_lambda_var"]]
-# lambda_mu <- saved_dap[["lambda_mu"]]
-# lambda_var <- saved_dap[["lambda_var"]]
-# generated_Y <- saved_dap[["generated_Y"]]
+```{R}
+scaleFUN <- function(x) sprintf("%.2f", x)
+dap_df <- as.data.frame.table(dap_lambda_mu)
+colnames(dap_df)[1] <- "mu"
+colnames(dap_df)[2] <- "var"
+dap_df[, "mu"] <- as.numeric(as.vector(dap_df[, "mu"]))  # not using as.vector converts the factor indices
+dap_df[, "var"] <- as.numeric(as.vector(dap_df[, "var"]))
+colnames(dap_df)[3] <- "dap_mu"
+dap_lambda_df <- as.data.frame.table(dap_lambda_var)
+dap_df[, "dap_var"] <- as.numeric(dap_lambda_df$Freq)
+ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2) + xlab("mu") + ylab("var") + ggtitle("gamma + hmc")
 
 ```
 
