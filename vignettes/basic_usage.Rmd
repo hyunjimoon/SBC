@@ -18,10 +18,10 @@ a method to generate draws from the prior predictive distribution
 (i.e. generate simulated datasets that match the model's priors + likelihood) 
 and an algorithm that fits the model to data.
 
-The rough sketch of SBC is that we simulate some datasets and then for each dataset:
+The rough sketch of SBC is that we simulate some datasets and then for each simulated dataset:
 
 1. Fit the model and obtain $D$ independent draws from the posterior.
-2. For each parameter, take the rank of the simulated parameter value within the
+2. For each variable of interest, take the rank of the simulated value within the
    posterior draws
    - Where rank is defined as the number of draws < simulated value
 
@@ -94,6 +94,16 @@ implementing the same thing twice is costly. But statistical models are usually 
 pieces of code and the added cost of the second implementation (the generator)
 thus tends to very small. 
 
+## Naming
+
+To avoid confusion the package and the docs tries to consistently give the same meaning to the following potentially ambiguous words:
+
+- _variable_ All quantities of interest for SBC - this includes both parameters that are directly estimated by the model and quantities derived from those parameters.
+- _draws_ are assumed to come from either a single realized  posterior distribution of a fitted model or the prior distribution of the model. The number of draws ( `n_draws`) is the number of posterior draws produced by fitting the model.
+- _simulation_ / _sim_ a set of simulated values for all variables and the accompanying generated data. I.e. the number of simulations (`n_sims`) is the number of times an individual model is fitted
+- _fit_ represents the result of fitting a single simulation
+
+
 ## Overview of the Architecture
 
 ![Overview of the package structure](overview_wide.png)
@@ -102,7 +112,7 @@ thus tends to very small.
 To perform SBC, one needs to first generate simulated datasets and then fit the
 model to those datasets. The `SBC_datasets` object holds the simulated prior and data draws. 
 `SBC_datasets` objects can be created directly by the user, but it is often easier to use one
-of provided _Generator_ implementations that let you e.g. wrap a function  that returns the parameters and simulated data for a single dataset or use a `brms` specification to generate
+of provided _Generator_ implementations that let you e.g. wrap a function  that returns the variables and simulated data for a single dataset or use a `brms` specification to generate
 draws corresponding to a given `brms` model. 
 
 The other big part of the process is a  _backend_.
@@ -175,7 +185,7 @@ if(use_cmdstanr) {
 Once we have defined the model, we can create a generator function which will generate prior and data draws:
 
 ```{r}
-# A generator function should return a named list containing elements "parameters" and "generated"
+# A generator function should return a named list containing elements "variables" and "generated"
 
 poisson_generator_single <- function(N){  # N is the number of data points we are generating
   lambda <- rgamma(n = 1, shape = 15, rate = 5)

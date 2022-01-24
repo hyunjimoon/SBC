@@ -31,7 +31,7 @@ rank2unif <- function(results, par, bins = 20){
 #' Summarize relational property of overall prior and posterior draws
 #'
 #' @param priors A posterior::draws_rvars of dimension(n_iterations=1, n_chains=n_sbc_iterations, n_variables=n_variables) which stores prior draws
-#' @param posteriors A posterior::draws_Rvars of dimension(n_iterations=n_posterior_samples, n_chains=n_sbc_iterations, n_variables=n_variables), which stores fitted posterior draws
+#' @param posteriors A posterior::draws_Rvars of dimension(n_iterations=n_posterior_draws, n_chains=n_sbc_iterations, n_variables=n_variables), which stores fitted posterior draws
 #' @param par names of parameter to summarize
 #' @param bins number of bins for prior and post density
 #' @export

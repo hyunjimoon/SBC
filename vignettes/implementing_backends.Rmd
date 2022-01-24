@@ -456,7 +456,7 @@ plot_coverage(res_indo_simple)
 we can make this precise by inspecting the same results numerically:
 
 ```{r}
-stats_effect <- res_indo_simple$stats[res_indo_simple$stats$parameter == "rx1_indomethacin",]
+stats_effect <- res_indo_simple$stats[res_indo_simple$stats$variable == "rx1_indomethacin",]
 main_eff_coverage <- empirical_coverage(stats_effect, width = c(0.5,0.9, 0.95))
 main_eff_coverage
 ```
@@ -552,7 +552,7 @@ The main effect of interest (`rx1_indomethacin`) is however still reasonably wel
 
 
 ```{r}
-stats_effect <- res_indo_complex$stats[res_indo_complex$stats$parameter == "rx1_indomethacin",]
+stats_effect <- res_indo_complex$stats[res_indo_complex$stats$variable == "rx1_indomethacin",]
 main_eff_coverage <- empirical_coverage(stats_effect, width = c(0.5,0.9, 0.95))
 main_eff_coverage
 ```

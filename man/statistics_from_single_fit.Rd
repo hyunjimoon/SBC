@@ -6,7 +6,7 @@
 \usage{
 statistics_from_single_fit(
   fit,
-  parameters,
+  variables,
   generated,
   thin_ranks,
   gen_quants,

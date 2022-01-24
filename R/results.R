@@ -2,7 +2,7 @@
 #'
 #'
 #' The `SBC_results` contains the following fields:
-#'   - `$stats` statistics for all parameters and fits (one row per parameter-fit combination)
+#'   - `$stats` statistics for all variables and fits (one row per variable-fit combination)
 #'   - `$fits`  the raw fits (unless `keep_fits = FALSE`) or `NULL` if the fit failed
 #'   - `$errors` error messages that caused fit failures
 #'   - `$outputs`, `$messages`, `$warnings` the outputs/messages/warnings written by fits
@@ -26,7 +26,7 @@ SBC_results <- function(stats,
 
 compute_default_diagnostics <- function(stats) {
   dplyr::summarise(dplyr::group_by(stats, sim_id),
-                   n_params = dplyr::n(),
+                   n_vars = dplyr::n(),
                    max_rhat = max(c(-Inf, rhat)),
                    min_ess_bulk = min(c(Inf, ess_bulk)),
                    min_ess_tail = min(c(Inf, ess_tail)),
@@ -46,6 +46,10 @@ validate_SBC_results <- function(x) {
     x$stats <- dplyr::rename(x$stats, sim_id = dataset_id)
   }
 
+  if("parameter" %in% names(x$stats)) {
+    x$stats <- dplyr::rename(x$stats, variable = parameter)
+  }
+
   if(!is.list(x$fits)) {
     stop("SBC_results object has to have a 'fits' field of type list")
   }
@@ -56,6 +60,11 @@ validate_SBC_results <- function(x) {
 
   if(!is.data.frame(x$default_diagnostics)) {
     stop("If the SBC_results object has a 'default_diagnostics' field, it has to inherit from data.frame")
+  }
+
+  # Ensure backwards compatibility
+  if("parameter" %in% names(x$default_diagnostics)) {
+    x$stats <- dplyr::rename(x$stats, variable = parameter)
   }
 
 
@@ -131,7 +140,7 @@ validate_SBC_results <- function(x) {
     stop("Needs equal no. of fits and errors")
   }
 
-  #TODO check identical par names
+  #TODO check identical var names
   x
 }
 
@@ -353,6 +362,11 @@ compute_SBC <- function(datasets, backend,
     backend_hash <- SBC_backend_hash_for_cache(backend)
     data_hash <- rlang::hash(datasets)
 
+    # Ensure backwards compatibility of cache
+    datasets_old <- datasets
+    names(datasets_old)[names(datasets) == "variables"] <- "parameters"
+    data_hash_old <- rlang::hash(datasets_old)
+
     if(file.exists(cache_location)) {
       results_from_cache <- readRDS(cache_location)
       if(!is.list(results_from_cache) ||
@@ -362,7 +376,7 @@ compute_SBC <- function(datasets, backend,
         warning("Cache file exists but is in invalid format. Will recompute.")
       } else if(results_from_cache$backend_hash != backend_hash) {
         message("Cache file exists but the backend hash differs. Will recompute.")
-      } else if(results_from_cache$data_hash != data_hash) {
+      } else if(results_from_cache$data_hash != data_hash && results_from_cache$data_hash != data_hash_old) {
         message("Cache file exists but the datasets hash differs. Will recompute.")
       } else {
         result <- tryCatch(validate_SBC_results(results_from_cache$result),
@@ -400,10 +414,10 @@ compute_SBC <- function(datasets, backend,
 
 
   # Create combined data for computation
-  params_and_generated_list <- list()
+  vars_and_generated_list <- list()
   for(i in 1:length(datasets)) {
-    params_and_generated_list[[i]] <- list(
-      parameters = posterior::subset_draws(datasets$parameters,
+    vars_and_generated_list[[i]] <- list(
+      variables = posterior::subset_draws(datasets$variables,
                                            draw = i),
       generated = datasets$generated[[i]]
     )
@@ -428,7 +442,7 @@ compute_SBC <- function(datasets, backend,
   }
 
   results_raw <- future.apply::future_lapply(
-    params_and_generated_list, SBC:::compute_SBC_single,
+    vars_and_generated_list, SBC:::compute_SBC_single,
     backend = backend, cores = cores_per_fit,
     keep_fit = keep_fits, thin_ranks = thin_ranks,
     gen_quants = gen_quants,
@@ -524,7 +538,7 @@ compute_SBC <- function(datasets, backend,
 
   default_diagnostics <-  tryCatch(
     { compute_default_diagnostics(stats) },
-    error = function(e) { warning("Error when computing param diagnostics. ", e); NULL })
+    error = function(e) { warning("Error when computing default per-variable diagnostics. ", e); NULL })
 
 
   res <- SBC_results(stats = stats, fits = fits, outputs = outputs,
@@ -605,11 +619,11 @@ capture_all_outputs <- function(expr) {
 }
 
 
-compute_SBC_single <- function(params_and_generated, backend, cores,
+compute_SBC_single <- function(vars_and_generated, backend, cores,
                                    keep_fit, thin_ranks, gen_quants) {
 
-  parameters <- params_and_generated$parameters
-  generated <- params_and_generated$generated
+  variables <- vars_and_generated$variables
+  generated <- vars_and_generated$generated
 
   # Note: explicitly referencing functions from the SBC package is needed
   # here as the function might be run in a separate R session that does not
@@ -631,7 +645,7 @@ compute_SBC_single <- function(params_and_generated, backend, cores,
     error_stats <-  SBC:::capture_all_outputs({
       tryCatch( {
         res$stats <- SBC::statistics_from_single_fit(
-          res$fit, parameters = parameters, thin_ranks = thin_ranks,
+          res$fit, variables = variables, thin_ranks = thin_ranks,
           generated = generated, gen_quants = gen_quants,
           backend = backend)
 
@@ -674,7 +688,7 @@ compute_SBC_single <- function(params_and_generated, backend, cores,
 #'
 #' @export
 #' @seealso [recompute_SBC_statistics()]
-statistics_from_single_fit <- function(fit, parameters, generated,
+statistics_from_single_fit <- function(fit, variables, generated,
                                        thin_ranks, gen_quants,
                                        backend) {
 
@@ -685,19 +699,19 @@ statistics_from_single_fit <- function(fit, parameters, generated,
     gq_fit <- compute_gen_quants(fit_matrix, generated, gen_quants)
     fit_matrix <- posterior::bind_draws(fit_matrix, gq_fit, along = "variable")
 
-    gq_parameter <- compute_gen_quants(parameters, generated, gen_quants)
-    parameters <- posterior::bind_draws(parameters, gq_parameter, along = "variable")
+    gq_variable <- compute_gen_quants(variables, generated, gen_quants)
+    variables <- posterior::bind_draws(variables, gq_variable, along = "variable")
   }
 
-  shared_pars <- intersect(posterior::variables(parameters),
+  shared_vars <- intersect(posterior::variables(variables),
                            posterior::variables(fit_matrix))
 
 
-  # Make sure the order of parameters matches
-  parameters <- posterior::subset_draws(parameters, variable = shared_pars)
+  # Make sure the order of variables matches
+  variables <- posterior::subset_draws(variables, variable = shared_vars)
 
 
-  fit_matrix <- posterior::subset_draws(fit_matrix, variable = shared_pars)
+  fit_matrix <- posterior::subset_draws(fit_matrix, variable = shared_vars)
 
   fit_thinned <- posterior::thin_draws(fit_matrix, thin_ranks)
 
@@ -711,11 +725,10 @@ statistics_from_single_fit <- function(fit, parameters, generated,
     stats$ess_tail <- posterior::ndraws(fit_matrix)
   }
 
-  stats <- dplyr::rename(stats, parameter = variable)
-  stats$simulated_value <- as.numeric(parameters)
+  stats$simulated_value <- as.numeric(variables)
 
-  ranks <- calculate_ranks_draws_matrix(parameters, fit_thinned)
-  if(!identical(stats$parameter, names(ranks))) {
+  ranks <- calculate_ranks_draws_matrix(variables, fit_thinned)
+  if(!identical(stats$variable, names(ranks))) {
     stop("A naming conflict")
   }
   stats$rank <- ranks
@@ -723,7 +736,7 @@ statistics_from_single_fit <- function(fit, parameters, generated,
   stats$z_score <- (stats$simulated_value - stats$mean) / stats$sd
 
   stats <- dplyr::select(
-    stats, parameter, simulated_value, rank, z_score, tidyselect::everything())
+    stats, variable, simulated_value, rank, z_score, tidyselect::everything())
 
   stats
 }
@@ -743,16 +756,16 @@ check_stats <- function(stats, datasets, thin_ranks) {
 
   }
 
-  all_pars <- dplyr::summarise(
+  all_vars <- dplyr::summarise(
     dplyr::group_by(stats, sim_id),
-    all_pars = paste0(parameter, collapse = ","), .groups = "drop")
-  if(length(unique(all_pars$all_pars)) != 1) {
-    warning("Not all fits share the same parameters")
+    all_vars = paste0(variable, collapse = ","), .groups = "drop")
+  if(length(unique(all_vars$all_vars)) != 1) {
+    warning("Not all fits share the same variables")
   }
 
-  missing_pars <- setdiff(posterior::variables(datasets$parameters), stats$parameter)
-  if(length(missing_pars) > 0) {
-    warning("Some parameters missing in fits: ", paste0(missing_pars, collapse = ", "))
+  missing_vars <- setdiff(posterior::variables(datasets$variables), stats$variable)
+  if(length(missing_vars) > 0) {
+    warning("Some variables missing in fits: ", paste0(missing_vars, collapse = ", "))
 
   }
 }
@@ -852,9 +865,9 @@ recompute_SBC_statistics <- function(old_results, datasets, backend,
   new_stats_list <- list()
   for(i in 1:length(old_results)) {
     if(!is.null(old_results$fits[[i]])) {
-      parameters <- posterior::subset_draws(datasets$parameters, draw = i)
+      variables <- posterior::subset_draws(datasets$variables, draw = i)
       new_stats_list[[i]] <- statistics_from_single_fit(old_results$fits[[i]],
-                                                        parameters = parameters,
+                                                        variables = variables,
                                                         generated = datasets$generated[[i]],
                                                         thin_ranks = thin_ranks,
                                                         gen_quants = gen_quants,
@@ -872,7 +885,7 @@ recompute_SBC_statistics <- function(old_results, datasets, backend,
 
   new_results$default_diagnostics <-  tryCatch(
     { compute_default_diagnostics(new_stats) },
-    error = function(e) { warning("Error when computing param diagnostics. ", e); NULL })
+    error = function(e) { warning("Error when computing default per-variable diagnostics. ", e); NULL })
 
 
   check_all_SBC_diagnostics(new_results)
@@ -890,23 +903,32 @@ rdunif <- function(n, a, b) {
   ceiling(runif(n, min = a - 1, max= b))
 }
 
-#' Calculate ranks given parameter values within a posterior distribution.
+#' Calculate ranks given variable values within a posterior distribution.
 #'
-#' When there are ties (e.g. for discrete parameters), the rank is currently drawn stochastically
+#' When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
 #' among the ties.
-#' @param params a vector of values to check
+#' @param variables a vector of values to check
 #' @param dm draws_matrix of the fit (assumed to be already thinned if that was necessary)
+#' @param params DEPRECATED. Use `variables` instead.
 #' @export
-calculate_ranks_draws_matrix <- function(params, dm) {
+calculate_ranks_draws_matrix <- function(variables, dm, params = NULL) {
   #TODO validate input
+
+  if(!is.null(params)) {
+    warning("The `params` argument is deprecated use `variables` instead.")
+    if(is.null(variables)) {
+      variables <- params
+    }
+  }
+
   max_rank <- posterior::ndraws(dm)
 
-  less_matrix <- sweep(dm, MARGIN = 2, STATS = params, FUN = "<")
+  less_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = "<")
   rank_min <- colSums(less_matrix)
 
-  # When there are ties (e.g. for discrete parameters), the rank is currently drawn stochastically
+  # When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
   # among the ties
-  equal_matrix <- sweep(dm, MARGIN = 2, STATS = params, FUN = "==")
+  equal_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = "==")
   rank_range <- colSums(equal_matrix)
 
   ranks <- rank_min + rdunif(posterior::nvariables(dm), a = 0, b = rank_range)

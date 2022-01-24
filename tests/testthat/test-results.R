@@ -50,13 +50,13 @@ test_that("calculate_ranks_draws_matrix works", {
     dm[, "d"] <- sample(c(1:5, 1:5))
     dm <- posterior::as_draws_matrix(dm)
 
-    params <- matrix(c(3.5, -5, 15, 3), nrow = 1)
-    colnames(params) <- c("a","b","c", "d")
+    vars <- matrix(c(3.5, -5, 15, 3), nrow = 1)
+    colnames(vars) <- c("a","b","c", "d")
 
     N_steps <- 1e4
     all_ranks <- matrix(NA_real_, nrow = N_steps, ncol = 4)
     for(i in 1:N_steps) {
-        last_ranks <- calculate_ranks_draws_matrix(params, dm)
+        last_ranks <- calculate_ranks_draws_matrix(vars, dm)
         all_ranks[i,] <- last_ranks
 
     }
@@ -93,7 +93,7 @@ test_that("calculate_sds_draws_matrix", {
 })
 
 test_that("statistics_from_single_fit", {
-    params <- posterior::as_draws_matrix(
+    vars <- posterior::as_draws_matrix(
         posterior::draws_rvars(
             mu = posterior::rvar(4) ,
             tau = posterior::rvar(4),
@@ -102,12 +102,12 @@ test_that("statistics_from_single_fit", {
     # Can't really check correctness, only
     # testing that no error is thrown and structure is OK
     res <- statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
-                               parameters = params, thin_ranks = 1, gen_quants = NULL,
+                               variables = vars, thin_ranks = 1, gen_quants = NULL,
                                backend = SBC_backend_mock())
 
     expect_equal(length(unique(res$max_rank)), 1)
     expect_true(all(res$rank >= 0 & res$rank < res$max_rank))
-    expect_equal(res$simulated_value, as.numeric(params))
+    expect_equal(res$simulated_value, as.numeric(vars))
     expect_identical(res$mean > res$simulated_value, sign(res$z_score) < 0)
 
 })

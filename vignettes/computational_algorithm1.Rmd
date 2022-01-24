@@ -331,7 +331,7 @@ res_hmm <- compute_results(ds_hmm, backend_HMM,
                            cache_mode = "results", cache_location = file.path(cache_dir, "hmm"))
 ```
 
-There are not huge problems, but the `mu_signal` parameter seems to not be well calibrated:
+There are not huge problems, but the `mu_signal` variable seems to not be well calibrated:
 
 ```{r hmm_ecdf_ranks}
 plot_ecdf_diff(res_hmm)
@@ -379,7 +379,7 @@ plot_coverage(res_hmm_2)
 This is what we get when we focus on the 90% posterior credible interval:
 
 ```{r}
-coverage_hmm <- empirical_coverage(res_hmm_2$stats, width = 0.9)[, c("parameter", "ci_low", "ci_high")]
+coverage_hmm <- empirical_coverage(res_hmm_2$stats, width = 0.9)[, c("variable", "ci_low", "ci_high")]
 coverage_hmm
 ```
 
@@ -428,7 +428,7 @@ Or alternatively looking at the numerical values for coverage of the central 90%
 
 ```{r}
 coverage_hmm_fullrank <- 
-  empirical_coverage(res_hmm_fullrank$stats, width = 0.9)[, c("parameter", "ci_low", "ci_high")]
+  empirical_coverage(res_hmm_fullrank$stats, width = 0.9)[, c("variable", "ci_low", "ci_high")]
 coverage_hmm_fullrank
 ```
 
@@ -479,7 +479,7 @@ plot_coverage(res_hmm_lowtol_conv)
 and the numerical values for the coverage of the central 90% interval.
 
 ```{r}
-empirical_coverage(res_hmm_lowtol$stats, width = 0.9)[, c("parameter", "ci_low", "ci_high")]
+empirical_coverage(res_hmm_lowtol$stats, width = 0.9)[, c("variable", "ci_low", "ci_high")]
 ```
 
 This variant has somewhat lower overall mismatch, but tends to be overconfident, which might in some cases be less desirable than the more conservative fullrank.
@@ -663,8 +663,8 @@ plot_rank_hist(res_hmm_ordered)
 
 What changed? To understand that we need to remember how
 Stan [represents constrained data types]( https://mc-stan.org/docs/2_28/reference-manual/variable-transforms.html). In short,
-in the model in Example II, Stan will internally work with `mu_background__ = log(mu_background)` and 
-`mu_signal__ = log(mu_signal)`. In this modified model, the internal representation will be: `log_mu_1__ = log_mu[1]` (without any change) and `log_mu_2__ = log(log_mu[2] - log_mu[1])`. So the mean for the active component is actually `exp(log_mu_1__ + exp(log_mu_2__))`. This then introduces a complex correlation structure between the internal variables that the ADVI algorithm is unable to handle well.
+in the model in Example II, Stan will internally work with the so called _unconstrained_ parameters `mu_background__ = log(mu_background)` and 
+`mu_signal__ = log(mu_signal)`. In this modified model, the internal representation will be: `log_mu_1__ = log_mu[1]` (without any change) and `log_mu_2__ = log(log_mu[2] - log_mu[1])`. So the mean for the active component is actually `exp(log_mu_1__ + exp(log_mu_2__))`. This then introduces a complex correlation structure between the unconstrained parameters that the ADVI algorithm is unable to handle well.
 
 
 Even trying the fullrank variant does not help:

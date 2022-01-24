@@ -199,7 +199,7 @@ coverage <- empirical_coverage(results_minor_200$stats, width = c(0.5,0.9,0.95))
 coverage
 
 sigma_90_coverage_string <- paste0(round(100 * as.numeric(
-  coverage[coverage$parameter == "sigma" & coverage$width == 0.9, c("ci_low","ci_high")])),
+  coverage[coverage$variable == "sigma" & coverage$width == 0.9, c("ci_low","ci_high")])),
   "%",
   collapse = " - ")
 ```

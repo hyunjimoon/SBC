@@ -174,13 +174,13 @@ ranks_to_empirical_pit <- function(ranks, n_posterior_samples){
 #' then all intervals are well calibrated.
 #'
 #' @param stats a data.frame of rank statistics (e.g. as returned in the `$stats` component of [SBC_results]),
-#'   at minimum should have at least `parameter`, `rank` and `max_rank` columns)
+#'   at minimum should have at least `variable`, `rank` and `max_rank` columns)
 #' @param width a vector of values between 0 and 1 representing widths of credible intervals for
 #'   which we compute coverage.
 #' @param prob determines width of the uncertainty interval around the observed coverage
 #' @param inteval_type `"central"` to show coverage of central credible intervals
 #'   or `"leftmost"` to show coverage of leftmost credible intervals (i.e. the observed CDF).
-#' @return A `data.frame` with columns `parameter`, `width` (width of the interval as given
+#' @return A `data.frame` with columns `variable`, `width` (width of the interval as given
 #'   in the `width` parameter), `width_represented` the closest width that can be represented by
 #'   the ranks in the input (any discrepancy needs to be judged against this rather than `width`),
 #'   `estimate` - observed coverage for the interval, `ci_low`, `ci_high` the uncertainty
@@ -188,9 +188,18 @@ ranks_to_empirical_pit <- function(ranks, n_posterior_samples){
 #' @seealso [plot_coverage()]
 #' @export
 empirical_coverage <- function(stats, width, prob = 0.95, interval_type = "central") {
-  if(!all(c("parameter", "rank", "max_rank") %in% names(stats))) {
+  stopifnot(is.data.frame(stats))
+  # Ensuring backwards compatibility
+  if("parameter" %in% names(stats)) {
+    if(!("variable" %in% names(stats))) {
+      warning("The stats parameter contains a `parameter` column, which is deprecated, use `variable` instead.")
+      stats$variable <- stats$parameter
+    }
+  }
+
+  if(!all(c("variable", "rank", "max_rank") %in% names(stats))) {
     stop(SBC_error("SBC_invalid_argument_error",
-                   "The stats data.frame needs a 'parameter', 'rank' and 'max_rank' columns"))
+                   "The stats data.frame needs a 'variable', 'rank' and 'max_rank' columns"))
   }
 
   stopifnot(is.numeric(width))
@@ -217,7 +226,7 @@ empirical_coverage <- function(stats, width, prob = 0.95, interval_type = "centr
                        is_covered = rank >= low_rank & rank <= high_rank)
 
    summ <- dplyr::summarise(
-     dplyr::group_by(long, parameter, width),
+     dplyr::group_by(long, variable, width),
      post_alpha = sum(is_covered) + 1,
      post_beta = dplyr::n() - sum(is_covered) + 1,
      width_represented = unique(width_represented),

@@ -4,7 +4,14 @@
 \alias{plot_rank_hist}
 \title{Plot rank histogram of an SBC results.}
 \usage{
-plot_rank_hist(x, parameters = NULL, bins = NULL, prob = 0.95, ...)
+plot_rank_hist(
+  x,
+  variables = NULL,
+  bins = NULL,
+  prob = 0.95,
+  ...,
+  parameters = NULL
+)
 }
 \arguments{
 \item{x}{Object supporting the plotting method.}

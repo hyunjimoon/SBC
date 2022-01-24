@@ -10,7 +10,7 @@ SBC_generator_brms(..., generate_lp = TRUE)
 \item{...}{arguments passed to \code{brms::brm}}
 
 \item{generate_lp}{whether to compute the overall log-likelihood of the model
-as an additional parameter. This can be somewhat computationally expensive,
+as an additional variable. This can be somewhat computationally expensive,
 but improves sensitivity of the SBC process.}
 }
 \description{

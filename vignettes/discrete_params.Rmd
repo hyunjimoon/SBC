@@ -121,7 +121,7 @@ We need to figure out how to handle this better.
 We can quickly note that the statistics for the `s` parameter are extreme - many ranks of 0 and _extreme_ z-scores, including -Infinity. Seing just one or two such fits should be enough to convince us that there is something fundamentally wrong.
 
 ```{r}
-dplyr::filter(results_1$stats, parameter == "s") 
+dplyr::filter(results_1$stats, variable == "s") 
 ```
 
 
