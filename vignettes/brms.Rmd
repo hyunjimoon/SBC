@@ -39,9 +39,9 @@ options(SBC.min_chunk_size = 5)
 
 # Setup caching of results
 if(use_cmdstanr) {
-  cache_dir <- "./brms_SBC_cache"
+  cache_dir <- "./_brms_SBC_cache"
 } else { 
-  cache_dir <- "./brms_rstan_SBC_cache"
+  cache_dir <- "./_brms_rstan_SBC_cache"
 }
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
@@ -59,7 +59,7 @@ cannot be found as it will most likely affect the generator and the backend in t
 Still this can be useful for validating `brms` itself - we'll get to validation
 with custom generators in a while. For now, we'll build a generator using `brms` directly.
 
-Generating datasets with this generator requires us to compile a Stan model 
+Generating simulations with this generator requires us to compile a Stan model 
 and may thus take a while. Also the exploration is often problematic, so 
 to avoid problems, we take a lot of draws and thin the resulting draws heavily.
 
@@ -97,7 +97,7 @@ backend <- SBC_backend_brms_from_generator(generator, chains = 1, thin = 1,
                             inits = 0.1)
 
 # More verbose alternative that results in exactly the same backend:
-# backend <- SBC_backend_brms(y ~ x, template_dataset = template_data, prior = priors, warmup = 500, iter = 1000, chains = 1, thin = 1
+# backend <- SBC_backend_brms(y ~ x, template_data = template_data, prior = priors, warmup = 500, iter = 1000, chains = 1, thin = 1
 #                            init = 0.1)
 ```
 
@@ -105,7 +105,7 @@ backend <- SBC_backend_brms_from_generator(generator, chains = 1, thin = 1,
 Compute the actual results
 
 ```{r}
-results <- compute_results(datasets, backend,
+results <- compute_SBC(datasets, backend,
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "first"))
 ```
@@ -128,7 +128,7 @@ Let's take a bit more complex model - with a single varying intercept.
 This time we will not use the `brms` model to also simulate from prior, but 
 simulate using an R function. This way, we get to learn if `brms` does what we think it does!
 
-Custom generator code also allows us to have different covariate values for each dataset, potentially improving sensitivity
+Custom generator code also allows us to have different covariate values for each simulation, potentially improving sensitivity
 if we want to check the model for a range of potential covariate values.
 If on the other hand we are interested in a specific dataset, it might make
 more sense to use the predictors as seen in  the dataset in all simulations to focus
@@ -142,7 +142,7 @@ need to be careful to match the parameter names as `brms` uses them. You
 can call `parnames` on a fit to see them.
 
 ```{r}
-one_dataset_generator <- function(N, K) {
+one_sim_generator <- function(N, K) {
   # N - number of datapoints, K number of groups for the varying intercept
   stopifnot(3 * K <= N)
   x <- rnorm(N) + 5
@@ -165,7 +165,7 @@ one_dataset_generator <- function(N, K) {
   y <- rnorm(N, predictor, sigma)
   
   list(
-    parameters = list(
+    variables = list(
       b_Intercept = b_Intercept,
       b_x = b_x,
       sd_group__Intercept = sd_group__Intercept,
@@ -176,7 +176,7 @@ one_dataset_generator <- function(N, K) {
   )
 }
 
-n_dataset_generator <- SBC_generator_function(one_dataset_generator, N = 18, K = 5)
+n_sims_generator <- SBC_generator_function(one_sim_generator, N = 18, K = 5)
 ```
 
 For increased sensitivity, we also add the log likelihood of the data given parameters
@@ -192,7 +192,7 @@ log_lik_gq_func <- generated_quantities(
 
 ```{r}
 set.seed(12239755)
-datasets_func <- generate_datasets(n_dataset_generator, 100)
+datasets_func <- generate_datasets(n_sims_generator, 100)
 ```
 
 This is then our `brms` backend - note that `brms` requires us to provide a
@@ -208,13 +208,13 @@ priors_func <- prior(normal(0,1), class = "b") +
 
 backend_func <- SBC_backend_brms(y ~ x + (1 | group),  
                             prior = priors_func, chains = 1,
-                            template_dataset = datasets_func$generated[[1]])
+                            template_data = datasets_func$generated[[1]])
 
 ```
 So we can happily compute:
 
 ```{r}
-results_func <- compute_results(datasets_func, backend_func, 
+results_func <- compute_SBC(datasets_func, backend_func, 
                                 gen_quants = log_lik_gq_func, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "func"))
@@ -229,12 +229,12 @@ plot_rank_hist(results_func)
 plot_ecdf_diff(results_func)
 ```
 
-It looks like there is a problem affecting at least the `b_Intercept` and `sigma` parameters.
+It looks like there is a problem affecting at least the `b_Intercept` and `sigma` variables.
 We may also notice that the `log_lik` (log likelihood derived from all the parameters) is copying
-the behaviour of the worst behaving parameter. This tends to be the case in many models, so in models with lots of parameters, it can be useful to add such a term as they make noticing problems easier. 
+the behaviour of the worst behaving variable. This tends to be the case in many models, so in models with lots of variables, it can be useful to add such a term as they make noticing problems easier. 
 
 What happened is that `brms` by default centers all the predictors, which changes the
-numerical values of the intercept (but not other terms). The interaction with the prior than probably also affects the other parameters.
+numerical values of the intercept (but not other terms). The interaction with the prior than probably also affects the other variables.
 
 Maybe we don't want `brms` to do this --- using `0 + Intercept` syntax avoids the centering,
 so we build a new backend that should match our simulator better
@@ -250,15 +250,15 @@ priors_func2 <- prior(normal(0,1), class = "b") +
 
 backend_func2 <- SBC_backend_brms(y ~ 0 + Intercept + x + (1 | group),  
                             prior = priors_func2, warmup = 1000, iter = 2000, chains = 1,
-                            template_dataset = datasets_func$generated[[1]])
+                            template_data = datasets_func$generated[[1]])
 
 
 ```
 
-Let's fit the same datasets with the new backend.
+Let's fit the same simulations with the new backend.
 
 ```{r}
-results_func2 <- compute_results(datasets_func, backend_func2, 
+results_func2 <- compute_SBC(datasets_func, backend_func2, 
                                  gen_quants = log_lik_gq_func, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "func2"))

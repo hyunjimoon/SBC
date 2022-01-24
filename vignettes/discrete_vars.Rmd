@@ -39,9 +39,9 @@ options(SBC.min_chunk_size = 5)
 
 # Setup caching of results
 if(use_cmdstanr) {
-  cache_dir <- "./discrete_params_SBC_cache"
+  cache_dir <- "./_discrete_vars_SBC_cache"
 } else {
-  cache_dir <- "./discrete_params_rstan_SBC_cache"
+  cache_dir <- "./_discrete_vars_rstan_SBC_cache"
 }
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
@@ -53,15 +53,15 @@ We take the changepoint model from:
 https://mc-stan.org/docs/2_26/stan-users-guide/change-point-section.html
 
 ```{r, comment = ""}
-cat(readLines("stan/discrete_params1.stan"), sep = "\n")
+cat(readLines("stan/discrete_vars1.stan"), sep = "\n")
 ```
 
 ```{r}
 if(use_cmdstanr) {
-  model_1 <- cmdstan_model("stan/discrete_params1.stan")
+  model_1 <- cmdstan_model("stan/discrete_vars1.stan")
   backend_1 <- SBC_backend_cmdstan_sample(model_1)
 } else {
-  model_1 <- stan_model("stan/discrete_params1.stan")
+  model_1 <- stan_model("stan/discrete_vars1.stan")
   backend_1 <- SBC_backend_rstan_sample(model_1)
 }
 ```
@@ -69,7 +69,7 @@ if(use_cmdstanr) {
 Now, let's generate data from the model.
 
 ```{r}
-generate_single_dataset_1 <- function(T, r_e, r_l) {
+generate_single_sim_1 <- function(T, r_e, r_l) {
   e <- rexp(1, r_e)
   l <- rexp(1, r_l)
   s <- sample.int(T, size = 1)
@@ -85,7 +85,7 @@ generate_single_dataset_1 <- function(T, r_e, r_l) {
   }
   
   list(
-    parameters = list(
+    variables = list(
       e = e, l = l, s = s
     ), generated = list(
       T = T,
@@ -96,7 +96,7 @@ generate_single_dataset_1 <- function(T, r_e, r_l) {
   )
 }
 
-generator_1 <- SBC_generator_function(generate_single_dataset_1, T = 5, r_e = 0.5, r_l = 0.1)
+generator_1 <- SBC_generator_function(generate_single_sim_1, T = 5, r_e = 0.5, r_l = 0.1)
 ```
 
 
@@ -107,7 +107,7 @@ datasets_1 <- generate_datasets(generator_1, 30)
 ```
 
 ```{r}
-results_1 <- compute_results(datasets_1, backend_1, 
+results_1 <- compute_SBC(datasets_1, backend_1, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "model1"))
 ```
@@ -148,7 +148,7 @@ But back to the model - what happened? What is wrong with it? After some inspect
 
 
 ```{r}
-generate_single_dataset_2 <- function(T, r_e, r_l) {
+generate_single_sim_2 <- function(T, r_e, r_l) {
   e <- rexp(1, r_e)
   l <- rexp(1, r_l)
   s <- sample.int(T, size = 1)
@@ -164,7 +164,7 @@ generate_single_dataset_2 <- function(T, r_e, r_l) {
   }
   
   list(
-    parameters = list(
+    variables = list(
       e = e, l = l, s = s
     ), generated = list(
       T = T,
@@ -175,7 +175,7 @@ generate_single_dataset_2 <- function(T, r_e, r_l) {
   )
 }
 
-generator_2 <- SBC_generator_function(generate_single_dataset_2, T = 5, r_e = 0.5, r_l = 0.1)
+generator_2 <- SBC_generator_function(generate_single_sim_2, T = 5, r_e = 0.5, r_l = 0.1)
 ```
 
 And we can recompute:
@@ -184,7 +184,7 @@ And we can recompute:
 ```{r}
 set.seed(5846502)
 datasets_2 <- generate_datasets(generator_2, 30)
-results_2 <- compute_results(datasets_2, backend_1, 
+results_2 <- compute_SBC(datasets_2, backend_1, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "model2"))
 ```
@@ -200,7 +200,7 @@ Looks good, so let us add some more simulations to make sure the model behaves w
 ```{r}
 set.seed(54321488)
 datasets_3 <- generate_datasets(generator_2, 100)
-results_3 <- compute_results(datasets_3, backend_1, 
+results_3 <- compute_SBC(datasets_3, backend_1, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "model3"))
 

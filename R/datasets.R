@@ -320,7 +320,7 @@ generate_datasets.SBC_generator_brms <- function(generator, n_sims, n_datasets =
       max_rhat <- max(summ$rhat)
       if(max_rhat > 1.01) {
         message("Warning: Some rhats are > 1.01 indicating the prior was not explored well.\n",
-                "The highest rhat is ", round(max_rhat, 2)," for ", summ$parameter[which.max(summ$rhat)],
+                "The highest rhat is ", round(max_rhat, 2)," for ", summ$variable[which.max(summ$rhat)],
                 "\nConsider adding warmup iterations (via 'warmup' argument).")
       }
       min_ess <- min(summ$ess_bulk)

@@ -26,7 +26,7 @@ The rough sketch of SBC is that we simulate some datasets and then for each simu
    - Where rank is defined as the number of draws < simulated value
 
 It can be shown that if model matched the generator and algorithm works correctly,
-then for each parameter, the ranks obtained in SBC should be uniformly distributed between $0$ and $S$.
+then for each variable, the ranks obtained in SBC should be uniformly distributed between $0$ and $S$.
 This corresponds quite directly to claims like 
 "the posterior 84% credible interval should contain the simulated value in 84% of simulations",
 the rank uniformity represents this claim for all interval widths at once. The theory of SBC is fully
@@ -110,16 +110,16 @@ To avoid confusion the package and the docs tries to consistently give the same 
 
 
 To perform SBC, one needs to first generate simulated datasets and then fit the
-model to those datasets. The `SBC_datasets` object holds the simulated prior and data draws. 
+model to those simulations. The `SBC_datasets` object holds the simulated prior and data draws. 
 `SBC_datasets` objects can be created directly by the user, but it is often easier to use one
-of provided _Generator_ implementations that let you e.g. wrap a function  that returns the variables and simulated data for a single dataset or use a `brms` specification to generate
+of provided _Generator_ implementations that let you e.g. wrap a function  that returns the variables and observed data for a single simulation or use a `brms` specification to generate
 draws corresponding to a given `brms` model. 
 
 The other big part of the process is a  _backend_.
 The SBC package uses a backend object to actually fit the model to the simulated data and generate posterior draws. In short, backend bundles together the algorithm in which inference is run (`cmdstanr`, `rstan`, `brms`, `jags`, etc.), the model, and additional platform-specific inference parameters which are necessary to run inference for the model-platform combination (e.g. number of iterations, initial values, ...). 
 In other words backend is a function that takes data as its only input and provides posterior draws.
 
-Once we have a backend and an `SBC_datasets` instance, we can call `compute_results` 
+Once we have a backend and an `SBC_datasets` instance, we can call `compute_SBC` 
 to actually perform the SBC. The resulting object can then be passed to various plotting 
 and summarising functions to let us easily learn if our model works as expected. 
 
@@ -153,9 +153,9 @@ options(SBC.min_chunk_size = 5)
 
 # Setup caching of results
 if(use_cmdstanr) {
-  cache_dir <- "./basic_usage_SBC_cache"
+  cache_dir <- "./_basic_usage_SBC_cache"
 } else {
-  cache_dir <- "./basic_usage_rstan_SBC_cache"
+  cache_dir <- "./_basic_usage_rstan_SBC_cache"
 }
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
@@ -191,7 +191,7 @@ poisson_generator_single <- function(N){  # N is the number of data points we ar
   lambda <- rgamma(n = 1, shape = 15, rate = 5)
   y <- rpois(n = N, lambda = lambda)
   list(
-    parameters = list(
+    variables = list(
       lambda = lambda
     ),
     generated = list(
@@ -204,18 +204,18 @@ poisson_generator_single <- function(N){  # N is the number of data points we ar
 
 As you can see, the generator returns a named list containing random draws from the prior and generated data realized from the prior draws - the data are already in the format expected by Stan.
 
-### Create `SBC_Datasets` from generator
+### Create `SBC_datasets` from generator
 
 `SBC` provides helper functions `SBC_generator_function` and `generate_datasets` which takes a generator function and calls it repeatedly to create a valid `SBC_datasets` object. 
 
 ```{r}
 set.seed(54882235)
-n_datasets <- 100  # Number of SBC iterations to run
+n_sims <- 100  # Number of SBC iterations to run
 
 poisson_generator <- SBC_generator_function(poisson_generator_single, N = 40)
 poisson_dataset <- generate_datasets(
   poisson_generator, 
-  n_datasets)
+  n_sims)
 ```
 
 
@@ -239,10 +239,10 @@ if(use_cmdstanr) {
 
 ### Computing Ranks
 
-we can then use `compute_results` to fit our datasets with the backend:
+we can then use `compute_SBC` to fit our simulations with the backend:
 
 ```{r, results=FALSE}
-results <- compute_results(poisson_dataset, poisson_backend, 
+results <- compute_SBC(poisson_dataset, poisson_backend, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "results"))
 ```

@@ -31,7 +31,7 @@ library(formula.tools)
 library(MASS)
 
 # Setup caching of results
-cache_dir <- "./implementing_backends_SBC_cache"
+cache_dir <- "./_implementing_backends_SBC_cache"
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
@@ -47,7 +47,7 @@ run the given statistical method.
 
 For practical reasons, the SBC package actually splits that function into two steps: first,
 there is an S3 generic [`SBC_fit()`](https://hyunjimoon.github.io/SBC/reference/SBC_fit.html),
-that takes a backend object, dataset and the number of cores it is allowed to use
+that takes a backend object, observed data and the number of cores it is allowed to use
 and produces an arbitrary object representing the fit. Additionally,
 there is an `SBC_fit_to_draws_matrix()` S3 generic that takes in the resulting fit
 and returns posterior draws in the `posterior::draws_matrix` format. 
@@ -67,7 +67,7 @@ of the backend. Here, we'll just capture all the arguments (which we will later 
 SBC_backend_glm <- function(...) {
     args = list(...)
     if(any(names(args) == "data")) {
-      stop(paste0("Parameter 'data' cannot be provided when defining a backend",
+      stop(paste0("Argument 'data' cannot be provided when defining a backend",
                   " as it needs to be set by the SBC package"))
     }
   
@@ -79,7 +79,7 @@ So e.g. `SBC_backend_glm(y ~ x, family = "poisson")` would create a valid
 backend representing a simple Poisson regression.
 
 Now we create an implementation of `SBC_fit` for the newly created class.
-We take the generated dataset (`generated` parameter) and pass it - along
+We take the generated data (`generated` argument) and pass it - along
 with all the arguments we stored in the constructor - to `glm` via `do.call`. 
 We ignore the `cores` argument as we don't have multicore support.
 
@@ -134,8 +134,8 @@ generator_single_poisson <- function(N) {
   y <- rpois(N, exp(mus))
   
   list(
-    parameters = list(
-      # Naming the parameters in the same way glm will name coefs
+    variables = list(
+      # Naming the variables in the same way glm will name coefs
       `(Intercept)` = log_intercept,
       x = beta
     ),
@@ -145,14 +145,14 @@ generator_single_poisson <- function(N) {
 
 set.seed(354662)
 datasets_poisson <- generate_datasets(SBC_generator_function(generator_single_poisson, N = 100), 
-                              n_datasets = 100)
+                              n_sims = 100)
 ```
 
 Then we'll construct a matching backend and compute the results.
 
 ```{r}
 backend_poisson <- SBC_backend_glm(y ~ x, family = "poisson")
-res_poisson <- compute_results(datasets_poisson, 
+res_poisson <- compute_SBC(datasets_poisson, 
                                backend_poisson, 
                                thin_ranks = 1,
                                cache_mode = "results", 
@@ -170,11 +170,11 @@ plot_rank_hist(res_poisson)
 plot_ecdf_diff(res_poisson)
 ```
 
-This is not unexpected - we've used a large dataset and a simple model, so
+This is not unexpected - we've used a large number of observations and a simple model, so
 choice of prior should have negligible impact on the posterior and the normal
 approximation is very close to the exact Bayesian solution. 
 
-We can see that both model parameters are recovered almost exactly in almost all 
+We can see that both variables are recovered almost exactly in almost all 
 fits:
 
 ```{r poisson_sim_estimated}
@@ -191,7 +191,7 @@ comfortable to use. Let's walk through the options and se and how they can be im
 Since (unlike MCMC methods) the `glm` approximation does 
 not produce autocorrelated draws, we can implement `SBC_backend_iid_draws`
 to return `TRUE`. The SBC package will then by default use `thin_ranks = 1`
-argument to `compute_results` and will not assess convergence/autocorrelation via the
+argument to `compute_SBC` and will not assess convergence/autocorrelation via the
 R-hat and ESS diagnostics.
 
 ```{r}
@@ -321,11 +321,11 @@ If you are implementing the backend to become part of the SBC package, nothing
 more is needed for paralellization to work. 
 If however you are just building an ad-hoc backend that lives
 in your global environment, you will also need to pass the three functions 
-to the `globals` argument of `compute_results` which will make them available on 
+to the `globals` argument of `compute_SBC` which will make them available on 
 all workers i.e. use:
 
 ```
-compute_results(..., globals = c("SBC_fit.SBC_backend_glm", 
+compute_SBC(..., globals = c("SBC_fit.SBC_backend_glm", 
                                  "SBC_fit_to_draws_matrix.glm",
                                  "SBC_backend_iid_draws.SBC_backend_glm"))
 
@@ -355,23 +355,23 @@ by running only the approximate method (a lot of times) and look at SBC results.
 This may still be faster than running a single fully Bayesian fit. Additionally,
 fitting with an approximate algorithm can be useful to run 
 approximate power calculations where it lets us cheaply fit a lot of
-simulated datasets to e.g. understand how
+simulations to e.g. understand how
 the width of our posterior intervals changes with sample size
 and at the same time we learn, whether the approximation 
 is problematic in some way.
 
-For the sake of example, let's assume we've already gathered a dataset that
+For the sake of example, let's assume we've already gathered data that
 we want to analyze with Bayesian logistic regression. So our data generating
 process will use the observed covariate values but simulate new coefficients
 and outcome data. Below is a simple implementation with normal priors
 on the intercept and predictors. Note that we do some [rejection
 sampling](https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html) 
-here to avoid using datasets where the generated response
+here to avoid using simulations where the generated response
 is the same or almost the same for all rows.
 
 ```{r}
 generator_single_logistic <- function(formula, 
-                                      dataset, 
+                                      template_data, 
                                       intercept_prior_loc = 0,
                                       intercept_prior_width = 2,
                                       predictor_prior_loc = 0,
@@ -381,7 +381,7 @@ generator_single_logistic <- function(formula,
     stop("The formula has to have just a single response")
   }
   
-  X <- model.matrix(formula, dataset)
+  X <- model.matrix(formula, template_data)
   
   repeat {
     coefs <- rnorm(ncol(X), predictor_prior_loc, sd = predictor_prior_width)
@@ -398,18 +398,18 @@ generator_single_logistic <- function(formula,
     }
   }
 
-  dataset_mod <- dataset
-  dataset_mod[[response_name]] <- y
+  data_mod <- template_data
+  data_mod[[response_name]] <- y
 
   list(
-    parameters = as.list(coefs),
-    generated = dataset_mod
+    variables = as.list(coefs),
+    generated = data_mod
   ) 
 }
 ```
 
 
-We are going to use the `indo_rct` dataset from the `medicaldata` package. The 
+We are going to use the `indo_rct` dataset from the `medicaldata` package as a template. The 
 dataset contains the results of a randomized, placebo-controlled, 
 prospective 2-arm trial of indomethacin 100 mg PR once vs. placebo to prevent post-ERCP Pancreatitis in 602 patients. You can inspect the [codebook](https://htmlpreview.github.io/?https://github.com/higgi13425/medicaldata/blob/master/man/codebooks/indo_rct_codebook.html) as well as the [published paper](https://www.nejm.org/doi/full/10.1056/NEJMoa1111103)
 online. The citation for the paper is:
@@ -427,15 +427,15 @@ set.seed(6524243)
 datasets_indo_simple <- generate_datasets(SBC_generator_function(
   generator_single_logistic, 
   formula = formula_indo_simple,
-  dataset = medicaldata::indo_rct),
-  n_datasets = 500) 
+  template_data = medicaldata::indo_rct),
+  n_sims = 500) 
 
 backend_indo_simple <- SBC_backend_glm(formula = formula_indo_simple, family = "binomial") 
 ```
 
 
 ```{r}
-res_indo_simple <- compute_results(datasets_indo_simple, backend_indo_simple,
+res_indo_simple <- compute_SBC(datasets_indo_simple, backend_indo_simple,
                                    cache_mode = "results", 
                                    cache_location = file.path(cache_dir,"indo_simple"))
 ```
@@ -474,15 +474,16 @@ plot_sim_estimated(res_indo_simple)
 ```
 
 There is a simulation where the posterior uncertainty is very large.
-This corresponds to dataset where the outcome is the same for all
+This corresponds to observed data where the outcome is the same for all
 rows where the treatment was used:
 
 ```{r}
-biggest_sd_dataset <- res_indo_simple$stats$sim_id[
+biggest_sd_sim <- res_indo_simple$stats$sim_id[
   which.max(res_indo_simple$stats$sd)]
-table(datasets_indo_simple$generated[[biggest_sd_dataset]][c("outcome", "rx")])
+table(datasets_indo_simple$generated[[biggest_sd_sim]][c("outcome", "rx")])
 ```
-Filtering the extreme datasets out,  we see that most commonly, we
+
+Filtering the extreme simulations out,  we see that most commonly, we
 get a decently precise estimate.
 
 ```{r indo_simple_sim_est}
@@ -517,8 +518,8 @@ formula_indo_complex <- outcome ~ rx + site + gender + age + risk
 datasets_indo_complex <- generate_datasets(SBC_generator_function(
   generator_single_logistic, 
   formula = formula_indo_complex,
-  dataset = indo_rct_complex),
-  n_datasets = 500) 
+  template_data = indo_rct_complex),
+  n_sims = 500) 
 
 backend_indo_complex <- SBC_backend_glm(formula = formula_indo_complex, family = "binomial") 
 ```
@@ -527,7 +528,7 @@ backend_indo_complex <- SBC_backend_glm(formula = formula_indo_complex, family =
 Now we are ready to run SBC:
 
 ```{r}
-res_indo_complex <- compute_results(datasets_indo_complex, backend_indo_complex,
+res_indo_complex <- compute_SBC(datasets_indo_complex, backend_indo_complex,
                                    cache_mode = "results", 
                                    cache_location = file.path(cache_dir,"indo_complex"))
 ```
@@ -569,21 +570,21 @@ set.seed(1685554)
 datasets_indo_complex_narrow <- generate_datasets(SBC_generator_function(
   generator_single_logistic, 
   formula = formula_indo_complex,
-  dataset = indo_rct_complex,
+  template_data = indo_rct_complex,
   intercept_prior_loc = 3,
   intercept_prior_width = 0.5,
   predictor_prior_loc = c(-2, 2),
   predictor_prior_width = 0.5),
-  n_datasets = 500) 
+  n_sims = 500) 
 ```
 
 ```{r}
-res_indo_complex_narrow <- compute_results(datasets_indo_complex_narrow, backend_indo_complex,
+res_indo_complex_narrow <- compute_SBC(datasets_indo_complex_narrow, backend_indo_complex,
                                    cache_mode = "results", 
                                    cache_location = file.path(cache_dir,"indo_complex_narrow"))
 ```
 
-This is enough to make basically all the parameters poorly calibrated:
+This is enough to make basically all the variables poorly calibrated:
 
 ```{r indo_complex_narrow_ranks}
 plot_rank_hist(res_indo_complex_narrow)
@@ -601,16 +602,16 @@ set.seed(3289542)
 datasets_indo_simple_narrow <- generate_datasets(SBC_generator_function(
   generator_single_logistic, 
   formula = formula_indo_simple,
-  dataset = medicaldata::indo_rct,
+  template_data = medicaldata::indo_rct,
   intercept_prior_loc = 3,
   intercept_prior_width = 0.5,
   predictor_prior_loc = c(-2, 2),
   predictor_prior_width = 0.5),
-  n_datasets = 500) 
+  n_sims = 500) 
 ```
 
 ```{r}
-res_indo_simple_narrow <- compute_results(datasets_indo_simple_narrow, backend_indo_simple,
+res_indo_simple_narrow <- compute_SBC(datasets_indo_simple_narrow, backend_indo_simple,
                                    cache_mode = "results", 
                                    cache_location = file.path(cache_dir,"indo_simple_narrow"))
 ```
