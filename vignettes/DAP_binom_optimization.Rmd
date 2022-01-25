@@ -188,8 +188,8 @@ For this example, we've parameterized $\eta$ as $\eta \sim \mathrm{normal}(\mu, 
 ```{r, cache=TRUE}
 gridsize_mu <- 5
 gridsize_var <- 5
-mu_seq <- seq(0, 50, length.out = gridsize_mu)
-var_seq <- seq(5, 25, length.out = gridsize_var)
+mu_seq <- seq(10, 50, length.out = gridsize_mu)
+var_seq <- seq(5, 50, length.out = gridsize_var)
 grid_size <- length(mu_seq) * length(var_seq)
 
 squared_lambda_diff <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
@@ -235,6 +235,13 @@ rownames(V_g) <- mu_seq
 colnames(B_g) <- var_seq
 colnames(V_g) <- var_seq
 
+dap_lambda_mu_hmc <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+dap_lambda_var_hmc <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(dap_lambda_mu_hmc) <- mu_seq
+rownames(dap_lambda_var_hmc) <- mu_seq
+colnames(dap_lambda_mu_hmc) <- var_seq
+colnames(dap_lambda_var_hmc) <- var_seq
+
 
 
 theta_bar <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
@@ -244,6 +251,7 @@ rownames(theta_bar) <- mu_seq
 generated_Y <- array(rep(NA, nsims * nobs * grid_size), dim=c(nsims * nobs, gridsize_mu, gridsize_var) )
 dimnames(generated_Y)[[2]] <- mu_seq
 dimnames(generated_Y)[[3]] <- var_seq
+
 for(j in 1:length(var_seq)){
   for(i in 1:length(mu_seq)){
     dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, NULL, backend_binom_opt, fixed_args_binom)
@@ -260,6 +268,8 @@ for(j in 1:length(var_seq)){
     dap_hmc <- calculate_dap(mu_seq[[i]],var_seq[[j]], calib_generator, dap$datasets, backend_binom_hmc, fixed_args_binom)
     B_g[i, j] <- dap_hmc$B
     V_g[i, j] <- dap_hmc$V
+    dap_lambda_mu_hmc[i, j] <- dap_hmc$mu
+    dap_lambda_var_hmc[i, j] <- dap_hmc$var
   }
 }
 ```
@@ -281,9 +291,32 @@ ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), colo
 
 The red points denote the initially specified hyperparameter values. Blue points denote the hyperparameter values recovered from the computed DAP.
 
-For optimization, we can see that variance was shrunk to below around 50, and mean also exhibited similar, but less intense shrinkage. This may be due to the nature of the optimization inference: It fits a multivariate normal distribution to the MAP estimate, which is likely have smaller dispersion than the huge variance values we specified.
+We can see that for optimization, almost all initialization points shrinks to near $(0, 0)$. This means that the hyperparameter area that we have tested are severly miscalibrated.
 
-It is also interesting to note the shrinkage of the mean is somewhat dependent on variance; when variance is set to 1, we can observe barely any shrinkage has occured.
+
+```{R}
+scaleFUN <- function(x) sprintf("%.2f", x)
+dap_df <- as.data.frame.table(dap_lambda_mu_hmc)
+colnames(dap_df)[1] <- "mu"
+colnames(dap_df)[2] <- "var"
+dap_df[, "mu"] <- as.numeric(as.vector(dap_df[, "mu"]))  # not using as.vector converts the factor indices
+dap_df[, "var"] <- as.numeric(as.vector(dap_df[, "var"]))
+colnames(dap_df)[3] <- "dap_mu"
+dap_lambda_df <- as.data.frame.table(dap_lambda_var_hmc)
+dap_df[, "dap_var"] <- as.numeric(dap_lambda_df$Freq)
+ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2) + xlab("mu") + ylab("var") + ggtitle("binom + hmc, nsims=100")
+```
+
+The two plots look too similar. Quite skeptical, let's compare the actual recovered hyperparater values. We will check the mean hyperparameter values:
+optimization:
+```{R}
+dap_lambda_mu
+```
+
+HMC:
+```{R}
+dap_lambda_mu_hmc
+```
 
 
 We now plot the DAP bias-variance decomposition with respect to the hyperparameters, and varying by inference algorithms. The goal here is to observe whether HMC provides better results than optimization as per the hypothesis, and find any systematic anomalies regarding each values.
@@ -309,7 +342,7 @@ ggplot(B_ghat_df) + geom_point(aes(x=coords, y=B_g, color="red")) + ggtitle("B(r
 
 ```
 
-For bias, we can see that in general, bias increases with the variance hyperparameter. The plot is admittedly hard to see, but variance hyperparameter is the big factor here when it comes to to bias.
+For bias, we can see that in general, bias increases with the mu hyperparameter. The plot is admittedly hard to see, but mu hyperparameter is the big factor here when it comes to to bias. We can see that the variance hyperparameter barely affects bias.
 
 
 ```{R, fig.width = 14}
@@ -332,8 +365,10 @@ ggplot(V_ghat_df) + geom_point(aes(x=coords, y=V_g, color="red")) + ggtitle("V(r
 
 ```
 
+However, the variance component is a bit more interesting. We first observe that the variance component is inversely proportional to the variance parameter: when the variance hyperparameter is at its smallest value, 5, we can observe that the variance component is the biggest there. Unlike the bias component, the mean parameter here doesn't have much impact.
 
-We now run posterior predictive checks with the intent of verifying whether the fits can faithfully recover the initial hyperparameters.
+
+We now run posterior predictive checks with the intent of verifying whether the fits can recover the initial hyperparameters. Let's select hyperparameter values that we know are problematic and run PPC:
 
 ```{R}
 # mu = 0, 5, 20, 40
@@ -367,21 +402,50 @@ ppc_dens_overlay(eta_rep, fit_matrix)
 ```
 
 
+As expected, the results show that the miscalibration is severe; the posterior data distribution is not in agreement from the initial parameters. 
+
+Let's try some region that might perform a bit better:
+
 ```{R}
+# mu = 0, 5, 20, 40
+# var = 1, 5, 15
+test_mu <- 1
+test_var <- 5
+lambda_test <- list(
+  eta = list(mu=test_mu, sigma=sqrt(test_var))
+)
+test_dataset <- generate_datasets(SBC_generator_function(generator_binom, lambda_test, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+sbc_result <- compute_results(test_dataset, backend_binom_opt, thin_ranks = 1)
+
+#plot_ecdf_diff(sbc_result)
+#plot_rank_hist(sbc_result)
+#plot_sim_estimated(sbc_result)
+# plot_sim_estimated(sbc_result, estimate="median")
+test_eta <- c()
+fit_matrix <- matrix(data=rep(NA, nsims * ndraws), nrow = nsims, ncol = ndraws)
+for(i in 1:nsims){
+  samples <- sbc_result$fits[[i]]
+  draws <- SBC_fit_to_draws_matrix(samples)
+  eta_vals <- posterior::extract_variable(draws, "eta")
+  fit_matrix[i, ] <- eta_vals
+  test_eta <- c(test_eta, eta_vals)
+}
+
+x <- seq(-10, 40, length.out=10000)
+eta_rep <- rnorm(ndraws, test_mu, sqrt(test_var))
+ppc_dens_overlay(eta_rep, fit_matrix)
+
+```
+
+```{R, eval=FALSE}
 
 normal_pdf <- dnorm(x, test_mu, sqrt(test_var))
 eta_draws <- sbc_result$fits[[5]]$fit_list$theta_tilde[, "eta"]
 #ggplot(pdf_df) + geom_line(aes(x=x, y=normal_pdf, colour="red"))  + geom_density(data=data.frame(val=eta_draws), aes(val, color="blue"))
 ```
 
-```{R}
-persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=55, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
 
-```
-
-Define objective and constraint functions
-
-```{R}
+```{R, eval=FALSE}
 # maximize entropy
 # partial derivative is: -log p_w - 1
 calc_entropy <- function(p){
@@ -437,7 +501,7 @@ prob_opt <- nloptr::nloptr(p_init,
                            lb=prob_lb, ub=prob_ub)
 ```
 
-```{R}
+```{R, eval=FALSE}
 
 result_out <- array(prob_opt$solution, dim = c(length(mu_seq), length(var_seq)))
 rownames(result_out) <- mu_seq
@@ -446,7 +510,7 @@ persp3D(x=mu_seq, y=var_seq, z = result_out, theta=55, phi=10, xlab="mu", ylab="
 persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=25, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
 ```
 
-```{R}
+```{R, eval=FALSE}
 N = 10000
 sampled_probs <- sample(1:grid_size, N, prob=as.vector(result_out), replace=TRUE)
 mu <- rep(mu_seq, length(var_seq))
