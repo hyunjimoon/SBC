@@ -20,16 +20,21 @@ Let's setup the environment.
 library(SBC); 
 library(ggplot2)
 
-use_cmdstanr <- TRUE # Set to false to use rstan instead
+use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
 if(use_cmdstanr) {
   library(cmdstanr)
 } else {
   library(rstan)
+  rstan_options(auto_write = TRUE)
 }
 
 # Setup caching of results
-cache_dir <- "./indexing_SBC_cache"
+if(use_cmdstanr) {
+  cache_dir <- "./indexing_SBC_cache"
+} else {
+  cache_dir <- "./indexing_rstan_SBC_cache"
+}
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }

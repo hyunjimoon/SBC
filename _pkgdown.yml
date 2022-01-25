@@ -4,7 +4,7 @@ template:
     bootswatch: cosmo
 
 navbar:
-  title: "brms"
+  title: "SBC"
   left:
     - text: "Vignettes"
       href: articles/index.html
@@ -63,6 +63,7 @@ articles:
   - title: "Additional use cases and advanced topics"
     contents:
       - limits_of_SBC
+      - computational_algorithm1
       - implementing_backends
       - brms
       - discrete_params
