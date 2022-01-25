@@ -51,7 +51,7 @@ nsize <- 10
 
 ## Backend settings
 # number of draws per posterior approximation 
-ndraws <- 4000
+ndraws <- 1000
 
 # number of chains for hmc posterior approximation
 nchains <- 2
@@ -60,6 +60,8 @@ fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsim
 ```
 
 # Inspecting DAP of binom-laplace 
+The generator function is used to draw simulated parameter samples and data which are then used to fit the actual model.
+
 ```{R, warning=FALSE, error=FALSE}
 generator_binom <- function(lambdas, fixed_args){
   # fixed value across simulated datasets
@@ -96,6 +98,10 @@ generator_binom <- function(lambdas, fixed_args){
   )
 }
 ```
+
+In short, DAP pools together all samples from each fits and calculates the summary statistics, which are used as the "DAP parameter". In this cell, we define the function which pools the parameter draws together, as well as calculating the bias and variance of the DAP estimate.
+
+Note that we can either set the prior of the parameter of interest to either normal or gamma. In this example we will stick with normal.
 
 ```{R, warning=FALSE, error=FALSE}
 # initial prior hyperparameters
@@ -173,7 +179,13 @@ calculate_dap <- function(mu, var, generator, datasets=NULL, backened, fixed_arg
 
 ##
 
-```{r}
+Since we're trying to investigate the structure of DAP for multiple hyperparameter values, we will do a naive "grid search" where we fit the model with various hyperparameter values arranged in a grid.
+
+Once we have the model and DAP generation ready, we run inference each for HMC and optimization. The hypothesis is that HMC will be less sensitive to the designated prior, and hyperparameters retrieved from the DAP should match the specified hyperparameter. On the other hand, optimization should yield more interesting results.
+
+For this example, we've parameterized $\eta$ as $\eta \sim \mathrm{normal}(\mu, \sigma^2)$. We then run inference with different combinations of the hyperparameters:
+
+```{r, cache=TRUE}
 gridsize_mu <- 5
 gridsize_var <- 5
 mu_seq <- seq(0, 50, length.out = gridsize_mu)
@@ -252,9 +264,7 @@ for(j in 1:length(var_seq)){
 }
 ```
 
-Once we have the model and DAP generation ready, we run inference each for HMC and optimization. The hypothesis is that HMC will be less sensitive to the designated prior, and hyperparameters retrieved from the DAP should match the specified hyperparameter. On the other hand, optimization should yield more interesting results.
 
-For this example, we've parameterized $\eta$ as $\eta \sim \mathrm{normal}(\mu, \sigma^2)$. We then run inference with different combinations of the hyperparameters:
 
 ```{R}
 scaleFUN <- function(x) sprintf("%.2f", x)
