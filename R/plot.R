@@ -322,6 +322,19 @@ data_for_ecdf_plots.data.frame <- function(x, variables = NULL,
     }
   }
 
+  if("dataset_id" %in% names(x)) {
+    if(!("sim_id" %in% names(x))) {
+      warning("The x parameter contains a `dataset_id` column, which is deprecated, use `sim_id` instead.")
+      x$sim_id <- x$dataset_id
+    }
+  }
+
+
+  if(!all(c("variable", "rank", "sim_id") %in% names(x))) {
+    stop(SBC_error("SBC_invalid_argument_error",
+                   "The stats data.frame needs a 'variable', 'rank' and 'sim_id' columns"))
+  }
+
   stats <- x
   if(!is.null(variables)) {
     stats <- dplyr::filter(stats, variable %in% variables)
