@@ -1,18 +1,61 @@
 test_that("capture_all_outputs", {
     expect_identical(
         capture_all_outputs({
-            cat("Test")
+            cat("Test\n")
             warning("W")
             message("M", appendLF = FALSE)
             warning("W2")
             message("M2", appendLF = FALSE)
             message("M3", appendLF = FALSE)
+
+            # A special case - silent error
+            try(stop("Error"))
+
             14
-            }),
+        }),
         list(result = 14,
              messages = c("M", "M2", "M3"),
              warnings = c("W", "W2"),
-             output = "Test"))
+             output = c('Test', 'Error in try(stop("Error")) : Error')))
+
+    # Nested capture.output
+
+    expect_identical(
+        capture_all_outputs({
+            captured <- capture_all_outputs({
+                cat("Test\n")
+                warning("W")
+                message("M", appendLF = FALSE)
+
+                # A special case - silent error
+                try(stop("Error"))
+
+                28
+
+            })
+            cat("BEFORE\n")
+            message("M_BEFORE", appendLF = FALSE)
+            warning("W_BEFORE")
+            try(stop("E_BEFORE"))
+            reemit_captured(captured)
+            try(stop("E_AFTER"))
+            warning("W_AFTER")
+            message("M_AFTER", appendLF = FALSE)
+            cat("AFTER\n")
+            13
+        }),
+        list(result = 13,
+             messages = c("M_BEFORE", "M", "M_AFTER"),
+             warnings = c("W_BEFORE", "W", "W_AFTER"),
+             output = c('BEFORE',
+                        'Error in try(stop("E_BEFORE")) : E_BEFORE',
+                        'Test',
+                        'Error in try(stop("Error")) : Error',
+                        'Error in try(stop("E_AFTER")) : E_AFTER',
+                        'AFTER'
+                        ))
+
+    )
 })
 
 test_that("subset_bind", {

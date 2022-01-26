@@ -528,7 +528,7 @@ compute_SBC <- function(datasets, backend,
   backend_diagnostics <- do.call(rbind, backend_diagnostics_list)
 
   if(!is.null(stats)) {
-    check_stats(stats, datasets, thin_ranks)
+    check_stats(stats, datasets, thin_ranks, SBC_backend_iid_draws(backend))
   } else {
     # Return dummy stats that let the rest of the code work.
     stats <- data.frame(sim_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
@@ -605,7 +605,10 @@ capture_all_outputs <- function(expr) {
     logs <<- new_l
   }
   output <- capture.output({
-    res <- withCallingHandlers(
+    previous_try_outfile <- getOption("try.outFile")
+    options(try.outFile = stdout())
+    res <- tryCatch(
+      withCallingHandlers(
       expr,
       warning=function(w) {
         add_log("warning", conditionMessage(w))
@@ -613,11 +616,24 @@ capture_all_outputs <- function(expr) {
       }, message = function(m) {
         add_log("message", conditionMessage(m))
         invokeRestart("muffleMessage")
+      }),
+      finally = {
+        options(try.outFile = previous_try_outfile)
       })
   }, type = "output")
   list(result = res, messages = do.call(c, logs$message), warnings = do.call(c, logs$warning), output = output)
 }
 
+# Re-emit what was captured with capture_all_outputs
+reemit_captured <- function(captured) {
+  cat(captured$output, sep = "\n")
+  for(m in 1:length(captured$messages)) {
+    message(captured$messages[m], appendLF = FALSE)
+  }
+  for(w in 1:length(captured$warnings)) {
+    warning(captured$warnings[w])
+  }
+}
 
 compute_SBC_single <- function(vars_and_generated, backend, cores,
                                    keep_fit, thin_ranks, gen_quants) {
@@ -742,17 +758,22 @@ statistics_from_single_fit <- function(fit, variables, generated,
 }
 
 # check that the computed stats data frame has problems
-check_stats <- function(stats, datasets, thin_ranks) {
+check_stats <- function(stats, datasets, thin_ranks, iid_draws) {
   unique_max_ranks <- unique(stats$max_rank)
   if(length(unique_max_ranks) != 1) {
     warning("Differening max_rank across fits")
   }
 
   if(min(unique_max_ranks) < 50) {
-    warning("Ranks were computed from fewer than 50 draws, the SBC checks will have low ",
-            "precision.\nYou may need to increase the number of draws from the backend and make sure that ",
+    if(iid_draws) {
+      message_end = " (the backend produces i.i.d. samples so thin_ranks = 1 is the most sensible)."
+    } else {
+      message_end = "."
+    }
+    warning("Ranks were computed from fewer than 50 samples, the SBC checks will have low ",
+            "precision.\nYou may need to increase the number of samples from the backend and make sure that ",
             "the combination of thinning in the backend and `thin_ranks` is sensible.\n",
-            "Currently thin_ranks = ", thin_ranks, ".")
+            "Currently thin_ranks = ", thin_ranks, message_end)
 
   }
 
@@ -879,7 +900,7 @@ recompute_SBC_statistics <- function(old_results, datasets, backend,
   }
 
   new_stats <- do.call(rbind, new_stats_list)
-  check_stats(new_stats, datasets, thin_ranks)
+  check_stats(new_stats, datasets, thin_ranks, SBC_backend_iid_draws(backend))
 
   new_results$stats <- new_stats
 

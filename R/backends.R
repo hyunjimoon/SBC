@@ -167,9 +167,16 @@ SBC_backend_hash_for_cache.SBC_backend_rstan_sample <- function(backend) {
 #' @param ... other arguments passed to `optimizing` (number of iterations, ...).
 #'   Argument `data` cannot be set this way as they need to be
 #'   controlled by the package.
+#' @param n_retries_hessian the number of times the backend is allow to retry optimization
+#' (with different seeed) to produce a usable Hessian that can produce draws. In some cases,
+#' the Hessian may be numerically unstable and not be positive definite.
 #' @export
-SBC_backend_rstan_optimizing <- function(model, ...) {
+SBC_backend_rstan_optimizing <- function(model, ..., n_retries_hessian = 1) {
   stopifnot(inherits(model, "stanmodel"))
+  n_retries_hessian <- as.integer(n_retries_hessian)
+  stopifnot(length(n_retries_hessian) == 1)
+  stopifnot(n_retries_hessian > 0)
+
   args <- list(...)
   unacceptable_params <- c("data", "hessian")
   if(any(names(args) %in% unacceptable_params)) {
@@ -181,26 +188,42 @@ SBC_backend_rstan_optimizing <- function(model, ...) {
   args$hessian <- TRUE
   if(is.null(args$draws)) {
     args$draws <- 1000
+  } else if(args$draws <= 1) {
+    stop("Cannot use optimizing backend with less than 2 draws")
   }
-  structure(list(model = model, args = args), class = "SBC_backend_rstan_optimizing")
+  structure(list(model = model, args = args, n_retries_hessian = n_retries_hessian), class = "SBC_backend_rstan_optimizing")
 }
 
 
 #' @export
 SBC_fit.SBC_backend_rstan_optimizing <- function(backend, generated, cores) {
-  start <- proc.time()
-  fit <- do.call(rstan::optimizing,
-                 combine_args(list(object = backend$model,
-                                   data = generated),
-                              backend$args)
-  )
-  end <- proc.time()
+  for(attempt in 1:backend$n_retries_hessian) {
+    start <- proc.time()
+    fit <- do.call(rstan::optimizing,
+                   combine_args(list(object = backend$model,
+                                     data = generated),
+                                backend$args)
+    )
+    end <- proc.time()
+    fit$time <- (end - start)["elapsed"]
 
-  if(fit$return_code != 0) {
-    stop("Optimizing was not succesful")
+    if(fit$return_code != 0) {
+      stop("Optimizing was not succesful")
+    }
+    # This signals production of draws was OK
+    if(nrow(fit$theta_tilde) > 1) {
+      break;
+    }
   }
 
-  fit$time <- (end - start)["elapsed"]
+  fit$n_attempts <- attempt
+
+  if(nrow(fit$theta_tilde) == 1) {
+    stop("Optimizing did not return draws.\n",
+    "This is most likely due to numerical problems with the Hessian, check model output.\n",
+    "You may also consider increasing `n_retries_hessian`")
+  }
+
 
   structure(fit, class = "RStanOptimizingFit")
 }
@@ -224,7 +247,8 @@ SBC_backend_iid_draws.SBC_backend_rstan_optimizing <- function(backend) {
 #' @export
 SBC_fit_to_diagnostics.RStanOptimizingFit <- function(fit, fit_output, fit_messages, fit_warnings) {
   res <- data.frame(
-    time = fit$time
+    time = fit$time,
+    n_attempts = fit$n_attempts
   )
 
   class(res) <- c("SBC_RStanOptimizing_diagnostics", class(res))
@@ -234,7 +258,9 @@ SBC_fit_to_diagnostics.RStanOptimizingFit <- function(fit, fit_output, fit_messa
 #' @export
 summary.SBC_RStanOptimizing_diagnostics <- function(x) {
   summ <- list(
-    max_time = max(x$time)
+    n_fits = nrow(x),
+    max_time = max(x$time),
+    n_multiple_attempts = sum(x$n_attempts > 1)
   )
 
   structure(summ, class = "SBC_RStanOptimizing_diagnostics_summary")
@@ -249,7 +275,12 @@ get_diagnostic_messages.SBC_RStanOptimizing_diagnostics <- function(x) {
 #' @export
 get_diagnostic_messages.SBC_RStanOptimizing_diagnostics_summary <- function(x) {
   SBC_diagnostic_messages(
-    data.frame(ok = TRUE, message = paste0("Maximum time was ", x$max_time, " sec."))
+    rbind(
+      data.frame(ok = TRUE, message = paste0("Maximum time was ", x$max_time, " sec.")),
+      data.frame(ok = x$n_multiple_attempts == 0,
+               message = paste0( x$n_multiple_attempts, " (", round(100 * x$n_multiple_attempts / x$n_fits),
+                                 "%) of fits required multiple attempts to produce usable Hessian."))
+    )
   )
 }
 
@@ -517,16 +548,7 @@ SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
     }
   }
 
-  #Re-emit outputs, warnings, messages
-  for(i in 1:length(fit_outputs)) {
-    cat(fit_outputs[[i]]$output, sep = "\n")
-    for(m in 1:length(fit_outputs[[i]]$messages)) {
-      message(fit_outputs[[i]]$messages[m])
-    }
-    for(w in 1:length(fit_outputs[[i]]$warnings)) {
-      warning(fit_outputs[[i]]$warnings[w])
-    }
-  }
+  reemit_captured(fit_outputs[[i]])
 
   if(all(fit$return_codes() != 0)) {
     stop("Variational inference did not finish succesfully")
