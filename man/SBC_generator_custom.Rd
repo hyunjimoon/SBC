@@ -17,11 +17,11 @@ This creates a very thin wrapper around the function and can store additional
 arguments, but does not do anything more..
 }
 \details{
-Running:\if{html}{\out{<div class="sourceCode r">}}\preformatted{gen <- SBC_generator_custom(f, <<some other args>>)
+Running:\if{html}{\out{<div class="r">}}\preformatted{gen <- SBC_generator_custom(f, <<some other args>>)
 datasets <- generate_datasets(gen, n_datasets = my_n_datasets)
 }\if{html}{\out{</div>}}
 
-is equivalent to just running\if{html}{\out{<div class="sourceCode r">}}\preformatted{datasets <- f(<<some other args>>, n_datasets = my_n_datasets)
+is equivalent to just running\if{html}{\out{<div class="r">}}\preformatted{datasets <- f(<<some other args>>, n_datasets = my_n_datasets)
 }\if{html}{\out{</div>}}
 
 So whenever you control the code calling \code{generate_datasets},

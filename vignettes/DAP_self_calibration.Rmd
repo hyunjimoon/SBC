@@ -1,0 +1,534 @@
+---
+title: "self calibration analysis and optimization"
+author: "Hyunji Moon, Shinyoung Kim"
+output: html_document
+---
+
+## Preface and Contents
+
+In this vignette, we explain the concept of self-consistency and its potential application for identifying miscalibrations in inference algorithms. We also introduce an iterative process for a finding a prior region with a minimal amount of computational pathologies under a given inference algorithm.
+
+We will give a basic explanation of self-consistency and demonstrate its usage scenario with some examples. 
+
+## Introduction and Explanation
+
+[Simulation Based Calibration](https://arxiv.org/pdf/1804.06788.pdf)(SBC) is often used for detecting serious computational issues. The failure of a SBC test is regarded as a result of a computationally unfaithful inference algorithm. Typically the user determines whether it's a failure by analyzing a set of graphical plots, instead of a given criterion.
+```{r, echo=FALSE, fig.cap="", out.width = '70%', fig.align='center', fig.cap = "Some analysis results of SBC, courtesy of M. Modrak"}
+knitr::include_graphics(path.expand("~/git_repos/hyunjimoon/SBC/vignettes/rmarkdown_images/modrak_sbc_results.png"))
+```
+
+Like the image above, we can use graphical plots to get a rough idea of the pathological details; under vs overdispersion, under vs overestimation, and so on. But it's not trivial to *quantify* how much the the inference algorithm is misbehaving - in fact, there isn't a generally applicable way to automatically identify the verdict of SBC; it relies on the user to identify patterns from the plots themselves.
+
+---
+
+We propose a different test method, based on two concepts, the Data Averaged Posterior and the self-consistency metric. Our motivations is that by taking advantage of the multiple "generate and fit" iterations of SBC, it will give us enough information to construct a more interpretable metric of miscalibration.
+
+We first draw a sample($\theta$) from the prior. Then we draw some data given the drawn prior sample($\pi(y \ | \ \theta)$) with respect to the model's data generating process. And finally, through running inference with the simulated data we obtain some posterior distribution($\pi(\tilde{\theta} \ | \ y)$):
+
+$$
+\pi(\tilde{\theta}) = \int \pi(\tilde{\theta} \ |\ y) \pi(y \ | \ \theta) \pi(\theta) \mathrm{d}y \ \mathrm{d}\theta
+$$
+
+If we were to take the average of the expectation of the computed posterior, given a faithful inference algorithm, it should equal the expectation of the prior distribution. This is the concept of the Data Averaged Prior(DAP), $\pi(\tilde{\theta})$.
+
+Since we realistically can't compute the exact integral, we normally repeat the "sample-twice-and-fit" process $M$ times. Let $Y \sim f(\theta)$ denote the data generating process, and $\tilde{\theta} \sim \hat{g}(Y, P_\lambda)$ denote the inference algorithm, given some parameterized prior $P_\lambda$. $P_\lambda$ can be parameterized in whichever way, but for simplicity we'll use $P_\lambda = N(\lambda_\mu, \lambda_{var})$. Let $L$ denote the number of posterior samples drawn per iteration. We can then rewrite the DAP computation as the following:
+
+$$
+\theta_m \sim P_\lambda, \ Y_m \sim f(\theta_m), \ \tilde{\theta}_m^l \sim \hat{g}(Y_m, P_\lambda) \\
+l = 1, 2, \ ... \ , L \\
+m = 1, 2, \ ... \ , M
+$$
+
+In other words, for each iteration $m$ we draw a prior sample, then simulate some data through the data generating process $f$, and finally generate $l$ number of posterior samples with the inference algorithm $\hat{g}$.
+
+And with the $l$ posterior samples, we're free to compute whatever summary statistic which matches that of the parameterized prior $P_\lambda$. Since we've used the normal prior parameterization, let's go ahead and calculate the posterior mean for each iteration:
+
+$$
+\hat{\theta}_m = \frac{1}{L} \sum^L_{l=1} \tilde{\theta}_m^l
+$$
+Define the computational bias $B$ given some inference algorithm $\hat{g}$ and some parameterized prior $\lambda$, $B(\hat{g}, \lambda)$ as the following:
+
+$$
+B(\hat{g}, \lambda) := E[\hat{\theta} \ | \ \theta_{1,...,M}] - \bar{\theta} = \frac{1}{M} \sum_M (\hat{\theta_m} - \theta_m)
+$$
+
+Also define the computational variance $V(\hat{g}, \lambda)$ in the same fashion:
+
+$$
+V(\hat{g}, \lambda) := \frac{1}{M} \sum_M (\hat{\theta}_m - \bar{\theta})^2
+$$
+This is probably familiar - it's straight from the bias-variance decomposition of the mean squared error.
+
+So to sum it up, we're still doing the repeated "simulate and fit" thing from SBC. But instead of calculating ranks, we calculate a summary statistic which can be directly compared against the prior. And then calculated the bias and variance which can give us some information on how the inference algorithm is screwing up with this particular prior.
+
+## Demonstration
+
+Okay, so we explained self-consistency and how the bias-variance decomposition can be potentially used for better identifying miscalibration. In order to demonstrate, we're going to mess with a couple of models and find prior regions where the inference algorithm behaves well and poorly. We'll then investigate whether the bias and variance metrics actually imply good or bad behavior on those regions. And finally, we'll try an iterative update method that attempts to move from a bad region to a good one.
+
+---
+
+Doing the typical library imports here. We'll be using an awesome package that helps us easily perform SBC. Check it out [here](https://github.com/hyunjimoon/SBC) :D
+```{r setup, results = 'hide', warning=FALSE, message=FALSE}
+library(SBC)
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(dplyr)
+library(rstan)
+library(future)
+library(ggpubr)
+library(rstanarm)
+library(ggplot2)
+options(mc.cores = parallel::detectCores())
+plan(multisession)
+options(SBC.min_chunk_size = 5)
+set.seed(1984)
+```
+
+The first example is a simple binomial model with an inverse logit link:
+
+$$
+Y \sim \mathrm{binomial}(n, p) \\
+p = \mathrm{inverse\_logit}(\eta) \\
+\eta \sim \mathrm{normal}(\lambda_\mu, \lambda_{var})
+$$
+The parameter of interest here is $\eta$. We will be trying out various mean-variance combinations for the prior on $\eta$. This model also tends to perform relatively worse with laplace approximation(stan's `optimize` method) compared to HMC. So we'll try a grid search on the prior parameters with both HMC and optimization and see how the results differ.
+
+We'll set the basic variables here. The number of SBC iterations($M$ in the previous notation) will be set to 100 with 1000 posterior samples($L$). We'll also be rolling with 10 binomial trials($n$):
+
+```{r, cache = TRUE}
+knitr::opts_chunk$set(cache = TRUE)
+## Generator settings
+# number of SBC simulations per iteration (generator)
+nsims <- 100
+
+# number of observations
+nobs <- 10
+
+# link function (1 = inverse logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# number of binomial trials per observation
+nsize <- 10
+
+## Backend settings
+# number of draws per posterior approximation 
+ndraws <- 1000
+
+# number of chains for hmc posterior approximation
+nchains <- 2
+
+fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws, dist_types=list(eta="normal"))
+```
+
+The SBC package allows us to define the prior and data generating process, $P_\lambda,f$, purely in R. This serves 2 purposes. First, we can verify that the model we have specified is consistent with our intentions i.e. contains no bugs. And we can freely generate parameters and data without having to call Stan. 
+
+The "generator" function is the prior and data generating process:
+
+```{r, cache = TRUE}
+knitr::opts_chunk$set(cache = TRUE)
+generator_binom <- function(lambdas, fixed_args){
+  # fixed value across simulated datasets
+  # experiment settings
+  nobs <- fixed_args$nobs
+  nsize <- fixed_args$nsize
+  dist_types <- fixed_args$dist_types
+  # modular settings
+  link_type <- fixed_args$link_type
+  
+  # generate
+  lambda_arg1 <- c()
+  lambda_arg2 <- c()
+  if(dist_types$eta == "normal"){
+    eta <- rnorm(1, mean = lambdas$eta$mu, sd=lambdas$eta$sigma)
+    lambda_arg1 <- c(lambda_arg1, lambdas$eta$mu)
+    lambda_arg2 <- c(lambda_arg2, lambdas$eta$sigma)
+  }
+  else if(dist_types$eta == "gamma"){
+    eta <- rgamma(1, shape = lambdas$eta$alpha, rate = lambdas$eta$beta)
+    lambda_arg1 <- c(lambda_arg1, lambdas$eta$alpha)
+    lambda_arg2 <- c(lambda_arg2, lambdas$eta$beta)
+  }
+  
+  
+    
+  mu <- invtf_param_vec(eta, link_type = link_type)
+  Y <- rbinom(nobs, size = nsize, prob = mu) 
+  list(
+    parameters = list(eta = eta),
+    generated = list(nobs= nobs, nsize = nsize, link = link_type,
+                     dist_types = match(unlist(dist_types), c("normal", "gamma")), lambda_arg1 = lambda_arg1, lambda_arg2 = lambda_arg2, 
+                     Y = Y)
+  )
+}
+```
+
+We're drawing `eta` from a normal distribution with `rnorm`, and then drawing `Y` given `eta` with `rbinom`.
+
+Now we define the HMC and optimizing backends, which represent $\hat{g}$:
+
+```{r}
+knitr::opts_chunk$set(cache = TRUE)
+rstan_binom_mod <- stan_model("models/binom-laplace.stan")
+cmdstan_binom_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
+
+backend_binom_opt <- SBC_backend_rstan_optimizing(rstan_binom_mod, draws = ndraws)
+backend_binom_hmc <- SBC_backend_cmdstan_sample(cmdstan_binom_mod, chains = 4, iter_sampling = ndraws / 4)
+calib_generator <- function(lambdas, fixed_args){
+  generate_datasets(SBC_generator_function(generator_binom, lambdas, fixed_args), n_datasets = fixed_args$nsims)
+}
+```
+
+Finally we define the function that calculates the DAP, bias, and variance:
+
+```{r, cache = TRUE}
+knitr::opts_chunk$set(cache = TRUE)
+calculate_dap <- function(mu, var, generator, datasets=NULL, backened, fixed_args){
+  if(is.null(datasets)){
+      lambda_init_binom <- list(
+        eta = list(mu=mu, sigma=sqrt(var))
+      )
+      datasets <- do.call(generator, list(lambda_init_binom, fixed_args = fixed_args))
+  }
+  sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
+  draws_eta <- c()
+  draws_Y <- c()
+  prior_thetas <- posterior::extract_variable(datasets$parameters, "eta")
+  theta_bar <- mean(prior_thetas)
+  
+  B <- 0
+  V <- 0
+  for(i in 1:nsims){
+    draws_Y <- c(draws_Y, datasets$generated[[i]]$Y)
+    samples <- SBC_fit_to_draws_matrix(sbc_result$fits[[i]])
+    etas <- posterior::extract_variable(samples, "eta")
+    draws_eta <- c(draws_eta, etas)
+    
+    B <- B + mean(etas)
+    V <- V + sum((etas - mean(etas))^2)
+  }
+  
+  B <- B / fixed_args$nsims - theta_bar
+  V <- V / (fixed_args$nsims * ndraws)
+  
+  mu <- mean(draws_eta)
+  var <- sd(draws_eta)^2
+  
+  return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y, B=B, V=V, datasets=datasets))
+}
+```
+
+Once we have the model and DAP generation ready, we run inference each for HMC and optimization. Note that the same prior-data samples are being used for optimization and HMC:
+
+```{r include=FALSE, eval=TRUE}
+mu_seq <- readRDS(file="DAP_self_calibration_mu_seq.rds")
+var_seq <- readRDS(file="DAP_self_calibration_var_seq.rds")
+grid_size <- length(mu_seq) * length(var_seq)
+
+dap_lambda_mu <- readRDS(file="DAP_self_calibration_dap_lambda_mu.rds")
+dap_lambda_var <- readRDS(file="DAP_self_calibration_dap_lambda_var.rds")
+lambda_mu <- readRDS(file="DAP_self_calibration_lambda_mu.rds")
+lambda_var <- readRDS(file="DAP_self_calibration_lambda_var.rds")
+B_optim <- readRDS(file="DAP_self_calibration_B_optim.rds")
+V_optim <- readRDS(file="DAP_self_calibration_V_optim.rds")
+B_hmc <- readRDS(file="DAP_self_calibration_B_hmc.rds")
+V_hmc <- readRDS(file="DAP_self_calibration_V_hmc.rds")
+dap_lambda_mu_hmc <- readRDS(file="DAP_self_calibration_dap_lambda_mu_hmc.rds")
+dap_lambda_var_hmc <- readRDS(file="DAP_self_calibration_dap_lambda_var_hmc.rds")
+generated_Y <- readRDS(file="DAP_self_calibration_generated_Y.rds")
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+knitr::opts_chunk$set(cache = TRUE)
+gridsize_mu <- 5
+gridsize_var <- 5
+mu_seq <- seq(0, 10, length.out = gridsize_mu)
+var_seq <- seq(1, 10, length.out = gridsize_var)
+grid_size <- length(mu_seq) * length(var_seq)
+
+dap_lambda_mu <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+dap_lambda_var <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(dap_lambda_mu) <- mu_seq
+rownames(dap_lambda_var) <- mu_seq
+colnames(dap_lambda_mu) <- var_seq
+colnames(dap_lambda_var) <- var_seq
+
+lambda_mu <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+lambda_var <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(lambda_mu) <- mu_seq
+rownames(lambda_var) <- mu_seq
+colnames(lambda_mu) <- var_seq
+colnames(lambda_var) <- var_seq
+
+B_optim <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+V_optim <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(B_optim) <- mu_seq
+rownames(V_optim) <- mu_seq
+colnames(B_optim) <- var_seq
+colnames(V_optim) <- var_seq
+
+B_hmc <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+V_hmc <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(B_hmc) <- mu_seq
+rownames(V_hmc) <- mu_seq
+colnames(B_hmc) <- var_seq
+colnames(V_hmc) <- var_seq
+
+dap_lambda_mu_hmc <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+dap_lambda_var_hmc <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(dap_lambda_mu_hmc) <- mu_seq
+rownames(dap_lambda_var_hmc) <- mu_seq
+colnames(dap_lambda_mu_hmc) <- var_seq
+colnames(dap_lambda_var_hmc) <- var_seq
+
+generated_Y <- array(rep(NA, nsims * nobs * grid_size), dim=c(nsims * nobs, gridsize_mu, gridsize_var) )
+dimnames(generated_Y)[[2]] <- mu_seq
+dimnames(generated_Y)[[3]] <- var_seq
+
+for(j in 1:length(var_seq)){
+  for(i in 1:length(mu_seq)){
+    dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, NULL, backend_binom_opt, fixed_args_binom)
+    dap_lambda_mu[i, j] <- dap$mu
+    dap_lambda_var[i, j] <- dap$var
+    lambda_mu[i, j] <- mu_seq[[i]]
+    lambda_var[i, j] <- var_seq[[j]]
+    generated_Y[, i, j] <- dap$draws_Y
+    B_optim[i, j] <- dap$B
+    V_optim[i, j] <- dap$V
+    
+    dap_hmc <- calculate_dap(mu_seq[[i]],var_seq[[j]], calib_generator, dap$datasets, backend_binom_hmc, fixed_args_binom)
+    B_hmc[i, j] <- dap_hmc$B
+    V_hmc[i, j] <- dap_hmc$V
+    dap_lambda_mu_hmc[i, j] <- dap_hmc$mu
+    dap_lambda_var_hmc[i, j] <- dap_hmc$var
+  }
+}
+```
+
+```{r, include=FALSE, eval=TRUE}
+saveRDS(mu_seq, file="DAP_self_calibration_mu_seq.rds")
+saveRDS(var_seq, file="DAP_self_calibration_var_seq.rds")
+
+saveRDS(dap_lambda_mu, file="DAP_self_calibration_dap_lambda_mu.rds")
+saveRDS(dap_lambda_var, file="DAP_self_calibration_dap_lambda_var.rds")
+saveRDS(lambda_mu, file="DAP_self_calibration_lambda_mu.rds")
+saveRDS(lambda_var, file="DAP_self_calibration_lambda_var.rds")
+saveRDS(B_optim, file="DAP_self_calibration_B_optim.rds")
+saveRDS(V_optim, file="DAP_self_calibration_V_optim.rds")
+saveRDS(B_hmc, file="DAP_self_calibration_B_hmc.rds")
+saveRDS(V_hmc, file="DAP_self_calibration_V_hmc.rds")
+saveRDS(dap_lambda_mu_hmc, file="DAP_self_calibration_dap_lambda_mu_hmc.rds")
+saveRDS(dap_lambda_var_hmc, file="DAP_self_calibration_dap_lambda_var_hmc.rds")
+saveRDS(generated_Y, file="DAP_self_calibration_generated_Y.rds")
+
+```
+
+After waiting quite a bit for the computation to finish, we can compare the results between HMC and optimization. Let's first look at optimization's prior plot:
+
+```{r, cache=TRUE, fig.align='center', fig.cap="prior-posterior grid plot of optimization"}
+knitr::opts_chunk$set(cache = TRUE)
+
+scaleFUN <- function(x) sprintf("%.2f", x)
+dap_df <- as.data.frame.table(dap_lambda_mu)
+colnames(dap_df)[1] <- "mu"
+colnames(dap_df)[2] <- "var"
+dap_df[, "mu"] <- as.numeric(as.vector(dap_df[, "mu"]))  # not using as.vector converts the factor indices
+dap_df[, "var"] <- as.numeric(as.vector(dap_df[, "var"]))
+colnames(dap_df)[3] <- "dap_mu"
+dap_lambda_df <- as.data.frame.table(dap_lambda_var)
+dap_df[, "dap_var"] <- as.numeric(dap_lambda_df$Freq)
+ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2, arrow = arrow(length = unit(0.3, "cm"))) + xlab("mu") + ylab("var") + ggtitle("optimization")
+```
+
+The red points denote the initially specified prior values. Blue points denote the posterior values recovered from the computed DAP. If self-consistency was present, we would need to observe the blue points barely moving away from the red points. For most prior regions, we can see it's not the case.
+
+Let's see if HMC fares better:
+
+```{r, cache=TRUE, fig.align='center', fig.cap="prior-posterior grid plot of HMC"}
+knitr::opts_chunk$set(cache = TRUE)
+
+scaleFUN <- function(x) sprintf("%.2f", x)
+dap_df <- as.data.frame.table(dap_lambda_mu_hmc)
+colnames(dap_df)[1] <- "mu"
+colnames(dap_df)[2] <- "var"
+dap_df[, "mu"] <- as.numeric(as.vector(dap_df[, "mu"]))  # not using as.vector converts the factor indices
+dap_df[, "var"] <- as.numeric(as.vector(dap_df[, "var"]))
+colnames(dap_df)[3] <- "dap_mu"
+dap_lambda_df <- as.data.frame.table(dap_lambda_var_hmc)
+dap_df[, "dap_var"] <- as.numeric(dap_lambda_df$Freq)
+ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2, arrow = arrow(length = unit(0.3, "cm"))) + xlab("mu") + ylab("var") + ggtitle("HMC")
+```
+
+HMC on the other hand is relatively more self-consistent apart from high variance regions.
+
+We'll now plot the bias and variance metrics of optimization and HMC together. Since HMC was relatively well calibrated as to optimization, we should observe its metric being lower than that of optimization:
+
+```{r, cache=TRUE, fig.width = 14, fig.align='center'}
+knitr::opts_chunk$set(cache = TRUE)
+
+B_optim_df <- as.data.frame.table(B_optim)
+colnames(B_optim_df)[colnames(B_optim_df) == "Var1"] <- "Mu"
+colnames(B_optim_df)[colnames(B_optim_df) == "Var2"] <- "Var"
+colnames(B_optim_df)[colnames(B_optim_df) == "Freq"] <- "B_optim"
+
+B_hmc_df <- as.data.frame.table(B_hmc)
+colnames(B_hmc_df)[colnames(B_hmc_df) == "Var1"] <- "Mu"
+colnames(B_hmc_df)[colnames(B_hmc_df) == "Var2"] <- "Var"
+colnames(B_hmc_df)[colnames(B_hmc_df) == "Freq"] <- "B_hmc"
+
+B_hmc_df[, "B_optim"] <- B_optim_df[, "B_optim"]
+
+B_hmc_df[, "coords"] <- paste(B_hmc_df[, "Mu"], B_hmc_df[, "Var"], sep=",")
+B_hmc_df[, "coords"] <- factor(B_hmc_df$coords, levels=unique(B_hmc_df$coords))
+
+ggplot(B_hmc_df) + geom_point(aes(x=coords, y=B_optim, color="red")) + ggtitle("B(red=optimization, green=HMC), closer to 0 is better") + geom_point(aes(x=coords, y=B_hmc, color="green")) + geom_segment(aes(x=coords, y=B_optim, xend=coords, yend=B_hmc), size=0.2) + theme(axis.title.x = element_text(margin=unit(c(10, 0, 0, 0), "mm"))) + xlab("mu, var") + ylab("B") + theme(legend.position = "none") + geom_hline(yintercept = 0, linetype="dashed", size=1)
+```
+
+The X axis represent the prior mean-variance combinations. The bias metric values are shown on the Y axis. We plotted the bias metric calculated from optimization as red dots, and green dots for HMC. You can see that overall HMC's metrics are lower than that of optimization.
+
+Let's also examine the bias values individually. It appears that when `mu` is equal to 5 or 7, HMC tends to have the highest absolute bias metric.
+In addition, high variance priors coupled with high mean values show severe bias for both inference algorithms, and thus should be avoided.
+
+Overall, we can conclude that in order to achieve minimal bias, priors with variance as 1 would the best choice out of the tested priors.
+
+```{r, cache=TRUE, fig.width = 14, fig.align='center'}
+knitr::opts_chunk$set(cache = TRUE)
+
+V_optim_df <- as.data.frame.table(V_optim)
+colnames(V_optim_df)[colnames(V_optim_df) == "Var1"] <- "Mu"
+colnames(V_optim_df)[colnames(V_optim_df) == "Var2"] <- "Var"
+colnames(V_optim_df)[colnames(V_optim_df) == "Freq"] <- "V_optim"
+
+V_hmc_df <- as.data.frame.table(V_hmc)
+colnames(V_hmc_df)[colnames(V_hmc_df) == "Var1"] <- "Mu"
+colnames(V_hmc_df)[colnames(V_hmc_df) == "Var2"] <- "Var"
+colnames(V_hmc_df)[colnames(V_hmc_df) == "Freq"] <- "V_hmc"
+
+V_hmc_df[, "V_optim"] <- V_optim_df[, "V_optim"]
+
+V_hmc_df[, "coords"] <- paste(V_hmc_df[, "Mu"], V_hmc_df[, "Var"], sep=",")
+V_hmc_df[, "coords"] <- factor(V_hmc_df$coords, levels=unique(V_hmc_df$coords))
+
+ggplot(V_hmc_df) + geom_point(aes(x=coords, y=V_optim, color="red")) + ggtitle("V(red=optimization, green=HMC), lower is better") + geom_point(aes(x=coords, y=V_hmc, color="green")) + geom_segment(aes(x=coords, y=V_optim, xend=coords, yend=V_hmc), size=0.2) + theme(axis.title.x = element_text(margin=unit(c(10, 0, 0, 0), "mm"))) + xlab("mu, var") + ylab("V") + theme(legend.position = "none") + geom_hline(yintercept = 0, linetype="dashed", size=1)
+```
+
+But for variance, we can see that for some prior regions HMC yields a higher variance metric. And as expected, the variance metric scales with the prior variance.
+
+A particularly interesting observation is that we can see the variance metric suddenly spiking with values of prior mean that's greater than 5 for all inference algorithms. This may lead us to believe that the prior region around mean = (5, 10] is a somewhat unfavorable region for the inference algorithms to explore.
+
+
+Let's now try posterior predictive plots to see if large values of bias and variance actually give notions of a mismatch between the prior and posterior. We'll try to prior settings here: $N(7.5, 1)$ which showed bias and variance metrics close to zero, and $N(5, 10)$ that has both metrics further away from 0:
+
+
+```{r, fig.cap = "Posterior Predictive Checks with prior normal(7.5, 1)", fig.align='center'}
+test_mu <- 7.5
+test_var <- 1
+lambda_test <- list(
+  eta = list(mu=test_mu, sigma=sqrt(test_var))
+)
+test_dataset <- generate_datasets(SBC_generator_function(generator_binom, lambda_test, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+sbc_result <- compute_results(test_dataset, backend_binom_opt, thin_ranks = 1)
+
+test_eta <- c()
+fit_matrix <- matrix(data=rep(NA, nsims * ndraws), nrow = nsims, ncol = ndraws)
+for(i in 1:nsims){
+  samples <- sbc_result$fits[[i]]
+  draws <- SBC_fit_to_draws_matrix(samples)
+  eta_vals <- posterior::extract_variable(draws, "eta")
+  fit_matrix[i, ] <- eta_vals
+  test_eta <- c(test_eta, eta_vals)
+}
+
+eta_rep <- rnorm(ndraws, test_mu, sqrt(test_var))
+ppc_dens_overlay(eta_rep, fit_matrix)
+```
+
+$N(7.5, 1)$ prior show that the simulated posterior draws are relatively in agreement with the prior draws.
+
+
+```{r, fig.cap = "Posterior Predictive Checks with prior normal(5, 10)", fig.align='center'}
+test_mu <- 5
+test_var <- 10
+lambda_test <- list(
+  eta = list(mu=test_mu, sigma=sqrt(test_var))
+)
+test_dataset <- generate_datasets(SBC_generator_function(generator_binom, lambda_test, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+sbc_result <- compute_results(test_dataset, backend_binom_opt, thin_ranks = 1)
+
+test_eta <- c()
+fit_matrix <- matrix(data=rep(NA, nsims * ndraws), nrow = nsims, ncol = ndraws)
+for(i in 1:nsims){
+  samples <- sbc_result$fits[[i]]
+  draws <- SBC_fit_to_draws_matrix(samples)
+  eta_vals <- posterior::extract_variable(draws, "eta")
+  fit_matrix[i, ] <- eta_vals
+  test_eta <- c(test_eta, eta_vals)
+}
+
+eta_rep <- rnorm(ndraws, test_mu, sqrt(test_var))
+ppc_dens_overlay(eta_rep, fit_matrix)
+```
+
+But for the $N(5, 10)$ prior, we can see that the simulated posterior draws are dispersed far from the prior; self-consistency was not observed and hence an erroneous computation was performed.
+
+Finally, we'll try to start from a "bad", miscalibrated prior region and try to iteratively refine the prior into a more favorable region. We'll be starting from $N(5, 10)$ with optimization. Let's check the rank plots to see how bad the region is:
+```{R, warning=FALSE, error=FALSE}
+lambda_init_binom <- list(
+  eta = list(mu=5, sigma=10)
+)
+
+datasets_binom_new <- generate_datasets(SBC_generator_function(generator_binom, lambda_init_binom, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+result_binom_opt_new <- compute_results(datasets_binom_new, backend_binom_opt, thin_ranks = 1)
+    
+plot_rank_hist(result_binom_opt_new)
+```
+
+We can see that the ranks are not uniform, and thus the starting point is not well calibrated. Let's try the iterative update:
+
+```{r}
+updator = "mc_update"
+
+# maximal number of SBC iterations
+niter <- 100
+
+# tolerance
+tol <- 0.1
+
+# learning rate
+gamma <- 1.5 # 0.5 for gradient update, 10 for normal_str_update
+
+
+
+sc_binom_opt <- self_calib_adaptive(calib_generator, backend_binom_opt, updator, c("eta"), lambda_init_binom, nsims, gamma, tol, fixed_args = fixed_args_binom)
+```
+
+This algorithm continuously updates the prior with the previous iteration's posterior, which drives the posterior into a well-calibrated region.
+
+```{R, warning=FALSE, error=FALSE}
+sc_binom_opt$t_df
+```
+
+The iterative update algorithm determined the following $\mu, \sigma^2$ prior to be optimal:
+
+```{r}
+sc_binom_opt$lambda
+```
+
+Let's check the rank plots at the region:
+
+
+```{R, warning=FALSE, error=FALSE}
+datasets_binom_new <- generate_datasets(SBC_generator_function(generator_binom, sc_binom_opt$lambda, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+result_binom_opt_new <- compute_results(datasets_binom_new, backend_binom_opt, thin_ranks = 1)
+    
+plot_rank_hist(result_binom_opt_new)
+```
+
+Looks much better than the starting location.
+
+## Wrap-up
+
+We've explored the concept of self-consistency and with prior-posterior grid plots identified prior regions which are deemed to be miscalibrated. Furthermore, we've used two metric, the bias and variance calibration metrics to identify in detail how different prior regions behave with respect to an inference algorithm. 
+
+Finally, we showed by iteratively updating the prior we were able to go from a poorly calibrated region to a well-calibrated region.

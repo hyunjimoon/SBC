@@ -25,7 +25,7 @@ transformed parameters {
 model {
   if(dist_types == 1){
     #eta ~ normal(lambda_arg1, lambda_arg2);
-    eta ~ gamma(lambda_arg1, lambda_arg2);
+    eta ~ normal(lambda_arg1, lambda_arg2);
   }
   else if(dist_types == 2){
     eta ~ gamma(lambda_arg1, lambda_arg2);
