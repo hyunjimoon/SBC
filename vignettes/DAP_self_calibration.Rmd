@@ -306,7 +306,7 @@ for(j in 1:length(var_seq)){
 }
 ```
 
-```{r, include=FALSE, eval=TRUE}
+```{r, include=FALSE, eval=FALSE}
 saveRDS(mu_seq, file="DAP_self_calibration_mu_seq.rds")
 saveRDS(var_seq, file="DAP_self_calibration_var_seq.rds")
 
