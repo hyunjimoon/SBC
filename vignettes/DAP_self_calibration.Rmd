@@ -239,7 +239,7 @@ dap_lambda_var_hmc <- readRDS(file="DAP_self_calibration_dap_lambda_var_hmc.rds"
 generated_Y <- readRDS(file="DAP_self_calibration_generated_Y.rds")
 ```
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE, eval=TRUE}
 knitr::opts_chunk$set(cache = TRUE)
 gridsize_mu <- 5
 gridsize_var <- 5
