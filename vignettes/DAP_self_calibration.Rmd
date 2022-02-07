@@ -221,7 +221,7 @@ calculate_dap <- function(mu, var, generator, datasets=NULL, backened, fixed_arg
 
 Once we have the model and DAP generation ready, we run inference each for HMC and optimization. Note that the same prior-data samples are being used for optimization and HMC:
 
-```{r include=FALSE, eval=TRUE}
+```{r include=FALSE, eval=FALSE}
 mu_seq <- readRDS(file="DAP_self_calibration_mu_seq.rds")
 var_seq <- readRDS(file="DAP_self_calibration_var_seq.rds")
 grid_size <- length(mu_seq) * length(var_seq)
@@ -306,7 +306,7 @@ for(j in 1:length(var_seq)){
 }
 ```
 
-```{r, include=FALSE, eval=FALSE}
+```{r, include=FALSE, eval=TRUE}
 saveRDS(mu_seq, file="DAP_self_calibration_mu_seq.rds")
 saveRDS(var_seq, file="DAP_self_calibration_var_seq.rds")
 
