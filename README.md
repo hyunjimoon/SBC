@@ -1,42 +1,83 @@
 # Simulation-based Calibration: SBC
-## Efficient simulation-based calibration for Bayesian models
-SBC provides tools to easily validate and offer corrections on prior, likelihood, and computation algorithms based on the self-recovering property of Bayesian models. This package contains tools such as SBC rank histograms, ECDF plots, and their summary statistics which can be used to assess computational faithfulness. 
 
-### Varieties of calibrations: scope of this package
-Calibration (i.e. reliability) is not a sufficient condition for a good forecast but a minimal property that any forecast should satisfy (FV1998). It serves as a bootstrap for model development and its method and target varies. Target is chosen as modeler's quantity of interest and directly affects the calibrated result as reward in reinforcement learning. Method depends on how much you marginalized or conditioned the full joint space to test coverage. Scope of this package is checked below.
-
-## Interface and Usage
-
-SBC is designed to be primarily used with [Stan](https://mc-stan.org/) models, offering a highly customizable interface to integrate Simulation Based Calibration into existing Bayesian workflows with minimal effort. Its main feature is the `api` interface, which defines a fully-blown SBC pipeline starting from dataset generation to posterior sampling. Once a user has a valid Stan model and a minor R function defining the data generating process(referred to as `Generator`), running SBC becomes as simple as:
-
-```
-n_datasets <- 100  # Number of SBC iterations to run
-
-sbc_generator <- SBC::function_SBC_generator(Generator)
-sbc_dataset <- SBC::generate_datasets(
-  sbc_generator, 
-  n_datasets)
-
-cmdstan_backend <- SBC::cmdstan_sample_SBC_backend(
-    cmdstan_model, iter_warmup = 1000, iter_sampling = 1000)
-    
-results <- SBC::compute_results(sbc_dataset, cmdstan_backend)
-plot_rank_hist(results)
-```
-
-For detailed usage, please refer to the included vignettes.
-
-### Compatibility
-Currently `SBC` supports `cmdstan`, `rstan`, and `brms` models out of the box. However, adding Backends for other platforms is supported.
+SBC provides tools to validate your Bayesian model and/or a sampling algorithm via the self-recovering property of Bayesian models. This package lets you run SBC easily and perform postprocessing and visualisations of the results to assess computational faithfulness. 
 
 ## Installation
+
 To install the development version of SBC, run
-```
+
+```r
 devtools::install_github("hyunjimoon/SBC")
 ```
-from your R console.
 
-### References:
+
+## Quick tour
+
+To use SBC, you need a piece of code that generates simulated data that should
+match your model (a _generator_) and a statistical model + algorithm + 
+algorithm parameters that can fit the data (a _backend_). SBC then tells you,
+whether the backend and generator are consistent.
+
+For a quick example, we'll use a simple generator producing normally-distributed
+data (basically `y <- rnorm(N, mu, sigma)`) with a backend in Stan that mismatches
+the generator by wrongly assuming Stan parametrizes the normal distribution via
+variance (i.e. it has `y ~ normal(mu, sigma ^ 2)`).
+
+```r
+library(SBC)
+gen <- SBC_example_generator("normal")
+# interface = "cmdstanr" is also supported
+backend_var <- SBC_example_backend("normal_var", interface = "rstan")
+```
+
+We generate 50 simulated datasets and perform SBC:
+
+```r
+ds <- generate_datasets(gen, n_sims = 50)
+results_var <- compute_SBC(ds, backend_var)
+```
+
+The results then give us diagnostic plots that immediately show a problem 
+(the sample ECDF does not match the theoretical CDF)
+
+```r
+plot_rank_hist(results_var)
+plot_ecdf_diff(results_var)
+```
+
+We can then run SBC with a backend that uses the correct parametrization:
+
+```r
+backend_sd <- SBC_example_backend("normal_sd", interface = "rstan")
+results_sd <- compute_SBC(ds, backend_sd)
+
+plot_rank_hist(results_sd)
+plot_ecdf_diff(results_sd)
+```
+
+The diagnostic plots show no problems in this case.
+
+You can use `SBC_print_example_model()` to inspect the models used.
+
+## More information
+
+The [package vignettes](https://hyunjimoon.github.io/SBC/articles/) provide 
+additional context and examples. Notably:
+
+- [The main vignette](https://hyunjimoon.github.io/SBC/articles/SBC.html)
+has more theoretical background and instructions how to integrate your own simulation code and 
+models with SBC.
+- [Small model workflow](https://hyunjimoon.github.io/SBC/articles/small_model_workflow.html)
+discusses how SBC integrates with model implementation workflow and how you can
+use SBC to safely develop complex models step-by-step.
+
+Currently `SBC` supports `cmdstanr`, `rstan`, and `brms` models out of the box. 
+With a little additional work, you can integrate SBC with any exact or approximate fitting method as shown in the [Implementing backends vignette](https://hyunjimoon.github.io/SBC/articles/implementing_backends.html).
+
+
+
+## References:
+
 Theoretical support
 * [Validating Bayesian Inference Algorithms with Simulation-Based Calibration](https://arxiv.org/pdf/1804.06788.pdf) Talts, Betancourt, Simpson, Vehtari, Gelman, 2018
 * [Graphical Test for Discrete Uniformity and its Applications in Goodness of Fit Evaluation and Multiple Sample Comparison](https://arxiv.org/abs/2103.10522)  Säilynoja, Bürkner, Vehtari, 2021
@@ -54,6 +95,7 @@ Vignette
 * [ECDF with codes](https://avehtari.github.io/rhat_ess/rhat_ess.html) (new implementation by Teemu Säilynoja will be available in `bayesplot` and `SBC` package soon)
 
 ## FAQ
+
 > How does calibration relate to prediction accuracy?
 
 Comparing the ground truth and the simulated result is a backbone of calibration and comparison target greatly affects the calibrated (i.e. trained) result, similar to reward in reinforcement learning. In this sense, if the U(a(y), theta) term is designed for prediction, the model will be calibrated to have best predictive result as possible.
