@@ -298,7 +298,7 @@ summary.SBC_nuts_diagnostics <- function(diagnostics) {
   )
 
   if(!is.null(diagnostics$min_bfmi)) {
-    summ$has_low_bfmi = sum(diagnostics$min_bfmi < 0.2)
+    summ$has_low_bfmi = sum(is.na(diagnostics$min_bfmi) | diagnostics$min_bfmi < 0.2)
   }
 
   if(!is.null(diagnostics$n_failed_chains)) {
