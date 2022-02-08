@@ -15,8 +15,9 @@ devtools::install_github("hyunjimoon/SBC")
 
 To use SBC, you need a piece of code that generates simulated data that should
 match your model (a _generator_) and a statistical model + algorithm + 
-algorithm parameters that can fit the data (a _backend_). SBC then tells you,
-whether the backend and generator are consistent.
+algorithm parameters that can fit the model to data (a _backend_). SBC then lets you
+discover when the backend and generator don't encode the same data generating process 
+(up to [certain limitations](https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html)).
 
 For a quick example, we'll use a simple generator producing normally-distributed
 data (basically `y <- rnorm(N, mu, sigma)`) with a backend in Stan that mismatches
@@ -30,6 +31,8 @@ gen <- SBC_example_generator("normal")
 backend_var <- SBC_example_backend("normal_var", interface = "rstan")
 ```
 
+You can use `SBC_print_example_model("normal_var")` to inspect the model used.
+
 We generate 50 simulated datasets and perform SBC:
 
 ```r
@@ -37,15 +40,17 @@ ds <- generate_datasets(gen, n_sims = 50)
 results_var <- compute_SBC(ds, backend_var)
 ```
 
-The results then give us diagnostic plots that immediately show a problem 
-(the sample ECDF does not match the theoretical CDF)
+The results then give us diagnostic plots that immediately show a problem:
+the distribution of SBC ranks is not uniform as witnessed by both the rank histogram
+and the difference between sample ECDF and the expected deviations from theoretical CDF.
 
 ```r
 plot_rank_hist(results_var)
 plot_ecdf_diff(results_var)
 ```
 
-We can then run SBC with a backend that uses the correct parametrization:
+We can then run SBC with a backend that uses the correct parametrization 
+(i.e. with `y ~ normal(mu, sigma)`):
 
 ```r
 backend_sd <- SBC_example_backend("normal_sd", interface = "rstan")
@@ -55,9 +60,12 @@ plot_rank_hist(results_sd)
 plot_ecdf_diff(results_sd)
 ```
 
-The diagnostic plots show no problems in this case.
+The diagnostic plots show no problems in this case. As with any other
+software test, we can observe clear failures, but absence of failures does not imply
+correctness. We can however make the SBC check more thorough by using a lot of
+simulations and including suitable generated quantities to guard against
+[known limitations of vanilla SBC](https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html).
 
-You can use `SBC_print_example_model()` to inspect the models used.
 
 ## More information
 
