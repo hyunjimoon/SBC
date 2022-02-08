@@ -101,6 +101,10 @@ reference:
   - contains("plot")
   - guess_rank_hist_bins
   - empirical_coverage
+- title: Examples
+  desc: Functions to let you easily test the pacakge
+- contents:
+  - contains("example")
 - title: Miscellaneous
 - contents:
   - wasserstein

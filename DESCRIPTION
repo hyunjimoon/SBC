@@ -16,7 +16,11 @@ Authors@R:
            family = "Modrák",
            role = c("aut"),
            email = "martin.modrak@biomed.cas.cz",
-           comment = c(ORCID= "0000-0002-8886-7797")))
+           comment = c(ORCID= "0000-0002-8886-7797")),
+    person(given = "Teemu",
+           family = "Säilynoja",
+           role = "aut")
+           )
 Description: SBC helps perform Simulation Based Calibration on Bayesian models. 
     SBC lets you check for bugs in your model code and/or algorithm that fits 
     the model. SBC focuses on models built with 'Stan' <https://mc-stan.org>,
