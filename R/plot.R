@@ -48,9 +48,8 @@ plot_rank_hist.data.frame <- function(x, parameters = NULL, bins = NULL, prob = 
 
   # Bins can differ by size (at most by 1). Build a CI that is conservative,
   # i.e. includes lower quantile of smalelr bins and higher quantile of larger bins
-  larger_bin_size <- ceiling((max_rank / bins))
-  smaller_bin_size <- floor((max_rank / bins))
-  CI = qbinom(c(0.5 * (1 - prob),0.5,0.5 * (1 + prob)), size=n_simulations,prob  =  larger_bin_size / max_rank)
+  larger_bin_size <- ceiling(((max_rank + 1) / bins))
+  smaller_bin_size <- floor(((max_rank + 1) / bins))
   ci_lower = qbinom(0.5 * (1 - prob), size=n_simulations,prob  =  smaller_bin_size / max_rank)
   ci_mean = qbinom(0.5, size=n_simulations,prob  =  1 / bins)
   ci_upper = qbinom(0.5 * (1 + prob), size=n_simulations,prob  =  larger_bin_size / max_rank)
@@ -225,7 +224,7 @@ plot_ecdf_diff <- function(x,
     ) +
     xlab(NULL) +
     ylab(NULL) +
-    facet_wrap(~ parameter)
+    facet_wrap(~ parameter, scales = "free_y")
 }
 
 
@@ -412,14 +411,14 @@ plot_contraction.data.frame <- function(x, prior_sd, parameters = NULL, scale = 
 #' @export
 plot_sim_estimated <- function(x, parameters = NULL, estimate = "mean",
                                uncertainty = c("q5", "q95"),
-                               alpha = 0.8) {
+                               alpha = NULL) {
   UseMethod("plot_sim_estimated")
 }
 
 #' @export
 plot_sim_estimated.SBC_results <- function(x, parameters = NULL, estimate = "mean",
                                            uncertainty = c("q5", "q95"),
-                                           alpha = 0.8) {
+                                           alpha = NULL) {
   plot_sim_estimated(x$stats, parameters = parameters, estimate = estimate,
                      uncertainty = uncertainty, alpha = alpha)
 }
@@ -427,13 +426,20 @@ plot_sim_estimated.SBC_results <- function(x, parameters = NULL, estimate = "mea
 #' @export
 plot_sim_estimated.data.frame <- function(x, parameters = NULL, estimate = "mean",
                                           uncertainty = c("q5", "q95"),
-                                          alpha = 0.8) {
+                                          alpha = NULL) {
   if(!all(c("parameter", estimate, uncertainty) %in% names(x))) {
     stop("The data.frame needs a 'parameter' and '", estimate, "' columns")
   }
 
   if(!is.null(parameters)) {
     x <- dplyr::filter(x, parameter %in% parameters)
+  }
+
+  if(is.null(alpha)) {
+    n_points <- dplyr::summarise(dplyr::group_by(x, parameter), count = dplyr::n())
+    max_points <- max(n_points$count)
+    alpha_guess <- 1 / ((max_points * 0.06) + 1)
+    alpha <-  max(0.05, alpha_guess)
   }
 
   x$estimate__ <- x[[estimate]]

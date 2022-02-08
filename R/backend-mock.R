@@ -6,7 +6,8 @@
 #'
 #' @param result a `draws_matrix` that will be returned regardless of the data
 #' @export
-SBC_backend_mock <- function(result, output = NULL, message = NULL,
+SBC_backend_mock <- function(result = posterior::draws_matrix(a = rnorm(100)),
+                             output = NULL, message = NULL,
                              warning = NULL, error = NULL) {
   if(!posterior::is_draws_matrix(result)) {
     stop("Mock backend requires result to be draws_matrix")

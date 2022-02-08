@@ -19,12 +19,13 @@ Let's setup the environment:
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC); 
-use_cmdstanr <- TRUE # Set to false to use rstan instead
+use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
 if(use_cmdstanr) {
   library(cmdstanr)
 } else {
   library(rstan)
+  rstan_options(auto_write = TRUE)
 }
 
 options(mc.cores = parallel::detectCores())
@@ -38,7 +39,11 @@ options(mc.cores = parallel::detectCores())
 
 
 # Setup caching of results
-cache_dir <- "./bad_parametrization_SBC_cache"
+if(use_cmdstanr) {
+  cache_dir <- "./bad_parametrization_SBC_cache"
+} else {
+  cache_dir <- "./bad_parametrization_rstan_SBC_cache"
+}
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }

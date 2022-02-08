@@ -16,8 +16,10 @@ SBC_fit_to_diagnostics(fit, fit_output, fit_messages, fit_warnings)
 \item{fit_warnings}{a character vector of warnings the backend raised}
 }
 \value{
-an object that includes diagnostics or NULL, if no diagnostics available.
+an single row \code{data.frame} that includes diagnostics or NULL, if no diagnostics available.
 }
 \description{
-S3 generic to get backend-specific diagnostics.
+The diagnostics object has to be a \code{data.frame} but may
+inherit additional classes - in particular it may be useful
+for the returning object to implement \code{\link[=get_diagnostic_messages]{get_diagnostic_messages()}}.
 }

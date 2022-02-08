@@ -4,7 +4,7 @@ template:
     bootswatch: cosmo
 
 navbar:
-  title: "brms"
+  title: "SBC"
   left:
     - text: "Vignettes"
       href: articles/index.html
@@ -63,6 +63,8 @@ articles:
   - title: "Additional use cases and advanced topics"
     contents:
       - limits_of_SBC
+      - computational_algorithm1
+      - implementing_backends
       - brms
       - discrete_params
       - rejection_sampling
@@ -88,7 +90,7 @@ reference:
   - recompute_statistics
   - contains("results")
   - calculate_ranks_draws_matrix
-  - contains("diagnostics")
+  - contains("diagnostic")
   - starts_with("default_")
 - title: Plotting & Summarising
   desc: Plotting and summarising results

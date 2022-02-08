@@ -5,7 +5,7 @@
 \title{A mock backend.}
 \usage{
 SBC_backend_mock(
-  result,
+  result = posterior::draws_matrix(a = rnorm(100)),
   output = NULL,
   message = NULL,
   warning = NULL,

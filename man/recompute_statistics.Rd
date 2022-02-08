@@ -4,7 +4,17 @@
 \alias{recompute_statistics}
 \title{Recompute SBC statistics without refitting models.}
 \usage{
-recompute_statistics(old_results, datasets, thin_ranks = 10, gen_quants = NULL)
+recompute_statistics(
+  old_results,
+  datasets,
+  backend,
+  thin_ranks = SBC_backend_default_thin_ranks(backend),
+  gen_quants = NULL
+)
+}
+\arguments{
+\item{backend}{backend used to fit the results. Used to pull various defaults
+and other setting influencing the computation of statistics.}
 }
 \value{
 An S3 object of class \code{SBC_results} with updated \verb{$stats} and \verb{$default_diagnostics} fields.

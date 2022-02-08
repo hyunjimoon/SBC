@@ -12,13 +12,21 @@ vignette: >
 ---
 
 This vignette shows how the SBC package supports `brms` models. 
+Let's setup the environment:
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 library(brms)
 library(ggplot2)
-options(brms.backend = "cmdstanr")
-# options(brms.backend = "rstan") # Uncomment to use rstan instead
+
+use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
+
+if(use_cmdstanr) {
+  options(brms.backend = "cmdstanr")
+} else {
+  options(brms.backend = "rstan") 
+  rstan::rstan_options(auto_write = TRUE)
+}
 
 # Using parallel processing
 library(future)
@@ -30,12 +38,18 @@ plan(multisession)
 options(SBC.min_chunk_size = 5)
 
 # Setup caching of results
-cache_dir <- "./brms_SBC_cache"
+if(use_cmdstanr) {
+  cache_dir <- "./brms_SBC_cache"
+} else { 
+  cache_dir <- "./brms_rstan_SBC_cache"
+}
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
 
 ```
+
+## Generating data using `brms`
 
 The `brms` package has a built-in feature to simulate from 
 prior corresponding to the model via the `sample_prior = "only"` option. 
@@ -79,7 +93,8 @@ generator)
 
 ```{r}
 backend <- SBC_backend_brms_from_generator(generator, chains = 1, thin = 1,
-                            init = 0.1)
+                            warmup = 500, iter = 1500,               
+                            inits = 0.1)
 
 # More verbose alternative that results in exactly the same backend:
 # backend <- SBC_backend_brms(y ~ x, template_dataset = template_data, prior = priors, warmup = 500, iter = 1000, chains = 1, thin = 1
@@ -90,7 +105,7 @@ backend <- SBC_backend_brms_from_generator(generator, chains = 1, thin = 1,
 Compute the actual results
 
 ```{r}
-results <- compute_results(datasets, backend, thin_ranks = 10, 
+results <- compute_results(datasets, backend,
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "first"))
 ```
@@ -105,16 +120,20 @@ plot_rank_hist(results)
 plot_ecdf_diff(results)
 ```
 
-## Using custom simulation code
+## Using custom generator code
 
 
 Let's take a bit more complex model - with a single varying intercept.
 
 This time we will not use the `brms` model to also simulate from prior, but 
-simulate using an R function.
+simulate using an R function. This way, we get to learn if `brms` does what we think it does!
 
-This  allows us to have different covariate values for each dataset, potentially improving sensitivity.
-Additionally, we get to learn if `brms` does what we think it does!
+Custom generator code also allows us to have different covariate values for each dataset, potentially improving sensitivity
+if we want to check the model for a range of potential covariate values.
+If on the other hand we are interested in a specific dataset, it might make
+more sense to use the predictors as seen in  the dataset in all simulations to focus
+our efforts on the dataset at hand.
+
 
 Let's take a Gaussian model with a single varying intercept.
 
@@ -195,7 +214,7 @@ backend_func <- SBC_backend_brms(y ~ x + (1 | group),
 So we can happily compute:
 
 ```{r}
-results_func <- compute_results(datasets_func, backend_func, thin_ranks = 10, 
+results_func <- compute_results(datasets_func, backend_func, 
                                 gen_quants = log_lik_gq_func, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "func"))
@@ -239,7 +258,7 @@ backend_func2 <- SBC_backend_brms(y ~ 0 + Intercept + x + (1 | group),
 Let's fit the same datasets with the new backend.
 
 ```{r}
-results_func2 <- compute_results(datasets_func, backend_func2, thin_ranks = 10, 
+results_func2 <- compute_results(datasets_func, backend_func2, 
                                  gen_quants = log_lik_gq_func, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "func2"))

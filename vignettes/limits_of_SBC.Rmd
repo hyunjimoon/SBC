@@ -20,12 +20,13 @@ actual algorithms.
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 library(ggplot2)
-use_cmdstanr <- TRUE # Set to false to use rstan instead
+use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
 if(use_cmdstanr) {
   library(cmdstanr)
 } else {
   library(rstan)
+  rstan_options(auto_write = TRUE)
 }
 
 options(mc.cores = parallel::detectCores())
@@ -39,7 +40,11 @@ plan(multisession)
 options(SBC.min_chunk_size = 5)
 
 # Setup caching of results
-cache_dir <- "./limits_SBC_cache"
+if(use_cmdstanr) {
+  cache_dir <- "./limits_SBC_cache"
+} else {
+  cache_dir <- "./limits_rstan_SBC_cache"  
+}
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
@@ -309,10 +314,12 @@ normal_lpdf <- function(y, mu, sigma) {
   sum(dnorm(y, mean = mu, sd = sigma, log = TRUE))
 }
 
-log_lik_gq <- generated_quantities(log_lik = normal_lpdf(y, mu, 1), .globals = "normal_lpdf" )
+log_lik_gq <- generated_quantities(log_lik = normal_lpdf(y, mu, 1), 
+                                   .globals = "normal_lpdf" )
 
-results_missing_gq <- recompute_statistics(results_missing, datasets_missing, 
-                                             gen_quants = log_lik_gq)
+results_missing_gq <- recompute_statistics(
+  results_missing, datasets_missing, 
+  backend = backend_missing, gen_quants = log_lik_gq)
 ```
 
 The rank plots for the `log_lik` quantity immediately shows a severe problem:

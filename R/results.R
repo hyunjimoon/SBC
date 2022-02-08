@@ -220,10 +220,34 @@ length.SBC_results <- function(x) {
 
 #' Fit datasets and evaluate diagnostics and SBC metrics.
 #'
+#' Performs the main SBC routine given datasets and a backend.
+#'
+#' # Paralellization
+#'
 #' Parallel processing is supported via the `future` package, for most uses, it is most sensible
 #'  to just call `plan(multisession)` once in your R session and  all
 #'  cores your computer will be used. For more details refer to the documentation
 #'  of the `future` package.
+#'
+#' # Thinning
+#'
+#' When using backends based on MCMC, there are two possible moments when
+#' samples may need to be thinned. They can be thinned directly within the backend
+#' and they may be thinned only to compute the ranks for SBC as specified by the
+#' `thin_ranks` argument. The main reason those are separate is that computing the
+#' ranks requires no or negligible autocorrelation while some autocorrelation
+#' may be easily tolerated for summarising the fit results or assessing convergence.
+#' In fact, thinning too aggressively in the backend may lead to overly noisy
+#' estimates of posterior means, quantiles and the [posterior::rhat()] and
+#' [posterior::ess_tail()] diagnostics. So for well-adapted Hamiltonian Monte-Carlo
+#' chains (e.g. Stan-based backends), we recommend no thinning in the backend and
+#' even value of `thin_ranks` between 6 and 10 is usually sufficient to remove
+#' the residual autocorrelation. For a backend based on Metropolis-Hastings,
+#' it might be sensible to thin quite aggressively already in the backend and
+#' then have some additional thinning via `thin_ranks`.
+#'
+#' Backends that don't require thining should implement [SBC_backend_iid_samples()]
+#' or [SBC_backend_default_thin_ranks()] to avoid thinning by default.
 #'
 #' @param datasets an object of class `SBC_datasets`
 #' @param backend the model + sampling algorithm. The built-in backends can be constructed
@@ -256,16 +280,22 @@ length.SBC_results <- function(x) {
 #' @param cache_location The filesystem location of cache. For `cache_mode = "results"`
 #'    this should be a name of a single file. If the file name does not end with
 #'    `.rds`, this extension is appended.
+#' @param globals A list of names of objects that are defined
+#' in the global environment and need to present for the backend to work (
+#' if they are not already available in package).
+#' It is added to the `globals` argument to [future::future()], to make those
+#' objects available on all workers.
 #' @return An object of class [SBC_results()].
 #' @export
 compute_results <- function(datasets, backend,
                             cores_per_fit = default_cores_per_fit(length(datasets)),
                             keep_fits = TRUE,
-                            thin_ranks = 10,
+                            thin_ranks = SBC_backend_default_thin_ranks(backend),
                             chunk_size = default_chunk_size(length(datasets)),
                             gen_quants = NULL,
                             cache_mode = "none",
-                            cache_location = NULL) {
+                            cache_location = NULL,
+                            globals = list()) {
   stopifnot(length(datasets) > 0)
 
   datasets <- validate_SBC_datasets(datasets)
@@ -312,7 +342,8 @@ compute_results <- function(datasets, backend,
                            "' but it was computed with different thin_ranks/gen_quants.\n",
                            "Calling recompute_statistics."))
             return(recompute_statistics(old_results = result, datasets = datasets,
-                                        thin_ranks = thin_ranks, gen_quants = gen_quants))
+                                        thin_ranks = thin_ranks, gen_quants = gen_quants,
+                                        backend = backend))
           }
         } else {
           message(paste0("Results loaded from cache file '", cache_basename, "'"))
@@ -322,7 +353,11 @@ compute_results <- function(datasets, backend,
         }
       }
     }
-  } else if(cache_mode != "none") {
+  } else if(cache_mode == "none") {
+    if(!is.null(cache_location)) {
+      warning("cache_location is provided, but cache_mode is set to 'none' - no caching will take place.")
+    }
+  } else {
     stop(SBC_error("SBC_invalid_argument_error", "Unrecognized cache mode"))
   }
   ## End of caching
@@ -338,10 +373,22 @@ compute_results <- function(datasets, backend,
     )
   }
   if(is.null(gen_quants)) {
-    future.globals <- FALSE
+    future.globals <- globals
   } else {
-    future.globals <- attr(gen_quants, "globals")
-
+    gq_globals <- attr(gen_quants, "globals")
+    if(length(globals) > 0 && length(gq_globals > 0)) {
+      if(is.list(gq_globals) && !is.list(globals)) {
+        stop(SBC_error("Not implemented: Currently, when globals in generated quantites are a list, globals argument has to be also a list  (not a character vector)."))
+      } else if(!is.list(gq_globals) && is.list(globals)) {
+        stop(SBC_error("Not implemented: Currently, when globals is a list, globals in generated quantites have to be also a list (not a character vector)."))
+      }
+      future.globals <- c(globals, gq_globals)
+    }
+    if(length(gq_globals) > 0) {
+      future.globals <- gq_globals
+    } else {
+      future.globals <- globals
+    }
   }
 
   results_raw <- future.apply::future_lapply(
@@ -431,7 +478,7 @@ compute_results <- function(datasets, backend,
   backend_diagnostics <- do.call(rbind, backend_diagnostics_list)
 
   if(!is.null(stats)) {
-    check_stats(stats, datasets, thin_ranks)
+    check_stats(stats, datasets, thin_ranks, SBC_backend_iid_samples(backend))
   } else {
     # Return dummy stats that let the rest of the code work.
     stats <- data.frame(dataset_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
@@ -508,7 +555,10 @@ capture_all_outputs <- function(expr) {
     logs <<- new_l
   }
   output <- capture.output({
-    res <- withCallingHandlers(
+    previous_try_outfile <- getOption("try.outFile")
+    options(try.outFile = stdout())
+    res <- tryCatch(
+      withCallingHandlers(
       expr,
       warning=function(w) {
         add_log("warning", conditionMessage(w))
@@ -516,9 +566,23 @@ capture_all_outputs <- function(expr) {
       }, message = function(m) {
         add_log("message", conditionMessage(m))
         invokeRestart("muffleMessage")
+      }),
+      finally = {
+        options(try.outFile = previous_try_outfile)
       })
   }, type = "output")
   list(result = res, messages = do.call(c, logs$message), warnings = do.call(c, logs$warning), output = output)
+}
+
+# Re-emit what was captured with capture_all_outputs
+reemit_captured <- function(captured) {
+  cat(captured$output, sep = "\n")
+  for(m in 1:length(captured$messages)) {
+    message(captured$messages[m], appendLF = FALSE)
+  }
+  for(w in 1:length(captured$warnings)) {
+    warning(captured$warnings[w])
+  }
 }
 
 
@@ -545,14 +609,31 @@ compute_results_single <- function(params_and_generated, backend, cores,
   res$warnings <- result_with_output$warnings
 
   if(is.null(res$error)) {
-    error_stats <- tryCatch( {
-      res$stats <- SBC::statistics_from_single_fit(res$fit, parameters = parameters, thin_ranks = thin_ranks,
-                                                   generated = generated, gen_quants = gen_quants)
-      res$backend_diagnostics <- SBC::SBC_fit_to_diagnostics(fit, res$outuput, res$messages, res$warnings)
-      NULL
-    }, error = identity)
-    if(!is.null(error_stats)) {
-      res$error <- error_stats
+    error_stats <-  SBC:::capture_all_outputs({
+      tryCatch( {
+        res$stats <- SBC::statistics_from_single_fit(
+          res$fit, parameters = parameters, thin_ranks = thin_ranks,
+          generated = generated, gen_quants = gen_quants,
+          backend = backend)
+
+        res$backend_diagnostics <- SBC::SBC_fit_to_diagnostics(
+          fit, res$output, res$messages, res$warnings)
+        NULL
+      }, error = identity)
+    })
+
+    if(!is.null(error_stats$result)) {
+      res$error <- error_stats$result
+    }
+
+    if(!is.null(error_stats$output) && length(error_stats$output > 0)) {
+      res$output <- c(res$output, "\n== Output from computing statistics ==\n", error_stats$output)
+    }
+    if(!is.null(error_stats$messages) && length(error_stats$messages > 0)) {
+      res$messages <- c(res$message, "== Messages from computing statistics ==", error_stats$messages)
+    }
+    if(!is.null(error_stats$warnings) && length(error_stats$warnings > 0)) {
+      res$warnings <- c(res$warnings, "== Warnings from computing statistics ==", error_stats$warnings)
     }
   } else {
     res$stats <- NULL
@@ -575,7 +656,8 @@ compute_results_single <- function(params_and_generated, backend, cores,
 #' @export
 #' @seealso [recompute_statistics()]
 statistics_from_single_fit <- function(fit, parameters, generated,
-                                       thin_ranks, gen_quants) {
+                                       thin_ranks, gen_quants,
+                                       backend) {
 
   fit_matrix <- SBC_fit_to_draws_matrix(fit)
 
@@ -602,6 +684,14 @@ statistics_from_single_fit <- function(fit, parameters, generated,
 
 
   stats <- posterior::summarise_draws(fit_matrix)
+
+  if(SBC_backend_iid_samples(backend)) {
+    ## iid samples have the bestest diagnostics by construction
+    stats$rhat <- 1
+    stats$ess_bulk <- posterior::ndraws(fit_matrix)
+    stats$ess_tail <- posterior::ndraws(fit_matrix)
+  }
+
   stats <- dplyr::rename(stats, parameter = variable)
   stats$simulated_value <- as.numeric(parameters)
 
@@ -620,17 +710,22 @@ statistics_from_single_fit <- function(fit, parameters, generated,
 }
 
 # check that the computed stats data frame hs problems
-check_stats <- function(stats, datasets, thin_ranks) {
+check_stats <- function(stats, datasets, thin_ranks, iid_samples) {
   unique_max_ranks <- unique(stats$max_rank)
   if(length(unique_max_ranks) != 1) {
     warning("Differening max_rank across fits")
   }
 
   if(min(unique_max_ranks) < 50) {
+    if(iid_samples) {
+      message_end = " (the backend produces i.i.d. samples so thin_ranks = 1 is the most sensible)."
+    } else {
+      message_end = "."
+    }
     warning("Ranks were computed from fewer than 50 samples, the SBC checks will have low ",
             "precision.\nYou may need to increase the number of samples from the backend and make sure that ",
             "the combination of thinning in the backend and `thin_ranks` is sensible.\n",
-            "Currently thin_ranks = ", thin_ranks, ".")
+            "Currently thin_ranks = ", thin_ranks, message_end)
 
   }
 
@@ -700,8 +795,12 @@ compute_gen_quants <- function(draws, generated, gen_quants) {
 #' Useful for example to recompute SBC ranks with a different choice of `thin_ranks`
 #' or added generated quantities.
 #' @return An S3 object of class `SBC_results` with updated `$stats` and `$default_diagnostics` fields.
+#' @param backend backend used to fit the results. Used to pull various defaults
+#'   and other setting influencing the computation of statistics.
 #' @export
-recompute_statistics <- function(old_results, datasets, thin_ranks = 10, gen_quants = NULL) {
+recompute_statistics <- function(old_results, datasets, backend,
+                                 thin_ranks = SBC_backend_default_thin_ranks(backend),
+                                 gen_quants = NULL) {
   validate_SBC_results(old_results)
   validate_SBC_datasets(datasets)
 
@@ -726,7 +825,8 @@ recompute_statistics <- function(old_results, datasets, thin_ranks = 10, gen_qua
                                                         parameters = parameters,
                                                         generated = datasets$generated[[i]],
                                                         thin_ranks = thin_ranks,
-                                                        gen_quants = gen_quants)
+                                                        gen_quants = gen_quants,
+                                                        backend = backend)
       new_stats_list[[i]]$dataset_id <- i
       new_stats_list[[i]] <- dplyr::select(new_stats_list[[i]], dataset_id, tidyselect::everything())
 
@@ -734,7 +834,7 @@ recompute_statistics <- function(old_results, datasets, thin_ranks = 10, gen_qua
   }
 
   new_stats <- do.call(rbind, new_stats_list)
-  check_stats(new_stats, datasets, thin_ranks)
+  check_stats(new_stats, datasets, thin_ranks, SBC_backend_iid_samples(backend))
 
   new_results$stats <- new_stats
 
@@ -792,24 +892,24 @@ calculate_sds_draws_matrix <- function(dm) {
 
 #' @export
 SBC_diagnostic_messages <- function(message_df) {
-  if(!inherits(message_df, "SBC_diagnostics_messages")) {
-    class(message_df) <- c("SBC_diagnostics_messages", class(message_df))
+  if(!inherits(message_df, "SBC_diagnostic_messages")) {
+    class(message_df) <- c("SBC_diagnostic_messages", class(message_df))
   }
-  validate_diagostic_messages(message_df)
+  validate_diagnostic_messages(message_df)
 }
 
-validate_diagostic_messages <- function(x) {
+validate_diagnostic_messages <- function(x) {
   stopifnot(is.data.frame(x))
-  stopifnot(inherits(x, "SBC_diagnostics_messages"))
-  if(! ("ok" %in% names(x)) || ! ("message" %in% names(x))) {
-    stop("Diagnostic messages have to have columns 'message' and 'ok'")
+  stopifnot(inherits(x, "SBC_diagnostic_messages"))
+  if(!identical(sort(names(x)), c("message", "ok"))) {
+    stop("Diagnostic messages have to have columns 'message' and 'ok' and no other")
   }
 
   x
 }
 
-print.SBC_diagnostics_messages <- function(x, include_ok = TRUE, print_func = cat) {
-  x <- validate_diagostic_messages(x)
+print.SBC_diagnostic_messages <- function(x, include_ok = TRUE, print_func = cat) {
+  x <- validate_diagnostic_messages(x)
   if(!include_ok) {
     x <- dplyr::filter(x, !ok)
   }
@@ -824,9 +924,9 @@ print.SBC_diagnostics_messages <- function(x, include_ok = TRUE, print_func = ca
 #' Get diagnostic messages for `SBC_results` or other objects.
 #'
 #' @export
-#' @return An object of class `SBC_diagnostics_messages`, inheriting a data.frame.
-get_diagnostics_messages <- function(x) {
-  UseMethod("get_diagnostics_messages")
+#' @return An object of class `SBC_diagnostic_messages`, inheriting a data.frame.
+get_diagnostic_messages <- function(x) {
+  UseMethod("get_diagnostic_messages")
 }
 
 
@@ -843,7 +943,7 @@ check_all_SBC_diagnostics <- function(x) {
 #' @rdname check_all_SBC_diagnostics
 check_all_SBC_diagnostics.default <- function(x) {
   if(!is.null(x)) {
-    msg <- get_diagnostics_messages(x)
+    msg <- get_diagnostic_messages(x)
     print(msg, include_ok = FALSE, print_func = function(m) { message(m, appendLF = FALSE) })
     invisible(all(msg$ok))
   } else {
@@ -863,8 +963,8 @@ check_all_SBC_diagnostics.SBC_results <- function(x) {
 }
 
 #' @export
-get_diagnostics_messages.SBC_results <- function(x) {
-  get_diagnostics_messages(summary(x))
+get_diagnostic_messages.SBC_results <- function(x) {
+  get_diagnostic_messages(summary(x))
 }
 
 
@@ -893,7 +993,7 @@ summary.SBC_results <- function(x) {
 }
 
 #' @export
-get_diagnostics_messages.SBC_results_summary <- function(x) {
+get_diagnostic_messages.SBC_results_summary <- function(x) {
 
   message_list <- list()
   i <- 1
@@ -936,7 +1036,7 @@ get_diagnostics_messages.SBC_results_summary <- function(x) {
   i <-  i + 1
 
   if(!is.null(x$backend_diagnostics)) {
-    message_list[[i]] <- get_diagnostics_messages(x$backend_diagnostics)
+    message_list[[i]] <- get_diagnostic_messages(x$backend_diagnostics)
     i <- i + 1
   }
 
@@ -947,7 +1047,7 @@ get_diagnostics_messages.SBC_results_summary <- function(x) {
 print.SBC_results_summary <- function(x) {
   cat("SBC_results with", x$n_fits, "total fits.\n")
 
-  msg <- get_diagnostics_messages(x)
+  msg <- get_diagnostic_messages(x)
   print(msg)
 
   if(!all(msg$ok)) {

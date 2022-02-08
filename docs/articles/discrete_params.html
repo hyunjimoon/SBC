@@ -115,13 +115,13 @@
 
       
 
-      </header><script src="discrete_params_files/header-attrs-2.10/header-attrs.js"></script><div class="row">
+      </header><script src="discrete_params_files/header-attrs-2.11/header-attrs.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>SBC with discrete parameters</h1>
                         <h4 class="author">Martin Modrák</h4>
             
-            <h4 class="date">2021-09-17</h4>
+            <h4 class="date">2021-09-26</h4>
       
       
       <div class="hidden name"><code>discrete_params.Rmd</code></div>
@@ -157,7 +157,7 @@
 <span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>Model from: <a href="https://mc-stan.org/docs/2_26/stan-users-guide/change-point-section.html" class="uri">https://mc-stan.org/docs/2_26/stan-users-guide/change-point-section.html</a></p>
+<p>We take the changepoint model from: <a href="https://mc-stan.org/docs/2_26/stan-users-guide/change-point-section.html" class="uri">https://mc-stan.org/docs/2_26/stan-users-guide/change-point-section.html</a></p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html">readLines</a></span><span class="op">(</span><span class="st">"stan/discrete_params1.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
@@ -239,30 +239,34 @@ generated quantities {
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model1"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## Results loaded from cache file 'model1'</code></pre>
 <pre><code>##  - 7 (23%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</code></pre>
-<pre><code>##  - 25 (83%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing the rank statistics. The lowest tail ESS was NA.
-##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_statistcs) or number of posterior samples (by refitting) might help.</code></pre>
+<pre><code>##  - 25 (83%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing 
+## the rank statistics. The lowest tail ESS was NA.
+##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_statistics) 
+## or number of posterior samples (by refitting) might help.</code></pre>
 <pre><code>##  - 2 (7%) fits had divergent transitions. Maximum number of divergences was 3.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <p>Here we also use the caching feature to avoid recomputing the fits when recompiling this vignette. In practice, caching is not necessary but is often useful.</p>
-<p>TODO the diagnostics are false positives, because Rhat and ESS don’t work very well for discrete parameters. We need to figure out how to handle this better.</p>
+<p>TODO the diagnostic failures are false positives, because Rhat and ESS don’t work very well for discrete parameters. We need to figure out how to handle this better.</p>
 <p>We can quickly note that the statistics for the <code>s</code> parameter are extreme - many ranks of 0 and <em>extreme</em> z-scores, including -Infinity. Seing just one or two such fits should be enough to convince us that there is something fundamentally wrong.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html">filter</a></span><span class="op">(</span><span class="va">results_1</span><span class="op">$</span><span class="va">stats</span>, <span class="va">parameter</span> <span class="op">==</span> <span class="st">"s"</span><span class="op">)</span> </code></pre></div>
 <pre><code>## # A tibble: 30 x 15
-##    dataset_id parameter simulated_value  rank   z_score  mean median    sd   mad
-##         &lt;int&gt; &lt;chr&gt;               &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-##  1          1 s                       3   185    0.0182  2.97      3 1.61   2.97
-##  2          2 s                       1    24   -1.90    2.02      2 0.537  0   
-##  3          3 s                       4   127   -1.37    4.67      5 0.489  0   
-##  4          4 s                       1    10   -2.85    2.86      3 0.651  0   
-##  5          5 s                       5   398    2.76    2.86      3 0.775  0   
-##  6          6 s                       2   272    0.0449  1.94      1 1.42   0   
-##  7          7 s                       3     0 -Inf       4         4 0      0   
-##  8          8 s                       2   130   -0.594   2.87      3 1.46   1.48
-##  9          9 s                       2     0   -6.84    2.99      3 0.144  0   
-## 10         10 s                       2     3   -8.68    3.00      3 0.115  0   
-## # ... with 20 more rows, and 6 more variables: q5 &lt;dbl&gt;, q95 &lt;dbl&gt;, rhat &lt;dbl&gt;,
-## #   ess_bulk &lt;dbl&gt;, ess_tail &lt;dbl&gt;, max_rank &lt;int&gt;</code></pre>
+##    parameter simulated_value  rank   z_score  mean median    sd   mad    q5
+##    &lt;chr&gt;               &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+##  1 s                       3   185    0.0182  2.97      3 1.61   2.97     1
+##  2 s                       1    24   -1.90    2.02      2 0.537  0        1
+##  3 s                       4   127   -1.37    4.67      5 0.489  0        4
+##  4 s                       1    10   -2.85    2.86      3 0.651  0        1
+##  5 s                       5   398    2.76    2.86      3 0.775  0        1
+##  6 s                       2   272    0.0449  1.94      1 1.42   0        1
+##  7 s                       3     0 -Inf       4         4 0      0        4
+##  8 s                       2   130   -0.594   2.87      3 1.46   1.48     1
+##  9 s                       2     0   -6.84    2.99      3 0.144  0        3
+## 10 s                       2     3   -8.68    3.00      3 0.115  0        3
+## # ... with 20 more rows, and 6 more variables: q95 &lt;dbl&gt;, rhat &lt;dbl&gt;,
+## #   ess_bulk &lt;dbl&gt;, ess_tail &lt;dbl&gt;, max_rank &lt;int&gt;, dataset_id &lt;int&gt;</code></pre>
 <p>Inspecting the statistics shows that quite often, the model is quite sure of the value of <code>s</code> while the simulated value is just one less.</p>
 <p>Looking at the <code>ecdf_diff</code> plot we see that this seems to compromise heavily the inference for <code>s</code>, but the other parameters do not show such bad behaviour.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
@@ -271,7 +275,8 @@ generated quantities {
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_1</span><span class="op">)</span></code></pre></div>
 <p><img src="discrete_params_files/figure-html/results1_plots-2.png" width="700"></p>
-<p>So what happened? After some inspection, you may notice that the simulator does not match the model - the model takes the early rate (<code>e</code>) for points <code>t &lt; s</code> while the simulator takes <code>e</code> for points <code>t &lt;=  s</code>, so there is effectively a shift by one time point between the simulator and the model. So let’s assume that we beleive that the Stan model is in fact right. We therfore updated the simulator to match the model:</p>
+<p>An important note: you may wonder, how we got such a wiggly line for the <code>s</code> parameter - doesn’t it have just 5 possible values? Shouldn’t therefore the ECDF be one big staircase? In fact the package does a little trick to make discrete parameters comparable to continuous - the rank of a discrete parameter is chosen uniformly randomly across all possible ranks (i.e. posterior draws that have exactly equal value). This means that if the model is well behaved, ranks for the discrete parameter will be uniformly distributed across the whole range of possible ranks and we can use exactly the same diagnostics for a discrete parameter as we do for the continuous ones.</p>
+<p>But back to the model - what happened? What is wrong with it? After some inspection, you may notice that the simulator does not match the model - the model takes the early rate (<code>e</code>) for points <code>t &lt; s</code> while the simulator takes <code>e</code> for points <code>t &lt;=  s</code>, so there is effectively a shift by one time point between the simulator and the model. So let’s assume that we beleive that the Stan model is in fact right. We therefore updated the simulator to match the model:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generate_single_dataset_2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">T</span>, <span class="va">r_e</span>, <span class="va">r_l</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html">rexp</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">r_e</span><span class="op">)</span>
@@ -301,6 +306,7 @@ generated quantities {
 <span class="op">}</span>
 
 <span class="va">generator_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generate_single_dataset_2</span>, T <span class="op">=</span> <span class="fl">5</span>, r_e <span class="op">=</span> <span class="fl">0.5</span>, r_l <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></code></pre></div>
+<p>And we can recompute:</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">5846502</span><span class="op">)</span>
 <span class="va">datasets_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_2</span>, <span class="fl">30</span><span class="op">)</span>
@@ -309,32 +315,43 @@ generated quantities {
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model2"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## Results loaded from cache file 'model2'</code></pre>
 <pre><code>##  - 9 (30%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</code></pre>
-<pre><code>##  - 26 (87%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing the rank statistics. The lowest tail ESS was NA.
-##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_statistcs) or number of posterior samples (by refitting) might help.</code></pre>
+<pre><code>##  - 26 (87%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing 
+## the rank statistics. The lowest tail ESS was NA.
+##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_statistics) 
+## or number of posterior samples (by refitting) might help.</code></pre>
 <pre><code>##  - 2 (7%) fits had divergent transitions. Maximum number of divergences was 2.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_2</span><span class="op">)</span></code></pre></div>
 <p><img src="discrete_params_files/figure-html/results_2_plots-1.png" width="700"></p>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_2</span><span class="op">)</span></code></pre></div>
 <p><img src="discrete_params_files/figure-html/results_2_plots-2.png" width="700"></p>
-<p>Looks good, so let us add some more SBC steps to make sure the model behaves well.</p>
+<p>Looks good, so let us add some more simulations to make sure the model behaves well.</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">54321488</span><span class="op">)</span>
 <span class="va">datasets_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_2</span>, <span class="fl">100</span><span class="op">)</span>
-<span class="va">results_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_3</span>, <span class="va">backend_1</span><span class="op">)</span></code></pre></div>
+<span class="va">results_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_3</span>, <span class="va">backend_1</span>, 
+                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
+                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model3"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code>## Results loaded from cache file 'model3'</code></pre>
 <pre><code>##  - 19 (19%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</code></pre>
-<pre><code>##  - 85 (85%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing the rank statistics. The lowest tail ESS was NA.
-##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_statistcs) or number of posterior samples (by refitting) might help.</code></pre>
+<pre><code>##  - 85 (85%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing 
+## the rank statistics. The lowest tail ESS was NA.
+##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_statistics) 
+## or number of posterior samples (by refitting) might help.</code></pre>
 <pre><code>##  - 7 (7%) fits had divergent transitions. Maximum number of divergences was 20.</code></pre>
-<pre><code>## Not all diagnostics are OK. You can learn more by inspecting $default_diagnostics, $backend_diagnostics and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">results_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span><span class="va">results_2</span>, <span class="va">results_3</span><span class="op">)</span></code></pre></div>
+<pre><code>## Not all diagnostics are OK.
+## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
+## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">results_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span><span class="va">results_2</span>, <span class="va">results_3</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_all</span><span class="op">)</span></code></pre></div>
 <p><img src="discrete_params_files/figure-html/results_all_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_all</span><span class="op">)</span></code></pre></div>
 <p><img src="discrete_params_files/figure-html/results_all_plots-2.png" width="700"></p>
 <p>Now - as far as this amount of SBC steps can see, the model is good and we get good behaviour for both the continuous and the discrete parameters.</p>
