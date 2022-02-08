@@ -1,6 +1,6 @@
 Package: SBC
 Title: Simulation Based Calibration for rstan/cmdstanr models
-Version: 0.1.0.9000
+Version: 0.1.0.9001
 Authors@R: 
     c(person(given = "Shinyoung",
            family = "Kim",
