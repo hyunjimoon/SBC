@@ -49,7 +49,7 @@ $$
 Define the computational bias $B$ given some inference algorithm $\hat{g}$ and some parameterized prior $\lambda$, $B(\hat{g}, \lambda)$ as the following:
 
 $$
-B(\hat{g}, \lambda) := E[\hat{\theta} \ | \ \theta_{1,...,M}] - \bar{\theta} = \frac{1}{M} \sum_M (\hat{\theta_m} - \theta_m)
+B(\hat{g}, \lambda) := E[\hat{\theta} \ | \ \theta_{1,...,M}] - \bar{\theta} = \frac{1}{M} \sum_M (\hat{\theta}_m - \theta_m)
 $$
 
 Also define the computational variance $V(\hat{g}, \lambda)$ in the same fashion:
@@ -63,7 +63,7 @@ So to sum it up, we're still doing the repeated "simulate and fit" thing from SB
 
 ## Demonstration
 
-Okay, so we explained self-consistency and how the bias-variance decomposition can be potentially used for better identifying miscalibration. In order to demonstrate, we're going to mess with a couple of models and find prior regions where the inference algorithm behaves well and poorly. We'll then investigate whether the bias and variance metrics actually imply good or bad behavior on those regions. And finally, we'll try an iterative update method that attempts to move from a bad region to a good one.
+Okay, so we explained self-consistency and how the bias-variance decomposition can be potentially used for better identifying miscalibration. In order to demonstrate, we're going to mess with a couple of models and find prior regions where the inference algorithm behaves well and poorly. We'll then investigate how these behaviors are represented by the bias and variance metrics. And finally, we'll demonstrate an iterative update scheme whose final aim is to transport initial prior to a more satisfactory region.
 
 ---
 
@@ -122,7 +122,7 @@ nchains <- 2
 fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws, dist_types=list(eta="normal"))
 ```
 
-The SBC package allows us to define the prior and data generating process, $P_\lambda,f$, purely in R. This serves 2 purposes. First, we can verify that the model we have specified is consistent with our intentions i.e. contains no bugs. And we can freely generate parameters and data without having to call Stan. 
+The SBC package allows us to define the prior and data generating process, $P_\lambda,f$, purely in R. This serves two purposes. First, we can verify that the model we have specified is consistent with our intentions i.e. contains no bugs. And we can freely generate parameters and data without having to call Stan. 
 
 The "generator" function is the prior and data generating process:
 
