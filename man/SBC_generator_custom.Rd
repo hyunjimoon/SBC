@@ -7,7 +7,7 @@
 SBC_generator_custom(f, ...)
 }
 \arguments{
-\item{f}{function accepting at least an \code{n_datasets} argument and returning
+\item{f}{function accepting at least an \code{n_sims} argument and returning
 and \code{SBC_datasets} object}
 
 \item{...}{Additional arguments passed to \code{f}}
@@ -18,10 +18,10 @@ arguments, but does not do anything more..
 }
 \details{
 Running:\if{html}{\out{<div class="sourceCode r">}}\preformatted{gen <- SBC_generator_custom(f, <<some other args>>)
-datasets <- generate_datasets(gen, n_datasets = my_n_datasets)
+datasets <- generate_datasets(gen, n_sims = my_n_sims)
 }\if{html}{\out{</div>}}
 
-is equivalent to just running\if{html}{\out{<div class="sourceCode r">}}\preformatted{datasets <- f(<<some other args>>, n_datasets = my_n_datasets)
+is equivalent to just running\if{html}{\out{<div class="sourceCode r">}}\preformatted{datasets <- f(<<some other args>>, n_sims = my_n_sims)
 }\if{html}{\out{</div>}}
 
 So whenever you control the code calling \code{generate_datasets},

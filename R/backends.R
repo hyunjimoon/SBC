@@ -1,6 +1,6 @@
-#' Use backend to fit a model to data.
+#' S3 generic using backend to fit a model to data.
 #'
-#' S3 generic, needs to be implemented by all backends.
+#' Needs to be implemented by all backends.
 #' All implementations have to return an object for which you can safely
 #' call [SBC_fit_to_draws_matrix()] and get some draws.
 #' If that's not possible an error should be raised.
@@ -9,11 +9,18 @@ SBC_fit <- function(backend, generated, cores) {
   UseMethod("SBC_fit")
 }
 
+#' S3 generic converting a fitted model to a `draws_matrix` object.
+#'
+#' Needs to be implemented for all types of objects the backend can
+#' return from [SBC_fit()]. Default implementation just calls,
+#' [posterior::as_draws_matrix()], so if the fit object already supports
+#' this, it will work out of the box.
 #' @export
 SBC_fit_to_draws_matrix <- function(fit) {
   UseMethod("SBC_fit_to_draws_matrix")
 }
 
+#' @rdname SBC_fit_to_draws_matrix
 #' @export
 SBC_fit_to_draws_matrix.default <- function(fit) {
   posterior::as_draws_matrix(fit)
@@ -55,32 +62,32 @@ SBC_backend_hash_for_cache.default <- function(backend) {
   rlang::hash(backend)
 }
 
-#' S3 generic to let backends signal that they produced independent samples.
+#' S3 generic to let backends signal that they produced independent draws.
 #'
 #' Most backends (e.g. those based on variatns of MCMC) don't produce
-#' independent samples and thus diagnostics like Rhat and ESS are important
-#' and samples may need thinning. Backends that already produce independent
-#' samples (e.g. ADVI/optimizing) can implement this method to return `TRUE`
+#' independent draws and thus diagnostics like Rhat and ESS are important
+#' and draws may need thinning. Backends that already produce independent
+#' draws (e.g. ADVI/optimizing) can implement this method to return `TRUE`
 #' to signal this is the case. If this method returns `TRUE`, ESS and Rhat will
 #' always attain their best possible values and [SBC_backend_default_thin_ranks()]
 #' will return `1`.
 #'  The default implementation returns `FALSE`.
 #' @param backend to check
 #' @export
-SBC_backend_iid_samples <- function(backend) {
-  UseMethod("SBC_backend_iid_samples")
+SBC_backend_iid_draws <- function(backend) {
+  UseMethod("SBC_backend_iid_draws")
 }
 
-#' @rdname SBC_backend_iid_samples
+#' @rdname SBC_backend_iid_draws
 #' @export
-SBC_backend_iid_samples.default <- function(backend) {
+SBC_backend_iid_draws.default <- function(backend) {
   FALSE
 }
 
 #' S3 generic to get backend-specific default thinning for rank computation.
 #'
 #' The default implementation plays it relatively safe and returns 10, unless
-#' [SBC_backend_iid_samples()] returns `TRUE` in which case it returns 1.
+#' [SBC_backend_iid_draws()] returns `TRUE` in which case it returns 1.
 #'
 #' @export
 SBC_backend_default_thin_ranks <- function(backend) {
@@ -90,7 +97,7 @@ SBC_backend_default_thin_ranks <- function(backend) {
 #' @rdname SBC_backend_default_thin_ranks
 #' @export
 SBC_backend_default_thin_ranks.default <- function(backend) {
-  if(SBC_backend_iid_samples(backend)) {
+  if(SBC_backend_iid_draws(backend)) {
     1
   } else {
     10
@@ -135,7 +142,7 @@ SBC_fit.SBC_backend_rstan_sample <- function(backend, generated, cores) {
             ))
 
   if(fit@mode != 0) {
-    stop("Fit does not contain samples.")
+    stop("Fit does not contain draws.")
   }
 
   fit
@@ -240,7 +247,7 @@ SBC_fit_to_draws_matrix.RStanOptimizingFit <- function(fit) {
 
 
 #' @export
-SBC_backend_iid_samples.SBC_backend_rstan_optimizing <- function(backend) {
+SBC_backend_iid_draws.SBC_backend_rstan_optimizing <- function(backend) {
   TRUE
 }
 
@@ -298,13 +305,13 @@ summary.SBC_nuts_diagnostics <- function(diagnostics) {
   )
 
   if(!is.null(diagnostics$min_bfmi)) {
-    summ$has_low_bfmi = sum(diagnostics$min_bfmi < 0.2)
+    summ$has_low_bfmi = sum(is.na(diagnostics$min_bfmi) | diagnostics$min_bfmi < 0.2)
   }
 
   if(!is.null(diagnostics$n_failed_chains)) {
     if(any(is.na(diagnostics$n_failed_chains))) {
-      problematic_fit_ids <- paste0(which(is.na(diagnostics$n_failed_chains)), collapse = ", ")
-      warning("Fits for datasets ", problematic_fit_ids, " had NA for n_failed_chains.")
+      problematic_sim_ids <- paste0(which(is.na(diagnostics$n_failed_chains)), collapse = ", ")
+      warning("Fits for simulations ", problematic_sim_ids, " had NA for n_failed_chains.")
     }
     summ$has_failed_chains = sum(is.na(diagnostics$n_failed_chains) | diagnostics$n_failed_chains > 0)
   }
@@ -570,7 +577,7 @@ SBC_fit_to_draws_matrix.CmdStanVB <- function(fit) {
 }
 
 #' @export
-SBC_backend_iid_samples.SBC_backend_cmdstan_variational <- function(backend) {
+SBC_backend_iid_draws.SBC_backend_cmdstan_variational <- function(backend) {
   TRUE
 }
 
@@ -675,13 +682,21 @@ validate_SBC_backend_brms_args <- function(args) {
 #' Build a backend based on the `brms` package.
 #'
 #' @param ... arguments passed to `brm`.
-#' @param template_dataset a representative dataset that can be used to generate code.
+#' @param template_data a representative value for the `data` argument in `brm`
+#'    that can be used to generate code.
+#' @param template_dataset DEPRECATED. Use `template_data`
 #' @export
-SBC_backend_brms <- function(..., template_dataset) {
+SBC_backend_brms <- function(..., template_data, template_dataset = NULL) {
+  if(!is.null(template_dataset)) {
+    warning("Argument 'template_dataset' is deprecated, use 'template_data' instead")
+    if(missing(template_data)) {
+      template_data <- template_dataset
+    }
+  }
   args = list(...)
   validate_SBC_backend_brms_args(args)
 
-  stanmodel <- stanmodel_for_brms(data = template_dataset, ...)
+  stanmodel <- stanmodel_for_brms(data = template_data, ...)
 
   new_SBC_backend_brms(stanmodel, args)
 }

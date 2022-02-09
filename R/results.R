@@ -2,7 +2,7 @@
 #'
 #'
 #' The `SBC_results` contains the following fields:
-#'   - `$stats` statistics for all parameters and fits (one row per parameter-fit combination)
+#'   - `$stats` statistics for all variables and fits (one row per variable-fit combination)
 #'   - `$fits`  the raw fits (unless `keep_fits = FALSE`) or `NULL` if the fit failed
 #'   - `$errors` error messages that caused fit failures
 #'   - `$outputs`, `$messages`, `$warnings` the outputs/messages/warnings written by fits
@@ -25,8 +25,8 @@ SBC_results <- function(stats,
 }
 
 compute_default_diagnostics <- function(stats) {
-  dplyr::summarise(dplyr::group_by(stats, dataset_id),
-                   n_params = dplyr::n(),
+  dplyr::summarise(dplyr::group_by(stats, sim_id),
+                   n_vars = dplyr::n(),
                    max_rhat = max(c(-Inf, rhat)),
                    min_ess_bulk = min(c(Inf, ess_bulk)),
                    min_ess_tail = min(c(Inf, ess_tail)),
@@ -41,6 +41,15 @@ validate_SBC_results <- function(x) {
     stop("SBC_results object has to have a 'stats' field of type data.frame")
   }
 
+  # Ensure backwards compatibility
+  if("dataset_id" %in% names(x$stats)) {
+    x$stats <- dplyr::rename(x$stats, sim_id = dataset_id)
+  }
+
+  if("parameter" %in% names(x$stats)) {
+    x$stats <- dplyr::rename(x$stats, variable = parameter)
+  }
+
   if(!is.list(x$fits)) {
     stop("SBC_results object has to have a 'fits' field of type list")
   }
@@ -53,19 +62,24 @@ validate_SBC_results <- function(x) {
     stop("If the SBC_results object has a 'default_diagnostics' field, it has to inherit from data.frame")
   }
 
+  # Ensure backwards compatibility
+  if("parameter" %in% names(x$default_diagnostics)) {
+    x$stats <- dplyr::rename(x$stats, variable = parameter)
+  }
+
 
   if(!is.list(x$errors)) {
     stop("SBC_results object has to have an 'errors' field of type list")
   }
 
   if(nrow(x$stats) > 0) {
-    if(!is.numeric(x$stats$dataset_id)) {
-      stop("The dataset_id column of stats needs to be a number.")
+    if(!is.numeric(x$stats$sim_id)) {
+      stop("The sim_id column of stats needs to be a number.")
     }
 
 
-    if(min(x$stats$dataset_id) < 1 || max(x$stats$dataset_id) > length(x$fits)) {
-      stop("stats$dataset_id values must be between 1 and number of fits")
+    if(min(x$stats$sim_id) < 1 || max(x$stats$sim_id) > length(x$fits)) {
+      stop("stats$sim_id values must be between 1 and number of fits")
     }
   }
 
@@ -88,24 +102,36 @@ validate_SBC_results <- function(x) {
   }
 
   if(!is.null(x$backend_diagnostics) && nrow(x$backend_diagnostics) > 0) {
-    if(!is.numeric(x$backend_diagnostics$dataset_id)) {
-      stop("The dataset_id column of 'backend_diagnostics' needs to be a number.")
+
+    # Ensure backwards compatibility
+    if("dataset_id" %in% names(x$backend_diagnostics)) {
+      x$backend_diagnostics <- dplyr::rename(x$backend_diagnostics, sim_id = dataset_id)
     }
 
 
-    if(min(x$backend_diagnostics$dataset_id) < 1 || max(x$backend_diagnostics$dataset_id > length(x$fits))) {
-      stop("backend_diagnostics$dataset_id values must be between 1 and number of fits")
+    if(!is.numeric(x$backend_diagnostics$sim_id)) {
+      stop("The sim_id column of 'backend_diagnostics' needs to be a number.")
+    }
+
+
+    if(min(x$backend_diagnostics$sim_id) < 1 || max(x$backend_diagnostics$sim_id > length(x$fits))) {
+      stop("backend_diagnostics$sim_id values must be between 1 and number of fits")
     }
   }
 
   if(nrow(x$default_diagnostics) > 0) {
-    if(!is.numeric(x$default_diagnostics$dataset_id)) {
-      stop("The dataset_id column of 'default_diagnostics' needs to be a number.")
+    # Ensure backwards compatibility
+    if("dataset_id" %in% names(x$default_diagnostics)) {
+      x$default_diagnostics <- dplyr::rename(x$default_diagnostics, sim_id = dataset_id)
+    }
+
+    if(!is.numeric(x$default_diagnostics$sim_id)) {
+      stop("The sim_id column of 'default_diagnostics' needs to be a number.")
     }
 
 
-    if(min(x$default_diagnostics$dataset_id) < 1 || max(x$default_diagnostics$dataset_id > length(x$fits))) {
-      stop("default_diagnostics$dataset_id values must be between 1 and number of fits")
+    if(min(x$default_diagnostics$sim_id) < 1 || max(x$default_diagnostics$sim_id > length(x$fits))) {
+      stop("default_diagnostics$sim_id values must be between 1 and number of fits")
     }
   }
 
@@ -114,13 +140,13 @@ validate_SBC_results <- function(x) {
     stop("Needs equal no. of fits and errors")
   }
 
-  #TODO check identical par names
+  #TODO check identical var names
   x
 }
 
 #' Combine multiple SBC results together.
 #'
-#' Primarily useful for iteratively adding more datasets to your SBC check.
+#' Primarily useful for iteratively adding more simulations to your SBC check.
 #'
 #' An example usage can be found in the `small_model_workflow` vignette.
 #' @param ... objects of type `SBC_results` to be combined.
@@ -140,30 +166,30 @@ bind_results <- function(...) {
   warnings_list <- purrr::map(args, function(x) x$warnings)
   outputs_list <- purrr::map(args, function(x) x$outputs)
 
-  # Ensure unique dataset_ids
-  max_ids <- as.numeric(purrr::map(stats_list, function(x) max(x$dataset_id)))
+  # Ensure unique sim_ids
+  max_ids <- as.numeric(purrr::map(stats_list, function(x) max(x$sim_id)))
   shifts <- c(0, max_ids[1:(length(max_ids)) - 1]) # Shift of IDs per dataset
 
-  shift_dataset_id <- function(x, shift) {
+  shift_sim_id <- function(x, shift) {
     if(is.null(x)) {
       x
     } else {
-      dplyr::mutate(x, dataset_id = dataset_id + shift)
+      dplyr::mutate(x, sim_id = sim_id + shift)
     }
   }
 
-  # Combines multiple data frame objects and then sorts by dataset_id
+  # Combines multiple data frame objects and then sorts by sim_id
   bind_and_rearrange_df <- function(df_list) {
     dplyr::arrange(
       do.call(rbind, df_list),
-      dataset_id
+      sim_id
     )
   }
 
   # Apply the shifts of IDs to individual stats/diagnostics data frames
-  stats_list <- purrr::map2(stats_list, shifts, shift_dataset_id)
-  backend_diagnostics_list <- purrr::map2(backend_diagnostics_list, shifts, shift_dataset_id)
-  default_diagnostics_list <- purrr::map2(default_diagnostics_list, shifts, shift_dataset_id)
+  stats_list <- purrr::map2(stats_list, shifts, shift_sim_id)
+  backend_diagnostics_list <- purrr::map2(backend_diagnostics_list, shifts, shift_sim_id)
+  default_diagnostics_list <- purrr::map2(default_diagnostics_list, shifts, shift_sim_id)
 
   # Combine all the elements into a bigger object
   SBC_results(stats = bind_and_rearrange_df(stats_list),
@@ -202,9 +228,9 @@ length.SBC_results <- function(x) {
     if(is.null(df)) {
       NULL
     }
-    filtered <- dplyr::filter(df, dataset_id %in% indices_to_keep)
-    remapped <- dplyr::mutate(filtered, dataset_id = index_map[as.character(dataset_id)])
-    dplyr::arrange(remapped, dataset_id)
+    filtered <- dplyr::filter(df, sim_id %in% indices_to_keep)
+    remapped <- dplyr::mutate(filtered, sim_id = index_map[as.character(sim_id)])
+    dplyr::arrange(remapped, sim_id)
   }
 
   SBC_results(stats = subset_run_df(x$stats),
@@ -217,6 +243,24 @@ length.SBC_results <- function(x) {
               errors = x$errors[indices])
 }
 
+
+#' @title Compute SBC results
+#' @description Delegates directly to `compute_SBC()`.
+#'
+#' @name compute_results-deprecated
+#' @seealso \code{\link{SBC-deprecated}}
+#' @keywords internal
+NULL
+
+#' @rdname SBC-deprecated
+#' @section \code{compute_results}:
+#' Instead of \code{compute_results}, use \code{\link{compute_SBC}}.
+#'
+#' @export
+compute_results <- function(...) {
+  warning("compute_results() is deprecated, use compute_SBC instead.")
+  compute_SBC(...)
+}
 
 #' Fit datasets and evaluate diagnostics and SBC metrics.
 #'
@@ -232,7 +276,7 @@ length.SBC_results <- function(x) {
 #' # Thinning
 #'
 #' When using backends based on MCMC, there are two possible moments when
-#' samples may need to be thinned. They can be thinned directly within the backend
+#' draws may need to be thinned. They can be thinned directly within the backend
 #' and they may be thinned only to compute the ranks for SBC as specified by the
 #' `thin_ranks` argument. The main reason those are separate is that computing the
 #' ranks requires no or negligible autocorrelation while some autocorrelation
@@ -246,12 +290,13 @@ length.SBC_results <- function(x) {
 #' it might be sensible to thin quite aggressively already in the backend and
 #' then have some additional thinning via `thin_ranks`.
 #'
-#' Backends that don't require thining should implement [SBC_backend_iid_samples()]
+#' Backends that don't require thining should implement [SBC_backend_iid_draws()]
 #' or [SBC_backend_default_thin_ranks()] to avoid thinning by default.
 #'
 #' @param datasets an object of class `SBC_datasets`
 #' @param backend the model + sampling algorithm. The built-in backends can be constructed
-#'   using [SBC_backend_cmdstan_sample()], [SBC_backend_cmdstan_variational()], [SBC_backend_rstan_sample()] and [SBC_backend_brms()].
+#'   using [SBC_backend_cmdstan_sample()], [SBC_backend_cmdstan_variational()],
+#'   [SBC_backend_rstan_sample()], [SBC_backend_rstan_optimizing()] and [SBC_backend_brms()].
 #'   (more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the [SBC_fit()],
 #'   [SBC_fit_to_draws_matrix()] methods.
 #' @param cores_per_fit how many cores should the backend be allowed to use for a single fit?
@@ -259,14 +304,14 @@ length.SBC_results <- function(x) {
 #'    than you have cores. See [default_cores_per_fit()].
 #' @param keep_fits boolean, when `FALSE` full fits are discarded from memory -
 #'    reduces memory consumption and increases speed (when processing in parallel), but
-#'    prevents you from inspecting the fits and using [recompute_statistics()].
+#'    prevents you from inspecting the fits and using [recompute_SBC_statistics()].
 #'    We recommend to set to `TRUE` in early phases of workflow, when you run just a few fits.
 #'    Once the model is stable and you want to run a lot of iterations, we recommend setting
 #'    to `FALSE` (even for quite a simple model, 1000 fits can easily exhaust 32GB of RAM).
-#' @param thin_ranks how much thinning should be applied to posterior samples before computing
+#' @param thin_ranks how much thinning should be applied to posterior draws before computing
 #'    ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
-#'    thinned samples.
-#' @param chunk_size How many fits of `datasets` shall be processed in one batch
+#'    thinned draws See details below.
+#' @param chunk_size How many simulations within the `datasets` shall be processed in one batch
 #'    by the same worker. Relevant only when using parallel processing.
 #'    The larger the value, the smaller overhead there will be for parallel processing, but
 #'    the work may be distributed less equally across workers. We recommend setting this high
@@ -287,7 +332,7 @@ length.SBC_results <- function(x) {
 #' objects available on all workers.
 #' @return An object of class [SBC_results()].
 #' @export
-compute_results <- function(datasets, backend,
+compute_SBC <- function(datasets, backend,
                             cores_per_fit = default_cores_per_fit(length(datasets)),
                             keep_fits = TRUE,
                             thin_ranks = SBC_backend_default_thin_ranks(backend),
@@ -317,6 +362,11 @@ compute_results <- function(datasets, backend,
     backend_hash <- SBC_backend_hash_for_cache(backend)
     data_hash <- rlang::hash(datasets)
 
+    # Ensure backwards compatibility of cache
+    datasets_old <- datasets
+    names(datasets_old)[names(datasets) == "variables"] <- "parameters"
+    data_hash_old <- rlang::hash(datasets_old)
+
     if(file.exists(cache_location)) {
       results_from_cache <- readRDS(cache_location)
       if(!is.list(results_from_cache) ||
@@ -326,7 +376,7 @@ compute_results <- function(datasets, backend,
         warning("Cache file exists but is in invalid format. Will recompute.")
       } else if(results_from_cache$backend_hash != backend_hash) {
         message("Cache file exists but the backend hash differs. Will recompute.")
-      } else if(results_from_cache$data_hash != data_hash) {
+      } else if(results_from_cache$data_hash != data_hash && results_from_cache$data_hash != data_hash_old) {
         message("Cache file exists but the datasets hash differs. Will recompute.")
       } else {
         result <- tryCatch(validate_SBC_results(results_from_cache$result),
@@ -340,8 +390,8 @@ compute_results <- function(datasets, backend,
           } else {
             message(paste0("Results loaded from cache file '", cache_basename,
                            "' but it was computed with different thin_ranks/gen_quants.\n",
-                           "Calling recompute_statistics."))
-            return(recompute_statistics(old_results = result, datasets = datasets,
+                           "Calling recompute_SBC_statistics."))
+            return(recompute_SBC_statistics(old_results = result, datasets = datasets,
                                         thin_ranks = thin_ranks, gen_quants = gen_quants,
                                         backend = backend))
           }
@@ -364,10 +414,10 @@ compute_results <- function(datasets, backend,
 
 
   # Create combined data for computation
-  params_and_generated_list <- list()
+  vars_and_generated_list <- list()
   for(i in 1:length(datasets)) {
-    params_and_generated_list[[i]] <- list(
-      parameters = posterior::subset_draws(datasets$parameters,
+    vars_and_generated_list[[i]] <- list(
+      variables = posterior::subset_draws(datasets$variables,
                                            draw = i),
       generated = datasets$generated[[i]]
     )
@@ -392,7 +442,7 @@ compute_results <- function(datasets, backend,
   }
 
   results_raw <- future.apply::future_lapply(
-    params_and_generated_list, SBC:::compute_results_single,
+    vars_and_generated_list, SBC:::compute_SBC_single,
     backend = backend, cores = cores_per_fit,
     keep_fit = keep_fits, thin_ranks = thin_ranks,
     gen_quants = gen_quants,
@@ -416,25 +466,25 @@ compute_results <- function(datasets, backend,
     }
     if(is.null(results_raw[[i]]$error)) {
       stats_list[[i]] <- results_raw[[i]]$stats
-      stats_list[[i]]$dataset_id <- i
-      stats_list[[i]] <- dplyr::select(stats_list[[i]], dataset_id, tidyselect::everything())
+      stats_list[[i]]$sim_id <- i
+      stats_list[[i]] <- dplyr::select(stats_list[[i]], sim_id, tidyselect::everything())
       backend_diagnostics_list[[i]] <- results_raw[[i]]$backend_diagnostics
       if(!is.null(results_raw[[i]]$backend_diagnostics)){
-        backend_diagnostics_list[[i]]$dataset_id <- i
-        backend_diagnostics_list[[i]] <- dplyr::select(backend_diagnostics_list[[i]], dataset_id, tidyselect::everything())
+        backend_diagnostics_list[[i]]$sim_id <- i
+        backend_diagnostics_list[[i]] <- dplyr::select(backend_diagnostics_list[[i]], sim_id, tidyselect::everything())
       }
     }
     else {
       if(n_errors < max_errors_to_show) {
         if(is.null(results_raw[[i]]$fit)) {
-          message("Dataset ", i, " resulted in error when fitting.\n")
+          message("Simulation ", i, " resulted in error when fitting.\n")
           message(results_raw[[i]]$error, "\n")
           if(!is.null(results_raw[[i]]$warnings)) {
-            message(" --- Warnings for fit ", i, " ----")
+            message(" --- Warnings for sim ", i, " ----")
             message(paste0(results_raw[[i]]$warnings, collapse = "\n"))
           }
           if(!is.null(results_raw[[i]]$messages)) {
-            message(" --- Messages for fit ", i, " ----")
+            message(" --- Messages for sim ", i, " ----")
             message(paste0(results_raw[[i]]$messages, collapse = "\n"))
           }
           if(is.null(results_raw[[i]]$output)) {
@@ -443,16 +493,16 @@ compute_results <- function(datasets, backend,
             message(" ---- Model output ----")
             cat(paste0(results_raw[[i]]$output, collapse = "\n"))
           }
-          message("\n ---- End of output for dataset ", i, " -----")
+          message("\n ---- End of output for simulation ", i, " -----")
         } else {
-          message("Dataset ", i, " resulted in error when post-processing the fit.\n",
-                  "Calling `recompute_statistics` after you've found and fixed the problem could ",
+          message("Simulation ", i, " resulted in error when post-processing the fit.\n",
+                  "Calling `recompute_SBC_statistics` after you've found and fixed the problem could ",
                   "let you move further without refitting")
           message(results_raw[[i]]$error, "\n")
         }
 
       } else if(n_errors == max_errors_to_show) {
-        message("Too many datasets produced errors. Further error messages not shown.\n")
+        message("Too many simulations produced errors. Further error messages not shown.\n")
       }
       n_errors <- n_errors + 1
       errors[[i]] <- results_raw[[i]]$error
@@ -469,26 +519,26 @@ compute_results <- function(datasets, backend,
   }
 
   if(n_errors == length(datasets)) {
-    warning("All datasets produced error when fitting")
+    warning("All simulations produced error when fitting")
   } else if(n_errors > 0) {
-    warning("Total of ", n_errors, " datasets produced errors.")
+    warning("Total of ", n_errors, " simulations produced errors.")
   }
 
   stats <- do.call(rbind, stats_list)
   backend_diagnostics <- do.call(rbind, backend_diagnostics_list)
 
   if(!is.null(stats)) {
-    check_stats(stats, datasets, thin_ranks, SBC_backend_iid_samples(backend))
+    check_stats(stats, datasets, thin_ranks, SBC_backend_iid_draws(backend))
   } else {
     # Return dummy stats that let the rest of the code work.
-    stats <- data.frame(dataset_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
+    stats <- data.frame(sim_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
                         ess_tail = numeric(0),
                         rank = integer(0), simulated_value = numeric(0), max_rank = integer(0))
   }
 
   default_diagnostics <-  tryCatch(
     { compute_default_diagnostics(stats) },
-    error = function(e) { warning("Error when computing param diagnostics. ", e); NULL })
+    error = function(e) { warning("Error when computing default per-variable diagnostics. ", e); NULL })
 
 
   res <- SBC_results(stats = stats, fits = fits, outputs = outputs,
@@ -585,12 +635,11 @@ reemit_captured <- function(captured) {
   }
 }
 
-
-compute_results_single <- function(params_and_generated, backend, cores,
+compute_SBC_single <- function(vars_and_generated, backend, cores,
                                    keep_fit, thin_ranks, gen_quants) {
 
-  parameters <- params_and_generated$parameters
-  generated <- params_and_generated$generated
+  variables <- vars_and_generated$variables
+  generated <- vars_and_generated$generated
 
   # Note: explicitly referencing functions from the SBC package is needed
   # here as the function might be run in a separate R session that does not
@@ -612,7 +661,7 @@ compute_results_single <- function(params_and_generated, backend, cores,
     error_stats <-  SBC:::capture_all_outputs({
       tryCatch( {
         res$stats <- SBC::statistics_from_single_fit(
-          res$fit, parameters = parameters, thin_ranks = thin_ranks,
+          res$fit, variables = variables, thin_ranks = thin_ranks,
           generated = generated, gen_quants = gen_quants,
           backend = backend)
 
@@ -650,12 +699,12 @@ compute_results_single <- function(params_and_generated, backend, cores,
 #' Recompute SBC statistics given a single fit.
 #'
 #' Potentially useful for doing some advanced stuff, but should not
-#' be used in regular workflow. Use [recompute_statistics()] to update
+#' be used in regular workflow. Use [recompute_SBC_statistics()] to update
 #' an `[SBC_results]` objects with different `thin_ranks` or other settings.
 #'
 #' @export
-#' @seealso [recompute_statistics()]
-statistics_from_single_fit <- function(fit, parameters, generated,
+#' @seealso [recompute_SBC_statistics()]
+statistics_from_single_fit <- function(fit, variables, generated,
                                        thin_ranks, gen_quants,
                                        backend) {
 
@@ -666,37 +715,36 @@ statistics_from_single_fit <- function(fit, parameters, generated,
     gq_fit <- compute_gen_quants(fit_matrix, generated, gen_quants)
     fit_matrix <- posterior::bind_draws(fit_matrix, gq_fit, along = "variable")
 
-    gq_parameter <- compute_gen_quants(parameters, generated, gen_quants)
-    parameters <- posterior::bind_draws(parameters, gq_parameter, along = "variable")
+    gq_variable <- compute_gen_quants(variables, generated, gen_quants)
+    variables <- posterior::bind_draws(variables, gq_variable, along = "variable")
   }
 
-  shared_pars <- intersect(posterior::variables(parameters),
+  shared_vars <- intersect(posterior::variables(variables),
                            posterior::variables(fit_matrix))
 
 
-  # Make sure the order of parameters matches
-  parameters <- posterior::subset_draws(parameters, variable = shared_pars)
+  # Make sure the order of variables matches
+  variables <- posterior::subset_draws(variables, variable = shared_vars)
 
 
-  fit_matrix <- posterior::subset_draws(fit_matrix, variable = shared_pars)
+  fit_matrix <- posterior::subset_draws(fit_matrix, variable = shared_vars)
 
   fit_thinned <- posterior::thin_draws(fit_matrix, thin_ranks)
 
 
   stats <- posterior::summarise_draws(fit_matrix)
 
-  if(SBC_backend_iid_samples(backend)) {
-    ## iid samples have the bestest diagnostics by construction
+  if(SBC_backend_iid_draws(backend)) {
+    ## iid draws have the bestest diagnostics by construction
     stats$rhat <- 1
     stats$ess_bulk <- posterior::ndraws(fit_matrix)
     stats$ess_tail <- posterior::ndraws(fit_matrix)
   }
 
-  stats <- dplyr::rename(stats, parameter = variable)
-  stats$simulated_value <- as.numeric(parameters)
+  stats$simulated_value <- as.numeric(variables)
 
-  ranks <- calculate_ranks_draws_matrix(parameters, fit_thinned)
-  if(!identical(stats$parameter, names(ranks))) {
+  ranks <- calculate_ranks_draws_matrix(variables, fit_thinned)
+  if(!identical(stats$variable, names(ranks))) {
     stop("A naming conflict")
   }
   stats$rank <- ranks
@@ -704,20 +752,20 @@ statistics_from_single_fit <- function(fit, parameters, generated,
   stats$z_score <- (stats$simulated_value - stats$mean) / stats$sd
 
   stats <- dplyr::select(
-    stats, parameter, simulated_value, rank, z_score, tidyselect::everything())
+    stats, variable, simulated_value, rank, z_score, tidyselect::everything())
 
   stats
 }
 
-# check that the computed stats data frame hs problems
-check_stats <- function(stats, datasets, thin_ranks, iid_samples) {
+# check that the computed stats data frame has problems
+check_stats <- function(stats, datasets, thin_ranks, iid_draws) {
   unique_max_ranks <- unique(stats$max_rank)
   if(length(unique_max_ranks) != 1) {
     warning("Differening max_rank across fits")
   }
 
   if(min(unique_max_ranks) < 50) {
-    if(iid_samples) {
+    if(iid_draws) {
       message_end = " (the backend produces i.i.d. samples so thin_ranks = 1 is the most sensible)."
     } else {
       message_end = "."
@@ -729,16 +777,16 @@ check_stats <- function(stats, datasets, thin_ranks, iid_samples) {
 
   }
 
-  all_pars <- dplyr::summarise(
-    dplyr::group_by(stats, dataset_id),
-    all_pars = paste0(parameter, collapse = ","), .groups = "drop")
-  if(length(unique(all_pars$all_pars)) != 1) {
-    warning("Not all fits share the same parameters")
+  all_vars <- dplyr::summarise(
+    dplyr::group_by(stats, sim_id),
+    all_vars = paste0(variable, collapse = ","), .groups = "drop")
+  if(length(unique(all_vars$all_vars)) != 1) {
+    warning("Not all fits share the same variables")
   }
 
-  missing_pars <- setdiff(posterior::variables(datasets$parameters), stats$parameter)
-  if(length(missing_pars) > 0) {
-    warning("Some parameters missing in fits: ", paste0(missing_pars, collapse = ", "))
+  missing_vars <- setdiff(posterior::variables(datasets$variables), stats$variable)
+  if(length(missing_vars) > 0) {
+    warning("Some variables missing in fits: ", paste0(missing_vars, collapse = ", "))
 
   }
 }
@@ -748,7 +796,7 @@ check_stats <- function(stats, datasets, thin_ranks, iid_samples) {
 #' When the expression contains non-library functions/objects, and parallel processing
 #' is enabled, those must be
 #' named in the `.globals` parameter (hopefully we'll be able to detect those
-#' automatically in the future). Note that [recompute_statistics()] currently
+#' automatically in the future). Note that [recompute_SBC_statistics()] currently
 #' does not use parallel processing, so `.globals` don't need to be set.
 #'
 #' @param ... named expressions representing the quantitites
@@ -790,6 +838,24 @@ compute_gen_quants <- function(draws, generated, gen_quants) {
   do.call(posterior::draws_rvars, rvars)
 }
 
+#' @title Recompute SBC statistics without refitting models.
+#' @description Delegates directly to `recompute_SBC_statistics()`.
+#'
+#' @name recompute_statistics-deprecated
+#' @seealso \code{\link{SBC-deprecated}}
+#' @keywords internal
+NULL
+
+#' @rdname SBC-deprecated
+#' @section \code{recompute_statistics}:
+#' Instead of \code{recompute_statistics}, use \code{\link{recompute_SBC_statistics}}.
+#'
+#' @export
+recompute_statistics <- function(...) {
+  warning("recompute_statistics() is deprecated, use recompute_SBC_statistics instead.")
+  recompute_SBC_statistics(...)
+}
+
 #' Recompute SBC statistics without refitting models.
 #'
 #' Useful for example to recompute SBC ranks with a different choice of `thin_ranks`
@@ -798,21 +864,21 @@ compute_gen_quants <- function(draws, generated, gen_quants) {
 #' @param backend backend used to fit the results. Used to pull various defaults
 #'   and other setting influencing the computation of statistics.
 #' @export
-recompute_statistics <- function(old_results, datasets, backend,
+recompute_SBC_statistics <- function(old_results, datasets, backend,
                                  thin_ranks = SBC_backend_default_thin_ranks(backend),
                                  gen_quants = NULL) {
   validate_SBC_results(old_results)
   validate_SBC_datasets(datasets)
 
   if(length(old_results) != length(datasets)) {
-    stop("The number of fits in old_results does not match the number of datasets")
+    stop("The number of fits in old_results does not match the number of simulations")
   }
 
   new_results <- old_results
   missing_fits <- purrr::map_lgl(old_results$fits, is.null)
   if(all(missing_fits)) {
     stop("No raw fits preserved, cannot recompute. ",
-         "Either all datasets produced errors or the results were computed with keep_fits = FALSE")
+         "Either all simulations produced errors or the results were computed with keep_fits = FALSE")
   } else if(any(missing_fits)) {
     warning("Some raw fits not available. Those fits will be ignored when recomputing statistics")
   }
@@ -820,27 +886,27 @@ recompute_statistics <- function(old_results, datasets, backend,
   new_stats_list <- list()
   for(i in 1:length(old_results)) {
     if(!is.null(old_results$fits[[i]])) {
-      parameters <- posterior::subset_draws(datasets$parameters, draw = i)
+      variables <- posterior::subset_draws(datasets$variables, draw = i)
       new_stats_list[[i]] <- statistics_from_single_fit(old_results$fits[[i]],
-                                                        parameters = parameters,
+                                                        variables = variables,
                                                         generated = datasets$generated[[i]],
                                                         thin_ranks = thin_ranks,
                                                         gen_quants = gen_quants,
                                                         backend = backend)
-      new_stats_list[[i]]$dataset_id <- i
-      new_stats_list[[i]] <- dplyr::select(new_stats_list[[i]], dataset_id, tidyselect::everything())
+      new_stats_list[[i]]$sim_id <- i
+      new_stats_list[[i]] <- dplyr::select(new_stats_list[[i]], sim_id, tidyselect::everything())
 
     }
   }
 
   new_stats <- do.call(rbind, new_stats_list)
-  check_stats(new_stats, datasets, thin_ranks, SBC_backend_iid_samples(backend))
+  check_stats(new_stats, datasets, thin_ranks, SBC_backend_iid_draws(backend))
 
   new_results$stats <- new_stats
 
   new_results$default_diagnostics <-  tryCatch(
     { compute_default_diagnostics(new_stats) },
-    error = function(e) { warning("Error when computing param diagnostics. ", e); NULL })
+    error = function(e) { warning("Error when computing default per-variable diagnostics. ", e); NULL })
 
 
   check_all_SBC_diagnostics(new_results)
@@ -858,23 +924,32 @@ rdunif <- function(n, a, b) {
   ceiling(runif(n, min = a - 1, max= b))
 }
 
-#' Calculate ranks given parameter values within a posterior distribution.
+#' Calculate ranks given variable values within a posterior distribution.
 #'
-#' When there are ties (e.g. for discrete parameters), the rank is currently drawn stochastically
+#' When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
 #' among the ties.
-#' @param params a vector of values to check
+#' @param variables a vector of values to check
 #' @param dm draws_matrix of the fit (assumed to be already thinned if that was necessary)
+#' @param params DEPRECATED. Use `variables` instead.
 #' @export
-calculate_ranks_draws_matrix <- function(params, dm) {
+calculate_ranks_draws_matrix <- function(variables, dm, params = NULL) {
   #TODO validate input
+
+  if(!is.null(params)) {
+    warning("The `params` argument is deprecated use `variables` instead.")
+    if(is.null(variables)) {
+      variables <- params
+    }
+  }
+
   max_rank <- posterior::ndraws(dm)
 
-  less_matrix <- sweep(dm, MARGIN = 2, STATS = params, FUN = "<")
+  less_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = "<")
   rank_min <- colSums(less_matrix)
 
-  # When there are ties (e.g. for discrete parameters), the rank is currently drawn stochastically
+  # When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
   # among the ties
-  equal_matrix <- sweep(dm, MARGIN = 2, STATS = params, FUN = "==")
+  equal_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = "==")
   rank_range <- colSums(equal_matrix)
 
   ranks <- rank_min + rdunif(posterior::nvariables(dm), a = 0, b = rank_range)
@@ -1025,7 +1100,7 @@ get_diagnostic_messages.SBC_results_summary <- function(x) {
   if(x$n_low_ess_to_rank > 0) {
     msg <- paste0(x$n_low_ess_to_rank, " (", round(100 * x$n_low_ess_to_rank / x$n_fits), "%) fits had tail ESS undefined or less than ",
                   "half of the maximum rank, potentially skewing \nthe rank statistics. The lowest tail ESS was ", round(x$min_min_ess_tail),
-                  ".\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_statistics) \nor number of posterior samples (by refitting) might help.")
+                  ".\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) \nor number of posterior draws (by refitting) might help.")
     message_list[[i]] <- data.frame(ok = FALSE, message = msg)
   } else {
     message_list[[i]] <- data.frame(ok = TRUE, message = "All fits had tail ESS > half of the maximum rank.")

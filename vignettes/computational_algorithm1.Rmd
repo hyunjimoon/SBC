@@ -21,7 +21,7 @@ penalizing tendencies of convergence metric, and slow convergence of the
 optimization process. We'll discuss 3 examples: 
 
 - In Example I a simple Poisson model is shown that is
-well handled by default ADVI if the size of the data is small, but becomes miscalibrated with larger datasets. It also turns out that for such a simple model using `optimizing` leads to very good results.
+well handled by default ADVI if the size of the data is small, but becomes miscalibrated when larger amount of observations is available. It also turns out that for such a simple model using `optimizing` leads to very good results.
 
 - In Example II we discuss a Hidden Markov Model where the approximation by ADVI is imperfect but not very wrong. We also show how the (mis)calibration responds to changing parameters of the ADVI implementation and that `optimizing` performs worse than ADVI.
 
@@ -73,7 +73,7 @@ options(SBC.min_chunk_size = 5)
 
 
 # Setup caching of results
-cache_dir <- "./approximate_computation_SBC_cache"
+cache_dir <- "./_approximate_computation_SBC_cache"
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
@@ -98,7 +98,7 @@ poisson_generator_single <- function(N){
   lambda <- rgamma(n = 1, shape = 15, rate = 5)
   y <- rpois(n = N, lambda = lambda)
   list(
-    parameters = list(
+    variables = list(
       lambda = lambda
     ),
     generated = list(
@@ -130,9 +130,9 @@ Since the model runs quickly and is simple, we start with 1000 simulations.
 set.seed(46522641)
 ds_poisson <- generate_datasets(
   SBC_generator_function(poisson_generator_single, N = 20), 
-  n_datasets = 1000)
+  n_sims = 1000)
 res_poisson <- 
-  compute_results(
+  compute_SBC(
     ds_poisson, backend_poisson, keep_fits = FALSE,
     cache_mode = "results", cache_location = file.path(cache_dir, "poisson"))
 ```
@@ -160,9 +160,9 @@ One would expect that the normal approximation implemented in ADVI becomes bette
 set.seed(23546224)
 ds_poisson_100 <- generate_datasets(
   SBC_generator_function(poisson_generator_single, N = 100), 
-  n_datasets = 1000)
+  n_sims = 1000)
 res_poisson_100 <- 
-  compute_results(ds_poisson_100, backend_poisson, keep_fits = FALSE,
+  compute_SBC(ds_poisson_100, backend_poisson, keep_fits = FALSE,
                   cache_mode = "results", cache_location = file.path(cache_dir, "poisson_100"))
 ```
 
@@ -198,7 +198,7 @@ and use it to fit the same datasets - first to the one with `N = 20`.
 
 ```{r}
 res_poisson_optimizing <- 
-  compute_results(ds_poisson, backend_poisson_optimizing, keep_fits = FALSE,
+  compute_SBC(ds_poisson, backend_poisson_optimizing, keep_fits = FALSE,
     cache_mode = "results", cache_location = file.path(cache_dir, "poisson_opt"))
 ```
 
@@ -213,7 +213,7 @@ Similarly, we can fit the `N = 100` datasets.
 
 ```{r}
 res_poisson_optimizing_100 <- 
-  compute_results(ds_poisson_100, backend_poisson_optimizing, keep_fits = FALSE,
+  compute_SBC(ds_poisson_100, backend_poisson_optimizing, keep_fits = FALSE,
     cache_mode = "results", cache_location = file.path(cache_dir, "poisson_opt_100"))
 ```
 
@@ -286,7 +286,7 @@ generator_HMM <- function(N) {
   y <- rpois(N, mu[states])
   
   list(
-    parameters = list(
+    variables = list(
       mu_background = mu_background,
       mu_signal = mu_signal,
       # rdirichlet returns matrices, convert to 1D vectors
@@ -330,12 +330,12 @@ And we compute results
 
 ```{r}
 set.seed(642354822)
-ds_hmm <- generate_datasets(SBC_generator_function(generator_HMM, N = 100), n_datasets = 100)
-res_hmm <- compute_results(ds_hmm, backend_HMM,
+ds_hmm <- generate_datasets(SBC_generator_function(generator_HMM, N = 100), n_sims = 100)
+res_hmm <- compute_SBC(ds_hmm, backend_HMM,
                            cache_mode = "results", cache_location = file.path(cache_dir, "hmm"))
 ```
 
-There are not huge problems, but the `mu_signal` parameter seems to not be well calibrated:
+There are not huge problems, but the `mu_signal` variable seems to not be well calibrated:
 
 ```{r hmm_ecdf_ranks}
 plot_ecdf_diff(res_hmm)
@@ -352,19 +352,19 @@ To make sure this is not a fluke we add 400 more simulations.
 
 ```{r}
 set.seed(2254355)
-ds_hmm_2 <- generate_datasets(SBC_generator_function(generator_HMM, N = 100), n_datasets = 400)
+ds_hmm_2 <- generate_datasets(SBC_generator_function(generator_HMM, N = 100), n_sims = 400)
 ```
 
 ```{r}
 res_hmm_2 <- bind_results(
   res_hmm,
-  compute_results(ds_hmm_2,backend_HMM,
+  compute_SBC(ds_hmm_2,backend_HMM,
                   cache_mode = "results",
                   cache_location = file.path(cache_dir, "hmm2"))
 )
 ```
 
-This confirms the problems with `mu_signal`. additionally, we see that `mu_background` and the `rho` parameters also show some irregularities.
+This confirms the problems with `mu_signal`. additionally, we see that `mu_background` and the `rho` variables also show some irregularities.
 
 ```{r hmm_2_ecdf_ranks}
 plot_ecdf_diff(res_hmm_2)
@@ -383,7 +383,7 @@ plot_coverage(res_hmm_2)
 This is what we get when we focus on the 90% posterior credible interval:
 
 ```{r}
-coverage_hmm <- empirical_coverage(res_hmm_2$stats, width = 0.9)[, c("parameter", "ci_low", "ci_high")]
+coverage_hmm <- empirical_coverage(res_hmm_2$stats, width = 0.9)[, c("variable", "ci_low", "ci_high")]
 coverage_hmm
 ```
 
@@ -405,7 +405,7 @@ We may try if the situation improves with full-rank ADVI - let's run it for the 
 
 ```{r}
 ds_hmm_all <- bind_datasets(ds_hmm, ds_hmm_2)
-res_hmm_fullrank <- compute_results(
+res_hmm_fullrank <- compute_SBC(
   ds_hmm_all, 
   SBC_backend_cmdstan_variational(model_HMM, algorithm = "fullrank", n_retries_init = 3),
   cache_mode = "results", cache_location = file.path(cache_dir, "hmm_fullrank"))
@@ -421,7 +421,7 @@ plot_rank_hist(res_hmm_fullrank)
 Interestingly, the rank plot for `mu_signal` shows a "frowning" shape, meaning the
 mean-field approximation is slightly underconfident here.
 
-This is nicely demonstrated by looking at the central interval coverage - now the coverage of `mu_signal` is _larger_ than it should be, so the model is underconfident (i.e. more conservative), while the coverages for other parameters track the nominal values quite closely.
+This is nicely demonstrated by looking at the central interval coverage - now the coverage of `mu_signal` is _larger_ than it should be, so the model is underconfident (i.e. more conservative), while the coverages for other variables track the nominal values quite closely.
 
 ```{r hmm_fullrank_coverage}
 plot_coverage(res_hmm_fullrank)
@@ -432,7 +432,7 @@ Or alternatively looking at the numerical values for coverage of the central 90%
 
 ```{r}
 coverage_hmm_fullrank <- 
-  empirical_coverage(res_hmm_fullrank$stats, width = 0.9)[, c("parameter", "ci_low", "ci_high")]
+  empirical_coverage(res_hmm_fullrank$stats, width = 0.9)[, c("variable", "ci_low", "ci_high")]
 coverage_hmm_fullrank
 ```
 
@@ -448,7 +448,7 @@ optimization convergence. Here we'll use the default mean-field
 algorithm, but decrease the `tol_rel_obj` (the default value is 0.01). So let's try that.
 
 ```{r}
-res_hmm_lowtol <- compute_results(
+res_hmm_lowtol <- compute_SBC(
   ds_hmm_all, 
   SBC_backend_cmdstan_variational(model_HMM, tol_rel_obj = 0.001, n_retries_init = 3),
   cache_mode = "results", cache_location = file.path(cache_dir, "hmm_lowtol"))
@@ -483,7 +483,7 @@ plot_coverage(res_hmm_lowtol_conv)
 and the numerical values for the coverage of the central 90% interval.
 
 ```{r}
-empirical_coverage(res_hmm_lowtol$stats, width = 0.9)[, c("parameter", "ci_low", "ci_high")]
+empirical_coverage(res_hmm_lowtol$stats, width = 0.9)[, c("variable", "ci_low", "ci_high")]
 ```
 
 This variant has somewhat lower overall mismatch, but tends to be overconfident, which might in some cases be less desirable than the more conservative fullrank.
@@ -497,19 +497,16 @@ SBC:::require_package_version("rstan", "2.26", "The models in the following sect
 
 model_HMM_rstan <- stan_model("stan/hmm_poisson.stan")
 
-res_hmm_optimizing <- compute_results(
+res_hmm_optimizing <- compute_SBC(
   ds_hmm_all, 
   SBC_backend_rstan_optimizing(model_HMM_rstan, n_retries_hessian = 3),
   cache_mode = "results", cache_location = file.path(cache_dir, "hmm_optimizing"))
 ```
 
 
-
-
-
-We see that while for some parameters (`mu_signal`, the transition probabilities `t[]`), the Laplace approximation is reasonably well calibrated, it is very
+We see that while for some variables (`mu_signal`, the transition probabilities `t[]`), the Laplace approximation is reasonably well calibrated, it is very
 badly calibrated with respect to the initial states `rho` and also for `mu_background`, where there is substantial bias. So if we were only interested in
-a subset of the parameters, the optimizing fit could still be on OK choice.
+a subset of the variables, the optimizing fit could still be on OK choice.
 
 ```{r hmm_optimizing_ecdf_ranks}
 plot_ecdf_diff(res_hmm_optimizing)
@@ -523,7 +520,7 @@ To summarise, the HMM model turns out to pose minor problems for ADVI that can b
 Another relevant question is how much speed we gained. To have a comparison, we run full MCMC with Stan for the same datasets.
 
 ```{r}
-res_hmm_sample <- compute_results(
+res_hmm_sample <- compute_SBC(
   ds_hmm[1:50], 
   SBC_backend_cmdstan_sample(model_HMM),
   keep_fits = FALSE,
@@ -622,7 +619,7 @@ generator_HMM_ordered <- function(N) {
   y <- rpois(N, mu[states])
   
   list(
-    parameters = list(
+    variables = list(
       log_mu = log_mu,
       # rdirichlet returns matrices, convert to 1D vectors
       t1 = as.numeric(t1),
@@ -638,7 +635,7 @@ generator_HMM_ordered <- function(N) {
 ```
 
 
-So let us build a default variational backend and fit it to just 20 datasets.
+So let us build a default variational backend and fit it to just 20 simulations.
 
 ```{r}
 model_HMM_ordered <- cmdstan_model("stan/hmm_poisson_ordered.stan")
@@ -650,15 +647,15 @@ backend_HMM_ordered <- SBC_backend_cmdstan_variational(model_HMM_ordered, n_retr
 set.seed(12333654)
 ds_hmm_ordered <- generate_datasets(
   SBC_generator_function(generator_HMM_ordered, N = 100), 
-  n_datasets = 20)
+  n_sims = 20)
 
 res_hmm_ordered <- 
-  compute_results(ds_hmm_ordered, backend_HMM_ordered,
+  compute_SBC(ds_hmm_ordered, backend_HMM_ordered,
                   cache_mode = "results", cache_location = file.path(cache_dir, "hmm_ordered"))
 ```
 
 
-Immediately we see that the `log_mu[1]` parameter is heavily miscalibrated.
+Immediately we see that the `log_mu[1]` variable is heavily miscalibrated.
 
 ```{r hmm_ordered_ecdf_ranks}
 plot_ecdf_diff(res_hmm_ordered)
@@ -667,8 +664,8 @@ plot_rank_hist(res_hmm_ordered)
 
 What changed? To understand that we need to remember how
 Stan [represents constrained data types]( https://mc-stan.org/docs/2_28/reference-manual/variable-transforms.html). In short,
-in the model in Example II, Stan will internally work with `mu_background__ = log(mu_background)` and 
-`mu_signal__ = log(mu_signal)`. In this modified model, the internal representation will be: `log_mu_1__ = log_mu[1]` (without any change) and `log_mu_2__ = log(log_mu[2] - log_mu[1])`. So the mean for the active component is actually `exp(log_mu_1__ + exp(log_mu_2__))`. This then introduces a complex correlation structure between the internal variables that the ADVI algorithm is unable to handle well.
+in the model in Example II, Stan will internally work with the so called _unconstrained_ parameters `mu_background__ = log(mu_background)` and 
+`mu_signal__ = log(mu_signal)`. In this modified model, the internal representation will be: `log_mu_1__ = log_mu[1]` (without any change) and `log_mu_2__ = log(log_mu[2] - log_mu[1])`. So the mean for the active component is actually `exp(log_mu_1__ + exp(log_mu_2__))`. This then introduces a complex correlation structure between the unconstrained parameters that the ADVI algorithm is unable to handle well.
 
 
 Even trying the fullrank variant does not help:
@@ -679,7 +676,7 @@ backend_HMM_ordered_fullrank <-
                                   algorithm = "fullrank", n_retries_init = 3)
 
 res_hmm_ordered_fullrank <- 
-  compute_results(ds_hmm_ordered, backend_HMM_ordered,
+  compute_SBC(ds_hmm_ordered, backend_HMM_ordered,
                   cache_mode = "results", cache_location = file.path(cache_dir, "hmm_ordered_fullrank"))
 ```
 
@@ -696,7 +693,7 @@ To have a complete overview we may also try the optimizing fit:
 ```{r}
 model_HMM_ordered_rstan <- stan_model("stan/hmm_poisson_ordered.stan")
 
-res_hmm_ordered_optimizing <- compute_results(
+res_hmm_ordered_optimizing <- compute_SBC(
   ds_hmm_ordered, 
   SBC_backend_rstan_optimizing(model_HMM_ordered_rstan),
   cache_mode = "results", cache_location = file.path(cache_dir, "hmm_ordered_optimizing"))

@@ -7,35 +7,37 @@
 \usage{
 plot_ecdf(
   x,
-  parameters = NULL,
+  variables = NULL,
   K = NULL,
   gamma = NULL,
   prob = 0.95,
   size = 1,
   alpha = 0.33,
-  ...
+  ...,
+  parameters = NULL
 )
 
 plot_ecdf_diff(
   x,
-  parameters = NULL,
+  variables = NULL,
   K = NULL,
   gamma = NULL,
   prob = 0.95,
   size = 1,
   alpha = 0.33,
-  ...
+  ...,
+  parameters = NULL
 )
 }
 \arguments{
 \item{x}{object supporting the \code{\link[=data_for_ecdf_plots]{data_for_ecdf_plots()}} method.}
 
-\item{parameters}{optional subset of parameters to show in the plot}
+\item{variables}{optional subset of variables to show in the plot}
 
 \item{K}{number of uniformly spaced evaluation points for the ECDF or ECDFs. Affects
 the granularity of the plot and can significantly speed up the computation
 of the simultaneous confidence bands. Defaults to the smaller of number of
-ranks per parameter and the maximum rank.}
+ranks per variable and the maximum rank.}
 
 \item{gamma}{TODO}
 
@@ -47,6 +49,8 @@ ranks per parameter and the maximum rank.}
 
 \item{...}{additional arguments passed to \code{\link[=data_for_ecdf_plots]{data_for_ecdf_plots()}}.
 Most notably, if \code{x} is matrix, a \code{max_rank} parameter needs to be given.}
+
+\item{parameters}{DEPRECATED, use \code{variables} instead.}
 }
 \description{
 See the methods for \code{\link[=data_for_ecdf_plots]{data_for_ecdf_plots()}} for available data formats.
