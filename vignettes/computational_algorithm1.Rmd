@@ -495,7 +495,7 @@ model_HMM_rstan <- stan_model("stan/hmm_poisson.stan")
 
 res_hmm_optimizing <- compute_results(
   ds_hmm_all, 
-  SBC_backend_rstan_optimizing(model_HMM_rstan),
+  SBC_backend_rstan_optimizing(model_HMM_rstan, n_retries_hessian = 3),
   cache_mode = "results", cache_location = file.path(cache_dir, "hmm_optimizing"))
 ```
 
