@@ -6,7 +6,7 @@
 results that can be used to test other functions in the package.}
 \usage{
 SBC_example_results(
-  example = c("normal_ok", "normal_bad"),
+  example = c("normal_ok", "normal_bad", "visualizations"),
   interface = c("rstan", "cmdstanr"),
   N = 100,
   n_sims = 50
@@ -19,7 +19,8 @@ where the generator matches the model
 (using the \code{normal} generator and \code{normal_sd} backend), while
 \code{normal_bad} is an example with a mismatch between the generator and backend
 that manifests in SBC (\code{normal_bad} combines the \code{normal} generator with
-\code{normal_var} backend).
+\code{normal_var} backend). \code{visualizations} creates a purely artificial results
+that are meant to showcase the built-in plots.
 }}
 
 \item{interface}{name of the interface to be used for the backend}
@@ -29,6 +30,6 @@ that manifests in SBC (\code{normal_bad} combines the \code{normal} generator wi
 \item{n_sims}{number of simulations to perform}
 }
 \description{
-Combine an example backend with an example generator to provide full
-results that can be used to test other functions in the package.
+Except for \code{example = "visualizations"}, all examples will actually
+compile and fit Stan models and thus may take a while to complete.
 }
