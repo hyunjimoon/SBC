@@ -23,7 +23,7 @@ and other setting influencing the computation of statistics.}
 ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
 thinned draws See details below.}
 
-\item{ensure_num_ranks_divisor}{Potentially drop up some posterior samples to
+\item{ensure_num_ranks_divisor}{Potentially drop some posterior samples to
 ensure that this number divides the total number of SBC ranks (see Details).}
 }
 \value{
