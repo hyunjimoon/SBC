@@ -644,7 +644,6 @@ plot_coverage <- function(x, variables = NULL, prob = 0.95,
   UseMethod("plot_coverage")
 }
 
-#' @rdname plot_coverage
 #' @export
 plot_coverage.SBC_results <- function(x, variables = NULL, prob = 0.95,
                                       interval_type = "central", parameters = NULL) {
@@ -659,7 +658,6 @@ plot_coverage.SBC_results <- function(x, variables = NULL, prob = 0.95,
   plot_coverage(x$stats, variables = variables, prob = prob, interval_type = interval_type)
 }
 
-#' @rdname plot_coverage
 #' @export
 plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
                                      interval_type = "central", parameters = NULL) {
@@ -705,19 +703,18 @@ plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
 
 
 #' @rdname plot_coverage
+#' @export
 plot_coverage_diff <- function(x, variables = NULL, prob = 0.95,
                           interval_type = "central", parameters = NULL) {
   UseMethod("plot_coverage_diff")
 }
 
-#' @rdname plot_coverage
 #' @export
 plot_coverage_diff.SBC_results <- function(x, variables = NULL, prob = 0.95,
                                       interval_type = "central") {
   plot_coverage_diff(x$stats, variables = variables, prob = prob, interval_type = interval_type)
 }
 
-#' @rdname plot_coverage
 #' @export
 plot_coverage_diff.data.frame <- function(x, variables = NULL, prob = 0.95,
                                      interval_type = "central", parameters = NULL) {

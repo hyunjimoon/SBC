@@ -53,6 +53,8 @@ Most notably, if \code{x} is matrix, a \code{max_rank} parameter needs to be giv
 \item{parameters}{DEPRECATED, use \code{variables} instead.}
 }
 \description{
+See \code{vignette("rank_visualizations")} for
+more details.
 See the methods for \code{\link[=data_for_ecdf_plots]{data_for_ecdf_plots()}} for available data formats.
 }
 \details{

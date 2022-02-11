@@ -2,12 +2,8 @@
 % Please edit documentation in R/plot.R
 \name{plot_coverage}
 \alias{plot_coverage}
-\alias{plot_coverage.SBC_results}
-\alias{plot_coverage.data.frame}
 \alias{plot_coverage_diff}
-\alias{plot_coverage_diff.SBC_results}
-\alias{plot_coverage_diff.data.frame}
-\title{Plot the observed coverage and its uncertainty}
+\title{Plot the observed coverage and its uncertainty.}
 \usage{
 plot_coverage(
   x,
@@ -17,33 +13,7 @@ plot_coverage(
   parameters = NULL
 )
 
-\method{plot_coverage}{SBC_results}(
-  x,
-  variables = NULL,
-  prob = 0.95,
-  interval_type = "central",
-  parameters = NULL
-)
-
-\method{plot_coverage}{data.frame}(
-  x,
-  variables = NULL,
-  prob = 0.95,
-  interval_type = "central",
-  parameters = NULL
-)
-
 plot_coverage_diff(
-  x,
-  variables = NULL,
-  prob = 0.95,
-  interval_type = "central",
-  parameters = NULL
-)
-
-\method{plot_coverage_diff}{SBC_results}(x, variables = NULL, prob = 0.95, interval_type = "central")
-
-\method{plot_coverage_diff}{data.frame}(
   x,
   variables = NULL,
   prob = 0.95,
@@ -64,8 +34,14 @@ plot_coverage_diff(
 a ggplot2 plot object
 }
 \description{
+\code{plot_coverage} will plot the observed coverage,
+while \code{plot_coverage_diff} will show the difference between observed
+and expected coverage.
 Please refer to \code{\link[=empirical_coverage]{empirical_coverage()}} for details on computation
 and limitations of this plot as well as details on the arguments.
 See \code{vignette("rank_visualizations")} for
 more details.
+}
+\seealso{
+empirical_coverage
 }
