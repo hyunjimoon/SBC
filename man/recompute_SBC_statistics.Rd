@@ -9,17 +9,30 @@ recompute_SBC_statistics(
   datasets,
   backend,
   thin_ranks = SBC_backend_default_thin_ranks(backend),
+  ensure_num_ranks_divisor = 2,
   gen_quants = NULL
 )
 }
 \arguments{
+\item{datasets}{an object of class \code{SBC_datasets}}
+
 \item{backend}{backend used to fit the results. Used to pull various defaults
 and other setting influencing the computation of statistics.}
+
+\item{thin_ranks}{how much thinning should be applied to posterior draws before computing
+ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
+thinned draws See details below.}
+
+\item{ensure_num_ranks_divisor}{Potentially drop up some posterior samples to
+ensure that this number divides the total number of SBC ranks (see Details).}
 }
 \value{
 An S3 object of class \code{SBC_results} with updated \verb{$stats} and \verb{$default_diagnostics} fields.
 }
 \description{
+Recompute SBC statistics without refitting models.
+}
+\details{
 Useful for example to recompute SBC ranks with a different choice of \code{thin_ranks}
 or added generated quantities.
 }

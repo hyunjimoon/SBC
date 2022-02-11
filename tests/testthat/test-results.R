@@ -135,7 +135,7 @@ test_that("calculate_sds_draws_matrix", {
     expect_identical(calculate_sds_draws_matrix(dm), expected_res)
 })
 
-test_that("statistics_from_single_fit", {
+test_that("SBC_statistics_from_single_fit", {
     vars <- posterior::as_draws_matrix(
         posterior::draws_rvars(
             mu = posterior::rvar(4) ,
@@ -144,13 +144,35 @@ test_that("statistics_from_single_fit", {
 
     # Can't really check correctness, only
     # testing that no error is thrown and structure is OK
-    res <- statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
+    test_draws <- posterior::example_draws(example = "eight_schools")
+    res <- SBC_statistics_from_single_fit(test_draws,
                                variables = vars, thin_ranks = 1, gen_quants = NULL,
+                               ensure_num_ranks_divisor = 1,
                                backend = SBC_backend_mock())
 
+
     expect_equal(length(unique(res$max_rank)), 1)
+    expect_equal(unique(res$max_rank), posterior::ndraws(test_draws))
     expect_true(all(res$rank >= 0 & res$rank < res$max_rank))
     expect_equal(res$simulated_value, as.numeric(vars))
     expect_identical(res$mean > res$simulated_value, sign(res$z_score) < 0)
+
+    # Test ensure_num_ranks_divisor
+    # Make sure the test draws have the expected size before proceeding
+    expect_equal(posterior::ndraws(test_draws), 400)
+    res_ensure2 <- SBC_statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
+                                      variables = vars, thin_ranks = 1, gen_quants = NULL,
+                                      ensure_num_ranks_divisor = 2,
+                                      backend = SBC_backend_mock())
+    # Number of ranks = max_rank + 1 (as 0 is a valid rank)
+    expect_equal(unique(res_ensure2$max_rank), 399)
+
+
+    # Test ensure_num_ranks_divisor, combined with thin_ranks
+    res_ensure7 <- SBC_statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
+                                              variables = vars, thin_ranks = 4, gen_quants = NULL,
+                                              ensure_num_ranks_divisor = 7,
+                                              backend = SBC_backend_mock())
+    expect_equal(unique(res_ensure7$max_rank), 97)
 
 })
