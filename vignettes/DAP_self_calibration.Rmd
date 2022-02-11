@@ -221,7 +221,7 @@ calculate_dap <- function(mu, var, generator, datasets=NULL, backened, fixed_arg
 
 Once we have the model and DAP generation ready, we run inference each for HMC and optimization. Note that the same prior-data samples are being used for optimization and HMC:
 
-```{r include=FALSE, eval=FALSE}
+```{r include=FALSE, eval=TRUE}
 mu_seq <- readRDS(file="DAP_self_calibration_mu_seq.rds")
 var_seq <- readRDS(file="DAP_self_calibration_var_seq.rds")
 grid_size <- length(mu_seq) * length(var_seq)
@@ -239,7 +239,7 @@ dap_lambda_var_hmc <- readRDS(file="DAP_self_calibration_dap_lambda_var_hmc.rds"
 generated_Y <- readRDS(file="DAP_self_calibration_generated_Y.rds")
 ```
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE, eval=TRUE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
 knitr::opts_chunk$set(cache = TRUE)
 gridsize_mu <- 5
 gridsize_var <- 5
@@ -472,7 +472,22 @@ ppc_dens_overlay(eta_rep, fit_matrix)
 
 But for the $N(5, 10)$ prior, we can see that the simulated posterior draws are dispersed far from the prior; self-consistency was not observed and hence an erroneous computation was performed.
 
-Finally, we'll try to start from a "bad", miscalibrated prior region and try to iteratively refine the prior into a more favorable region. We'll be starting from $N(5, 10)$ with optimization. Let's check the rank plots to see how bad the region is:
+### Iteratively prior calibration update
+
+Up to now, we've worked with metrics and identified miscalibrated regions. Can we try and go the other direction? How can we use the prior-posterior discrepency information to refine our prior? In this section, we explore a prior update algorithm which attempts to move from a badly calibrated region to a more well-calibrated area.
+
+The iterative update algorithm uses the metric attained from a calculated DAP to update the prior's hyperparameters. Recall the DAP equation:
+
+$$
+\pi(\tilde{\theta}) = \int \pi(\tilde{\theta} \ |\ y) \pi(y \ | \ \theta) \pi(\theta) \mathrm{d}y \ \mathrm{d}\theta
+$$
+
+We generate metric from the DAP $\pi(\tilde{\theta})$, which allows us to directly measure the discrepency between it and the prior distribution's hyperparameters, $\pi(\theta) = P_\lambda$. The discrepency can be used to guide a local search along the prior space. The increment of the descent step can be varied, but we provide a few options:
+
+1. "Markov chain"-like: This method reuses the calculated summary statistics of the DAP as the prior hyperparameter values of the next iterations. It's the simplest option, but can be effective for simpler models.
+2. Cubic weights: We increment/decrement the hyperparameters in cubic order so that as the discrepency gets smaller, the stepsize also gets smaller. On the otherhand, large discrepency can result in exponential stepsizes which causes the hyperparameters to rapid shrink towards the DAP summary statistic. It was found that this method was effective in speeding up calibration for priors with a relatively scale-invariant region, since the cubic nature may only allow subtle movements near the ambient region of the DAP statistic.
+
+We'll try to start from a "bad", miscalibrated prior region and try to iteratively refine the prior into a more favorable region. We'll be starting from $N(5, 10)$ with optimization. Let's generate a rank plot as a quick check to see how bad the region is:
 ```{R, warning=FALSE, error=FALSE}
 lambda_init_binom <- list(
   eta = list(mu=5, sigma=10)
@@ -525,10 +540,20 @@ result_binom_opt_new <- compute_results(datasets_binom_new, backend_binom_opt, t
 plot_rank_hist(result_binom_opt_new)
 ```
 
-Looks much better than the starting location.
+The resulting rank plots show that the updated region is a more calibrated region as to the initial region.
+
+## The role of the calibration algorithm and the interpretation of calibrated $\lambda$
+
+The calibration algorithm iteratively updates the prior, $lambda$, in an attempt to move to a calibrated region. This means That its hyperparameter values, mean and standard deviation in the case of the Normal distribution are the target of update. We would like to address the statement of whether basic prior are sufficient in representing computationally calibrated priors.
+
+In the case of the sequential update algorithm, the goal is to allocate high probability dass on desirable regions, and vice versa. The resulting calibrated only conveys the following information:  It was found that the region centered on the resulting distribution was (relatively) well calibrated.
+
+We would believe that in most cases the calibrated prior will not be used directly; instead it will be used as a reference for determining the bounds of the calibrated region. Given this information, domain knowledge will be elicited into an actual prior distribution, while hopefully abiding the calibrated region information.
+
+In conclusion, finding calibrated regions does not involve domain knowledge elicitation and in most cases the simple probability densities may be sufficient just for identifying calibrated regions of the prior. The user then may use this range of values as a reference when defining priors in an attempt for a computationally calibrated prior.
 
 ## Wrap-up
 
 We've explored the concept of self-consistency and with prior-posterior grid plots identified prior regions which are deemed to be miscalibrated. Furthermore, we've used two metric, the bias and variance calibration metrics to identify in detail how different prior regions behave with respect to an inference algorithm. 
 
-Finally, we showed by iteratively updating the prior we were able to go from a poorly calibrated region to a well-calibrated region.
+Finally, we showed by iteratively updating the prior we were able to go from a poorly calibrated region to a well-calibrated region. The hyperparameters of the prior were sequentially updated until relative calibration was reached, giving the user some reference point of a calibrated region to aid in prior construction.
