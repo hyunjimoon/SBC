@@ -1,12 +1,12 @@
 ---
-title: "SBC with discrete parameters"
+title: "SBC with discrete parameters in Stan and JAGS"
 author: "Martin Modrák"
 date: "`r Sys.Date()`"
 output: 
   rmarkdown::html_vignette:
     toc: yes
 vignette: >
-  %\VignetteIndexEntry{SBC with discrete parameters}
+  %\VignetteIndexEntry{SBC with discrete parameters in Stan and JAGS}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
@@ -14,6 +14,8 @@ vignette: >
 SBC was primarily designed for continuous parameters, but can be used
 with models that have discrete parameters - whether the parameters
 are directly represented (e.g. in JAGS) or marginalized out (as is usual in Stan).
+
+## Stan version and debugging
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC); 
@@ -214,4 +216,54 @@ plot_ecdf_diff(results_all)
 
 
 Now - as far as this amount of SBC steps can see, the model is good and we get good behaviour for both the continuous and the discrete parameters.
+
+## rjags version
+
+We can now write the same model in JAGS:
+
+```{r, comment = ""}
+cat(readLines("other_models/changepoint.jags"), sep = "\n")
+```
+
+We will use the `rjags` package - and relatively large number of samples as 
+we can expect some autocorrelation in the Gibbs sampler.
+
+```{r}
+backend_jags <- SBC_backend_rjags("other_models/changepoint.jags",
+                                  variable.names = c("e","l","s"),
+                                  n.iter = 10000,
+                                  n.burnin = 1000,
+                                  n.chains = 4,
+                                  thin = 10)
+```
+
+
+
+```{r}
+results_jags <- compute_SBC(bind_datasets(datasets_2, datasets_3), backend_jags,
+                        cache_mode = "results",
+                        cache_location = file.path(cache_dir, "rjags"))
+```
+
+
+```{r}
+plot_rank_hist(results_jags)
+plot_ecdf_diff(results_jags)
+```
+
+```{r}
+library(tidyverse)
+res_jags$stats %>% filter(variable != "s") %>%
+  ggplot(aes(x = ess_tail)) + geom_histogram() + facet_wrap(~variable)
+```
+
+```{r}
+results_all$stats %>% filter(variable != "s") %>%
+  ggplot(aes(x = ess_tail)) + geom_histogram() + facet_wrap(~variable)
+```
+
+```{r}
+
+```
+
 
