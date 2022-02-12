@@ -45,13 +45,16 @@ This is how the corresponding analytical densities look like - in the
 "Exact match" case they overlap and SBC should pass, in all other cases it
 should signal issues.
 
-```{r}
+```{r densities}
 plot_density_comparison <- function(density_df) {
-  ggplot(density_df, aes(x = x, y = density, color = type)) + 
-    geom_line(size = 1) + 
+  ggplot(density_df, aes(x = x, y = density, color = type, size = type)) + 
+    geom_line(data = dplyr::filter(density_df, type == "Prior")) + 
+    geom_line(data = dplyr::filter(density_df, type == "Data-averaged posterior"), alpha = 0.8) + 
     facet_wrap(~variable) + 
     scale_color_manual("", values = c("Prior" = "skyblue1", 
                                     "Data-averaged posterior" = "black")) + 
+    scale_size_manual("", values = c("Prior" = 2, 
+                                    "Data-averaged posterior" = 1)) +
     theme(legend.position = "bottom")
 }
 
