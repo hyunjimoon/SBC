@@ -6,7 +6,7 @@
 \usage{
 statistics_from_single_fit(
   fit,
-  parameters,
+  variables,
   generated,
   thin_ranks,
   gen_quants,
@@ -15,9 +15,9 @@ statistics_from_single_fit(
 }
 \description{
 Potentially useful for doing some advanced stuff, but should not
-be used in regular workflow. Use \code{\link[=recompute_statistics]{recompute_statistics()}} to update
+be used in regular workflow. Use \code{\link[=recompute_SBC_statistics]{recompute_SBC_statistics()}} to update
 an \verb{[SBC_results]} objects with different \code{thin_ranks} or other settings.
 }
 \seealso{
-\code{\link[=recompute_statistics]{recompute_statistics()}}
+\code{\link[=recompute_SBC_statistics]{recompute_SBC_statistics()}}
 }

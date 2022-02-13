@@ -4,12 +4,15 @@
 \alias{SBC_backend_brms}
 \title{Build a backend based on the \code{brms} package.}
 \usage{
-SBC_backend_brms(..., template_dataset)
+SBC_backend_brms(..., template_data, template_dataset = NULL)
 }
 \arguments{
 \item{...}{arguments passed to \code{brm}.}
 
-\item{template_dataset}{a representative dataset that can be used to generate code.}
+\item{template_data}{a representative value for the \code{data} argument in \code{brm}
+that can be used to generate code.}
+
+\item{template_dataset}{DEPRECATED. Use \code{template_data}}
 }
 \description{
 Build a backend based on the \code{brms} package.

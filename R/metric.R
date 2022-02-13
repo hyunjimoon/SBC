@@ -1,4 +1,4 @@
-#' Distance between binned samples (rank for SBC) and discrete uniform
+#' Distance between binned draws (rank for SBC) and discrete uniform
 #'
 #' @param ranks array of dimension (n_iter, n_pars) where n_iter=number of posterior draw iterations, n_pars the number of parameters of interest
 #' @param par names of parameter to plot
@@ -28,10 +28,10 @@ rank2unif <- function(results, par, bins = 20){
   return(list(par = par, rank_list = rank_list))
 }
 
-#' Summarize relational property of overall prior and posterior samples
+#' Summarize relational property of overall prior and posterior draws
 #'
-#' @param priors A posterior::draws_rvars of dimension(n_iterations=1, n_chains=n_sbc_iterations, n_variables=n_variables) which stores prior samples
-#' @param posteriors A posterior::draws_Rvars of dimension(n_iterations=n_posterior_samples, n_chains=n_sbc_iterations, n_variables=n_variables), which stores fitted posterior samples
+#' @param priors A posterior::draws_rvars of dimension(n_iterations=1, n_chains=n_sbc_iterations, n_variables=n_variables) which stores prior draws
+#' @param posteriors A posterior::draws_Rvars of dimension(n_iterations=n_posterior_draws, n_chains=n_sbc_iterations, n_variables=n_variables), which stores fitted posterior draws
 #' @param par names of parameter to summarize
 #' @param bins number of bins for prior and post density
 #' @export
@@ -97,8 +97,8 @@ wasserstein <- function(x, y){
 ##'
 ##' This has an upper bound of \eqn{\sqrt \sum (P(x) + Q(x))}
 ##'
-##' @param x numeric vector of samples from first distribution (could be `rvar` type)
-##' @param y numeric vector of samples from second distribution (could be `rvar` type)
+##' @param x numeric vector of draws from first distribution
+##' @param y numeric vector of draws from second distribution
 ##' @param x_weights numeric vector of weights of first distribution
 ##' @param y_weights numeric vector of weights of second distribution
 ##' @param ... unused

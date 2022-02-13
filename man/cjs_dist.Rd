@@ -7,9 +7,9 @@
 cjs_dist(x, y, x_weights, y_weights, ...)
 }
 \arguments{
-\item{x}{numeric vector of samples from first distribution (could be \code{rvar} type)}
+\item{x}{numeric vector of draws from first distribution}
 
-\item{y}{numeric vector of samples from second distribution (could be \code{rvar} type)}
+\item{y}{numeric vector of draws from second distribution}
 
 \item{x_weights}{numeric vector of weights of first distribution}
 

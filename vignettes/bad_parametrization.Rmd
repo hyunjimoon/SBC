@@ -40,9 +40,9 @@ options(mc.cores = parallel::detectCores())
 
 # Setup caching of results
 if(use_cmdstanr) {
-  cache_dir <- "./bad_parametrization_SBC_cache"
+  cache_dir <- "./_bad_parametrization_SBC_cache"
 } else {
-  cache_dir <- "./bad_parametrization_rstan_SBC_cache"
+  cache_dir <- "./_bad_parametrization_rstan_SBC_cache"
 }
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
@@ -81,16 +81,16 @@ Build a generator to create simulated datasets.
 
 ```{r}
 set.seed(21448857)
-n_datasets <- 10
+n_sims <- 10
 
-single_dataset_gamma <- function(N) {
+single_sim_gamma <- function(N) {
   shape <- rlnorm(n = 1, meanlog =  0, sdlog = 1)
   scale <- rlnorm(n = 1, meanlog = 0, sdlog = 1.5)
   
   y <- rgamma(N, shape = shape, scale = scale)
   
   list(
-    parameters = list(
+    variables = list(
       shape = shape,
       scale = scale),
     generated = list(
@@ -100,16 +100,16 @@ single_dataset_gamma <- function(N) {
 }
 
 
-generator_gamma <- SBC_generator_function(single_dataset_gamma, N = 40)
+generator_gamma <- SBC_generator_function(single_sim_gamma, N = 40)
 datasets_gamma <- generate_datasets(
   generator_gamma, 
-  n_datasets)
+  n_sims)
 
 ```
 
 
 ```{r}
-results_gamma <- compute_results(datasets_gamma, backend_gamma, 
+results_gamma <- compute_SBC(datasets_gamma, backend_gamma, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "model1"))
 ```
@@ -117,7 +117,7 @@ results_gamma <- compute_results(datasets_gamma, backend_gamma,
 Here we also use the caching feature to avoid recomputing the fits when recompiling this vignette. 
 In practice, caching is not necessary but is often useful.
 
-10 simulations are enough to see something is wrong with the model. The problem is best seen on an `ecdf_diff` plot - we even see the issue is primarily with the `scale` parameter!
+10 simulations are enough to see something is wrong with the model. The problem is best seen on an `ecdf_diff` plot - we even see the issue is primarily with the `scale` variable!
 
 ```{r results1_ecdf_diff}
 plot_ecdf_diff(results_gamma)
@@ -156,7 +156,7 @@ if(use_cmdstanr) {
 
 
 ```{r}
-results_gamma2 <- compute_results(datasets_gamma, backend_gamma_2, 
+results_gamma2 <- compute_SBC(datasets_gamma, backend_gamma_2, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "model2"))
 ```
