@@ -15,5 +15,5 @@ SBC_example_backend(
 \item{interface}{name of the interface to be used to fit the model}
 }
 \description{
-Construct a backend to be used in the examples.
+Note that this will involve compiling a Stan model and may take a while.
 }

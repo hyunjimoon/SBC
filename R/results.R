@@ -1,6 +1,9 @@
-#' SBC_results objects.
+#' @title Create an `SBC_results` object
 #'
+#' @description
+#' This will build and validate an `SBC_results` object from its constituents.
 #'
+#' @details
 #' The `SBC_results` contains the following fields:
 #'   - `$stats` statistics for all variables and fits (one row per variable-fit combination)
 #'   - `$fits`  the raw fits (unless `keep_fits = FALSE`) or `NULL` if the fit failed
@@ -293,6 +296,20 @@ compute_results <- function(...) {
 #' Backends that don't require thining should implement [SBC_backend_iid_draws()]
 #' or [SBC_backend_default_thin_ranks()] to avoid thinning by default.
 #'
+#' # Rank divisors
+#'
+#' Some of the visualizations and post processing steps
+#' we use in the SBC package (e.g. [plot_rank_hist()], [empirical_coverage()])
+#' work best if the total number of possible SBC ranks is a "nice" number
+#' (lots of divisors).
+#' However, the number of ranks is one plus the number of posterior samples
+#' after thinning - therefore as long as the number of samples is a "nice"
+#' number, the number of ranks usually will not be. To remedy this, you can
+#' specify `ensure_num_ranks_divisor` - the method will drop at most
+#' `ensure_num_ranks_divisor - 1` samples to make the number of ranks divisible
+#' by `ensure_num_ranks_divisor`. The default 2 prevents the most annoying
+#' pathologies while discarding at most a single sample.
+#'
 #' @param datasets an object of class `SBC_datasets`
 #' @param backend the model + sampling algorithm. The built-in backends can be constructed
 #'   using [SBC_backend_cmdstan_sample()], [SBC_backend_cmdstan_variational()],
@@ -311,6 +328,8 @@ compute_results <- function(...) {
 #' @param thin_ranks how much thinning should be applied to posterior draws before computing
 #'    ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
 #'    thinned draws See details below.
+#' @param ensure_num_ranks_divisor Potentially drop some posterior samples to
+#'    ensure that this number divides the total number of SBC ranks (see Details).
 #' @param chunk_size How many simulations within the `datasets` shall be processed in one batch
 #'    by the same worker. Relevant only when using parallel processing.
 #'    The larger the value, the smaller overhead there will be for parallel processing, but
@@ -336,6 +355,7 @@ compute_SBC <- function(datasets, backend,
                             cores_per_fit = default_cores_per_fit(length(datasets)),
                             keep_fits = TRUE,
                             thin_ranks = SBC_backend_default_thin_ranks(backend),
+                            ensure_num_ranks_divisor = 2,
                             chunk_size = default_chunk_size(length(datasets)),
                             gen_quants = NULL,
                             cache_mode = "none",
@@ -379,20 +399,28 @@ compute_SBC <- function(datasets, backend,
       } else if(results_from_cache$data_hash != data_hash && results_from_cache$data_hash != data_hash_old) {
         message("Cache file exists but the datasets hash differs. Will recompute.")
       } else {
+        if(is.null(results_from_cache$ensure_num_ranks_divisor)) {
+          results_from_cache$ensure_num_ranks_divisor <- 1
+        }
+
         result <- tryCatch(validate_SBC_results(results_from_cache$result),
                            error = function(e) { NULL })
+
         if(is.null(result)) {
           warning("Cache file contains invalid SBC_results object. Will recompute.")
         } else if(results_from_cache$thin_ranks != thin_ranks ||
-                  !identical(results_from_cache$gen_quants, gen_quants))  {
+                  !identical(results_from_cache$gen_quants, gen_quants) ||
+                  results_from_cache$ensure_num_ranks_divisor != ensure_num_ranks_divisor)  {
           if(!results_from_cache$keep_fits) {
-            message("Cache file exists, but was computed with different thin_ranks/gen_quants and keep_fits == FALSE. Will recompute.")
+            message("Cache file exists, but was computed with different thin_ranks/gen_quants/ensure_num_ranks_divisor and keep_fits == FALSE. Will recompute.")
           } else {
             message(paste0("Results loaded from cache file '", cache_basename,
-                           "' but it was computed with different thin_ranks/gen_quants.\n",
+                           "' but it was computed with different thin_ranks/gen_quants/ensure_num_ranks_divisor.\n",
                            "Calling recompute_SBC_statistics."))
             return(recompute_SBC_statistics(old_results = result, datasets = datasets,
-                                        thin_ranks = thin_ranks, gen_quants = gen_quants,
+                                        thin_ranks = thin_ranks,
+                                        ensure_num_ranks_divisor = ensure_num_ranks_divisor,
+                                        gen_quants = gen_quants,
                                         backend = backend))
           }
         } else {
@@ -445,6 +473,7 @@ compute_SBC <- function(datasets, backend,
     vars_and_generated_list, SBC:::compute_SBC_single,
     backend = backend, cores = cores_per_fit,
     keep_fit = keep_fits, thin_ranks = thin_ranks,
+    ensure_num_ranks_divisor = ensure_num_ranks_divisor,
     gen_quants = gen_quants,
     future.seed = TRUE,
     future.globals = future.globals,
@@ -528,7 +557,9 @@ compute_SBC <- function(datasets, backend,
   backend_diagnostics <- do.call(rbind, backend_diagnostics_list)
 
   if(!is.null(stats)) {
-    check_stats(stats, datasets, thin_ranks, SBC_backend_iid_draws(backend))
+    check_stats(stats, datasets, thin_ranks = thin_ranks,
+                ensure_num_ranks_divisor = ensure_num_ranks_divisor,
+                iid_draws = SBC_backend_iid_draws(backend))
   } else {
     # Return dummy stats that let the rest of the code work.
     stats <- data.frame(sim_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
@@ -551,6 +582,7 @@ compute_SBC <- function(datasets, backend,
   if(cache_mode == "results") {
     results_for_cache <- list(result = res, backend_hash = backend_hash,
                               data_hash = data_hash, thin_ranks = thin_ranks,
+                              ensure_num_ranks_divisor = ensure_num_ranks_divisor,
                               gen_quants = gen_quants, keep_fits = keep_fits)
     tryCatch(saveRDS(results_for_cache, file = cache_location),
              error = function(e) { warning("Error when saving cache file: ", e) })
@@ -635,8 +667,11 @@ reemit_captured <- function(captured) {
   }
 }
 
+# See `compute_SBC` for docs for the function arguments
 compute_SBC_single <- function(vars_and_generated, backend, cores,
-                                   keep_fit, thin_ranks, gen_quants) {
+                               keep_fit, thin_ranks,
+                               ensure_num_ranks_divisor,
+                               gen_quants) {
 
   variables <- vars_and_generated$variables
   generated <- vars_and_generated$generated
@@ -660,8 +695,9 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
   if(is.null(res$error)) {
     error_stats <-  SBC:::capture_all_outputs({
       tryCatch( {
-        res$stats <- SBC::statistics_from_single_fit(
+        res$stats <- SBC::SBC_statistics_from_single_fit(
           res$fit, variables = variables, thin_ranks = thin_ranks,
+          ensure_num_ranks_divisor = ensure_num_ranks_divisor,
           generated = generated, gen_quants = gen_quants,
           backend = backend)
 
@@ -702,10 +738,13 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
 #' be used in regular workflow. Use [recompute_SBC_statistics()] to update
 #' an `[SBC_results]` objects with different `thin_ranks` or other settings.
 #'
+#' @inheritParams compute_SBC
 #' @export
 #' @seealso [recompute_SBC_statistics()]
-statistics_from_single_fit <- function(fit, variables, generated,
-                                       thin_ranks, gen_quants,
+SBC_statistics_from_single_fit <- function(fit, variables, generated,
+                                       thin_ranks,
+                                       ensure_num_ranks_divisor,
+                                       gen_quants,
                                        backend) {
 
   fit_matrix <- SBC_fit_to_draws_matrix(fit)
@@ -732,16 +771,32 @@ statistics_from_single_fit <- function(fit, variables, generated,
   fit_thinned <- posterior::thin_draws(fit_matrix, thin_ranks)
 
 
-  stats <- posterior::summarise_draws(fit_matrix)
 
   if(SBC_backend_iid_draws(backend)) {
+    stats <- posterior::summarise_draws(fit_matrix, posterior::default_summary_measures())
     ## iid draws have the bestest diagnostics by construction
     stats$rhat <- 1
     stats$ess_bulk <- posterior::ndraws(fit_matrix)
     stats$ess_tail <- posterior::ndraws(fit_matrix)
+  } else {
+    stats <- posterior::summarise_draws(fit_matrix)
   }
 
   stats$simulated_value <- as.numeric(variables)
+
+  # Ensure number of ranks divisible by ensure_num_ranks_divisor
+  # Note that the number of ranks is the number of samples + 1
+  ndraws_to_discard <- (posterior::ndraws(fit_thinned) + 1) %% ensure_num_ranks_divisor
+  if(ndraws_to_discard > 0) {
+    ndraws_to_keep <- posterior::ndraws(fit_thinned) - ndraws_to_discard
+    if(ndraws_to_keep > 0) {
+      fit_thinned <- posterior::subset_draws(
+        posterior::merge_chains(fit_thinned), draw = 1:ndraws_to_keep)
+    } else {
+      warning("Enforcing ensure_num_ranks_divisor = ", ensure_num_ranks_divisor,
+              "would lead to no samples being left and was ignored.")
+    }
+  }
 
   ranks <- calculate_ranks_draws_matrix(variables, fit_thinned)
   if(!identical(stats$variable, names(ranks))) {
@@ -758,13 +813,14 @@ statistics_from_single_fit <- function(fit, variables, generated,
 }
 
 # check that the computed stats data frame has problems
-check_stats <- function(stats, datasets, thin_ranks, iid_draws) {
+check_stats <- function(stats, datasets, thin_ranks,
+                        ensure_num_ranks_divisor, iid_draws) {
   unique_max_ranks <- unique(stats$max_rank)
   if(length(unique_max_ranks) != 1) {
     warning("Differening max_rank across fits")
   }
 
-  if(min(unique_max_ranks) < 50) {
+  if(min(unique_max_ranks) < 49) {
     if(iid_draws) {
       message_end = " (the backend produces i.i.d. samples so thin_ranks = 1 is the most sensible)."
     } else {
@@ -772,8 +828,10 @@ check_stats <- function(stats, datasets, thin_ranks, iid_draws) {
     }
     warning("Ranks were computed from fewer than 50 samples, the SBC checks will have low ",
             "precision.\nYou may need to increase the number of samples from the backend and make sure that ",
-            "the combination of thinning in the backend and `thin_ranks` is sensible.\n",
-            "Currently thin_ranks = ", thin_ranks, message_end)
+            "the combination of thinning in the backend, `thin_ranks` and `ensure_num_ranks_divisor` is sensible.\n",
+            "Currently thin_ranks = ", thin_ranks, ", ensure_num_ranks_divisor = ",
+            ensure_num_ranks_divisor,
+            message_end)
 
   }
 
@@ -858,14 +916,18 @@ recompute_statistics <- function(...) {
 
 #' Recompute SBC statistics without refitting models.
 #'
+#'
+#'
 #' Useful for example to recompute SBC ranks with a different choice of `thin_ranks`
 #' or added generated quantities.
 #' @return An S3 object of class `SBC_results` with updated `$stats` and `$default_diagnostics` fields.
 #' @param backend backend used to fit the results. Used to pull various defaults
 #'   and other setting influencing the computation of statistics.
+#' @inheritParams compute_SBC
 #' @export
 recompute_SBC_statistics <- function(old_results, datasets, backend,
                                  thin_ranks = SBC_backend_default_thin_ranks(backend),
+                                 ensure_num_ranks_divisor = 2,
                                  gen_quants = NULL) {
   validate_SBC_results(old_results)
   validate_SBC_datasets(datasets)
@@ -887,10 +949,11 @@ recompute_SBC_statistics <- function(old_results, datasets, backend,
   for(i in 1:length(old_results)) {
     if(!is.null(old_results$fits[[i]])) {
       variables <- posterior::subset_draws(datasets$variables, draw = i)
-      new_stats_list[[i]] <- statistics_from_single_fit(old_results$fits[[i]],
+      new_stats_list[[i]] <- SBC_statistics_from_single_fit(old_results$fits[[i]],
                                                         variables = variables,
                                                         generated = datasets$generated[[i]],
                                                         thin_ranks = thin_ranks,
+                                                        ensure_num_ranks_divisor = ensure_num_ranks_divisor,
                                                         gen_quants = gen_quants,
                                                         backend = backend)
       new_stats_list[[i]]$sim_id <- i
@@ -900,7 +963,9 @@ recompute_SBC_statistics <- function(old_results, datasets, backend,
   }
 
   new_stats <- do.call(rbind, new_stats_list)
-  check_stats(new_stats, datasets, thin_ranks, SBC_backend_iid_draws(backend))
+  check_stats(new_stats, datasets, thin_ranks = thin_ranks,
+              ensure_num_ranks_divisor = ensure_num_ranks_divisor,
+              iid_draws = SBC_backend_iid_draws(backend))
 
   new_results$stats <- new_stats
 

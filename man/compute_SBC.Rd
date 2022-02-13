@@ -10,6 +10,7 @@ compute_SBC(
   cores_per_fit = default_cores_per_fit(length(datasets)),
   keep_fits = TRUE,
   thin_ranks = SBC_backend_default_thin_ranks(backend),
+  ensure_num_ranks_divisor = 2,
   chunk_size = default_chunk_size(length(datasets)),
   gen_quants = NULL,
   cache_mode = "none",
@@ -40,6 +41,9 @@ to \code{FALSE} (even for quite a simple model, 1000 fits can easily exhaust 32G
 \item{thin_ranks}{how much thinning should be applied to posterior draws before computing
 ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
 thinned draws See details below.}
+
+\item{ensure_num_ranks_divisor}{Potentially drop some posterior samples to
+ensure that this number divides the total number of SBC ranks (see Details).}
 
 \item{chunk_size}{How many simulations within the \code{datasets} shall be processed in one batch
 by the same worker. Relevant only when using parallel processing.
@@ -95,5 +99,19 @@ then have some additional thinning via \code{thin_ranks}.
 
 Backends that don't require thining should implement \code{\link[=SBC_backend_iid_draws]{SBC_backend_iid_draws()}}
 or \code{\link[=SBC_backend_default_thin_ranks]{SBC_backend_default_thin_ranks()}} to avoid thinning by default.
+}
+
+\section{Rank divisors}{
+Some of the visualizations and post processing steps
+we use in the SBC package (e.g. \code{\link[=plot_rank_hist]{plot_rank_hist()}}, \code{\link[=empirical_coverage]{empirical_coverage()}})
+work best if the total number of possible SBC ranks is a "nice" number
+(lots of divisors).
+However, the number of ranks is one plus the number of posterior samples
+after thinning - therefore as long as the number of samples is a "nice"
+number, the number of ranks usually will not be. To remedy this, you can
+specify \code{ensure_num_ranks_divisor} - the method will drop at most
+\code{ensure_num_ranks_divisor - 1} samples to make the number of ranks divisible
+by \code{ensure_num_ranks_divisor}. The default 2 prevents the most annoying
+pathologies while discarding at most a single sample.
 }
 

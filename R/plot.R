@@ -1,8 +1,20 @@
 #' Plot rank histogram of an SBC results.
 #'
+#' The expected uniform distribution and an approximate confidence interval
+#' is also shown. The confidence interval cannot be taken too seriously
+#' as it is derived assuming the bins are independent (which they are not).
+#' The [plot_ecdf()] and [plot_ecdf_diff()] plots provide better confidence interval
+#' but are somewhat less interpretable. See `vignette("rank_visualizations")` for
+#' more details.
+#'
 #' By default the support is for `SBC_results` objects and data frames in the same
 #' format as the `$stats` element of `SBC_results`.
+#'
 #' @param x Object supporting the plotting method.
+#' @param variables Names of variables to show
+#' @param bins number of bins to be used in the histogram, if left unspecified,
+#'   it is determined by [guess_rank_hist_bins()].
+#' @param prob The width of the approximate confidence interval shown.
 #' @export
 plot_rank_hist <- function(x, variables = NULL, bins = NULL, prob = 0.95, ..., parameters = NULL) {
   UseMethod("plot_rank_hist")
@@ -115,6 +127,8 @@ guess_rank_hist_bins <- function(max_rank, N) {
 #' Plot the ECDF-based plots.
 #'
 #'
+#' See `vignette("rank_visualizations")` for
+#' more details.
 #' See the methods for [data_for_ecdf_plots()] for available data formats.
 #'
 #' \href{https://arxiv.org/abs/1903.08008}{arxiv::1903.08008} by A. Vehtari et al.
@@ -608,23 +622,28 @@ plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean"
 }
 
 
-#' Plot the observed coverage and its uncertainty
+#' Plot the observed coverage and its uncertainty.
 #'
+#' `plot_coverage` will plot the observed coverage,
+#' while `plot_coverage_diff` will show the difference between observed
+#' and expected coverage.
 #' Please refer to [empirical_coverage()] for details on computation
 #' and limitations of this plot as well as details on the arguments.
+#' See `vignette("rank_visualizations")` for
+#' more details.
 #'
 #' @param x object containing results (a data.frame or [SBC_results()] object).
 #' @param variables variables to show in the plot or `NULL` to show all
 #' @param prob the with of the uncertainty interval to be shown
 #' @param parameters DEPRECATED. Use `variables` instead.
 #' @return a ggplot2 plot object
+#' @seealso empirical_coverage
 #' @export
 plot_coverage <- function(x, variables = NULL, prob = 0.95,
                           interval_type = "central", parameters = NULL) {
   UseMethod("plot_coverage")
 }
 
-#' @rdname plot_coverage
 #' @export
 plot_coverage.SBC_results <- function(x, variables = NULL, prob = 0.95,
                                       interval_type = "central", parameters = NULL) {
@@ -639,7 +658,6 @@ plot_coverage.SBC_results <- function(x, variables = NULL, prob = 0.95,
   plot_coverage(x$stats, variables = variables, prob = prob, interval_type = interval_type)
 }
 
-#' @rdname plot_coverage
 #' @export
 plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
                                      interval_type = "central", parameters = NULL) {
@@ -676,11 +694,56 @@ plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
                                 ymin = ci_low, ymax = ci_high)) +
     geom_ribbon(fill = "black", alpha = 0.33) +
     geom_segment(x = 0, y = 0, xend = 1, yend = 1, color = "skyblue1", size = 2) +
-    #geom_abline(intercept = 0, slope = 1, color = "skyblue1", size = 2) +
     geom_line() +
-    scale_x_continuous(paste0(interval_type, " interval width")) +
-    scale_y_continuous("Observed coverage") +
+    scale_x_continuous(paste0(interval_type, " interval width"),
+                       labels = scales::percent) +
+    scale_y_continuous("Observed coverage", labels = scales::percent) +
     facet_wrap(~variable)
+}
 
 
+#' @rdname plot_coverage
+#' @export
+plot_coverage_diff <- function(x, variables = NULL, prob = 0.95,
+                          interval_type = "central", parameters = NULL) {
+  UseMethod("plot_coverage_diff")
+}
+
+#' @export
+plot_coverage_diff.SBC_results <- function(x, variables = NULL, prob = 0.95,
+                                      interval_type = "central") {
+  plot_coverage_diff(x$stats, variables = variables, prob = prob, interval_type = interval_type)
+}
+
+#' @export
+plot_coverage_diff.data.frame <- function(x, variables = NULL, prob = 0.95,
+                                     interval_type = "central", parameters = NULL) {
+  if(!all(c("variable", "rank", "max_rank") %in% names(x))) {
+    stop(SBC_error("SBC_invalid_argument_error",
+                   "The stats data.frame needs a 'variable', 'rank' and 'max_rank' columns"))
+  }
+
+  if(!is.null(variables)) {
+    x <- dplyr::filter(x, variable %in% variables)
+  }
+
+  max_max_rank <- max(x$max_rank)
+  coverage <- empirical_coverage(x, (0:max_max_rank) / (max_max_rank + 1), prob = prob,
+                                 interval_type = interval_type)
+
+  coverage <- dplyr::mutate(coverage,
+                            diff = estimate - width_represented,
+                            diff_low = ci_low - width_represented,
+                            diff_high = ci_high - width_represented
+                            )
+
+  ggplot2::ggplot(coverage, aes(x = width_represented, y = diff,
+                                ymin = diff_low, ymax = diff_high)) +
+    geom_ribbon(fill = "black", alpha = 0.33) +
+    geom_segment(x = 0, y = 0, xend = 1, yend = 0, color = "skyblue1", size = 2) +
+    geom_line() +
+    scale_x_continuous(paste0(interval_type, " interval width"),
+                       labels = scales::percent) +
+    scale_y_continuous("Coverage diff", labels = scales::percent) +
+    facet_wrap(~variable, scales = "free_y")
 }
