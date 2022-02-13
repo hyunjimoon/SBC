@@ -41,9 +41,9 @@ options(SBC.min_chunk_size = 5)
 
 # Setup caching of results
 if(use_cmdstanr) {
-  cache_dir <- "./limits_SBC_cache"
+  cache_dir <- "./_limits_SBC_cache"
 } else {
-  cache_dir <- "./limits_rstan_SBC_cache"  
+  cache_dir <- "./_limits_rstan_SBC_cache"  
 }
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
@@ -103,11 +103,11 @@ if(use_cmdstanr) {
 }
 ```
 
-And here we simulate from a student's t distribution. We scale the distribution so that the `sigma` parameter
+And here we simulate from a student's t distribution. We scale the distribution so that `sigma`
 is the standard deviation of the distribution.
 
 ```{r}
-single_dataset_minor <- function(N) {
+single_sim_minor <- function(N) {
   mu <- rnorm(n = 1, mean = 0, sd = 1)
   sigma <- abs(rnorm(n = 1, mean = 0, sd = 1))
   nu <- 5
@@ -115,20 +115,20 @@ single_dataset_minor <- function(N) {
   y <- mu + student_scale * rt(N, df = nu)
   
   list(
-    parameters = list(mu = mu, sigma = sigma),
+    variables = list(mu = mu, sigma = sigma),
     generated = list(N = N, y = y)
   )
 }
 
 set.seed(51336848)
-generator_minor <- SBC_generator_function(single_dataset_minor, N = 10)
-datasets_minor <- generate_datasets(generator_minor, n_datasets = 200)
+generator_minor <- SBC_generator_function(single_sim_minor, N = 10)
+datasets_minor <- generate_datasets(generator_minor, n_sims = 200)
 ```
 
-Can we see something by looking at the results of just the first 10 datasets? (note that `SBC_datasets` objects support subsetting).
+Can we see something by looking at the results of just the first 10 simulations? (note that `SBC_datasets` objects support subsetting).
 
 ```{r}
-results_minor_10 <- compute_results(datasets_minor[1:10], backend_minor, 
+results_minor_10 <- compute_SBC(datasets_minor[1:10], backend_minor, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "minor_10"))
 ```
@@ -140,19 +140,19 @@ plot_rank_hist(results_minor_10)
 plot_ecdf_diff(results_minor_10)
 ```
 
-Will we have better luck with 100 datasets? (Note that we can use `bind_results` to combine multiple results,
-letting us start small, but not throw away the computation spent for the initial SBC runs)
+Will we have better luck with 100 simulations? (Note that we can use `bind_results` to combine multiple results,
+letting us start small, but not throw away the computation spent for the initial simulations)
 
 ```{r}
 results_minor_100 <- bind_results(
   results_minor_10,
-  compute_results(datasets_minor[11:100], backend_minor, 
+  compute_SBC(datasets_minor[11:100], backend_minor, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "minor_90"))
 )
 ```
 
-Here we see something suspicios with the `sigma` parameter, but it is not very convincing.
+Here we see something suspicios with the `sigma` variable, but it is not very convincing.
 
 ```{r results_minor_100_plots}
 plot_rank_hist(results_minor_100)
@@ -164,7 +164,7 @@ So let's do additional 100 SBC steps
 ```{r}
 results_minor_200 <- bind_results(
   results_minor_100,
-  compute_results(datasets_minor[101:200], backend_minor, 
+  compute_SBC(datasets_minor[101:200], backend_minor, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "minor_next_100"))
 )
@@ -199,7 +199,7 @@ coverage <- empirical_coverage(results_minor_200$stats, width = c(0.5,0.9,0.95))
 coverage
 
 sigma_90_coverage_string <- paste0(round(100 * as.numeric(
-  coverage[coverage$parameter == "sigma" & coverage$width == 0.9, c("ci_low","ci_high")])),
+  coverage[coverage$variable == "sigma" & coverage$width == 0.9, c("ci_low","ci_high")])),
   "%",
   collapse = " - ")
 ```
@@ -220,19 +220,19 @@ SBC will not notice if you completely omit likelihood from your Stan model!
 Here we have a generator for a very simple model with gaussian likelihood:
 
 ```{r}
-single_dataset_missing <- function(N) {
+single_sim_missing <- function(N) {
   mu <- rnorm(n = 1, mean = 0, sd = 1)
   y <- rnorm(n = N, mean = mu, sd = 1)
   
   list(
-    parameters = list(mu = mu),
+    variables = list(mu = mu),
     generated = list(N = N, y = y)
   )
 }
 
 set.seed(25746223)
-generator_missing <- SBC_generator_function(single_dataset_missing, N = 10)
-datasets_missing <- generate_datasets(generator_missing, n_datasets = 200)
+generator_missing <- SBC_generator_function(single_sim_missing, N = 10)
+datasets_missing <- generate_datasets(generator_missing, n_sims = 200)
 ```
 
 
@@ -263,10 +263,10 @@ if(use_cmdstanr) {
 ```
 
 
-Now we'll compute the results for 200 simulated datasets:
+Now we'll compute the results for 200 simulations:
 
 ```{r}
-results_missing <- compute_results(datasets_missing, backend_missing, 
+results_missing <- compute_SBC(datasets_missing, backend_missing, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "missing"))
 ```
@@ -283,7 +283,7 @@ It's just nothing out of the ordinary.
 But we are not completely helpless: 
 This specific type of problem can be noticed by prior/posterior contraction plot. 
 In this plot we compare the prior and posterior standard deviation to get a measure
-of how much more we know about the parameter after fitting the model.
+of how much more we know about the variable after fitting the model.
 For this model, we can
 get the prior sd directly, but one can also use a (preferably large) `SBC_datasets` object
 to estimate it empirically for more complex models.
@@ -306,7 +306,7 @@ plot_sim_estimated(results_missing, alpha = 0.5)
 
 There is however even more powerful method - and that is to include the likelihood in the SBC.
 This is most easily done by adding a "generated quantity" to the SBC results - this is a function
-that is evaluated within the context of the parameters AND data. 
+that is evaluated within the context of the variables AND data. 
 And it can be added without recomputing the fits!
 
 ```{r}
@@ -317,7 +317,7 @@ normal_lpdf <- function(y, mu, sigma) {
 log_lik_gq <- generated_quantities(log_lik = normal_lpdf(y, mu, 1), 
                                    .globals = "normal_lpdf" )
 
-results_missing_gq <- recompute_statistics(
+results_missing_gq <- recompute_SBC_statistics(
   results_missing, datasets_missing, 
   backend = backend_missing, gen_quants = log_lik_gq)
 ```
@@ -355,10 +355,10 @@ if(use_cmdstanr) {
 
 ```
 
-Let us use this model for the same dataset.
+Let us use this model for the same set of simulations.
 
 ```{r}
-results_missing_2 <- compute_results(datasets_missing, backend_missing_2, gen_quants = log_lik_gq, 
+results_missing_2 <- compute_SBC(datasets_missing, backend_missing_2, gen_quants = log_lik_gq, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "missing_2"))
 ```
@@ -366,13 +366,13 @@ results_missing_2 <- compute_results(datasets_missing, backend_missing_2, gen_qu
 The contraction plot would not show anything suspicious - we get decent contraction
 
 ```{r results_missing_2_contraction}
-plot_contraction(results_missing_2, prior_sd, parameters = "mu")
+plot_contraction(results_missing_2, prior_sd, variables = "mu")
 ```
 
 Similarly, our posterior estimates now cluster around the true values.
 
 ```{r results_missing_2_sim_estimated}
-plot_sim_estimated(results_missing_2, parameters = "mu", alpha = 0.5)
+plot_sim_estimated(results_missing_2, variables = "mu", alpha = 0.5)
 ```
 
 

@@ -59,27 +59,27 @@ test_that("capture_all_outputs", {
 })
 
 test_that("subset_bind", {
-    res <- SBC_results(stats = data.frame(dataset_id = rep(1:3, each = 4), s = 1:12),
+    res <- SBC_results(stats = data.frame(sim_id = rep(1:3, each = 4), s = 1:12),
                        fits = list("A", NULL, "C"),
                        outputs = list(c("A1","A2"), c(), c("C1", "C4")),
                        warnings = list(c(), "XXXX", "asdfdaf"),
                        messages = list("aaaa", "ddddd", NA_character_),
                        errors = list(NULL, "customerror", NULL),
-                       default_diagnostics = data.frame(dataset_id = 1:3, qq = rnorm(3)),
-                       backend_diagnostics = data.frame(dataset_id = 1:3, rr = rnorm(3))
+                       default_diagnostics = data.frame(sim_id = 1:3, qq = rnorm(3)),
+                       backend_diagnostics = data.frame(sim_id = 1:3, rr = rnorm(3))
                        )
 
-    remove_dataset_id_names <- function(x) {
-        names(x$stats$dataset_id) <- NULL
-        names(x$default_diagnostics$dataset_id) <- NULL
-        names(x$backend_diagnostics$dataset_id) <- NULL
+    remove_sim_id_names <- function(x) {
+        names(x$stats$sim_id) <- NULL
+        names(x$default_diagnostics$sim_id) <- NULL
+        names(x$backend_diagnostics$sim_id) <- NULL
         x
     }
 
-    expect_equal(res, remove_dataset_id_names(bind_results(res[1], res[2:3])))
-    expect_equal(res, remove_dataset_id_names(bind_results(res[1:2], res[3])))
-    expect_equal(remove_dataset_id_names(res[3:1]), remove_dataset_id_names(bind_results(res[3:2], res[1])))
-    expect_equal(remove_dataset_id_names(res[2]), remove_dataset_id_names(((res[2:3])[1])))
+    expect_equal(res, remove_sim_id_names(bind_results(res[1], res[2:3])))
+    expect_equal(res, remove_sim_id_names(bind_results(res[1:2], res[3])))
+    expect_equal(remove_sim_id_names(res[3:1]), remove_sim_id_names(bind_results(res[3:2], res[1])))
+    expect_equal(remove_sim_id_names(res[2]), remove_sim_id_names(((res[2:3])[1])))
 })
 
 test_that("calculate_ranks_draws_matrix works", {
@@ -93,13 +93,13 @@ test_that("calculate_ranks_draws_matrix works", {
     dm[, "d"] <- sample(c(1:5, 1:5))
     dm <- posterior::as_draws_matrix(dm)
 
-    params <- matrix(c(3.5, -5, 15, 3), nrow = 1)
-    colnames(params) <- c("a","b","c", "d")
+    vars <- matrix(c(3.5, -5, 15, 3), nrow = 1)
+    colnames(vars) <- c("a","b","c", "d")
 
     N_steps <- 1e4
     all_ranks <- matrix(NA_real_, nrow = N_steps, ncol = 4)
     for(i in 1:N_steps) {
-        last_ranks <- calculate_ranks_draws_matrix(params, dm)
+        last_ranks <- calculate_ranks_draws_matrix(vars, dm)
         all_ranks[i,] <- last_ranks
 
     }
@@ -136,7 +136,7 @@ test_that("calculate_sds_draws_matrix", {
 })
 
 test_that("statistics_from_single_fit", {
-    params <- posterior::as_draws_matrix(
+    vars <- posterior::as_draws_matrix(
         posterior::draws_rvars(
             mu = posterior::rvar(4) ,
             tau = posterior::rvar(4),
@@ -145,12 +145,12 @@ test_that("statistics_from_single_fit", {
     # Can't really check correctness, only
     # testing that no error is thrown and structure is OK
     res <- statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
-                               parameters = params, thin_ranks = 1, gen_quants = NULL,
+                               variables = vars, thin_ranks = 1, gen_quants = NULL,
                                backend = SBC_backend_mock())
 
     expect_equal(length(unique(res$max_rank)), 1)
     expect_true(all(res$rank >= 0 & res$rank < res$max_rank))
-    expect_equal(res$simulated_value, as.numeric(params))
+    expect_equal(res$simulated_value, as.numeric(vars))
     expect_identical(res$mean > res$simulated_value, sign(res$z_score) < 0)
 
 })

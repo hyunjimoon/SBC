@@ -2,16 +2,18 @@
 % Please edit documentation in R/results.R
 \name{calculate_ranks_draws_matrix}
 \alias{calculate_ranks_draws_matrix}
-\title{Calculate ranks given parameter values within a posterior distribution.}
+\title{Calculate ranks given variable values within a posterior distribution.}
 \usage{
-calculate_ranks_draws_matrix(params, dm)
+calculate_ranks_draws_matrix(variables, dm, params = NULL)
 }
 \arguments{
-\item{params}{a vector of values to check}
+\item{variables}{a vector of values to check}
 
 \item{dm}{draws_matrix of the fit (assumed to be already thinned if that was necessary)}
+
+\item{params}{DEPRECATED. Use \code{variables} instead.}
 }
 \description{
-When there are ties (e.g. for discrete parameters), the rank is currently drawn stochastically
+When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
 among the ties.
 }
