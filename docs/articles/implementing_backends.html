@@ -19,6 +19,8 @@
 <![endif]-->
 </head>
 <body data-spy="scroll" data-target="#toc">
+    
+
     <div class="container template-article">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -31,12 +33,15 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.0.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1</span>
       </span>
     </div>
 
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
+<li>
+  <a href="../articles/SBC.html">Get Started</a>
+</li>
 <li>
   <a href="../articles/index.html">Vignettes</a>
 </li>
@@ -51,56 +56,56 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="http://mc-stan.org/rstan">rstan</a>
+      <a href="http://mc-stan.org/rstan" class="external-link">rstan</a>
     </li>
     <li>
-      <a href="https://mc-stan.org/cmdstanr">cmdstanr</a>
+      <a href="https://mc-stan.org/cmdstanr" class="external-link">cmdstanr</a>
     </li>
     <li>
-      <a href="http://paul-buerkner.github.io/brms/">brms</a>
+      <a href="http://paul-buerkner.github.io/brms/" class="external-link">brms</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/rstanarm">rstanarm</a>
+      <a href="http://mc-stan.org/rstanarm" class="external-link">rstanarm</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/bayesplot">bayesplot</a>
+      <a href="http://mc-stan.org/bayesplot" class="external-link">bayesplot</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/shinystan">shinystan</a>
+      <a href="http://mc-stan.org/shinystan" class="external-link">shinystan</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/loo">loo</a>
+      <a href="http://mc-stan.org/loo" class="external-link">loo</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/projpred">projpred</a>
+      <a href="http://mc-stan.org/projpred" class="external-link">projpred</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/rstantools">rstantools</a>
+      <a href="http://mc-stan.org/rstantools" class="external-link">rstantools</a>
     </li>
     <li>
-      <a href="https://mc-stan.org/posterior">posterior</a>
+      <a href="https://mc-stan.org/posterior" class="external-link">posterior</a>
     </li>
   </ul>
 </li>
 <li>
-  <a href="http://mc-stan.org">Stan</a>
+  <a href="http://mc-stan.org" class="external-link">Stan</a>
 </li>
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://twitter.com/mcmc_stan">
+  <a href="https://twitter.com/mcmc_stan" class="external-link">
     <span class="fa fa-twitter"></span>
      
   </a>
 </li>
 <li>
-  <a href="https://github.com/hyunjimoon/SBC">
+  <a href="https://github.com/hyunjimoon/SBC" class="external-link">
     <span class="fa fa-github"></span>
      
   </a>
 </li>
 <li>
-  <a href="http://discourse.mc-stan.org/">
+  <a href="http://discourse.mc-stan.org/" class="external-link">
     <span class="fa fa-users"></span>
      
   </a>
@@ -115,446 +120,441 @@
 
       
 
-      </header><script src="implementing_backends_files/header-attrs-2.11/header-attrs.js"></script><div class="row">
+      </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Implementing a new backend (algorithm) + frequentist approximations</h1>
-                        <h4 class="author">Martin Modrák</h4>
+                        <h4 data-toc-skip class="author">Martin Modrák</h4>
             
-            <h4 class="date">2021-09-26</h4>
+            <h4 data-toc-skip class="date">2022-02-13</h4>
       
-      
+      <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/implementing_backends.Rmd" class="external-link"><code>vignettes/implementing_backends.Rmd</code></a></small>
       <div class="hidden name"><code>implementing_backends.Rmd</code></div>
 
     </div>
 
     
     
-<p>This vignette will discuss how to implement a new type of backend for the SBC package and thus allow you to integrate the SBC package with any method/algorithm that can produce samples. As an example, we’ll wrap the base R <code>glm</code> function as a backend. This will also let us discuss how we can treat frequentist models as approximations to Bayesian models and that SBC can tell us how faithful such an approximation is.</p>
-<p>We assume familiarity with the SBC package architecture as discussed in the <a href="https://hyunjimoon.github.io/SBC/articles/basic_usage.html">basic usage vignette</a> and <a href="https://adv-r.hadley.nz/s3.html">S3 classes</a> in R.</p>
+<p>This vignette will discuss how to implement a new type of backend for the SBC package and thus allow you to integrate the SBC package with any method/algorithm that can produce draws from a posterior distribution or its approximation. As an example, we’ll wrap the base R <code>glm</code> function as a backend. This will also let us discuss how we can treat frequentist models as approximations to Bayesian models and that SBC can tell us how faithful such an approximation is.</p>
+<p>We assume familiarity with the SBC package architecture as discussed in the <a href="https://hyunjimoon.github.io/SBC/articles/basic_usage.html">basic usage vignette</a> and <a href="https://adv-r.hadley.nz/s3.html" class="external-link">S3 classes</a> in R.</p>
 <p>Let’s setup the environment.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">SBC</span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org">ggplot2</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://higgi13425.github.io/medicaldata/">medicaldata</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/decisionpatterns/formula.tools">formula.tools</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://www.stats.ox.ac.uk/pub/MASS4/">MASS</a></span><span class="op">)</span>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://hyunjimoon.github.io/SBC/">SBC</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://higgi13425.github.io/medicaldata/" class="external-link">medicaldata</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/decisionpatterns/formula.tools" class="external-link">formula.tools</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.stats.ox.ac.uk/pub/MASS4/" class="external-link">MASS</a></span><span class="op">)</span>
 
 <span class="co"># Setup caching of results</span>
-<span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./implementing_backends_SBC_cache"</span>
-<span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>
+<span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./_implementing_backends_SBC_cache"</span>
+<span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<div id="minimal-backend-support" class="section level2">
-<h2 class="hasAnchor">
-<a href="#minimal-backend-support" class="anchor"></a>Minimal backend support</h2>
-<p>If you remember from the, <a href="https://hyunjimoon.github.io/SBC/articles/basic_usage.html">interface introduction vignette</a> a backend for the SBC package describes a function that takes in data and produces samples, i.e. the backend holds all the information other than data that are needed to run the given statistical method.</p>
-<p>For practical reasons, the SBC package actually splits that function into two steps: first, there is an S3 generic <a href="https://hyunjimoon.github.io/SBC/reference/SBC_fit.html"><code>SBC_fit()</code></a>, that takes a backend object, dataset and the number of cores it is allowed to use and produces an arbitrary object representing the fit. Additionally, there is an <code>SBC_fit_to_draws_matrix()</code> S3 generic that takes in the resulting fit and returns posterior samples in the <code><a href="https://mc-stan.org/posterior/reference/draws_matrix.html">posterior::draws_matrix</a></code> format. The split here is useful because it lets the <code>SBC_results</code> object to store the raw fit objects, which can then be inspected by user for debugging purposes. The SBC package makes no assumptions on the fit objects beyond the fact that they define an <code>SBC_fit_to_draws_matrix</code> method. To be precise, even this is not necessary, because if the object implements a method for <code>as_draws_matrix</code> but not <code>SBC_fit_to_draws_matrix</code>, the <code>as_draws_matrix</code> implementation will be called.</p>
+<div class="section level2">
+<h2 id="minimal-backend-support">Minimal backend support<a class="anchor" aria-label="anchor" href="#minimal-backend-support"></a>
+</h2>
+<p>If you remember from the, <a href="https://hyunjimoon.github.io/SBC/articles/basic_usage.html">interface introduction vignette</a> a backend for the SBC package describes a function that takes in data and produces posterior draws, i.e. the backend holds all the information other than data that are needed to run the given statistical method.</p>
+<p>For practical reasons, the SBC package actually splits that function into two steps: first, there is an S3 generic <a href="https://hyunjimoon.github.io/SBC/reference/SBC_fit.html"><code>SBC_fit()</code></a>, that takes a backend object, observed data and the number of cores it is allowed to use and produces an arbitrary object representing the fit. Additionally, there is an <code><a href="../reference/SBC_fit_to_draws_matrix.html">SBC_fit_to_draws_matrix()</a></code> S3 generic that takes in the resulting fit and returns posterior draws in the <code><a href="https://mc-stan.org/posterior/reference/draws_matrix.html" class="external-link">posterior::draws_matrix</a></code> format. The split here is useful because it lets the <code>SBC_results</code> object to store the raw fit objects, which can then be inspected by user for debugging purposes. The SBC package makes no assumptions on the fit objects beyond the fact that they define an <code>SBC_fit_to_draws_matrix</code> method. To be precise, even this is not necessary, because if the object implements a method for <code>as_draws_matrix</code> but not <code>SBC_fit_to_draws_matrix</code>, the <code>as_draws_matrix</code> implementation will be called.</p>
 <p>So a simple implementation wrapping the <code>glm</code> function will consist of three short functions. First is a “constructor” function that creates new instance of the backend. Here, we’ll just capture all the arguments (which we will later pass to <code>glm</code>), the created object will be of a new S3 class <code>SBC_backend_glm</code>:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">SBC_backend_glm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span>
-    <span class="va">args</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span>
-    <span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/any.html">any</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">args</span><span class="op">)</span> <span class="op">==</span> <span class="st">"data"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-      <span class="kw"><a href="https://rdrr.io/r/base/stop.html">stop</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"Parameter 'data' cannot be provided when defining a backend"</span>,
+    <span class="va">args</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span>
+    <span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/any.html" class="external-link">any</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">args</span><span class="op">)</span> <span class="op">==</span> <span class="st">"data"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+      <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Argument 'data' cannot be provided when defining a backend"</span>,
                   <span class="st">" as it needs to be set by the SBC package"</span><span class="op">)</span><span class="op">)</span>
     <span class="op">}</span>
   
-    <span class="fu"><a href="https://rdrr.io/r/base/structure.html">structure</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>args <span class="op">=</span> <span class="va">args</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"SBC_backend_glm"</span><span class="op">)</span>
+    <span class="fu"><a href="https://rdrr.io/r/base/structure.html" class="external-link">structure</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>args <span class="op">=</span> <span class="va">args</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"SBC_backend_glm"</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>So e.g. <code>SBC_backend_glm(y ~ x, family = "poisson")</code> would create a valid backend representing a simple Poisson regression.</p>
-<p>Now we create an implementation of <code>SBC_fit</code> for the newly created class. We take the generated dataset (<code>generated</code> parameter) and pass it - along with all the arguments we stored in the constructor - to <code>glm</code> via <code>do.call</code>. We ignore the <code>cores</code> argument as we don’t have multicore support.</p>
+<p>Now we create an implementation of <code>SBC_fit</code> for the newly created class. We take the generated data (<code>generated</code> argument) and pass it - along with all the arguments we stored in the constructor - to <code>glm</code> via <code>do.call</code>. We ignore the <code>cores</code> argument as we don’t have multicore support.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">SBC_fit.SBC_backend_glm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">backend</span>, <span class="va">generated</span>, <span class="va">cores</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">args_with_data</span> <span class="op">&lt;-</span> <span class="va">backend</span><span class="op">$</span><span class="va">args</span>
   <span class="va">args_with_data</span><span class="op">$</span><span class="va">data</span> <span class="op">&lt;-</span> <span class="va">generated</span>
   
-  <span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="va">glm</span>, <span class="va">args_with_data</span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">glm</span>, <span class="va">args_with_data</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>In some cases, it might be undesirable to work with the raw fit as returned by the underlying package and wrap the result in some custom class, but here we’ll have no trouble working with the <code>glm</code> S3 class (as returned by the <code><a href="https://rdrr.io/r/stats/glm.html">glm()</a></code> function) directly.</p>
+<p>In some cases, it might be undesirable to work with the raw fit as returned by the underlying package and wrap the result in some custom class, but here we’ll have no trouble working with the <code>glm</code> S3 class (as returned by the <code><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm()</a></code> function) directly.</p>
 <p>The most conceptually difficult part is then the implementation of <code>SBC_fit_to_draws_matrix</code> for the <code>glm</code> S3 class. Here, we’ll remember how actually <code>glm</code> fits the model: it finds the maximum likelihood estimate (MLE) and then uses the Hessian to construct a multivariate normal approximation to the likelihood around the MLE. In this way we can see <code>glm</code> as an approximate Bayesian method where:</p>
 <ul>
 <li>A flat improper prior is used for all parameters</li>
 <li>The posterior is approximated by a multivariate normal distribution</li>
 </ul>
-<p>And that’s exactly what we’ll do: the <code>coef</code> method for <code>glm</code> fit returns the MLE and the <code>vcov</code> method returns the variance-covariance matrix implied by the Hessian, so all we need is to take a bunch of samples (here 1000) from this multivariate normal. Therefore, the implementation is also very simple:</p>
+<p>And that’s exactly what we’ll do: the <code>coef</code> method for <code>glm</code> fit returns the MLE and the <code>vcov</code> method returns the variance-covariance matrix implied by the Hessian, so all we need is to take a bunch of draws (here 1000) from this multivariate normal. Therefore, the implementation is also very simple:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">SBC_fit_to_draws_matrix.glm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">samp_matrix</span> <span class="op">&lt;-</span> <span class="fu">MASS</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MASS/man/mvrnorm.html">mvrnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1000</span>, mu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>, Sigma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/vcov.html">vcov</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span>
-  <span class="fu">posterior</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/posterior/reference/draws_matrix.html">as_draws_matrix</a></span><span class="op">(</span><span class="va">samp_matrix</span><span class="op">)</span>
+  <span class="va">samp_matrix</span> <span class="op">&lt;-</span> <span class="fu">MASS</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MASS/man/mvrnorm.html" class="external-link">mvrnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1000</span>, mu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>, Sigma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span>
+  <span class="fu">posterior</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/posterior/reference/draws_matrix.html" class="external-link">as_draws_matrix</a></span><span class="op">(</span><span class="va">samp_matrix</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>Note that for non-base packages, we specify the namespace explicitly and do not rely on those functions being loaded via <code>library</code> - this is good practice for package development and will make paralellization work (see notes below).</p>
 <p>A quick example to show this minimal setup already works. We’ll build a simple Poisson regression simulator:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generator_single_poisson</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">log_intercept</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">4</span>,  sd <span class="op">=</span> <span class="fl">1.5</span><span class="op">)</span>
-  <span class="va">beta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
-  <span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span><span class="va">N</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
+  <span class="va">log_intercept</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">4</span>,  sd <span class="op">=</span> <span class="fl">1.5</span><span class="op">)</span>
+  <span class="va">beta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
+  <span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">N</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
   <span class="va">mus</span> <span class="op">&lt;-</span> <span class="va">log_intercept</span> <span class="op">+</span> <span class="va">beta</span> <span class="op">*</span> <span class="va">X</span>
-  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html">rpois</a></span><span class="op">(</span><span class="va">N</span>, <span class="fu"><a href="https://rdrr.io/r/base/Log.html">exp</a></span><span class="op">(</span><span class="va">mus</span><span class="op">)</span><span class="op">)</span>
+  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="va">N</span>, <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">mus</span><span class="op">)</span><span class="op">)</span>
   
-  <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
-    parameters <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
-      <span class="co"># Naming the parameters in the same way glm will name coefs</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
+    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
+      <span class="co"># Naming the variables in the same way glm will name coefs</span>
       `(Intercept)` <span class="op">=</span> <span class="va">log_intercept</span>,
       x <span class="op">=</span> <span class="va">beta</span>
     <span class="op">)</span>,
-    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">y</span>, x <span class="op">=</span> <span class="va">X</span><span class="op">)</span>
+    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">y</span>, x <span class="op">=</span> <span class="va">X</span><span class="op">)</span>
   <span class="op">)</span>
 <span class="op">}</span>
 
-<span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">354662</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">354662</span><span class="op">)</span>
 <span class="va">datasets_poisson</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_single_poisson</span>, N <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, 
-                              n_datasets <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></code></pre></div>
+                              n_sims <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></code></pre></div>
 <p>Then we’ll construct a matching backend and compute the results.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">backend_poisson</span> <span class="op">&lt;-</span> <span class="fu">SBC_backend_glm</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span>, family <span class="op">=</span> <span class="st">"poisson"</span><span class="op">)</span>
-<span class="va">res_poisson</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_poisson</span>, 
+<span class="va">res_poisson</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_poisson</span>, 
                                <span class="va">backend_poisson</span>, 
                                thin_ranks <span class="op">=</span> <span class="fl">1</span>,
                                cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                               cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"poisson"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'poisson'</code></pre>
-<p>We have set <code>thin_ranks = 1</code> as no thinning is needed (the samples are i.i.d. by construction).</p>
+                               cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"poisson"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<p>We have set <code>thin_ranks = 1</code> as no thinning is needed (the draws are i.i.d. by construction).</p>
 <p>The rank and ecdf plots show no big problems</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_poisson</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/poisson_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_poisson</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_poisson</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/poisson_ranks-2.png" width="700"></p>
-<p>This is not unexpected - we’ve used a large dataset and a simple model, so choice of prior should have negligible impact on the posterior and the normal approximation is very close to the exact Bayesian solution.</p>
-<p>We can see that both model parameters are recovered almost exactly in almost all fits:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<p>This is not unexpected - we’ve used a large number of observations and a simple model, so choice of prior should have negligible impact on the posterior and the normal approximation is very close to the exact Bayesian solution.</p>
+<p>We can see that both variables are recovered almost exactly in almost all fits:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">res_poisson</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/poisson_sim_estimated-1.png" width="700"></p>
 </div>
-<div id="additional-backend-improvements" class="section level2">
-<h2 class="hasAnchor">
-<a href="#additional-backend-improvements" class="anchor"></a>Additional backend improvements</h2>
+<div class="section level2">
+<h2 id="additional-backend-improvements">Additional backend improvements<a class="anchor" aria-label="anchor" href="#additional-backend-improvements"></a>
+</h2>
 <p>Beyond the minimal setup, there are additional functions that our backend can implement to make it more comfortable to use. Let’s walk through the options and se and how they can be implemented for the <code>glm</code> wrapper.</p>
-<p>Since (unlike MCMC methods) the <code>glm</code> approximation does not produce autocorrelated samples, we can implement <code>SBC_backend_iid_samples</code> to return <code>TRUE</code>. The SBC package will then by default use <code>thin_ranks = 1</code> argument to <code>compute_results</code> and will not assess convergence/autocorrelation via the R-hat and ESS diagnostics.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">SBC_backend_iid_samples.SBC_backend_glm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span> <span class="op">{</span>
+<p>Since (unlike MCMC methods) the <code>glm</code> approximation does not produce autocorrelated draws, we can implement <code>SBC_backend_iid_draws</code> to return <code>TRUE</code>. The SBC package will then by default use <code>thin_ranks = 1</code> argument to <code>compute_SBC</code> and will not assess convergence/autocorrelation via the R-hat and ESS diagnostics.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">SBC_backend_iid_draws.SBC_backend_glm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span> <span class="op">{</span>
   <span class="cn">TRUE</span>
 <span class="op">}</span></code></pre></div>
 <p>Backends based on MCMC may want to implement <code><a href="../reference/SBC_backend_default_thin_ranks.html">SBC_backend_default_thin_ranks()</a></code> which specifies the default thinning needed to remove autocorrelation from the fit.</p>
 <p>Most statistical algorithms also give us some diagnostics that let us understand whether there was some problem in fitting.</p>
 <p>To see some of the problems that <code>glm</code> can encounter, we’ll run a quite pathological logistic regression:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">problematic_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">1</span>, each <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, x <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">200</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/glm.html">glm</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span>, data <span class="op">=</span> <span class="va">problematic_data</span>, family <span class="op">=</span> <span class="st">"binomial"</span><span class="op">)</span></code></pre></div>
-<pre><code>## Warning: glm.fit: algorithm did not converge</code></pre>
-<pre><code>## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
-<pre><code>## 
-## Call:  glm(formula = y ~ x, family = "binomial", data = problematic_data)
-## 
-## Coefficients:
-## (Intercept)            x  
-##    -3006.52        29.92  
-## 
-## Degrees of Freedom: 199 Total (i.e. Null);  198 Residual
-## Null Deviance:       277.3 
-## Residual Deviance: 1.276e-06     AIC: 4</code></pre>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">problematic_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span><span class="op">:</span><span class="fl">1</span>, each <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, x <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">200</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span>, data <span class="op">=</span> <span class="va">problematic_data</span>, family <span class="op">=</span> <span class="st">"binomial"</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Warning: glm.fit: algorithm did not converge</span></code></pre>
+<pre><code><span class="co">## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred</span></code></pre>
+<pre><code><span class="co">## </span>
+<span class="co">## Call:  glm(formula = y ~ x, family = "binomial", data = problematic_data)</span>
+<span class="co">## </span>
+<span class="co">## Coefficients:</span>
+<span class="co">## (Intercept)            x  </span>
+<span class="co">##    -3006.52        29.92  </span>
+<span class="co">## </span>
+<span class="co">## Degrees of Freedom: 199 Total (i.e. Null);  198 Residual</span>
+<span class="co">## Null Deviance:       277.3 </span>
+<span class="co">## Residual Deviance: 1.276e-06     AIC: 4</span></code></pre>
 <p>So we get two problems - one is that the optimization method did not converge (this can be checked via the <code>$converged</code> member of the resulting fit) and that extreme probabilities occurred (this is related to the problem of “perfect separation”). This problem is however only signalled as a warning and never reported in the fit object itself.</p>
 <p>For this reason, SBC package will capture all output, warnings and messages that the backend produced and our implementation can then inspect and process all of the output. This can be achieved by implementing the <code><a href="../reference/SBC_fit_to_diagnostics.html">SBC_fit_to_diagnostics()</a></code> generic for our fit object. This method should return a single row <code>data.frame</code> that contains any diagnostics. Additionally, it is often useful to add a custom class to the results to allow for automatic summaries (we’ll get there). This is our implementation for the <code>glm</code> class:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">SBC_fit_to_diagnostics.glm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">fit</span>, <span class="va">fit_output</span>, <span class="va">fit_messages</span>, <span class="va">fit_warnings</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>
-    probs_0_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/any.html">any</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html">grepl</a></span><span class="op">(</span><span class="st">"fitted probabilities numerically 0 or 1 occurred"</span>, <span class="va">fit_warnings</span><span class="op">)</span><span class="op">)</span>,
+  <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>
+    probs_0_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/any.html" class="external-link">any</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"fitted probabilities numerically 0 or 1 occurred"</span>, <span class="va">fit_warnings</span><span class="op">)</span><span class="op">)</span>,
     converged <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">converged</span>
   <span class="op">)</span>
 
-  <span class="fu"><a href="https://rdrr.io/r/base/class.html">class</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SBC_glm_diagnostics"</span>, <span class="fu"><a href="https://rdrr.io/r/base/class.html">class</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SBC_glm_diagnostics"</span>, <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span><span class="op">)</span>
   <span class="va">res</span>
 <span class="op">}</span></code></pre></div>
 <p>Having a custom class let’s us implement a <code>summary</code> implementation for our diagnostics:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">summary.SBC_glm_diagnostics</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">summ</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
-    n_fits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,
-    n_probs_0_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">probs_0_1</span><span class="op">)</span>,
-    n_not_converged <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="op">!</span><span class="va">x</span><span class="op">$</span><span class="va">converged</span><span class="op">)</span>
+  <span class="va">summ</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
+    n_fits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,
+    n_probs_0_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">probs_0_1</span><span class="op">)</span>,
+    n_not_converged <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="op">!</span><span class="va">x</span><span class="op">$</span><span class="va">converged</span><span class="op">)</span>
   <span class="op">)</span>
 
-  <span class="fu"><a href="https://rdrr.io/r/base/structure.html">structure</a></span><span class="op">(</span><span class="va">summ</span>, class <span class="op">=</span> <span class="st">"SBC_glm_diagnostics_summary"</span><span class="op">)</span>  
+  <span class="fu"><a href="https://rdrr.io/r/base/structure.html" class="external-link">structure</a></span><span class="op">(</span><span class="va">summ</span>, class <span class="op">=</span> <span class="st">"SBC_glm_diagnostics_summary"</span><span class="op">)</span>  
 <span class="op">}</span></code></pre></div>
 <p>and we can then implement the <code><a href="../reference/get_diagnostic_messages.html">get_diagnostic_messages()</a></code> generic, which takes an object and returns a list of messages potentially signalling problems - any messages that signal problems are then reported automatically to the user. The OK messages are also reported when calling <code>summary</code> on an <code>SBC_results</code> object.</p>
 <p>We’ll use our <code>summary</code> implementation for <code>SBC_glm_diagnostics</code> to create the messages:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">get_diagnostic_messages.SBC_glm_diagnostics</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span>
-  <span class="fu"><a href="../reference/get_diagnostic_messages.html">get_diagnostic_messages</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/fit-method-summary.html">summary</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span>
+  <span class="fu"><a href="../reference/get_diagnostic_messages.html">get_diagnostic_messages</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/fit-method-summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span>
 
 
 <span class="va">get_diagnostic_messages.SBC_glm_diagnostics_summary</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">message_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">)</span>
+  <span class="va">message_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>
   
   <span class="kw">if</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">n_probs_0_1</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span>
     <span class="va">message_list</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> 
-      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">TRUE</span>, message <span class="op">=</span> <span class="st">"No fit had 0/1 probabilities."</span><span class="op">)</span>
+      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">TRUE</span>, message <span class="op">=</span> <span class="st">"No fit had 0/1 probabilities."</span><span class="op">)</span>
   <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
     <span class="va">message_list</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> 
-      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">FALSE</span>, 
-                 message <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span>
-                   <span class="va">x</span><span class="op">$</span><span class="va">n_probs_0_1</span>, <span class="st">" ("</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">x</span><span class="op">$</span><span class="va">n_probs_0_1</span> <span class="op">/</span> <span class="va">x</span><span class="op">$</span><span class="va">n_fits</span><span class="op">)</span>, 
+      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">FALSE</span>, 
+                 message <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span>
+                   <span class="va">x</span><span class="op">$</span><span class="va">n_probs_0_1</span>, <span class="st">" ("</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">x</span><span class="op">$</span><span class="va">n_probs_0_1</span> <span class="op">/</span> <span class="va">x</span><span class="op">$</span><span class="va">n_fits</span><span class="op">)</span>, 
                    <span class="st">"%) of fits had 0/1 probabilities."</span><span class="op">)</span><span class="op">)</span>    
   <span class="op">}</span>
   
   <span class="kw">if</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">n_not_converged</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span>
     <span class="va">message_list</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> 
-      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">TRUE</span>, message <span class="op">=</span> <span class="st">"All fits converged."</span><span class="op">)</span>
+      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">TRUE</span>, message <span class="op">=</span> <span class="st">"All fits converged."</span><span class="op">)</span>
   <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
     <span class="va">message_list</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> 
-      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">FALSE</span>, 
-                 message <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span>
-                   <span class="va">x</span><span class="op">$</span><span class="va">n_not_converged</span>, <span class="st">" ("</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">x</span><span class="op">$</span><span class="va">n_not_converged</span> <span class="op">/</span> <span class="va">x</span><span class="op">$</span><span class="va">n_fits</span><span class="op">)</span>, 
+      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">FALSE</span>, 
+                 message <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span>
+                   <span class="va">x</span><span class="op">$</span><span class="va">n_not_converged</span>, <span class="st">" ("</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">x</span><span class="op">$</span><span class="va">n_not_converged</span> <span class="op">/</span> <span class="va">x</span><span class="op">$</span><span class="va">n_fits</span><span class="op">)</span>, 
                    <span class="st">"%) of fits did not converge."</span><span class="op">)</span><span class="op">)</span>    
   <span class="op">}</span>  
   
-  <span class="fu">SBC_diagnostic_messages</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">message_list</span><span class="op">)</span><span class="op">)</span>
+  <span class="fu">SBC_diagnostic_messages</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">message_list</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>Finally, some backend objects are complex and may differ between R sessions, even if they represent the same backend (Stan backends are a prime example as the pointer/path to a compiled model can change). If that’s the case, it may break the built-in caching functionality. Such backends may want to implement the <code><a href="../reference/SBC_backend_hash_for_cache.html">SBC_backend_hash_for_cache()</a></code> generic to provide a hash with better properties.</p>
 <p>And that’s about all that we can do for our backend. Before we’ll use the extended backend for some investigations, we’ll make an aside about parallel support.</p>
 </div>
-<div id="considerations-for-parallelization" class="section level2">
-<h2 class="hasAnchor">
-<a href="#considerations-for-parallelization" class="anchor"></a>Considerations for parallelization</h2>
-<p>SBC uses the <code>future</code> package to allow paralellization. This means that when user sets up a parallel environment (e.g. via <code><a href="https://rdrr.io/pkg/future/man/plan.html">plan(multisession)</a></code>), the <code><a href="../reference/SBC_fit.html">SBC_fit()</a></code>, <code>SBC_fit_to_draws_matrix()</code> and <code><a href="../reference/SBC_backend_iid_samples.html">SBC_backend_iid_samples()</a></code> implementations will run in a fresh session. To make this work smoothly, the functions should call non-base R functions explicitly via namespace declaration (e.g. note that we call <code><a href="https://rdrr.io/pkg/MASS/man/mvrnorm.html">MASS::mvrnorm</a></code>, not just <code>mvrnorm</code>).</p>
-<p>If you are implementing the backend to become part of the SBC package, nothing more is needed for paralellization to work. If however you are just building an ad-hoc backend that lives in your global environment, you will also need to pass the three functions to the <code>globals</code> argument of <code>compute_results</code> which will make them available on all workers i.e. use:</p>
-<pre><code><a href="../reference/compute_results.html">compute_results(..., globals = c("SBC_fit.SBC_backend_glm", 
-                                 "SBC_fit_to_draws_matrix.glm",
-                                 "SBC_backend_iid_samples.SBC_backend_glm"))
-</a></code></pre>
+<div class="section level2">
+<h2 id="considerations-for-parallelization">Considerations for parallelization<a class="anchor" aria-label="anchor" href="#considerations-for-parallelization"></a>
+</h2>
+<p>SBC uses the <code>future</code> package to allow paralellization. This means that when user sets up a parallel environment (e.g. via <code>plan(multisession)</code>), the <code><a href="../reference/SBC_fit.html">SBC_fit()</a></code>, <code><a href="../reference/SBC_fit_to_draws_matrix.html">SBC_fit_to_draws_matrix()</a></code> and <code><a href="../reference/SBC_backend_iid_draws.html">SBC_backend_iid_draws()</a></code> implementations will run in a fresh session. To make this work smoothly, the functions should call non-base R functions explicitly via namespace declaration (e.g. note that we call <code><a href="https://rdrr.io/pkg/MASS/man/mvrnorm.html" class="external-link">MASS::mvrnorm</a></code>, not just <code>mvrnorm</code>).</p>
+<p>If you are implementing the backend to become part of the SBC package, nothing more is needed for paralellization to work. If however you are just building an ad-hoc backend that lives in your global environment, you will also need to pass the three functions to the <code>globals</code> argument of <code>compute_SBC</code> which will make them available on all workers i.e. use:</p>
+<pre><code><span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">...</span>, globals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SBC_fit.SBC_backend_glm"</span>, 
+                                 <span class="st">"SBC_fit_to_draws_matrix.glm"</span>,
+                                 <span class="st">"SBC_backend_iid_draws.SBC_backend_glm"</span><span class="op">)</span><span class="op">)</span></code></pre>
 <p>If those functions in turn depend on other functions not defined in a package, those functions would need to be added to <code>globals</code> as well. In some future version of the package we hope to be able to autodetect those dependencies.</p>
 <p>Also note that if you are OK with single-core processing (which with <code>glm</code> is very fast), you don’t need to care about any of this.</p>
 </div>
-<div id="glm-as-approximate-bayesian-method" class="section level2">
-<h2 class="hasAnchor">
-<a href="#glm-as-approximate-bayesian-method" class="anchor"></a><code>glm</code> as approximate Bayesian method</h2>
+<div class="section level2">
+<h2 id="glm-as-approximate-bayesian-method">
+<code>glm</code> as approximate Bayesian method<a class="anchor" aria-label="anchor" href="#glm-as-approximate-bayesian-method"></a>
+</h2>
 <p>As we discussed earlier, we can view <code>glm</code> as an approximation to a fully Bayesian method where the posterior is approximate and priors are flat. We would therefore expect the approximation to be well-behaved when we use wide priors for simulation and/or have a lot of data to inform all the model coefficients. The obvious way to verify whether the approximation is good is to run both full Bayesian inference (e.g. via <code>rstanarm</code>) and <code>glm</code> on the same data. The problem is that this reduces the appeal of the approximation, as we need to wait for the fully Bayesian fit anyway and so we might as well just use the Bayesian version.</p>
-<p>However, SBC allows another way - we can check that the approximation is good by running only the approximate method (a lot of times) and look at SBC results. This may still be faster than running a single fully Bayesian fit. Additionally, fitting with an approximate algorithm can be useful to run approximate power calculations where it lets us cheaply fit a lot of simulated datasets to e.g. understand how the width of our posterior intervals changes with sample size and at the same time we learn, whether the approximation is problematic in some way.</p>
-<p>For the sake of example, let’s assume we’ve already gathered a dataset that we want to analyze with Bayesian logistic regression. So our data generating process will use the observed covariate values but simulate new coefficients and outcome data. Below is a simple implementation with normal priors on the intercept and predictors. Note that we do some <a href="https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html">rejection sampling</a> here to avoid using datasets where the generated response is the same or almost the same for all rows.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<p>However, SBC allows another way - we can check that the approximation is good by running only the approximate method (a lot of times) and look at SBC results. This may still be faster than running a single fully Bayesian fit. Additionally, fitting with an approximate algorithm can be useful to run approximate power calculations where it lets us cheaply fit a lot of simulations to e.g. understand how the width of our posterior intervals changes with sample size and at the same time we learn, whether the approximation is problematic in some way.</p>
+<p>For the sake of example, let’s assume we’ve already gathered data that we want to analyze with Bayesian logistic regression. So our data generating process will use the observed covariate values but simulate new coefficients and outcome data. Below is a simple implementation with normal priors on the intercept and predictors. Note that we do some <a href="https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html">rejection sampling</a> here to avoid using simulations where the generated response is the same or almost the same for all rows.</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generator_single_logistic</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">formula</span>, 
-                                      <span class="va">dataset</span>, 
+                                      <span class="va">template_data</span>, 
                                       <span class="va">intercept_prior_loc</span> <span class="op">=</span> <span class="fl">0</span>,
                                       <span class="va">intercept_prior_width</span> <span class="op">=</span> <span class="fl">2</span>,
                                       <span class="va">predictor_prior_loc</span> <span class="op">=</span> <span class="fl">0</span>,
                                       <span class="va">predictor_prior_width</span> <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">response_name</span> <span class="op">&lt;-</span> <span class="fu">formula.tools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/formula.tools/man/get.vars.html">lhs.vars</a></span><span class="op">(</span><span class="va">formula</span><span class="op">)</span>
-  <span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">response_name</span><span class="op">)</span> <span class="op">!=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw"><a href="https://rdrr.io/r/base/stop.html">stop</a></span><span class="op">(</span><span class="st">"The formula has to have just a single response"</span><span class="op">)</span>
+  <span class="va">response_name</span> <span class="op">&lt;-</span> <span class="fu">formula.tools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/formula.tools/man/get.vars.html" class="external-link">lhs.vars</a></span><span class="op">(</span><span class="va">formula</span><span class="op">)</span>
+  <span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">response_name</span><span class="op">)</span> <span class="op">!=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span>
+    <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"The formula has to have just a single response"</span><span class="op">)</span>
   <span class="op">}</span>
   
-  <span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html">model.matrix</a></span><span class="op">(</span><span class="va">formula</span>, <span class="va">dataset</span><span class="op">)</span>
+  <span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="va">formula</span>, <span class="va">template_data</span><span class="op">)</span>
   
   <span class="kw">repeat</span> <span class="op">{</span>
-    <span class="va">coefs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>, <span class="va">predictor_prior_loc</span>, sd <span class="op">=</span> <span class="va">predictor_prior_width</span><span class="op">)</span>
-    <span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">coefs</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html">colnames</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>
-    <span class="kw">if</span><span class="op">(</span><span class="st">"(Intercept)"</span> <span class="op">%in%</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">coefs</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-      <span class="va">coefs</span><span class="op">[</span><span class="st">"(Intercept)"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">intercept_prior_loc</span>, sd <span class="op">=</span> <span class="va">intercept_prior_width</span><span class="op">)</span>
+    <span class="va">coefs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>, <span class="va">predictor_prior_loc</span>, sd <span class="op">=</span> <span class="va">predictor_prior_width</span><span class="op">)</span>
+    <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">coefs</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>
+    <span class="kw">if</span><span class="op">(</span><span class="st">"(Intercept)"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">coefs</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+      <span class="va">coefs</span><span class="op">[</span><span class="st">"(Intercept)"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">intercept_prior_loc</span>, sd <span class="op">=</span> <span class="va">intercept_prior_width</span><span class="op">)</span>
     <span class="op">}</span>
     
-    <span class="va">linpred</span> <span class="op">&lt;-</span> <span class="va">X</span> <span class="op">%*%</span> <span class="va">coefs</span>
-    <span class="va">probs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Logistic.html">plogis</a></span><span class="op">(</span><span class="va">linpred</span><span class="op">)</span>
-    <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Binomial.html">rbinom</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">probs</span><span class="op">)</span>
-    <span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">y</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="fl">5</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">y</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="fl">5</span><span class="op">)</span> <span class="op">{</span>
+    <span class="va">linpred</span> <span class="op">&lt;-</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">coefs</span>
+    <span class="va">probs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">plogis</a></span><span class="op">(</span><span class="va">linpred</span><span class="op">)</span>
+    <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">probs</span><span class="op">)</span>
+    <span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">y</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="fl">5</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">y</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="fl">5</span><span class="op">)</span> <span class="op">{</span>
       <span class="kw">break</span>;
     <span class="op">}</span>
   <span class="op">}</span>
 
-  <span class="va">dataset_mod</span> <span class="op">&lt;-</span> <span class="va">dataset</span>
-  <span class="va">dataset_mod</span><span class="op">[[</span><span class="va">response_name</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">y</span>
+  <span class="va">data_mod</span> <span class="op">&lt;-</span> <span class="va">template_data</span>
+  <span class="va">data_mod</span><span class="op">[[</span><span class="va">response_name</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">y</span>
 
-  <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
-    parameters <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">as.list</a></span><span class="op">(</span><span class="va">coefs</span><span class="op">)</span>,
-    generated <span class="op">=</span> <span class="va">dataset_mod</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
+    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">as.list</a></span><span class="op">(</span><span class="va">coefs</span><span class="op">)</span>,
+    generated <span class="op">=</span> <span class="va">data_mod</span>
   <span class="op">)</span> 
 <span class="op">}</span></code></pre></div>
-<p>We are going to use the <code>indo_rct</code> dataset from the <code>medicaldata</code> package. The dataset contains the results of a randomized, placebo-controlled, prospective 2-arm trial of indomethacin 100 mg PR once vs. placebo to prevent post-ERCP Pancreatitis in 602 patients. You can inspect the <a href="https://htmlpreview.github.io/?https://github.com/higgi13425/medicaldata/blob/master/man/codebooks/indo_rct_codebook.html">codebook</a> as well as the <a href="https://www.nejm.org/doi/full/10.1056/NEJMoa1111103">published paper</a> online. The citation for the paper is:</p>
-<p>Elmunzer, Higgins, et al., A Randomized Trial of Rectal Indomethacin to Prevent Post-ERCP Pancreatitis, New England Journal of Medicine, 2012, volume 366, pages 1414-1422, as found <a href="https://www.nejm.org/doi/full/10.1056/NEJMoa1111103">here</a>.</p>
-<div id="well-informed-model" class="section level3">
-<h3 class="hasAnchor">
-<a href="#well-informed-model" class="anchor"></a>Well-informed model</h3>
+<p>We are going to use the <code>indo_rct</code> dataset from the <code>medicaldata</code> package as a template. The dataset contains the results of a randomized, placebo-controlled, prospective 2-arm trial of indomethacin 100 mg PR once vs. placebo to prevent post-ERCP Pancreatitis in 602 patients. You can inspect the <a href="https://htmlpreview.github.io/?https://github.com/higgi13425/medicaldata/blob/master/man/codebooks/indo_rct_codebook.html" class="external-link">codebook</a> as well as the <a href="https://www.nejm.org/doi/full/10.1056/NEJMoa1111103" class="external-link">published paper</a> online. The citation for the paper is:</p>
+<p>Elmunzer, Higgins, et al., A Randomized Trial of Rectal Indomethacin to Prevent Post-ERCP Pancreatitis, New England Journal of Medicine, 2012, volume 366, pages 1414-1422, as found <a href="https://www.nejm.org/doi/full/10.1056/NEJMoa1111103" class="external-link">here</a>.</p>
+<div class="section level3">
+<h3 id="well-informed-model">Well-informed model<a class="anchor" aria-label="anchor" href="#well-informed-model"></a>
+</h3>
 <p>We’ll start by testing our approximate computation with the simplest analysis - the primary binary outcome predicted only by the treatment (the <code>rx</code> column in the data):</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">formula_indo_simple</span> <span class="op">&lt;-</span> <span class="va">outcome</span> <span class="op">~</span> <span class="va">rx</span>
-<span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">6524243</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">6524243</span><span class="op">)</span>
 <span class="va">datasets_indo_simple</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span>
   <span class="va">generator_single_logistic</span>, 
   formula <span class="op">=</span> <span class="va">formula_indo_simple</span>,
-  dataset <span class="op">=</span> <span class="fu">medicaldata</span><span class="fu">::</span><span class="va"><a href="https://higgi13425.github.io/medicaldata//reference/indo_rct.html">indo_rct</a></span><span class="op">)</span>,
-  n_datasets <span class="op">=</span> <span class="fl">500</span><span class="op">)</span> 
+  template_data <span class="op">=</span> <span class="fu">medicaldata</span><span class="fu">::</span><span class="va"><a href="https://higgi13425.github.io/medicaldata/reference/indo_rct.html" class="external-link">indo_rct</a></span><span class="op">)</span>,
+  n_sims <span class="op">=</span> <span class="fl">500</span><span class="op">)</span> 
 
 <span class="va">backend_indo_simple</span> <span class="op">&lt;-</span> <span class="fu">SBC_backend_glm</span><span class="op">(</span>formula <span class="op">=</span> <span class="va">formula_indo_simple</span>, family <span class="op">=</span> <span class="st">"binomial"</span><span class="op">)</span> </code></pre></div>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">res_indo_simple</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_indo_simple</span>, <span class="va">backend_indo_simple</span>,
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">res_indo_simple</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_indo_simple</span>, <span class="va">backend_indo_simple</span>,
                                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_simple"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'indo_simple'</code></pre>
+                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_simple"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <p>The rank plots look good:</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_ranks-2.png" width="700"></p>
 <p>The coverages are very tight</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_sim_coverage-1.png" width="700"></p>
 <p>we can make this precise by inspecting the same results numerically:</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">stats_effect</span> <span class="op">&lt;-</span> <span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">[</span><span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"rx1_indomethacin"</span>,<span class="op">]</span>
-<span class="va">main_eff_coverage</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">stats_effect</span>, width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.5</span>,<span class="fl">0.9</span>, <span class="fl">0.95</span><span class="op">)</span><span class="op">)</span>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">stats_effect</span> <span class="op">&lt;-</span> <span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">[</span><span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">variable</span> <span class="op">==</span> <span class="st">"rx1_indomethacin"</span>,<span class="op">]</span>
+<span class="va">main_eff_coverage</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">stats_effect</span>, width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>,<span class="fl">0.9</span>, <span class="fl">0.95</span><span class="op">)</span><span class="op">)</span>
 <span class="va">main_eff_coverage</span></code></pre></div>
-<pre><code>## # A tibble: 3 x 6
-##   parameter        width width_represented ci_low estimate ci_high
-##   &lt;chr&gt;            &lt;dbl&gt;             &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;
-## 1 rx1_indomethacin  0.5              0.500  0.482    0.526   0.569
-## 2 rx1_indomethacin  0.9              0.900  0.871    0.9     0.923
-## 3 rx1_indomethacin  0.95             0.950  0.930    0.952   0.967</code></pre>
+<pre><code><span class="co">## <span style="color: #949494;"># A tibble: 3 x 6</span></span>
+<span class="co">##   variable         width width_represented ci_low estimate ci_high</span>
+<span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="co">## <span style="color: #BCBCBC;">1</span> rx1_indomethacin  0.5               0.5   0.486    0.53    0.573</span>
+<span class="co">## <span style="color: #BCBCBC;">2</span> rx1_indomethacin  0.9               0.9   0.868    0.898   0.922</span>
+<span class="co">## <span style="color: #BCBCBC;">3</span> rx1_indomethacin  0.95              0.95  0.930    0.952   0.967</span></code></pre>
 <p>so we would expect e.g. the 95% CI for the main effect to correspond to roughly 93% - 97% credible interval of a fully Bayesian treatment - using more simulations would let us make this more precise, but for now we are happy that there clearly is no substantial discrepancy.</p>
 <p>We may want to also look at how tight estimates we get - looking directly gives us a somewhat unhelpful plot:</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_sim_est_ugly-1.png" width="700"></p>
-<p>There is a simulation where the posterior uncertainty is very large. This corresponds to dataset where the outcome is the same for all rows where the treatment was used:</p>
+<p>There is a simulation where the posterior uncertainty is very large. This corresponds to observed data where the outcome is the same for all rows where the treatment was used:</p>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">biggest_sd_sim</span> <span class="op">&lt;-</span> <span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">sim_id</span><span class="op">[</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/which.min.html" class="external-link">which.max</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">sd</span><span class="op">)</span><span class="op">]</span>
+<span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">datasets_indo_simple</span><span class="op">$</span><span class="va">generated</span><span class="op">[[</span><span class="va">biggest_sd_sim</span><span class="op">]</span><span class="op">]</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"outcome"</span>, <span class="st">"rx"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">##        rx</span>
+<span class="co">## outcome 0_placebo 1_indomethacin</span>
+<span class="co">##       0        26              0</span>
+<span class="co">##       1       281            295</span></code></pre>
+<p>Filtering the extreme simulations out, we see that most commonly, we get a decently precise estimate.</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">biggest_sd_dataset</span> <span class="op">&lt;-</span> <span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">dataset_id</span><span class="op">[</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/which.min.html">which.max</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">sd</span><span class="op">)</span><span class="op">]</span>
-<span class="fu"><a href="https://rdrr.io/r/base/table.html">table</a></span><span class="op">(</span><span class="va">datasets_indo_simple</span><span class="op">$</span><span class="va">generated</span><span class="op">[[</span><span class="va">biggest_sd_dataset</span><span class="op">]</span><span class="op">]</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"outcome"</span>, <span class="st">"rx"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></code></pre></div>
-<pre><code>##        rx
-## outcome 0_placebo 1_indomethacin
-##       0        26              0
-##       1       281            295</code></pre>
-<p>Filtering the extreme datasets out, we see that most commonly, we get a decently precise estimate.</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">stats_filtered</span> <span class="op">&lt;-</span> <span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">[</span><span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">sd</span> <span class="op">&lt;</span> <span class="fl">200</span>, <span class="op">]</span>
 <span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">stats_filtered</span>, alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_sim_est-1.png" width="700"></p>
 </div>
-<div id="badly-informed-model" class="section level3">
-<h3 class="hasAnchor">
-<a href="#badly-informed-model" class="anchor"></a>Badly-informed model</h3>
+<div class="section level3">
+<h3 id="badly-informed-model">Badly-informed model<a class="anchor" aria-label="anchor" href="#badly-informed-model"></a>
+</h3>
 <p>But the simple approximation does not work everytime. Let’s say we want to increase the precision of our main effect estimate by adjusting for some factors that we believe are associated with the outcome: the study site, gender and age of the patients. Since one site has only 3 patients, we’ll remove it from the simulations. Additionally, we’ll standardize the age to be centered at 50 and divide by 10 to make the <span class="math inline">\(N(0,1)\)</span> prior on the age coefficient have a sensible scale. To make matters worse, we further subsample the data to contain only 100 rows.</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">21645222</span><span class="op">)</span>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">21645222</span><span class="op">)</span>
 
-<span class="va">indo_rct_complex</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/droplevels.html">droplevels</a></span><span class="op">(</span>
-  <span class="fu">medicaldata</span><span class="fu">::</span><span class="va"><a href="https://higgi13425.github.io/medicaldata//reference/indo_rct.html">indo_rct</a></span><span class="op">[</span><span class="fu">medicaldata</span><span class="fu">::</span><span class="va"><a href="https://higgi13425.github.io/medicaldata//reference/indo_rct.html">indo_rct</a></span><span class="op">$</span><span class="va">site</span> <span class="op">!=</span> <span class="st">"4_Case"</span>,<span class="op">]</span><span class="op">)</span>
-<span class="va">rows_to_keep</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/model-method-sample.html">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">indo_rct_complex</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>
+<span class="va">indo_rct_complex</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/droplevels.html" class="external-link">droplevels</a></span><span class="op">(</span>
+  <span class="fu">medicaldata</span><span class="fu">::</span><span class="va"><a href="https://higgi13425.github.io/medicaldata/reference/indo_rct.html" class="external-link">indo_rct</a></span><span class="op">[</span><span class="fu">medicaldata</span><span class="fu">::</span><span class="va"><a href="https://higgi13425.github.io/medicaldata/reference/indo_rct.html" class="external-link">indo_rct</a></span><span class="op">$</span><span class="va">site</span> <span class="op">!=</span> <span class="st">"4_Case"</span>,<span class="op">]</span><span class="op">)</span>
+<span class="va">rows_to_keep</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/model-method-sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">indo_rct_complex</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>
 <span class="va">indo_rct_complex</span> <span class="op">&lt;-</span> <span class="va">indo_rct_complex</span><span class="op">[</span><span class="va">rows_to_keep</span>,<span class="op">]</span>
 <span class="va">indo_rct_complex</span><span class="op">$</span><span class="va">age</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">indo_rct_complex</span><span class="op">$</span><span class="va">age</span> <span class="op">-</span> <span class="fl">50</span><span class="op">)</span> <span class="op">/</span> <span class="fl">10</span>
 <span class="va">indo_rct_complex</span><span class="op">$</span><span class="va">risk</span> <span class="op">&lt;-</span> <span class="va">indo_rct_complex</span><span class="op">$</span><span class="va">risk</span> <span class="op">-</span> <span class="fl">3</span>
-<span class="va">indo_rct_complex</span><span class="op">$</span><span class="va">type</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span><span class="va">indo_rct_complex</span><span class="op">$</span><span class="va">type</span>, ordered <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+<span class="va">indo_rct_complex</span><span class="op">$</span><span class="va">type</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">indo_rct_complex</span><span class="op">$</span><span class="va">type</span>, ordered <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
 
 <span class="va">formula_indo_complex</span> <span class="op">&lt;-</span> <span class="va">outcome</span> <span class="op">~</span> <span class="va">rx</span> <span class="op">+</span> <span class="va">site</span> <span class="op">+</span> <span class="va">gender</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">risk</span>
 <span class="va">datasets_indo_complex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span>
   <span class="va">generator_single_logistic</span>, 
   formula <span class="op">=</span> <span class="va">formula_indo_complex</span>,
-  dataset <span class="op">=</span> <span class="va">indo_rct_complex</span><span class="op">)</span>,
-  n_datasets <span class="op">=</span> <span class="fl">500</span><span class="op">)</span> 
+  template_data <span class="op">=</span> <span class="va">indo_rct_complex</span><span class="op">)</span>,
+  n_sims <span class="op">=</span> <span class="fl">500</span><span class="op">)</span> 
 
 <span class="va">backend_indo_complex</span> <span class="op">&lt;-</span> <span class="fu">SBC_backend_glm</span><span class="op">(</span>formula <span class="op">=</span> <span class="va">formula_indo_complex</span>, family <span class="op">=</span> <span class="st">"binomial"</span><span class="op">)</span> </code></pre></div>
 <p>Now we are ready to run SBC:</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">res_indo_complex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_indo_complex</span>, <span class="va">backend_indo_complex</span>,
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">res_indo_complex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_indo_complex</span>, <span class="va">backend_indo_complex</span>,
                                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_complex"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'indo_complex'</code></pre>
-<pre><code>##  - 19 (4%) of fits had 0/1 probabilities.</code></pre>
-<pre><code>##  - 2 (0%) of fits did not converge.</code></pre>
-<pre><code>## Not all diagnostics are OK.
-## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
-## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_complex"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">##  - 19 (4%) of fits had 0/1 probabilities.</span></code></pre>
+<pre><code><span class="co">##  - 2 (0%) of fits did not converge.</span></code></pre>
+<pre><code><span class="co">## Not all diagnostics are OK.</span>
+<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
+<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>We see the work we’ve done for diagnostics previously paid off as we are notified of some problems.</p>
 <p>Additionally the rank plots shows some miscalibration, most pronounced for the <code>site3_UK</code> coefficients:</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_indo_complex</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_complex_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_indo_complex</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_indo_complex</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_complex_ranks-2.png" width="700"></p>
 <p>What happens is that many of the simulations result in extremely wide uncertainties around some of the coefficients, making the modest simulated values fall almost exactly in the middle - this then results in the overabundance of ranks around the midpoint. A fully Bayesian fit would regularize the uncertainties and avoid this problem.</p>
 <p>The main effect of interest (<code>rx1_indomethacin</code>) is however still reasonably well calibrated</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">stats_effect</span> <span class="op">&lt;-</span> <span class="va">res_indo_complex</span><span class="op">$</span><span class="va">stats</span><span class="op">[</span><span class="va">res_indo_complex</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"rx1_indomethacin"</span>,<span class="op">]</span>
-<span class="va">main_eff_coverage</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">stats_effect</span>, width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.5</span>,<span class="fl">0.9</span>, <span class="fl">0.95</span><span class="op">)</span><span class="op">)</span>
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">stats_effect</span> <span class="op">&lt;-</span> <span class="va">res_indo_complex</span><span class="op">$</span><span class="va">stats</span><span class="op">[</span><span class="va">res_indo_complex</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">variable</span> <span class="op">==</span> <span class="st">"rx1_indomethacin"</span>,<span class="op">]</span>
+<span class="va">main_eff_coverage</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">stats_effect</span>, width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>,<span class="fl">0.9</span>, <span class="fl">0.95</span><span class="op">)</span><span class="op">)</span>
 <span class="va">main_eff_coverage</span></code></pre></div>
-<pre><code>## # A tibble: 3 x 6
-##   parameter        width width_represented ci_low estimate ci_high
-##   &lt;chr&gt;            &lt;dbl&gt;             &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;
-## 1 rx1_indomethacin  0.5              0.500  0.438    0.482   0.526
-## 2 rx1_indomethacin  0.9              0.900  0.868    0.898   0.922
-## 3 rx1_indomethacin  0.95             0.950  0.930    0.952   0.967</code></pre>
+<pre><code><span class="co">## <span style="color: #949494;"># A tibble: 3 x 6</span></span>
+<span class="co">##   variable         width width_represented ci_low estimate ci_high</span>
+<span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="co">## <span style="color: #BCBCBC;">1</span> rx1_indomethacin  0.5               0.5   0.438    0.482   0.526</span>
+<span class="co">## <span style="color: #BCBCBC;">2</span> rx1_indomethacin  0.9               0.9   0.868    0.898   0.922</span>
+<span class="co">## <span style="color: #BCBCBC;">3</span> rx1_indomethacin  0.95              0.95  0.930    0.952   0.967</span></code></pre>
 </div>
-<div id="badly-informed-model-narrow-priors" class="section level3">
-<h3 class="hasAnchor">
-<a href="#badly-informed-model-narrow-priors" class="anchor"></a>Badly-informed model, narrow priors</h3>
+<div class="section level3">
+<h3 id="badly-informed-model-narrow-priors">Badly-informed model, narrow priors<a class="anchor" aria-label="anchor" href="#badly-informed-model-narrow-priors"></a>
+</h3>
 <p>The above case aimed at making the normal approximation to the posterior problematic. We can obviously make things worse by also introducing a strong prior, concentrating away from zero which we’ll do here:</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">1685554</span><span class="op">)</span>
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1685554</span><span class="op">)</span>
 <span class="va">datasets_indo_complex_narrow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span>
   <span class="va">generator_single_logistic</span>, 
   formula <span class="op">=</span> <span class="va">formula_indo_complex</span>,
-  dataset <span class="op">=</span> <span class="va">indo_rct_complex</span>,
+  template_data <span class="op">=</span> <span class="va">indo_rct_complex</span>,
   intercept_prior_loc <span class="op">=</span> <span class="fl">3</span>,
   intercept_prior_width <span class="op">=</span> <span class="fl">0.5</span>,
-  predictor_prior_loc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span>,
+  predictor_prior_loc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span>,
   predictor_prior_width <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,
-  n_datasets <span class="op">=</span> <span class="fl">500</span><span class="op">)</span> </code></pre></div>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">res_indo_complex_narrow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_indo_complex_narrow</span>, <span class="va">backend_indo_complex</span>,
+  n_sims <span class="op">=</span> <span class="fl">500</span><span class="op">)</span> </code></pre></div>
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">res_indo_complex_narrow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_indo_complex_narrow</span>, <span class="va">backend_indo_complex</span>,
                                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_complex_narrow"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'indo_complex_narrow'</code></pre>
-<pre><code>##  - 169 (34%) of fits had 0/1 probabilities.</code></pre>
-<pre><code>##  - 2 (0%) of fits did not converge.</code></pre>
-<pre><code>## Not all diagnostics are OK.
-## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
-## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
-<p>This is enough to make basically all the parameters poorly calibrated:</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_complex_narrow"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">##  - 169 (34%) of fits had 0/1 probabilities.</span></code></pre>
+<pre><code><span class="co">##  - 2 (0%) of fits did not converge.</span></code></pre>
+<pre><code><span class="co">## Not all diagnostics are OK.</span>
+<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
+<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
+<p>This is enough to make basically all the variables poorly calibrated:</p>
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_indo_complex_narrow</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_complex_narrow_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_indo_complex_narrow</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_indo_complex_narrow</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_complex_narrow_ranks-2.png" width="700"></p>
 </div>
-<div id="well-informed-model-narrow-priors" class="section level3">
-<h3 class="hasAnchor">
-<a href="#well-informed-model-narrow-priors" class="anchor"></a>Well-informed model, narrow priors</h3>
+<div class="section level3">
+<h3 id="well-informed-model-narrow-priors">Well-informed model, narrow priors<a class="anchor" aria-label="anchor" href="#well-informed-model-narrow-priors"></a>
+</h3>
 <p>To make the analysis complete, we’ll also return to the simple, well-informed model, but use narrow priors.</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">3289542</span><span class="op">)</span>
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">3289542</span><span class="op">)</span>
 <span class="va">datasets_indo_simple_narrow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span>
   <span class="va">generator_single_logistic</span>, 
   formula <span class="op">=</span> <span class="va">formula_indo_simple</span>,
-  dataset <span class="op">=</span> <span class="fu">medicaldata</span><span class="fu">::</span><span class="va"><a href="https://higgi13425.github.io/medicaldata//reference/indo_rct.html">indo_rct</a></span>,
+  template_data <span class="op">=</span> <span class="fu">medicaldata</span><span class="fu">::</span><span class="va"><a href="https://higgi13425.github.io/medicaldata/reference/indo_rct.html" class="external-link">indo_rct</a></span>,
   intercept_prior_loc <span class="op">=</span> <span class="fl">3</span>,
   intercept_prior_width <span class="op">=</span> <span class="fl">0.5</span>,
-  predictor_prior_loc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span>,
+  predictor_prior_loc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span>,
   predictor_prior_width <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,
-  n_datasets <span class="op">=</span> <span class="fl">500</span><span class="op">)</span> </code></pre></div>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">res_indo_simple_narrow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_indo_simple_narrow</span>, <span class="va">backend_indo_simple</span>,
+  n_sims <span class="op">=</span> <span class="fl">500</span><span class="op">)</span> </code></pre></div>
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">res_indo_simple_narrow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_indo_simple_narrow</span>, <span class="va">backend_indo_simple</span>,
                                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_simple_narrow"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'indo_simple_narrow'</code></pre>
+                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_simple_narrow"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <p>Turns out that in this case, the likelihood is sometimes not enough to completely overwhelm the prior and the main treatment effect is poorly calibrated:</p>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_indo_simple_narrow</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_narrow_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_indo_simple_narrow</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_indo_simple_narrow</span><span class="op">)</span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_narrow_ranks-2.png" width="700"></p>
 </div>
 </div>
-<div id="conclusions" class="section level2">
-<h2 class="hasAnchor">
-<a href="#conclusions" class="anchor"></a>Conclusions</h2>
-<p>Implementing a minimal support for SBC using an additional algorithm requires writing three relatively simple functions. If you happen to wrap an algorithm, we’d be happy to accept a pull request with your backend at <a href="https://github.com/hyunjimoon/SBC/" class="uri">https://github.com/hyunjimoon/SBC/</a>.</p>
+<div class="section level2">
+<h2 id="conclusions">Conclusions<a class="anchor" aria-label="anchor" href="#conclusions"></a>
+</h2>
+<p>Implementing a minimal support for SBC using an additional algorithm requires writing three relatively simple functions. If you happen to wrap an algorithm, we’d be happy to accept a pull request with your backend at <a href="https://github.com/hyunjimoon/SBC/" class="external-link uri">https://github.com/hyunjimoon/SBC/</a>.</p>
 <p>We’ve also shown that in some cases, <code>glm</code> can actually be a pretty good approximation to a fully Bayesian treatment of an equivalent model. Unfortunately, the approximation does not work always so well - but SBC can tell us when it works and when it fails.</p>
 </div>
   </div>
@@ -570,11 +570,13 @@
 
 
       <footer><div class="copyright">
-  <p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák.</p>
+  <p></p>
+<p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák, Teemu Säilynoja.</p>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
+  <p></p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
 </div>
 
       </footer>
@@ -582,6 +584,8 @@
 
   
 
+
+  
 
   </body>
 </html>
