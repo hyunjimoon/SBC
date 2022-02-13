@@ -260,7 +260,7 @@ results$stats
 
 ### Plots
 
-And finally, we can plot the rank distribution to check if the ranks are uniformly distributed. We can check the rank histogram and ECDF plots:
+And finally, we can plot the rank distribution to check if the ranks are uniformly distributed. We can check the rank histogram and ECDF plots (see `vignette("rank_visualizations")` for description of the plots):
 
 ```{r rank_hist}
 plot_rank_hist(results)
