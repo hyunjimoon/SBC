@@ -104,3 +104,7 @@ With a little additional work, you can integrate SBC with any exact or approxima
 > How does calibration relate to prediction accuracy?
 
 Comparing the ground truth and the simulated result is a backbone of calibration and comparison target greatly affects the calibrated (i.e. trained) result, similar to reward in reinforcement learning. In this sense, if the U(a(y), theta) term is designed for prediction, the model will be calibrated to have best predictive result as possible.
+
+## Acknowledgements
+
+Development of this package was supported by [ELIXIR CZ](https://www.elixir-czech.cz/) research infrastructure project (Ministry of Youth, Education and Sports of the Czech Republic, Grant No: LM2018131) including access to computing and storage facilities.
