@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
       </span>
     </div>
 
@@ -126,7 +126,7 @@
       <h1 data-toc-skip>Small model implementation workflow</h1>
                         <h4 data-toc-skip class="author">Martin Modrák</h4>
             
-            <h4 data-toc-skip class="date">2022-02-13</h4>
+            <h4 data-toc-skip class="date">2022-02-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/small_model_workflow.Rmd" class="external-link"><code>vignettes/small_model_workflow.Rmd</code></a></small>
       <div class="hidden name"><code>small_model_workflow.Rmd</code></div>
@@ -252,6 +252,7 @@ model {
 <code class="sourceCode R"><span class="va">results_first</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_first</span>, <span class="va">backend_first</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"mixture_first"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'mixture_first'</span></code></pre>
 <pre><code><span class="co">##  - 1 (100%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.717.</span></code></pre>
 <pre><code><span class="co">##  - 1 (100%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span>
 <span class="co">## the rank statistics. The lowest tail ESS was 129.</span>
@@ -262,7 +263,7 @@ model {
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>Oh, we have convergence problems, let us examine the pairs plots</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://mc-stan.org/bayesplot/reference/MCMC-scatterplots.html" class="external-link">mcmc_pairs</a></span><span class="op">(</span><span class="va">results_first</span><span class="op">$</span><span class="va">fits</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
@@ -276,7 +277,7 @@ model {
 <h3 id="fixing-mixture">Fixing mixture<a class="anchor" aria-label="anchor" href="#fixing-mixture"></a>
 </h3>
 <p>So we’ve fixed the <code>log_mix</code> problem and this is our new model:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"small_model_workflow/mixture_fixed_log_mix.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N;
@@ -298,7 +299,7 @@ model {
   target += normal_lpdf(mu1 | 3, 1);
   target += normal_lpdf(mu2 | 3, 1);
 }</code></pre>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">model_fixed_log_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"small_model_workflow/mixture_fixed_log_mix.stan"</span><span class="op">)</span>
   <span class="va">backend_fixed_log_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="va">model_fixed_log_mix</span><span class="op">)</span>
@@ -308,10 +309,11 @@ model {
   
 <span class="op">}</span></code></pre></div>
 <p>So let’s try once again with the same single simulation:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_fixed_log_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_first</span>, <span class="va">backend_fixed_log_mix</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"mixture_fixed_log_mix"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'mixture_fixed_log_mix'</span></code></pre>
 <pre><code><span class="co">##  - 1 (100%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.735.</span></code></pre>
 <pre><code><span class="co">##  - 1 (100%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span>
 <span class="co">## the rank statistics. The lowest tail ESS was 142.</span>
@@ -321,7 +323,7 @@ model {
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>No warnings this time. We look at the stats:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_fixed_log_mix</span><span class="op">$</span><span class="va">stats</span></code></pre></div>
 <pre><code><span class="co">## <span style="color: #949494;"># A tibble: 3 x 15</span></span>
 <span class="co">##   sim_id variable simulated_value  rank z_score  mean median    sd   mad     q5</span>
@@ -332,13 +334,14 @@ model {
 <span class="co">## <span style="color: #949494;"># ... with 5 more variables: q95 &lt;dbl&gt;, rhat &lt;dbl&gt;, ess_bulk &lt;dbl&gt;,</span></span>
 <span class="co">## <span style="color: #949494;">#   ess_tail &lt;dbl&gt;, max_rank &lt;int&gt;</span></span></code></pre>
 <p>We see nothing obviously wrong, the posterior means are relatively close to simulated values (as summarised by the z-scores) - no variable is clearly ridiculously misfit. So let’s run a few more iterations.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">8314566</span><span class="op">)</span>
 <span class="va">datasets_first_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_first</span>, <span class="fl">10</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_fixed_log_mix_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_first_10</span>, <span class="va">backend_fixed_log_mix</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"mixture_fixed_log_mix_2"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'mixture_fixed_log_mix_2'</span></code></pre>
 <pre><code><span class="co">##  - 10 (100%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.735.</span></code></pre>
 <pre><code><span class="co">##  - 8 (80%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span>
 <span class="co">## the rank statistics. The lowest tail ESS was 28.</span>
@@ -348,11 +351,11 @@ model {
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>So there are some problems - we have quite a bunch of high R-hat and low ESS values. This is the distribution of all rhats:</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">results_fixed_log_mix_2</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">rhat</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/mixture_fixed_log_mix_rhat-1.png" width="700"></p>
 <p>Let’s examine a single pairs plot:</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://mc-stan.org/bayesplot/reference/MCMC-scatterplots.html" class="external-link">mcmc_pairs</a></span><span class="op">(</span><span class="va">results_fixed_log_mix_2</span><span class="op">$</span><span class="va">fits</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
@@ -365,7 +368,7 @@ model {
 <h3 id="fixing-ordering">Fixing ordering<a class="anchor" aria-label="anchor" href="#fixing-ordering"></a>
 </h3>
 <p>We can easily fix the ordering of the <code>mu</code>s by using the <code>ordered</code> built-in type.</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"small_model_workflow/mixture_fixed_ordered.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N;
@@ -385,7 +388,7 @@ model {
   }
   target += normal_lpdf(mu | 3, 1);
 }</code></pre>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">model_fixed_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"small_model_workflow/mixture_fixed_ordered.stan"</span><span class="op">)</span>
   <span class="va">backend_fixed_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="va">model_fixed_ordered</span><span class="op">)</span> 
@@ -394,7 +397,7 @@ model {
   <span class="va">backend_fixed_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span><span class="va">model_fixed_ordered</span><span class="op">)</span>   
 <span class="op">}</span></code></pre></div>
 <p>We also need to update the generator to match the new names and ordering constant:</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generator_func_ordered</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
   <span class="co"># If the priors for all components of an ordered vector are the same</span>
   <span class="co"># then just sorting the result of a generator is enough to create</span>
@@ -425,13 +428,14 @@ model {
 
 <span class="va">generator_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_func_ordered</span>, N <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></code></pre></div>
 <p>We are kind of confident (and the model fits quickly), so we’ll already start with 10 simulations.</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">3785432</span><span class="op">)</span>
 <span class="va">datasets_ordered_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_ordered</span>, <span class="fl">10</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_fixed_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_ordered_10</span>, <span class="va">backend_fixed_ordered</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"mixture_fixed_ordered"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'mixture_fixed_ordered'</span></code></pre>
 <pre><code><span class="co">##  - 2 (20%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.207.</span></code></pre>
 <pre><code><span class="co">##  - 2 (20%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span>
 <span class="co">## the rank statistics. The lowest tail ESS was 30.</span>
@@ -442,7 +446,7 @@ model {
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>Now some fits still produce problematic Rhats or divergent transitions, let’s browse the <code>$backend_diagnostics</code> (which contain Stan-specific diagnostic values) to see which simulations are causing problems:</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_fixed_ordered</span><span class="op">$</span><span class="va">backend_diagnostics</span></code></pre></div>
 <pre><code><span class="co">##    sim_id max_chain_time n_failed_chains n_divergent n_max_treedepth n_rejects</span>
 <span class="co">## 1       1          0.809               0           7               0         0</span>
@@ -456,7 +460,7 @@ model {
 <span class="co">## 9       9          0.578               0           0               0         0</span>
 <span class="co">## 10     10          0.536               0           0               0         0</span></code></pre>
 <p>One of the fits has quite a lot of divergent transitions. Let’s look at the pairs plot for the model:</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">problematic_fit_id</span> <span class="op">&lt;-</span> <span class="fl">2</span>
 <span class="va">problematic_fit</span> <span class="op">&lt;-</span> <span class="va">results_fixed_ordered</span><span class="op">$</span><span class="va">fits</span><span class="op">[[</span><span class="va">problematic_fit_id</span><span class="op">]</span><span class="op">]</span>
 <span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
@@ -466,7 +470,7 @@ model {
 <span class="op">}</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/mixture_fixed_ordered_pairs-1.png" width="700"></p>
 <p>There is a lot of ugly stuff going on. Notably, one can notice that the posterior of theta is bimodal, preferring either almost 0 or almost 1 - and when that happens, the mean of one of the components is almost unconstrained. Why does that happen? The key to the answer is in the simulated values for the component means:</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://mc-stan.org/posterior/reference/subset_draws.html" class="external-link">subset_draws</a></span><span class="op">(</span><span class="va">datasets_ordered_10</span><span class="op">$</span><span class="va">variables</span>, draw <span class="op">=</span> <span class="va">problematic_fit_id</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">## # A draws_matrix: 1 iterations, 1 chains, and 3 variables</span>
 <span class="co">##     variable</span>
@@ -481,7 +485,7 @@ model {
 <p>This can definitely be done. But another way is to just ignore the simulations that had divergences for SBC calculations. It turns out that if we remove simulations in a way that only depends on the observed data (and not on unobserved variables), the SBC identity is preserved and we can use SBC without modifications. The resulting check is however telling us something only for data that were not rejected. In this case this is not a big issue: if a fit had divergent transitions, we would not trust it anyway, so removing fits with divergent transitions is not such a big deal.</p>
 <p>For more details see the <a href="https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html"><code>rejection_sampling</code></a> vignette.</p>
 <p>So let us subset the results to avoid divergences:</p>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">sim_ids_to_keep</span> <span class="op">&lt;-</span> 
   <span class="va">results_fixed_ordered</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">sim_id</span><span class="op">[</span>
     <span class="va">results_fixed_ordered</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">n_divergent</span> <span class="op">==</span> <span class="fl">0</span><span class="op">]</span>
@@ -506,19 +510,19 @@ model {
 <span class="co">##  - No fits had steps rejected.</span>
 <span class="co">##  - Maximum time per chain was 3.4 sec.</span></code></pre>
 <p>This gives us no obvious problems.</p>
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_fixed_ordered_subset</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/mixture_fixed_ordered_subset_results-1.png" width="700"></p>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_fixed_ordered_subset</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/mixture_fixed_ordered_subset_results-2.png" width="700"></p>
 <p>Since we now have only 8 simulations, it is not surprising that we are still left with a huge uncertainty about the actual coverage of our posterior intervals - we can see that in a plot:</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">results_fixed_ordered_subset</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/mixture_fixed_ordered_subset_coverage-1.png" width="700"></p>
 <p>The coverage plot shows the observed coverage of central posterior intervals of varying width and the associated uncertainty (black + grey), the blue line represents perfect calibration.</p>
 <p>Or investigate numerically.</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">coverage</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">results_fixed_ordered_subset</span><span class="op">$</span><span class="va">stats</span>, width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>,<span class="fl">0.9</span>,<span class="fl">0.95</span><span class="op">)</span><span class="op">)</span>
 <span class="va">coverage</span></code></pre></div>
 <pre><code><span class="co">## <span style="color: #949494;"># A tibble: 9 x 6</span></span>
@@ -535,12 +539,13 @@ model {
 <span class="co">## <span style="color: #BCBCBC;">9</span> theta     0.95              0.95  0.400    0.75    0.925</span></code></pre>
 <p>We can clearly see that while there are no terrible errors, a quite big miscalibration is still consistent with the SBC results so far, for example the 90% posterior interval for <code>theta</code> could (as far as we know) contain 40% - 93% of the true values. That’s not very reassuring.</p>
 <p>So we can run for more iterations - to reduce memory consumption, we set <code>keep_fits = FALSE</code>. You generally don’t want to do this unless you are really short on memory, as it makes you unable to inspect any problems in your fits:</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">54987622</span><span class="op">)</span>
 <span class="va">datasets_ordered_100</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_ordered</span>, <span class="fl">100</span><span class="op">)</span>
 <span class="va">results_fixed_ordered_100</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_ordered_100</span>, <span class="va">backend_fixed_ordered</span>, 
                     keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"mixture_fixed_ordered_100"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'mixture_fixed_ordered_100'</span></code></pre>
 <pre><code><span class="co">##  - 20 (20%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.32.</span></code></pre>
 <pre><code><span class="co">##  - 20 (20%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span>
 <span class="co">## the rank statistics. The lowest tail ESS was 11.</span>
@@ -551,7 +556,7 @@ model {
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>Once again we subset to keep only non-divergent fits - this also removes all the problematic Rhats and ESS.</p>
-<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">sim_ids_to_keep</span> <span class="op">&lt;-</span> 
   <span class="va">results_fixed_ordered_100</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">sim_id</span><span class="op">[</span>
     <span class="va">results_fixed_ordered_100</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">n_divergent</span> <span class="op">==</span> <span class="fl">0</span><span class="op">]</span>
@@ -576,17 +581,17 @@ model {
 <span class="co">##  - No fits had steps rejected.</span>
 <span class="co">##  - Maximum time per chain was 4.249 sec.</span></code></pre>
 <p>And we can use <code>bind_results</code> to combine the new results with the previous fits to not waste our computational effort.</p>
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_fixed_ordered_combined</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span>
   <span class="va">results_fixed_ordered_subset</span>, <span class="va">results_fixed_ordered_100_subset</span><span class="op">)</span>
 
 <span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_fixed_ordered_combined</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_fixed_ordered_combined_results-1.png" width="700"></p>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb64"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_fixed_ordered_combined</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_fixed_ordered_combined_results-2.png" width="700"></p>
 <p>Seems fairly well within the expected bounds. We could definitely run more iterations if we wanted to have a more strict check, but for now, we are happy and the remaining uncertainty about the coverage of our posterior intervals is no longer huge, so it is highly unlikely there is some big bug lurking down there. While we see a potential problem where the coverage for <code>mu[1]</code> and <code>mu[2]</code> is no longer consistent with perfect calibration, the <code>ecdf_diff</code> plot takes precedence as the uncertainty in the coverage plot is only approximate and we thus cannot take it too seriously (see <code><a href="../reference/empirical_coverage.html">help("empirical_coverage")</a></code> for some more details).</p>
-<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">results_fixed_ordered_combined</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_fixed_ordered_combined_results_coverage-1.png" width="700"></p>
 <p>Note: it turns out that extending the model to more components becomes somewhat tricky as the model can become sensitive to initialization. Also the problems with data that can be explained by fewer components than the model assumes become more prevalent.</p>
@@ -597,7 +602,7 @@ model {
 </h2>
 <p>Let’s move to the beta regression submodel of our model. After spending a bunch of time implementing this, I realized, that maybe treating this as a logistic regression submodel would have been wiser (and sufficient). But I am gonna keep it in - it just demonstrates that a real workflow can be messy and let’s us show some additional classes of problems and how they manifest in SBC.</p>
 <p>Checking the wiki page for Beta distribution, we notice that it has two parameters, both bounded to be positive. So our first attempt at beta regression just creates two linear predictors - one for each parameter of the distribution. We then exponentiate the predictors to make them positive and we have a model:</p>
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"small_model_workflow/beta_first.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N_obs;
@@ -616,7 +621,7 @@ model {
   target += beta_lpdf(y | exp(linpred[1,]), exp(linpred[2,]));
   target += normal_lpdf(to_vector(beta) | 0, 1);
 }</code></pre>
-<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb68"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">model_beta_first</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"small_model_workflow/beta_first.stan"</span><span class="op">)</span>
   <span class="va">backend_beta_first</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="va">model_beta_first</span><span class="op">)</span> 
@@ -625,7 +630,7 @@ model {
   <span class="va">backend_beta_first</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span><span class="va">model_beta_first</span><span class="op">)</span>   
 <span class="op">}</span></code></pre></div>
 <p>We also write a matching generator (microoptimization tip: I usually write Stan models first so that I can work on the generator code while the Stan model compiles):</p>
-<div class="sourceCode" id="cb64"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb69"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generator_func_beta_first</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N_obs</span>, <span class="va">N_predictors</span><span class="op">)</span> <span class="op">{</span>
   <span class="kw">repeat</span> <span class="op">{</span>
     <span class="va">beta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">N_predictors</span> <span class="op">*</span> <span class="fl">2</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span>, ncol <span class="op">=</span> <span class="va">N_predictors</span><span class="op">)</span>
@@ -665,27 +670,28 @@ model {
 <span class="va">generator_beta_first</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_func_beta_first</span>, N_obs <span class="op">=</span> <span class="fl">50</span>, N_predictors <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></code></pre></div>
 <p>One thing to note is that we add a rejection sampling step - we repeatedly generate simulations, until we find one without <code>y</code> values very close to 1. Those can be problematic as they can be rounded to 1 when the data for Stan is written to disk. And exact 1 is impossible with the Beta likelihood and the model will fail. Rejecting the simulation due to this criterion is quite rare and in fact, it does not threaten the validity of the SBC procedure (at least to the extent our real data also don’t contain such extreme values) - for more details see the <a href="https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html"><code>rejection_sampling</code></a> vignette.</p>
 <p>We’ll start with 10 simulations once again.</p>
-<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb70"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">3325488</span><span class="op">)</span>
 <span class="va">datasets_beta_first</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_beta_first</span>, <span class="fl">10</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_beta_first_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_beta_first</span>, <span class="va">backend_beta_first</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"beta_first_10"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'beta_first_10'</span></code></pre>
 <pre><code><span class="co">##  - 1 (10%) fits had divergent transitions. Maximum number of divergences was 7.</span></code></pre>
 <pre><code><span class="co">##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 26.</span></code></pre>
 <pre><code><span class="co">## Not all diagnostics are OK.</span>
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>We get a single fit with divergent transitions and the ranks look mostly OK:</p>
-<div class="sourceCode" id="cb70"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb76"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_beta_first_10</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/beta_first_results-1.png" width="700"></p>
-<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb77"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_beta_first_10</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/beta_first_results-2.png" width="700"></p>
 <p>Let’s inspect the pairs plot for the offending fit:</p>
-<div class="sourceCode" id="cb72"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb78"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://mc-stan.org/bayesplot/reference/MCMC-scatterplots.html" class="external-link">mcmc_pairs</a></span><span class="op">(</span><span class="va">results_beta_first_10</span><span class="op">$</span><span class="va">fits</span><span class="op">[[</span><span class="fl">3</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
@@ -693,7 +699,7 @@ model {
 <span class="op">}</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/beta_first_10_pairs-1.png" width="700"></p>
 <p>This is a very crowded plot and it is hard to resolve details, but we see some correlations between the corresponding beta elements (e.g. <code>beta[1,1]</code> and <code>beta[2,1]</code>), let’s have a closer look and show the same pairs plot for five of our fits:</p>
-<div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb79"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">for</span><span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">results_beta_first_10</span><span class="op">$</span><span class="va">fits</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span>
   <span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
@@ -712,7 +718,7 @@ model {
 <p>The simplest way to resolve the issue with the correlations is to explicitly parametrize the beta distribution by its mean (<span class="math inline">\(0 &lt; \mu &lt; 1\)</span>). The more common parametrization then adds a precision parameter (<span class="math inline">\(\phi &gt; 0\)</span>), so we then have <span class="math inline">\(y \sim \mathrm{Beta}(\mu \phi, (1 - \mu) \phi)\)</span></p>
 <p>This also makes much more sense for the bigger task - combining with the mixture submodel, as we really want to predict just a single probability. So we’ll rewrite our predictors to predict only the logit of the mean (as in logistic regression) and keep the precision as a constant between observations. We could definitely also decide whether to keep the full flexibility and allow predictors for precision, we just don’t do it here.</p>
 <p>This is then our updated model:</p>
-<div class="sourceCode" id="cb74"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb80"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"small_model_workflow/beta_precision.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N_obs;
@@ -733,7 +739,7 @@ model {
   target += beta_lpdf(y | mu * phi, (1 - mu) * phi);
   target += normal_lpdf(beta | 0, 1);
 }</code></pre>
-<div class="sourceCode" id="cb76"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb82"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">model_beta_precision</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"small_model_workflow/beta_precision.stan"</span><span class="op">)</span>
   <span class="va">backend_beta_precision</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="va">model_beta_precision</span><span class="op">)</span> 
@@ -743,7 +749,7 @@ model {
   
 <span class="op">}</span></code></pre></div>
 <p>And we need to update the generator to match:</p>
-<div class="sourceCode" id="cb77"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generator_func_beta_precision</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N_obs</span>, <span class="va">N_predictors</span><span class="op">)</span> <span class="op">{</span>
   <span class="kw">repeat</span> <span class="op">{</span>
     <span class="va">beta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">N_predictors</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>
@@ -784,37 +790,39 @@ model {
 <span class="va">generator_beta_precision</span> <span class="op">&lt;-</span> 
   <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_func_beta_precision</span>, N_obs <span class="op">=</span> <span class="fl">50</span>, N_predictors <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></code></pre></div>
 <p>Starting with 10 simulations:</p>
-<div class="sourceCode" id="cb78"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb84"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">46988234</span><span class="op">)</span>
 <span class="va">datasets_beta_precision_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_beta_precision</span>, <span class="fl">10</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb79"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb85"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_beta_precision_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_beta_precision_10</span>, <span class="va">backend_beta_precision</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"beta_precision_10"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'beta_precision_10'</span></code></pre>
 <pre><code><span class="co">##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 15.</span></code></pre>
 <pre><code><span class="co">## Not all diagnostics are OK.</span>
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>No big problems from the fit and the plots:</p>
-<div class="sourceCode" id="cb82"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_beta_precision_10</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_beta_precision_10_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb90"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_beta_precision_10</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_beta_precision_10_plots-2.png" width="700"></p>
 <p>So we’ll run 90 more iterations and combine them with the previous results:</p>
-<div class="sourceCode" id="cb84"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb91"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2136468</span><span class="op">)</span>
 <span class="va">datasets_beta_precision_90</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_beta_precision</span>, <span class="fl">90</span><span class="op">)</span>
 <span class="va">results_beta_precision_90</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span>
   <span class="va">datasets_beta_precision_90</span>, <span class="va">backend_beta_precision</span>,
   keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"beta_precision_90"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'beta_precision_90'</span></code></pre>
 <pre><code><span class="co">##  - 90 (100%) fits had some steps rejected. Maximum number of rejections was 17.</span></code></pre>
 <pre><code><span class="co">## Not all diagnostics are OK.</span>
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
-<div class="sourceCode" id="cb87"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb95"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_beta_precision_100</span> <span class="op">&lt;-</span>
   <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span>
     <span class="va">results_beta_precision_10</span>,
@@ -822,10 +830,10 @@ model {
     <span class="op">)</span>
 
 <span class="va">datasets_beta_precision_100</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_datasets.html">bind_datasets</a></span><span class="op">(</span><span class="va">datasets_beta_precision_10</span>, <span class="va">datasets_beta_precision_90</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb88"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb96"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_beta_precision_100</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_beta_precision_100_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb97"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_beta_precision_100</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_beta_precision_100_plots-2.png" width="700"></p>
 <p>The plots don’t look terrible, but the <code>beta[2]</code> and especially the <code>phi</code> variable show slight problems.</p>
@@ -835,7 +843,7 @@ model {
 <h3 id="adding-missing-prior">Adding missing prior<a class="anchor" aria-label="anchor" href="#adding-missing-prior"></a>
 </h3>
 <p>So we add the missing prior to the model:</p>
-<div class="sourceCode" id="cb90"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb98"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"small_model_workflow/beta_precision_fixed_prior.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N_obs;
@@ -857,7 +865,7 @@ model {
   target += normal_lpdf(beta | 0, 1);
   target += lognormal_lpdf(phi | 3, 1);
 }</code></pre>
-<div class="sourceCode" id="cb92"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb100"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">model_beta_precision_fixed_prior</span> <span class="op">&lt;-</span>
     <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"small_model_workflow/beta_precision_fixed_prior.stan"</span><span class="op">)</span>
@@ -868,23 +876,24 @@ model {
   <span class="va">backend_beta_precision_fixed_prior</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span><span class="va">model_beta_precision_fixed_prior</span><span class="op">)</span>   
 <span class="op">}</span></code></pre></div>
 <p>And recompute for all 100 simulations at once (as we don’t expect adding prior to introduce huge problems).</p>
-<div class="sourceCode" id="cb93"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb101"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_beta_precision_fixed_prior</span> <span class="op">&lt;-</span> 
   <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_beta_precision_100</span>, <span class="va">backend_beta_precision_fixed_prior</span>, 
                     keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"beta_precision_fixed_prior"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'beta_precision_fixed_prior'</span></code></pre>
 <pre><code><span class="co">##  - 100 (100%) fits had some steps rejected. Maximum number of rejections was 19.</span></code></pre>
 <pre><code><span class="co">## Not all diagnostics are OK.</span>
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
-<div class="sourceCode" id="cb96"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb105"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_beta_precision_fixed_prior</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_beta_precision_fixed_prior_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb97"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb106"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_beta_precision_fixed_prior</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_beta_precision_fixed_prior_plots-2.png" width="700"></p>
 <p>Diagnostic plots are looking good! So we add 100 more simulations:</p>
-<div class="sourceCode" id="cb98"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb107"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1233845</span><span class="op">)</span>
 <span class="va">datasets_beta_precision_100b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_beta_precision</span>, <span class="fl">100</span><span class="op">)</span>
 <span class="va">results_beta_precision_fixed_prior_200</span> <span class="op">&lt;-</span>
@@ -893,18 +902,19 @@ model {
     <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_beta_precision_100b</span>, <span class="va">backend_beta_precision_fixed_prior</span>, 
                     keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"beta_precision_fixed_prior_2"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'beta_precision_fixed_prior_2'</span></code></pre>
 <pre><code><span class="co">##  - 100 (100%) fits had some steps rejected. Maximum number of rejections was 18.</span></code></pre>
 <pre><code><span class="co">## Not all diagnostics are OK.</span>
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
-<div class="sourceCode" id="cb101"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb111"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_beta_precision_fixed_prior_200</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_beta_precision_fixed_prior_200_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb102"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb112"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_beta_precision_fixed_prior_200</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_beta_precision_fixed_prior_200_plots-2.png" width="700"></p>
 <p>Yeah, still looking good. And we can see that the empirical coverage of our central intervals is in quite tight agreement with theory:</p>
-<div class="sourceCode" id="cb103"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb113"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">results_beta_precision_fixed_prior_200</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_beta_precision_fixed_prior_200_coverage-1.png" width="700"></p>
 <p>So for now we are also happy about the beta regression submodel.</p>
@@ -914,7 +924,7 @@ model {
 <h2 id="putting-it-together">Putting it together<a class="anchor" aria-label="anchor" href="#putting-it-together"></a>
 </h2>
 <p>We are finally ready to make a first attempt at the full model:</p>
-<div class="sourceCode" id="cb104"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb114"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"small_model_workflow/combined_first.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N_obs;
@@ -942,7 +952,7 @@ model {
   target += normal_lpdf(mu | 3, 1);
   target += normal_lpdf(beta | 0, 1);
 }</code></pre>
-<div class="sourceCode" id="cb106"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb116"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">model_combined</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"small_model_workflow/combined_first.stan"</span><span class="op">)</span>
   <span class="va">backend_combined</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="va">model_combined</span><span class="op">)</span>
@@ -951,7 +961,7 @@ model {
   <span class="va">backend_combined</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span><span class="va">model_combined</span><span class="op">)</span>  
 <span class="op">}</span></code></pre></div>
 <p>And this is our generator for the full model:</p>
-<div class="sourceCode" id="cb107"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb117"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generator_func_combined</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N_obs</span>, <span class="va">N_predictors</span><span class="op">)</span> <span class="op">{</span>
   <span class="co"># If the priors for all components of an ordered vector are the same</span>
   <span class="co"># then just sorting the result of a generator is enough to create</span>
@@ -997,13 +1007,14 @@ model {
 
 <span class="va">generator_combined</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_func_combined</span>, N_obs <span class="op">=</span> <span class="fl">50</span>, N_predictors <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></code></pre></div>
 <p>We are confident (and the fits are fast anyway), so we start with 200 simulations:</p>
-<div class="sourceCode" id="cb108"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb118"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">5749955</span><span class="op">)</span>
 <span class="va">dataset_combined</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_combined</span>, <span class="fl">200</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb109"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb119"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_combined</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">dataset_combined</span>, <span class="va">backend_combined</span>, 
                     keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"combined"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'combined'</span></code></pre>
 <pre><code><span class="co">##  - 7 (4%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.05.</span></code></pre>
 <pre><code><span class="co">##  - 6 (3%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span>
 <span class="co">## the rank statistics. The lowest tail ESS was 17.</span>
@@ -1015,10 +1026,10 @@ model {
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>We get some amount of divergent transitions, but the ranks look pretty good:</p>
-<div class="sourceCode" id="cb115"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb126"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_combined</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_combined_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb116"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb127"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_combined</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_combined_plots-2.png" width="700"></p>
 <p>Indeed it seems the model works pretty well.</p>
@@ -1031,18 +1042,18 @@ model {
 <p>The main advantage is that if we can do this, we can avoid wasting computation on fitting data that would likely produce divergences anyway. The downside is that it means we no longer have a guarantee the model works for non-rejected data, so we need to check if the data we want to analyze would not be rejected by our criterion.</p>
 <p>How to build such a criterion here? We’ll note that for Poisson-distributed variables the ratio of mean to variance (a.k.a the Fano factor) is always 1. So if the components are too similar, the data should resemble a Poisson distribution and have Fano factor of 1, while if the components are distinct the Fano factor will be larger.</p>
 <p>Below is a plot of fano factors versus the number of divergences we’ve seen:</p>
-<div class="sourceCode" id="cb117"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb128"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">fanos</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">dataset_combined</span><span class="op">$</span><span class="va">generated</span>, 
                 <span class="kw">function</span><span class="op">(</span><span class="va">dataset</span><span class="op">)</span> <span class="op">{</span> <span class="fu"><a href="https://mc-stan.org/posterior/reference/rvar-summaries-over-draws.html" class="external-link">var</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">y</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">dataset</span><span class="op">$</span><span class="va">y</span><span class="op">)</span> <span class="op">}</span>, 
                 FUN.VALUE <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fanos</span>, <span class="va">results_combined</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">n_divergent</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/combined_fanos-1.png" width="700"></p>
 <p>All the divergence are for low fano factors - this is the histogram of Fano factor for diverging fits:</p>
-<div class="sourceCode" id="cb118"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb129"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">fanos</span><span class="op">[</span><span class="va">results_combined</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">n_divergent</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">]</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/fanos_divergent-1.png" width="700"></p>
 <p>So what we’ll do is that we’ll reject any simulation where the observed data have Fano factor &lt; 1.5. In practice a simple way to implement this is to wrap our generator code in a loop and break from the loop only when the generated data meet our criteria (i.e. is not rejected). This is our code:</p>
-<div class="sourceCode" id="cb119"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb130"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generator_func_combined_reject</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N_obs</span>, <span class="va">N_predictors</span><span class="op">)</span> <span class="op">{</span>
   <span class="kw">if</span><span class="op">(</span><span class="va">N_obs</span> <span class="op">&lt;</span> <span class="fl">5</span><span class="op">)</span> <span class="op">{</span>
     <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Too low N_obs for this simulator"</span><span class="op">)</span>
@@ -1096,30 +1107,31 @@ model {
 <span class="va">generator_combined_reject</span> <span class="op">&lt;-</span> 
   <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_func_combined_reject</span>, N_obs <span class="op">=</span> <span class="fl">50</span>, N_predictors <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></code></pre></div>
 <p>We’ll once again fit our model to 200 simulations:</p>
-<div class="sourceCode" id="cb120"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb131"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">44685226</span><span class="op">)</span>
 <span class="va">dataset_combined_reject</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_combined_reject</span>, <span class="fl">200</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb121"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb132"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_combined_reject</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">dataset_combined_reject</span>, <span class="va">backend_combined</span>, 
                     keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"combined_reject"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'combined_reject'</span></code></pre>
 <pre><code><span class="co">##  - 1 (0%) fits had some steps rejected. Maximum number of rejections was 2.</span></code></pre>
 <pre><code><span class="co">## Not all diagnostics are OK.</span>
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>No more divergences! And the ranks look nice.</p>
-<div class="sourceCode" id="cb124"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb136"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_combined_reject</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/combined_reject_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb125"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb137"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_combined_reject</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/combined_reject_plots-2.png" width="700"></p>
 <p>And our coverage is pretty tight:</p>
-<div class="sourceCode" id="cb126"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb138"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">results_combined_reject</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/combined_reject_coverage-1.png" width="700"></p>
 <p>Below we show the uncertainty for two variables and some widths of central posterior intervals numerically:</p>
-<div class="sourceCode" id="cb127"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb139"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">stats_subset</span> <span class="op">&lt;-</span> <span class="va">results_combined_reject</span><span class="op">$</span><span class="va">stats</span><span class="op">[</span>
   <span class="va">results_combined_reject</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">variable</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"beta[1]"</span>, <span class="st">"mu[1]"</span><span class="op">)</span>,<span class="op">]</span>
 
@@ -1136,7 +1148,7 @@ model {
 <span class="co">## <span style="color: #BCBCBC;">7</span> mu[1]     0.9               0.9   0.851    0.9     0.934</span>
 <span class="co">## <span style="color: #BCBCBC;">8</span> mu[1]     0.95              0.95  0.910    0.95    0.972</span></code></pre>
 <p>Maybe we think the remaining uncertainty is too big, so we’ll run 300 more simulations, just to be sure:</p>
-<div class="sourceCode" id="cb129"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb141"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1395367854</span><span class="op">)</span>
 <span class="va">dataset_combined_reject_more</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_combined_reject</span>, <span class="fl">300</span><span class="op">)</span> 
 <span class="va">results_combined_reject_more</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span>
@@ -1145,6 +1157,7 @@ model {
                     keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"combined_reject_more"</span><span class="op">)</span><span class="op">)</span>
 <span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'combined_reject_more'</span></code></pre>
 <pre><code><span class="co">##  - 2 (1%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.093.</span></code></pre>
 <pre><code><span class="co">##  - 2 (1%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span>
 <span class="co">## the rank statistics. The lowest tail ESS was 21.</span>
@@ -1157,16 +1170,16 @@ model {
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>We get some very small number of problematic fits, which we can ignore in this volume (but probably more aggresive rejection sampling would remove those as well).</p>
 <p>Our plots and coverage are now pretty decent:</p>
-<div class="sourceCode" id="cb135"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb148"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_combined_reject_more</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_combined_reject_more_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb136"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb149"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_combined_reject_more</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_combined_reject_more_plots-2.png" width="700"></p>
-<div class="sourceCode" id="cb137"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb150"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">results_combined_reject_more</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/results_combined_reject_more_coverage-1.png" width="700"></p>
-<div class="sourceCode" id="cb138"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb151"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">stats_subset</span> <span class="op">&lt;-</span> <span class="va">results_combined_reject_more</span><span class="op">$</span><span class="va">stats</span><span class="op">[</span>
   <span class="va">results_combined_reject_more</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">variable</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"beta[1]"</span>, <span class="st">"mu[2]"</span><span class="op">)</span>,<span class="op">]</span>
 <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">stats_subset</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.25</span>,<span class="fl">0.5</span>,<span class="fl">0.9</span>,<span class="fl">0.95</span><span class="op">)</span><span class="op">)</span></code></pre></div>
@@ -1184,11 +1197,11 @@ model {
 <p>This actually shows a limitation of the coverage results - for <code>mu[2]</code> the approximate CI for coverage excludes exact calibration for a bunch of intervals, but above we see that the more trustworthy <code>plot_ecdf_diff</code> is not showing a problem (although there is some tendency towards slight underdispersion).</p>
 <p>Still, this might warrant further investigation if small discrepancies in <code>mu</code> are considered important, if we are interested only in the <code>beta</code> coefficients, we can stay assured that their calibration is pretty good. We give you our word that we ran additional simulations and the discrepancy disappears.</p>
 <p>Finally, we can also use this simulation exercise to understand what would we be likely to learn from an experiment matching the simulations (50 observations, 3 predictors) and plot the true values (simulated by the generator) against estimated mean + 90% posterior credible interval:</p>
-<div class="sourceCode" id="cb140"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb153"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">results_combined_reject_more</span>, alpha <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span></code></pre></div>
 <p><img src="small_model_workflow_files/figure-html/sim_estimated_final-1.png" width="700"></p>
 <p>We see that we get very precise information about <code>mu</code> and a decent picture about all <code>beta</code> elements, but the reamining uncertainty is large. We could for example compute the probability that the posterior 90% interval for <code>beta[1]</code> excludes zero, i.e. that we learn something about the sign of <code>beta[1]</code>:</p>
-<div class="sourceCode" id="cb141"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb154"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">stats_beta1</span> <span class="op">&lt;-</span> 
   <span class="va">results_combined_reject_more</span><span class="op">$</span><span class="va">stats</span><span class="op">[</span>
     <span class="va">results_combined_reject_more</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">variable</span> <span class="op">==</span> <span class="st">"beta[1]"</span>,<span class="op">]</span>

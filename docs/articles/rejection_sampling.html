@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
       </span>
     </div>
 
@@ -126,7 +126,7 @@
       <h1 data-toc-skip>Rejection sampling in simulations</h1>
                         <h4 data-toc-skip class="author">Martin Modrák</h4>
             
-            <h4 data-toc-skip class="date">2022-02-13</h4>
+            <h4 data-toc-skip class="date">2022-02-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/rejection_sampling.Rmd" class="external-link"><code>vignettes/rejection_sampling.Rmd</code></a></small>
       <div class="hidden name"><code>rejection_sampling.Rmd</code></div>
@@ -244,14 +244,15 @@ model {
 <code class="sourceCode R"><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets</span>, <span class="va">backend</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"no_rejections"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'no_rejections'</span></code></pre>
 <pre><code><span class="co">##  - 1 (0%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.011.</span></code></pre>
 <pre><code><span class="co">## Not all diagnostics are OK.</span>
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/results1_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/results1_plots-2.png" width="700"></p>
 <p>Indeed, all looks good.</p>
@@ -260,7 +261,7 @@ model {
 <h3 id="rejection-based-on-unobserved-variables">Rejection based on unobserved variables<a class="anchor" aria-label="anchor" href="#rejection-based-on-unobserved-variables"></a>
 </h3>
 <p>Now let us modify the generator to reject based on values of an unobserved variable.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generator_reject_unobserved</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
    <span class="kw">repeat</span> <span class="op">{</span>
     <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">2</span><span class="op">)</span>
@@ -274,17 +275,18 @@ model {
    <span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
 <p>We don’t even need to run very many fits to see the problem.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">21455</span><span class="op">)</span>
 <span class="va">datasets_reject_unobserved</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_reject_unobserved</span>, <span class="fl">200</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_reject_unobserved</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_reject_unobserved</span>, <span class="va">backend</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"reject_unobserved"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<pre><code><span class="co">## Results loaded from cache file 'reject_unobserved'</span></code></pre>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_reject_unobserved</span><span class="op">)</span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/reject_unobserved_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_reject_unobserved</span><span class="op">)</span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/reject_unobserved_plots-2.png" width="700"></p>
 <p>Indeed, we see a clear failure.</p>
@@ -293,7 +295,7 @@ model {
 <h3 id="rejecting-based-on-data">Rejecting based on data<a class="anchor" aria-label="anchor" href="#rejecting-based-on-data"></a>
 </h3>
 <p>But what if we reject based on the values of data? This should in theory result in just a constant change in posterior density and not affect SBC. (SBC will however then check only the non-rejected parts of the data space). We will do a relatively aggressive rejection scheme (reject more than 50% of simulations).</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">generator_reject_y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span>
    <span class="kw">repeat</span> <span class="op">{</span>
     <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">2</span><span class="op">)</span>
@@ -307,21 +309,22 @@ model {
      generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>N <span class="op">=</span> <span class="va">N</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span>
    <span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">369654</span><span class="op">)</span>
 <span class="va">datasets_reject_y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_reject_y</span>, <span class="fl">1000</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_reject_y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_reject_y</span>, <span class="va">backend</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
                     cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"reject_y"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'reject_y'</span></code></pre>
 <pre><code><span class="co">##  - 1 (0%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.01.</span></code></pre>
 <pre><code><span class="co">## Not all diagnostics are OK.</span>
 <span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
 <span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_reject_y</span><span class="op">)</span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/reject_y_plot-1.png" width="700"></p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_reject_y</span><span class="op">)</span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/reject_y_plot-2.png" width="700"></p>
 <p>We see that even with quite heavy rejection based on y, SBC to a high resolution passes.</p>
