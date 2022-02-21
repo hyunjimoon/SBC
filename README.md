@@ -31,6 +31,8 @@ gen <- SBC_example_generator("normal")
 backend_var <- SBC_example_backend("normal_var", interface = "rstan")
 ```
 
+_Note: Using the `cmdstanr` interface, a small number of rejected steps will be reported. Those are false positives and do not threaten validity (they happen during warmup). This is a result of difficulties in parsing the output of `cmdstanr`. We are working on a resolution._
+
 You can use `SBC_print_example_model("normal_var")` to inspect the model used.
 
 We generate 50 simulated datasets and perform SBC:

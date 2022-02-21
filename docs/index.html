@@ -146,7 +146,8 @@
 <span class="va">gen</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/SBC_example_generator.html">SBC_example_generator</a></span><span class="op">(</span><span class="st">"normal"</span><span class="op">)</span>
 <span class="co"># interface = "cmdstanr" is also supported</span>
 <span class="va">backend_var</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/SBC_example_backend.html">SBC_example_backend</a></span><span class="op">(</span><span class="st">"normal_var"</span>, interface <span class="op">=</span> <span class="st">"rstan"</span><span class="op">)</span></code></pre></div>
-<p>You can use <code>SBC_print_example_model("normal_var")</code> to inspect the model used.</p>
+<p><em>Note: Using the <code>cmdstanr</code> interface, a small number of rejected steps will be reported. Those are false positives and do not threaten validity (they happen during warmup). This is a result of difficulties in parsing the output of <code>cmdstanr</code>. We are working on a resolution.</em></p>
+<p>You can use <code><a href="reference/SBC_print_example_model.html">SBC_print_example_model("normal_var")</a></code> to inspect the model used.</p>
 <p>We generate 50 simulated datasets and perform SBC:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ds</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">gen</span>, n_sims <span class="op">=</span> <span class="fl">50</span><span class="op">)</span>
