@@ -115,7 +115,7 @@ compile and fit Stan models and thus may take a while to complete.</p>
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">SBC_example_results</span><span class="op">(</span>
   example <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"normal_ok"</span>, <span class="st">"normal_bad"</span>, <span class="st">"visualizations"</span><span class="op">)</span>,
-  interface <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rstan"</span>, <span class="st">"cmdstanr"</span><span class="op">)</span>,
+  interface <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rstan"</span>, <span class="st">"cmdstanr"</span>, <span class="st">"rjags"</span><span class="op">)</span>,
   N <span class="op">=</span> <span class="fl">100</span>,
   n_sims <span class="op">=</span> <span class="fl">50</span>
 <span class="op">)</span></code></pre></div>
@@ -129,8 +129,9 @@ where the generator matches the model
 (using the <code>normal</code> generator and <code>normal_sd</code> backend), while
 <code>normal_bad</code> is an example with a mismatch between the generator and backend
 that manifests in SBC (<code>normal_bad</code> combines the <code>normal</code> generator with
-<code>normal_var</code> backend). <code>visualizations</code> creates a purely artificial results
-that are meant to showcase the built-in plots.</p></li>
+<code>normal_bad</code> backend). <code>visualizations</code> creates a purely artificial results
+that are meant to showcase the built-in plots (the <code>interface</code> parameter will
+be ignored).</p></li>
 </ul></dd>
 <dt>interface</dt>
 <dd><p>name of the interface to be used for the backend</p></dd>

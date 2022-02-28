@@ -109,15 +109,22 @@
 
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">SBC_example_backend</span><span class="op">(</span>
-  example <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"normal_sd"</span>, <span class="st">"normal_var"</span><span class="op">)</span>,
-  interface <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rstan"</span>, <span class="st">"cmdstanr"</span><span class="op">)</span>
+  example <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"normal_sd"</span>, <span class="st">"normal_bad"</span><span class="op">)</span>,
+  interface <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rstan"</span>, <span class="st">"cmdstanr"</span>, <span class="st">"rjags"</span><span class="op">)</span>
 <span class="op">)</span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>example</dt>
-<dd><p>name of the example model</p></dd>
+<dd><p>name of the example model. <code>normal_sd</code> is a simple model fitting
+a normal distribution parametrized as mean and standard deviation.
+<code>normal_bad</code> is a model that <em>tries</em> to implement the <code>normal_sd</code> model,
+but assumes an incorrect parametrization of the normal distribution.
+For Stan-based backends, the model is written as if Stan parametrized
+normal distribution with precision (while Stan uses sd), for JAGS-based
+backends the model is written as if JAGS parametrized normal distribution
+with sd (while JAGS uses precision).</p></dd>
 <dt>interface</dt>
 <dd><p>name of the interface to be used to fit the model</p></dd>
 </dl></div>
