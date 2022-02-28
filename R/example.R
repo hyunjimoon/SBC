@@ -33,10 +33,21 @@ SBC_example_generator <- function(example = c("normal"), N = 100) {
 #'
 #' @param example name of the example model.
 #' @export
-SBC_print_example_model <- function(example = c("normal_sd", "normal_var")) {
-  example <- match.arg(example)
+SBC_print_example_model <- function(example = c("normal_sd", "normal_bad"),
+                                    interface = c("rstan", "cmdstanr", "rjags")) {
+  #Backward compatibility
+  if(identical(example, "normal_var")) {
+    example <- "normal_bad"
+  }
 
-  example_program <- paste0(example, ".stan")
+  example <- match.arg(example)
+  interface <- match.arg(interface)
+
+  if(interface %in% c("rstan", "cmdstanr")) {
+    example_program <- paste0(example, ".stan")
+  } else if(interface == "rjags") {
+    example_program <- paste0(example, ".jags")
+  }
   code <- readLines(system.file(example_program, package = "SBC"))
   cat(code, sep = "\n")
 }
@@ -46,28 +57,49 @@ SBC_print_example_model <- function(example = c("normal_sd", "normal_var")) {
 #'
 #' Note that this will involve compiling a Stan model and may take a while.
 #'
-#' @param example name of the example model
+#' @param example name of the example model. `normal_sd` is a simple model fitting
+#'  a normal distribution parametrized as mean and standard deviation.
+#'  `normal_bad` is a model that _tries_ to implement the `normal_sd` model,
+#'  but assumes an incorrect parametrization of the normal distribution.
+#'  For Stan-based backends, the model is written as if Stan parametrized
+#'  normal distribution with precision (while Stan uses sd), for JAGS-based
+#'  backends the model is written as if JAGS parametrized normal distribution
+#'  with sd (while JAGS uses precision).
 #' @param interface name of the interface to be used to fit the model
 #' @export
-SBC_example_backend <- function(example = c("normal_sd", "normal_var"),
-                                interface = c("rstan", "cmdstanr")) {
+SBC_example_backend <- function(example = c("normal_sd", "normal_bad"),
+                                interface = c("rstan", "cmdstanr", "rjags")) {
+
+  #Backward compatibility
+  if(identical(example, "normal_var")) {
+    example <- "normal_bad"
+  }
 
   example <- match.arg(example)
   interface <- match.arg(interface)
 
-  example_program <- paste0(example, ".stan")
+  if(interface %in% c("cmdstanr", "rstan")) {
+    example_program <- paste0(example, ".stan")
 
-  tmp <- file.path(tempdir(), example_program)
-  if (!file.exists(tmp)) {
-    file.copy(system.file(example_program, package = "SBC"), tmp)
-  }
+    tmp <- file.path(tempdir(), example_program)
+    if (!file.exists(tmp)) {
+      file.copy(system.file(example_program, package = "SBC"), tmp)
+    }
 
-  if(interface == "cmdstanr") {
-    mod <- cmdstanr::cmdstan_model(tmp)
-    SBC_backend_cmdstan_sample(mod, chains = 2, iter_warmup = 400)
-  } else if(interface == "rstan") {
-    mod <- rstan::stan_model(tmp)
-    SBC_backend_rstan_sample(mod, chains = 2, iter = 1400, warmup = 400)
+    if(interface == "cmdstanr") {
+      mod <- cmdstanr::cmdstan_model(tmp)
+      SBC_backend_cmdstan_sample(mod, chains = 2, iter_warmup = 400)
+    } else if(interface == "rstan") {
+      mod <- rstan::stan_model(tmp)
+      SBC_backend_rstan_sample(mod, chains = 2, iter = 1400, warmup = 400)
+    }
+  } else if(interface == "rjags") {
+    model_file <- system.file(paste0(example, ".jags"), package = "SBC")
+    SBC_backend_rjags(file = model_file, n.iter = 5000, n.burnin = 5000,
+                      thin = 10, n.chains = 2,
+                      variable.names = c("mu", "sigma"))
+  } else {
+    stop("Invalid interface")
   }
 }
 
@@ -82,14 +114,15 @@ SBC_example_backend <- function(example = c("normal_sd", "normal_var"),
 #' (using the `normal` generator and `normal_sd` backend), while
 #' `normal_bad` is an example with a mismatch between the generator and backend
 #' that manifests in SBC (`normal_bad` combines the `normal` generator with
-#'  `normal_var` backend). `visualizations` creates a purely artificial results
-#'  that are meant to showcase the built-in plots.
+#'  `normal_bad` backend). `visualizations` creates a purely artificial results
+#'  that are meant to showcase the built-in plots (the `interface` parameter will
+#'  be ignored).
 #' @param interface name of the interface to be used for the backend
 #' @param N number of datapoints to simulate from the generator for each simulation
 #' @param n_sims number of simulations to perform
 #' @export
 SBC_example_results <- function(example = c("normal_ok", "normal_bad", "visualizations"),
-                                interface = c("rstan", "cmdstanr"),
+                                interface = c("rstan", "cmdstanr", "rjags"),
                                 N = 100, n_sims = 50) {
   example <- match.arg(example)
   interface <- match.arg(interface)
@@ -98,7 +131,7 @@ SBC_example_results <- function(example = c("normal_ok", "normal_bad", "visualiz
     backend <- SBC_example_backend(example = "normal_sd", interface = interface)
   } else if (example == "normal_bad") {
     generator <- SBC_example_generator(example = "normal", N = N)
-    backend <- SBC_example_backend(example = "normal_var", interface = interface)
+    backend <- SBC_example_backend(example = "normal_bad", interface = interface)
   } else if (example == "visualizations") {
 
     df_x <- seq(-4, 4, length.out = 400)

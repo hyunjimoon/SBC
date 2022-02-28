@@ -22,24 +22,24 @@ discover when the backend and generator don't encode the same data generating pr
 For a quick example, we'll use a simple generator producing normally-distributed
 data (basically `y <- rnorm(N, mu, sigma)`) with a backend in Stan that mismatches
 the generator by wrongly assuming Stan parametrizes the normal distribution via
-variance (i.e. it has `y ~ normal(mu, sigma ^ 2)`).
+precision (i.e. it has `y ~ normal(mu, 1 / sigma ^ 2)`).
 
 ```r
 library(SBC)
 gen <- SBC_example_generator("normal")
-# interface = "cmdstanr" is also supported
-backend_var <- SBC_example_backend("normal_var", interface = "rstan")
+# interface = "cmdstanr" or "rjags" is also supported
+backend_bad <- SBC_example_backend("normal_bad", interface = "rstan")
 ```
 
 _Note: Using the `cmdstanr` interface, a small number of rejected steps will be reported. Those are false positives and do not threaten validity (they happen during warmup). This is a result of difficulties in parsing the output of `cmdstanr`. We are working on a resolution._
 
-You can use `SBC_print_example_model("normal_var")` to inspect the model used.
+You can use `SBC_print_example_model("normal_bad")` to inspect the model used.
 
 We generate 50 simulated datasets and perform SBC:
 
 ```r
 ds <- generate_datasets(gen, n_sims = 50)
-results_var <- compute_SBC(ds, backend_var)
+results_bad <- compute_SBC(ds, backend_bad)
 ```
 
 The results then give us diagnostic plots that immediately show a problem:
@@ -47,8 +47,8 @@ the distribution of SBC ranks is not uniform as witnessed by both the rank histo
 and the difference between sample ECDF and the expected deviations from theoretical CDF.
 
 ```r
-plot_rank_hist(results_var)
-plot_ecdf_diff(results_var)
+plot_rank_hist(results_bad)
+plot_ecdf_diff(results_bad)
 ```
 
 We can then run SBC with a backend that uses the correct parametrization 
@@ -68,6 +68,16 @@ correctness. We can however make the SBC check more thorough by using a lot of
 simulations and including suitable generated quantities to guard against
 [known limitations of vanilla SBC](https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html).
 
+## Paralellization
+
+The examples above are very fast to compute, but in real use cases, 
+you almost certainly want to let the computation run in parallel via the
+[`future`](https://future.futureverse.org/) package.
+
+```r
+library(future)
+plan(multisession)
+```
 
 ## More information
 

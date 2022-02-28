@@ -4,7 +4,10 @@
 \alias{SBC_print_example_model}
 \title{Print the Stan code of a model used in the examples.}
 \usage{
-SBC_print_example_model(example = c("normal_sd", "normal_var"))
+SBC_print_example_model(
+  example = c("normal_sd", "normal_bad"),
+  interface = c("rstan", "cmdstanr", "rjags")
+)
 }
 \arguments{
 \item{example}{name of the example model.}

@@ -27,7 +27,10 @@ SBC_backend_rjags(
 
 \item{na.rm}{whether to omit variables containing NA (passed to \code{\link[rjags:coda.samples]{rjags::coda.samples()}})}
 
-\item{...}{additional arguments passed to \code{\link[rjags:jags.model]{rjags::jags.model()}}}
+\item{...}{additional optional arguments passed to \code{\link[rjags:jags.model]{rjags::jags.model()}}
+\itemize{
+\item most notably \code{n.chains}, \code{n.adapt} and \code{inits}.
+}}
 }
 \description{
 Create a JAGS backend using \code{rjags}

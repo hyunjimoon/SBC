@@ -5,12 +5,19 @@
 \title{Construct a backend to be used in the examples.}
 \usage{
 SBC_example_backend(
-  example = c("normal_sd", "normal_var"),
-  interface = c("rstan", "cmdstanr")
+  example = c("normal_sd", "normal_bad"),
+  interface = c("rstan", "cmdstanr", "rjags")
 )
 }
 \arguments{
-\item{example}{name of the example model}
+\item{example}{name of the example model. \code{normal_sd} is a simple model fitting
+a normal distribution parametrized as mean and standard deviation.
+\code{normal_bad} is a model that \emph{tries} to implement the \code{normal_sd} model,
+but assumes an incorrect parametrization of the normal distribution.
+For Stan-based backends, the model is written as if Stan parametrized
+normal distribution with precision (while Stan uses sd), for JAGS-based
+backends the model is written as if JAGS parametrized normal distribution
+with sd (while JAGS uses precision).}
 
 \item{interface}{name of the interface to be used to fit the model}
 }

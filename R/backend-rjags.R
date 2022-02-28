@@ -6,7 +6,8 @@
 #' @param variable.names names of variables to monitor (passed to [rjags::coda.samples()])
 #' @param thin thinning (passed to [rjags::coda.samples()])
 #' @param na.rm whether to omit variables containing NA (passed to [rjags::coda.samples()])
-#' @param ... additional arguments passed to [rjags::jags.model()]
+#' @param ... additional optional arguments passed to [rjags::jags.model()]
+#'   - most notably `n.chains`, `n.adapt` and `inits`.
 #' @export
 SBC_backend_rjags <- function(file, n.iter, n.burnin, variable.names, thin = 1, na.rm = TRUE, ...) {
   args = list(...)

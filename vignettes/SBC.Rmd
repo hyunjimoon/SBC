@@ -26,7 +26,7 @@ The rough sketch of SBC is that we simulate some datasets and then for each simu
    - Where rank is defined as the number of draws < simulated value
 
 It can be shown that if model matched the generator and algorithm works correctly,
-then for each variable, the ranks obtained in SBC should be uniformly distributed between $0$ and $S$.
+then for each variable, the ranks obtained in SBC should be uniformly distributed between $0$ and $D$.
 This corresponds quite directly to claims like 
 "the posterior 84% credible interval should contain the simulated value in 84% of simulations",
 the rank uniformity represents this claim for all interval widths at once. The theory of SBC is fully
