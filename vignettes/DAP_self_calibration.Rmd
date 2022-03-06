@@ -17,11 +17,11 @@ We will give a basic explanation of self-consistency and demonstrate its usage s
 knitr::include_graphics(path.expand("~/git_repos/hyunjimoon/SBC/vignettes/rmarkdown_images/modrak_sbc_results.png"))
 ```
 
-Like the image above, we can use graphical plots to get a rough idea of the pathological details; under vs overdispersion, under vs overestimation, and so on. But it's not trivial to *quantify* how much the the inference algorithm is misbehaving - in fact, there isn't a generally applicable way to automatically identify the verdict of SBC; it relies on the user to identify patterns from the plots themselves.
-
+Like the image above, we can use graphical plots to get a rough idea of the pathological details; under vs over-dispersion, under vs overestimation, and so on.
+In general, we inspect the rank plots for uniformity. This is normally done by viewing the plots holistically for obvious deviations, or through quantitative methods like the chi-square test or empirical coverage metrics.
 ---
 
-We propose a different test method, based on two concepts, the Data Averaged Posterior and the self-consistency metric. Our motivations is that by taking advantage of the multiple "generate and fit" iterations of SBC, it will give us enough information to construct a more interpretable metric of miscalibration.
+We propose a new test metric, based on two concepts, the Data Averaged Posterior and the self-consistency metric. Our motivations is that by taking advantage of the multiple "generate and fit" iterations of SBC, it will give us additional information to construct a more interpretable metric of miscalibration.
 
 We first draw a sample($\theta$) from the prior. Then we draw some data given the drawn prior sample($\pi(y \ | \ \theta)$) with respect to the model's data generating process. And finally, through running inference with the simulated data we obtain some posterior distribution($\pi(\tilde{\theta} \ | \ y)$):
 
@@ -59,7 +59,7 @@ V(\hat{g}, \lambda) := \frac{1}{M} \sum_M (\hat{\theta}_m - \bar{\theta})^2
 $$
 This is probably familiar - it's straight from the bias-variance decomposition of the mean squared error.
 
-So to sum it up, we're still doing the repeated "simulate and fit" thing from SBC. But instead of calculating ranks, we calculate a summary statistic which can be directly compared against the prior. And then calculated the bias and variance which can give us some information on how the inference algorithm is screwing up with this particular prior.
+So to sum it up, we're still doing the repeated "simulate and fit" thing from SBC. But instead of calculating ranks, we calculate a summary statistic which can be directly compared against the prior. And then calculated the bias and variance which can give us some information on how the inference algorithm is screwing up with this particular prior. When combined with the existing SBC tools and plots, such as the chi-square test for rank uniformity, this gives us a powerful package to identify and diagnose various miscalibrations.
 
 ## Demonstration
 
