@@ -385,3 +385,65 @@ plot_rank_hist(results_missing_2)
 
 We could definitely find even smaller deviations than omitting half the data points, that would however require more simulations for the SBC.
 This boils down to the earlier discussion on small changes to the model - omitting a few data points does not change the posterior very much in this case (as the model is simple and is already quite well informed by just a few data points) and thus it is harder to detect this problem by SBC - but it is possible.
+
+# Test
+
+```{r}
+plan(sequential)
+library(mvtnorm)
+mvn_sigma <- matrix(c(1, 0.8,0.8,1), nrow = 2)
+
+set.seed(1556654)
+
+N_sims_corr <- 100
+variables_corr <- rmvnorm(N_sims_corr, sigma = mvn_sigma)
+
+datasets_sigma <- SBC_datasets(variables = posterior::draws_matrix(a = variables_corr[,1], b = variables_corr[,2]),
+                               generated = rep(list(list()), N_sims_corr))
+
+backend_corr <- SBC_backend_mock_rng(a = ~ rnorm(.), b = ~ rnorm(.))
+gq_corr <- generated_quantities(sum_a_b = a + b, 
+                                diff_a_b = a - b,
+                                prod_a_b = a * b,
+                                mvn_log_lik = dmvnorm(c(a, b), sigma = mvn_sigma, log = TRUE))
+
+res_corr <- compute_SBC(datasets_sigma, backend_corr, keep_fits = FALSE,
+                        gen_quants = gq_corr)
+```
+
+```{r}
+plot_rank_hist(res_corr)
+plot_ecdf_diff(res_corr)
+```
+
+
+# Correlations
+
+```{r}
+plan(sequential)
+library(mvtnorm)
+mvn_sigma <- matrix(c(1, 0.8,0.8,1), nrow = 2)
+
+set.seed(1556654)
+
+N_sims_corr <- 100
+variables_corr <- rmvnorm(N_sims_corr, sigma = mvn_sigma)
+
+datasets_sigma <- SBC_datasets(variables = posterior::draws_matrix(a = variables_corr[,1], b = variables_corr[,2]),
+                               generated = rep(list(list()), N_sims_corr))
+
+backend_corr <- SBC_backend_mock_rng(a = ~ rnorm(.), b = ~ rnorm(.))
+gq_corr <- generated_quantities(sum_a_b = a + b, 
+                                diff_a_b = a - b,
+                                prod_a_b = a * b,
+                                mvn_log_lik = dmvnorm(c(a, b), sigma = mvn_sigma, log = TRUE))
+
+res_corr <- compute_SBC(datasets_sigma, backend_corr, keep_fits = FALSE,
+                        gen_quants = gq_corr)
+```
+
+```{r}
+plot_rank_hist(res_corr)
+plot_ecdf_diff(res_corr)
+```
+
