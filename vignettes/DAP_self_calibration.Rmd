@@ -83,19 +83,29 @@ library(ggplot2)
 options(mc.cores = parallel::detectCores())
 plan(multisession)
 options(SBC.min_chunk_size = 5)
-set.seed(1984)
 ```
 
-The first example is a simple binomial model with an inverse logit link:
+We will be using a modified eightschools model for demonstration:
 
 $$
-Y \sim \mathrm{binomial}(n, p) \\
-p = \mathrm{inverse\_logit}(\eta) \\
-\eta \sim \mathrm{normal}(\lambda_\mu, \lambda_{var})
+Y_i \sim \mathrm{normal}(\theta_i, \sigma_i) \\
+\theta \sim \mathrm{normal}(\mu, \tau) \\
+\mu \sim \mathrm{normal}(0, 5) \\
+\tau \sim \mathrm{normal}(0, 5)
 $$
-The parameter of interest here is $\eta$. We will be trying out various mean-variance combinations for the prior on $\eta$. This model also tends to perform relatively worse with laplace approximation(stan's `optimize` method) compared to HMC. So we'll try a grid search on the prior parameters with both HMC and optimization and see how the results differ.
+The parameter of interest here will be $\tau$. In the original model, a prior distribution of $\mathrm{normal}(0, 5)$ has been set, but we'd like to investigate how other prior regions fare in terms of SBC. So we'll try a grid search on the prior hyperparameters with both HMC and optimization and see how the results differ. Note that since $\tau$ is constrained to be positive, we'll be working with the unconstrained value, $\mathrm{log}(\tau)$ by performing a manual change of variables:
 
-We'll set the basic variables here. The number of SBC iterations($M$ in the previous notation) will be set to 100 with 1000 posterior samples($L$). We'll also be rolling with 10 binomial trials($n$):
+$$
+Y_i \sim \mathrm{normal}(\theta_i, \sigma_i) \\
+\theta \sim \mathrm{normal}(\mu, \tau) \\
+\mu \sim \mathrm{normal}(0, 5) \\
+\mathrm{log}(\tau) \sim \mathrm{normal}(\lambda_{\mu}, \lambda_{\sigma^2})
+$$
+The hyperparameters for the distribution of $\mathrm{log}(\tau)$, $\lambda_{\mu}, \lambda_{\sigma^2}$, will be the subject of the grid search. In addition, the iterative update requires that constraints for hyperparameters be dropped. So for $\lambda_{\sigma^2}$, which denotes the variance, the algorithm will use $\mathrm{log}(\lambda_{\sigma^2})$ instead.
+
+---
+### Setup
+We'll set the basic variables here. The number of SBC iterations($M$ in the previous notation) will be set to 100 with 1000 posterior samples($L$). We'll also be rolling with the standard 4 chain setup for HMC:
 
 ```{r, cache = TRUE}
 knitr::opts_chunk$set(cache = TRUE)
@@ -106,95 +116,91 @@ nsims <- 100
 # number of observations
 nobs <- 10
 
-# link function (1 = inverse logit, 2 = probit, 3 = cloglog)
-link <- 1
-
-# number of binomial trials per observation
-nsize <- 10
-
 ## Backend settings
 # number of draws per posterior approximation 
 ndraws <- 1000
 
 # number of chains for hmc posterior approximation
-nchains <- 2
+nchains <- 4
 
-fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws, dist_types=list(eta="normal"))
+fixed_args_eightschools <- list(J = 8, nsims = nsims, sigma = c(15, 10, 16, 11, 9, 11, 10, 18), nsims=nsims, dist_types=list(log_tau="normal"))
 ```
 
-The SBC package allows us to define the prior and data generating process, $P_\lambda,f$, purely in R. This serves two purposes. First, we can verify that the model we have specified is consistent with our intentions i.e. contains no bugs. And we can freely generate parameters and data without having to call Stan. 
+The `SBC` package allows us to define the prior and data generating process, $P_\lambda,f$, purely in R. This serves two purposes. First, we can verify that the model we have specified is consistent with our intentions i.e. contains no bugs. And we can freely simulate parameters and data without having to call Stan. 
 
-The "generator" function is the prior and data generating process:
+The `generator` function is the prior and data generating process:
 
 ```{r, cache = TRUE}
 knitr::opts_chunk$set(cache = TRUE)
-generator_binom <- function(lambdas, fixed_args){
+generator_eightschools_cp <- function(lambdas, fixed_args){
   # fixed value across simulated datasets
-  # experiment settings
-  nobs <- fixed_args$nobs
-  nsize <- fixed_args$nsize
-  dist_types <- fixed_args$dist_types
-  # modular settings
-  link_type <- fixed_args$link_type
+  nsims <- fixed_args$nsims
+  J <- fixed_args$J
+  sigma <- fixed_args$sigma
   
-  # generate
-  lambda_arg1 <- c()
-  lambda_arg2 <- c()
-  if(dist_types$eta == "normal"){
-    eta <- rnorm(1, mean = lambdas$eta$mu, sd=lambdas$eta$sigma)
-    lambda_arg1 <- c(lambda_arg1, lambdas$eta$mu)
-    lambda_arg2 <- c(lambda_arg2, lambdas$eta$sigma)
-  }
-  else if(dist_types$eta == "gamma"){
-    eta <- rgamma(1, shape = lambdas$eta$alpha, rate = lambdas$eta$beta)
-    lambda_arg1 <- c(lambda_arg1, lambdas$eta$alpha)
-    lambda_arg2 <- c(lambda_arg2, lambdas$eta$beta)
-  }
+  lambda_mu <- lambdas$log_tau$mu
+  lambda_var <- lambdas$log_tau$var
   
+  # Draw tau from the designated normal distribution
+  # lambda_sigma is positively bounded
+  log_tau <- rnorm(1, lambda_mu, sqrt(lambda_var))
+  tau <- exp(log_tau)
   
-    
-  mu <- invtf_param_vec(eta, link_type = link_type)
-  Y <- rbinom(nobs, size = nsize, prob = mu) 
+  # other parameters are drawn from the default prior
+  mu = rnorm(1, 0, 5)
+  theta <- rnorm(1, mu, tau)
+  # draw y from simulated parameters
+  y <- rnorm(J, mu, sigma)
+  
   list(
-    parameters = list(eta = eta),
-    generated = list(nobs= nobs, nsize = nsize, link = link_type,
-                     dist_types = match(unlist(dist_types), c("normal", "gamma")), lambda_arg1 = lambda_arg1, lambda_arg2 = lambda_arg2, 
-                     Y = Y)
+    variables = list(
+      log_tau = log_tau,
+      tau = tau
+      ), 
+    generated = list(
+      J = J,
+      y = y,
+      sigma = sigma,
+      nsims = nsims,
+      lambda_mu = lambda_mu,
+      lambda_log_var = log(lambda_var) # unbound sigma
+      )
   )
 }
 ```
 
-We're drawing `eta` from a normal distribution with `rnorm`, and then drawing `Y` given `eta` with `rbinom`.
+Note the code line ` log_tau <- rnorm(1, lambda_mu, sqrt(lambda_var))`. Like exactly in the model specification, we are drawing $\mathrm{log}(\tau)$ given hyperparameters $\lambda_{\mu}, \lambda_{\sigma^2}$.
 
-Now we define the HMC and optimizing backends, which represent $\hat{g}$:
+Now we define the HMC and optimizing `SBC` backends, which represent $\hat{g}$.
 
 ```{r}
 knitr::opts_chunk$set(cache = TRUE)
-rstan_binom_mod <- stan_model("models/binom-laplace.stan")
-cmdstan_binom_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
+cmdstan_mod_eightschools <- cmdstanr::cmdstan_model("models/eightschools_cp_posteriordb.stan")
+backend_eightschools_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_eightschools, chains = 4, iter_sampling = ndraws / 4)
 
-backend_binom_opt <- SBC_backend_rstan_optimizing(rstan_binom_mod, draws = ndraws)
-backend_binom_hmc <- SBC_backend_cmdstan_sample(cmdstan_binom_mod, chains = 4, iter_sampling = ndraws / 4)
+rstan_mod_eightschools <- rstan::stan_model("models/eightschools_cp_posteriordb.stan")
+backend_eightschools_opt <- SBC_backend_rstan_optimizing(rstan_mod_eightschools, draws=ndraws)
+
 calib_generator <- function(lambdas, fixed_args){
-  generate_datasets(SBC_generator_function(generator_binom, lambdas, fixed_args), n_datasets = fixed_args$nsims)
+  generate_datasets(SBC_generator_function(generator_eightschools_cp, lambdas, fixed_args), n_datasets = fixed_args_eightschools$nsims)
 }
 ```
 
-Finally we define the function that calculates the DAP, bias, and variance:
+Finally we define a function that computes the DAP and then calculate bias, variance metrics:
 
 ```{r, cache = TRUE}
 knitr::opts_chunk$set(cache = TRUE)
-calculate_dap <- function(mu, var, generator, datasets=NULL, backened, fixed_args){
+calculate_dap <- function(lambda_mu, lambda_var, generator, datasets=NULL, backened, fixed_args){
   if(is.null(datasets)){
-      lambda_init_binom <- list(
-        eta = list(mu=mu, sigma=sqrt(var))
+      lambda_init_eightschools <- list(
+        log_tau = list(mu=lambda_mu, var=lambda_var)
       )
-      datasets <- do.call(generator, list(lambda_init_binom, fixed_args = fixed_args))
+      datasets <- do.call(generator, list(lambda_init_eightschools, fixed_args = fixed_args))
   }
   sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
-  draws_eta <- c()
+  draws_params <- c()
   draws_Y <- c()
-  prior_thetas <- posterior::extract_variable(datasets$parameters, "eta")
+  prior_thetas <- posterior::extract_variable(datasets$parameters, "log_tau")
   theta_bar <- mean(prior_thetas)
   
   B <- 0
@@ -202,26 +208,26 @@ calculate_dap <- function(mu, var, generator, datasets=NULL, backened, fixed_arg
   for(i in 1:nsims){
     draws_Y <- c(draws_Y, datasets$generated[[i]]$Y)
     samples <- SBC_fit_to_draws_matrix(sbc_result$fits[[i]])
-    etas <- posterior::extract_variable(samples, "eta")
-    draws_eta <- c(draws_eta, etas)
+    params <- posterior::extract_variable(samples, "log_tau")
+    draws_params <- c(draws_params, params)
     
-    B <- B + mean(etas)
-    V <- V + sum((etas - mean(etas))^2)
+    B <- B + mean(params)
+    V <- V + sum((params - mean(params))^2)
   }
   
   B <- B / fixed_args$nsims - theta_bar
   V <- V / (fixed_args$nsims * ndraws)
   
-  mu <- mean(draws_eta)
-  var <- sd(draws_eta)^2
+  mu <- mean(draws_params)
+  var <- sd(draws_params)^2
   
-  return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y, B=B, V=V, datasets=datasets))
+  return(list(mu=mu, var=var, draws_params=draws_params, draws_Y=draws_Y, B=B, V=V, datasets=datasets))
 }
 ```
 
-Once we have the model and DAP generation ready, we run inference each for HMC and optimization. Note that the same prior-data samples are being used for optimization and HMC:
+Once we have the model and DAP generation we can start the grid search. We create a grid of mean-standard deviation values and run inference with HMC and optimization for each hyperparameter combination. Note that the same prior-data samples are being used for optimization and HMC:
 
-```{r include=FALSE, eval=TRUE}
+```{r include=FALSE, eval=FALSE}
 mu_seq <- readRDS(file="DAP_self_calibration_mu_seq.rds")
 var_seq <- readRDS(file="DAP_self_calibration_var_seq.rds")
 grid_size <- length(mu_seq) * length(var_seq)
@@ -239,7 +245,7 @@ dap_lambda_var_hmc <- readRDS(file="DAP_self_calibration_dap_lambda_var_hmc.rds"
 generated_Y <- readRDS(file="DAP_self_calibration_generated_Y.rds")
 ```
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE, eval=TRUE}
 knitr::opts_chunk$set(cache = TRUE)
 gridsize_mu <- 5
 gridsize_var <- 5
@@ -288,7 +294,7 @@ dimnames(generated_Y)[[3]] <- var_seq
 
 for(j in 1:length(var_seq)){
   for(i in 1:length(mu_seq)){
-    dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, NULL, backend_binom_opt, fixed_args_binom)
+    dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, NULL, backend_eightschools_opt, fixed_args_eightschools)
     dap_lambda_mu[i, j] <- dap$mu
     dap_lambda_var[i, j] <- dap$var
     lambda_mu[i, j] <- mu_seq[[i]]
@@ -297,7 +303,7 @@ for(j in 1:length(var_seq)){
     B_optim[i, j] <- dap$B
     V_optim[i, j] <- dap$V
     
-    dap_hmc <- calculate_dap(mu_seq[[i]],var_seq[[j]], calib_generator, dap$datasets, backend_binom_hmc, fixed_args_binom)
+    dap_hmc <- calculate_dap(mu_seq[[i]],var_seq[[j]], calib_generator, dap$datasets, backend_eightschools_hmc, fixed_args_eightschools)
     B_hmc[i, j] <- dap_hmc$B
     V_hmc[i, j] <- dap_hmc$V
     dap_lambda_mu_hmc[i, j] <- dap_hmc$mu
@@ -418,60 +424,6 @@ But for variance, we can see that for some prior regions HMC yields a higher var
 A particularly interesting observation is that we can see the variance metric suddenly spiking with values of prior mean that's greater than 5 for all inference algorithms. This may lead us to believe that the prior region around mean = (5, 10] is a somewhat unfavorable region for the inference algorithms to explore.
 
 
-Let's now try posterior predictive plots to see if large values of bias and variance actually give notions of a mismatch between the prior and posterior. We'll try to prior settings here: $N(7.5, 1)$ which showed bias and variance metrics close to zero, and $N(5, 10)$ that has both metrics further away from 0:
-
-
-```{r, fig.cap = "Posterior Predictive Checks with prior normal(7.5, 1)", fig.align='center'}
-test_mu <- 7.5
-test_var <- 1
-lambda_test <- list(
-  eta = list(mu=test_mu, sigma=sqrt(test_var))
-)
-test_dataset <- generate_datasets(SBC_generator_function(generator_binom, lambda_test, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
-sbc_result <- compute_results(test_dataset, backend_binom_opt, thin_ranks = 1)
-
-test_eta <- c()
-fit_matrix <- matrix(data=rep(NA, nsims * ndraws), nrow = nsims, ncol = ndraws)
-for(i in 1:nsims){
-  samples <- sbc_result$fits[[i]]
-  draws <- SBC_fit_to_draws_matrix(samples)
-  eta_vals <- posterior::extract_variable(draws, "eta")
-  fit_matrix[i, ] <- eta_vals
-  test_eta <- c(test_eta, eta_vals)
-}
-
-eta_rep <- rnorm(ndraws, test_mu, sqrt(test_var))
-ppc_dens_overlay(eta_rep, fit_matrix)
-```
-
-$N(7.5, 1)$ prior show that the simulated posterior draws are relatively in agreement with the prior draws.
-
-
-```{r, fig.cap = "Posterior Predictive Checks with prior normal(5, 10)", fig.align='center'}
-test_mu <- 5
-test_var <- 10
-lambda_test <- list(
-  eta = list(mu=test_mu, sigma=sqrt(test_var))
-)
-test_dataset <- generate_datasets(SBC_generator_function(generator_binom, lambda_test, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
-sbc_result <- compute_results(test_dataset, backend_binom_opt, thin_ranks = 1)
-
-test_eta <- c()
-fit_matrix <- matrix(data=rep(NA, nsims * ndraws), nrow = nsims, ncol = ndraws)
-for(i in 1:nsims){
-  samples <- sbc_result$fits[[i]]
-  draws <- SBC_fit_to_draws_matrix(samples)
-  eta_vals <- posterior::extract_variable(draws, "eta")
-  fit_matrix[i, ] <- eta_vals
-  test_eta <- c(test_eta, eta_vals)
-}
-
-eta_rep <- rnorm(ndraws, test_mu, sqrt(test_var))
-ppc_dens_overlay(eta_rep, fit_matrix)
-```
-
-But for the $N(5, 10)$ prior, we can see that the simulated posterior draws are dispersed far from the prior; self-consistency was not observed and hence an erroneous computation was performed.
-
 ### Iteratively prior calibration update
 
 Up to now, we've worked with metrics and identified miscalibrated regions. Can we try and go the other direction? How can we use the prior-posterior discrepency information to refine our prior? In this section, we explore a prior update algorithm which attempts to move from a badly calibrated region to a more well-calibrated area.
@@ -485,18 +437,19 @@ $$
 We generate metric from the DAP $\pi(\tilde{\theta})$, which allows us to directly measure the discrepency between it and the prior distribution's hyperparameters, $\pi(\theta) = P_\lambda$. The discrepency can be used to guide a local search along the prior space. The increment of the descent step can be varied, but we provide a few options:
 
 1. "Markov chain"-like: This method reuses the calculated summary statistics of the DAP as the prior hyperparameter values of the next iterations. It's the simplest option, but can be effective for simpler models.
-2. Cubic weights: We increment/decrement the hyperparameters in cubic order so that as the discrepency gets smaller, the stepsize also gets smaller. On the otherhand, large discrepency can result in exponential stepsizes which causes the hyperparameters to rapid shrink towards the DAP summary statistic. It was found that this method was effective in speeding up calibration for priors with a relatively scale-invariant region, since the cubic nature may only allow subtle movements near the ambient region of the DAP statistic.
+2. Cubic weights: We increment/decrement the hyperparameters in cubic order so that as the discrepency gets smaller, the stepsize also gets smaller. On the otherhand, large discrepency can result in exponential stepsizes which causes the hyperparameters to rapidly shrink towards the DAP summary statistic. It was found that this method was effective in speeding up calibration for priors with a relatively scale-invariant region, since the cubic nature may only allow subtle movements near the ambient region of the DAP statistic.
 
 We'll try to start from a "bad", miscalibrated prior region and try to iteratively refine the prior into a more favorable region. We'll be starting from $N(5, 10)$ with optimization. Let's generate a rank plot as a quick check to see how bad the region is:
 ```{R, warning=FALSE, error=FALSE}
-lambda_init_binom <- list(
-  eta = list(mu=5, sigma=10)
+lambda_init_eightschools <- list(
+  eta = list(mu=5, var=10)
 )
 
-datasets_binom_new <- generate_datasets(SBC_generator_function(generator_binom, lambda_init_binom, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
-result_binom_opt_new <- compute_results(datasets_binom_new, backend_binom_opt, thin_ranks = 1)
+datasets_eightschools_new <- generate_datasets(SBC_generator_function(generator_eightschools_cp, lambda_init_eightschools, fixed_args_eightschools), n_sims = fixed_args_eightschools$nsims)
+
+result_eightschools_opt_new <- compute_results(datasets_eightschools_new, backend_eightschools_opt, thin_ranks = 1)
     
-plot_rank_hist(result_binom_opt_new)
+plot_rank_hist(result_eightschools_opt_new, variables=list("tau", "log_tau"))
 ```
 
 We can see that the ranks are not uniform, and thus the starting point is not well calibrated. Let's try the iterative update:
@@ -513,31 +466,31 @@ tol <- 0.1
 # learning rate
 gamma <- 1.5 # 0.5 for gradient update, 10 for normal_str_update
 
-
-
-sc_binom_opt <- self_calib_adaptive(calib_generator, backend_binom_opt, updator, c("eta"), lambda_init_binom, nsims, gamma, tol, fixed_args = fixed_args_binom)
+sc_eightschools_opt <- self_calib_adaptive(calib_generator, backend_eightschools_opt, updator, c("log_tau"), lambda_init_eightschools, nsims, gamma, tol, fixed_args = fixed_args_eightschools)
 ```
 
 This algorithm continuously updates the prior with the previous iteration's posterior, which drives the posterior into a well-calibrated region.
 
 ```{R, warning=FALSE, error=FALSE}
-sc_binom_opt$t_df
+sc_eightschools_opt$t_df
 ```
 
 The iterative update algorithm determined the following $\mu, \sigma^2$ prior to be optimal:
 
 ```{r}
-sc_binom_opt$lambda
+sc_eightschools_opt$lambda$var = sc_eightschools_opt$lambda$var ^ 2
+sc_eightschools_opt$lambda
 ```
 
 Let's check the rank plots at the region:
 
 
 ```{R, warning=FALSE, error=FALSE}
-datasets_binom_new <- generate_datasets(SBC_generator_function(generator_binom, sc_binom_opt$lambda, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
-result_binom_opt_new <- compute_results(datasets_binom_new, backend_binom_opt, thin_ranks = 1)
+datasets_eightschools_new <- generate_datasets(SBC_generator_function(generator_eightschools_cp,  sc_eightschools_opt$lambda, fixed_args_eightschools), n_sims = fixed_args_eightschools$nsims)
+
+result_eightschools_opt_new <- compute_results(datasets_eightschools_new, backend_eightschools_opt, thin_ranks = 1)
     
-plot_rank_hist(result_binom_opt_new)
+plot_rank_hist(result_eightschools_opt_new, variables=list("log_tau", "tau"))
 ```
 
 The resulting rank plots show that the updated region is a more calibrated region as to the initial region.
