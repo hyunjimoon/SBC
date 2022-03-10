@@ -85,11 +85,12 @@ plan(multisession)
 options(SBC.min_chunk_size = 5)
 ```
 
-We will be using a modified eightschools model for demonstration:
+We will be using the eightschools model for demonstration:
 
 $$
 Y_i \sim \mathrm{normal}(\theta_i, \sigma_i) \\
-\theta \sim \mathrm{normal}(\mu, \tau) \\
+\theta'_i \sim \mathrm{normal}(0, 1) \\
+\theta_i = \theta'_i \times \tau + \mu \\
 \mu \sim \mathrm{normal}(0, 5) \\
 \tau \sim \mathrm{normal}(0, 5)
 $$
@@ -97,7 +98,8 @@ The parameter of interest here will be $\tau$. In the original model, a prior di
 
 $$
 Y_i \sim \mathrm{normal}(\theta_i, \sigma_i) \\
-\theta \sim \mathrm{normal}(\mu, \tau) \\
+\theta'_i \sim \mathrm{normal}(0, 1) \\
+\theta_i = \theta'_i \times \tau + \mu \\
 \mu \sim \mathrm{normal}(0, 5) \\
 \mathrm{log}(\tau) \sim \mathrm{normal}(\lambda_{\mu}, \lambda_{\sigma^2})
 $$
@@ -148,9 +150,12 @@ generator_eightschools_cp <- function(lambdas, fixed_args){
   
   # other parameters are drawn from the default prior
   mu = rnorm(1, 0, 5)
-  theta <- rnorm(1, mu, tau)
+  
+  theta_trans <- rnorm(J, 0, 1)
+  
+  theta <- theta_trans * tau + mu
   # draw y from simulated parameters
-  y <- rnorm(J, mu, sigma)
+  y <- rnorm(J, theta, sigma)
   
   list(
     variables = list(
@@ -175,10 +180,10 @@ Now we define the HMC and optimizing `SBC` backends, which represent $\hat{g}$.
 
 ```{r}
 knitr::opts_chunk$set(cache = TRUE)
-cmdstan_mod_eightschools <- cmdstanr::cmdstan_model("models/eightschools_cp_posteriordb.stan")
+cmdstan_mod_eightschools <- cmdstanr::cmdstan_model("models/eightschools_ncp_posteriordb.stan")
 backend_eightschools_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_eightschools, chains = 4, iter_sampling = ndraws / 4)
 
-rstan_mod_eightschools <- rstan::stan_model("models/eightschools_cp_posteriordb.stan")
+rstan_mod_eightschools <- rstan::stan_model("models/eightschools_ncp_posteriordb.stan")
 backend_eightschools_opt <- SBC_backend_rstan_optimizing(rstan_mod_eightschools, draws=ndraws)
 
 calib_generator <- function(lambdas, fixed_args){
@@ -200,7 +205,7 @@ calculate_dap <- function(lambda_mu, lambda_var, generator, datasets=NULL, backe
   sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
   draws_params <- c()
   draws_Y <- c()
-  prior_thetas <- posterior::extract_variable(datasets$parameters, "log_tau")
+  prior_thetas <- posterior::extract_variable(datasets$variables, "log_tau")
   theta_bar <- mean(prior_thetas)
   
   B <- 0
@@ -225,9 +230,9 @@ calculate_dap <- function(lambda_mu, lambda_var, generator, datasets=NULL, backe
 }
 ```
 
-Once we have the model and DAP generation we can start the grid search. We create a grid of mean-standard deviation values and run inference with HMC and optimization for each hyperparameter combination. Note that the same prior-data samples are being used for optimization and HMC:
+Once we have the model and DAP generation we can start the grid search. We create a grid of mean-variance values and run inference with HMC and optimization for each hyperparameter combination. Note that the same prior-data samples are being used for optimization and HMC:
 
-```{r include=FALSE, eval=FALSE}
+```{r include=FALSE, eval=TRUE}
 mu_seq <- readRDS(file="DAP_self_calibration_mu_seq.rds")
 var_seq <- readRDS(file="DAP_self_calibration_var_seq.rds")
 grid_size <- length(mu_seq) * length(var_seq)
@@ -242,15 +247,14 @@ B_hmc <- readRDS(file="DAP_self_calibration_B_hmc.rds")
 V_hmc <- readRDS(file="DAP_self_calibration_V_hmc.rds")
 dap_lambda_mu_hmc <- readRDS(file="DAP_self_calibration_dap_lambda_mu_hmc.rds")
 dap_lambda_var_hmc <- readRDS(file="DAP_self_calibration_dap_lambda_var_hmc.rds")
-generated_Y <- readRDS(file="DAP_self_calibration_generated_Y.rds")
 ```
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE, eval=TRUE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
 knitr::opts_chunk$set(cache = TRUE)
 gridsize_mu <- 5
 gridsize_var <- 5
-mu_seq <- seq(0, 10, length.out = gridsize_mu)
-var_seq <- seq(1, 10, length.out = gridsize_var)
+mu_seq <- c(-1, 0, 1, 2, 3)
+var_seq <- c(0.01^2, 0.1^2, 1^2, 2^2, 3^2)
 grid_size <- length(mu_seq) * length(var_seq)
 
 dap_lambda_mu <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
@@ -288,10 +292,6 @@ rownames(dap_lambda_var_hmc) <- mu_seq
 colnames(dap_lambda_mu_hmc) <- var_seq
 colnames(dap_lambda_var_hmc) <- var_seq
 
-generated_Y <- array(rep(NA, nsims * nobs * grid_size), dim=c(nsims * nobs, gridsize_mu, gridsize_var) )
-dimnames(generated_Y)[[2]] <- mu_seq
-dimnames(generated_Y)[[3]] <- var_seq
-
 for(j in 1:length(var_seq)){
   for(i in 1:length(mu_seq)){
     dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, NULL, backend_eightschools_opt, fixed_args_eightschools)
@@ -299,7 +299,6 @@ for(j in 1:length(var_seq)){
     dap_lambda_var[i, j] <- dap$var
     lambda_mu[i, j] <- mu_seq[[i]]
     lambda_var[i, j] <- var_seq[[j]]
-    generated_Y[, i, j] <- dap$draws_Y
     B_optim[i, j] <- dap$B
     V_optim[i, j] <- dap$V
     
@@ -326,7 +325,6 @@ saveRDS(B_hmc, file="DAP_self_calibration_B_hmc.rds")
 saveRDS(V_hmc, file="DAP_self_calibration_V_hmc.rds")
 saveRDS(dap_lambda_mu_hmc, file="DAP_self_calibration_dap_lambda_mu_hmc.rds")
 saveRDS(dap_lambda_var_hmc, file="DAP_self_calibration_dap_lambda_var_hmc.rds")
-saveRDS(generated_Y, file="DAP_self_calibration_generated_Y.rds")
 
 ```
 
@@ -344,10 +342,11 @@ dap_df[, "var"] <- as.numeric(as.vector(dap_df[, "var"]))
 colnames(dap_df)[3] <- "dap_mu"
 dap_lambda_df <- as.data.frame.table(dap_lambda_var)
 dap_df[, "dap_var"] <- as.numeric(dap_lambda_df$Freq)
-ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2, arrow = arrow(length = unit(0.3, "cm"))) + xlab("mu") + ylab("var") + ggtitle("optimization")
+ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2, arrow = arrow(length = unit(0.3, "cm"))) + xlab("mean") + ylab("variance") + ggtitle("optimization")
 ```
 
-The red points denote the initially specified prior values. Blue points denote the posterior values recovered from the computed DAP. If self-consistency was present, we would need to observe the blue points barely moving away from the red points. For most prior regions, we can see it's not the case.
+The red points on the bottom right denote the initial hyperparameter values; variance plotted against mean. The blue points are the same statistics calculated against samples from the DAP. If a given prior was to be self-consistent, we should expect little discrepancy between the initial prior values and the DAP. We can see that some priors show very large variance values recovered from the DAP, which is assumed to be caused from the combination of an extreme prior and optimization not finding the optima.
+
 
 Let's see if HMC fares better:
 
@@ -363,10 +362,18 @@ dap_df[, "var"] <- as.numeric(as.vector(dap_df[, "var"]))
 colnames(dap_df)[3] <- "dap_mu"
 dap_lambda_df <- as.data.frame.table(dap_lambda_var_hmc)
 dap_df[, "dap_var"] <- as.numeric(dap_lambda_df$Freq)
-ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2, arrow = arrow(length = unit(0.3, "cm"))) + xlab("mu") + ylab("var") + ggtitle("HMC")
+ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2, arrow = arrow(length = unit(0.3, "cm"))) + xlab("mean") + ylab("variance") + ggtitle("HMC")
 ```
 
-HMC on the other hand is relatively more self-consistent apart from high variance regions.
+Although to a lesser degree, we can still observe extreme deviations from the prior. Therefore, we rule out the possiblity of a sampling error but instead assume that undesirable prior regions are present.
+
+Let's zoom in to identify which prior combinations are being problematic:
+
+```{R}
+ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2, arrow = arrow(length = unit(0.3, "cm"))) + xlab("mean") + ylab("variance") + ggtitle("HMC") + coord_cartesian(ylim=c(0, 7), xlim = c(-10, 5)) + scale_y_continuous(breaks=c(1:9))
+```
+We can see that variance plays the big factor; large variance values(>=1) start to show miscalibration.
+
 
 We'll now plot the bias and variance metrics of optimization and HMC together. Since HMC was relatively well calibrated as to optimization, we should observe its metric being lower than that of optimization:
 
@@ -388,15 +395,16 @@ B_hmc_df[, "B_optim"] <- B_optim_df[, "B_optim"]
 B_hmc_df[, "coords"] <- paste(B_hmc_df[, "Mu"], B_hmc_df[, "Var"], sep=",")
 B_hmc_df[, "coords"] <- factor(B_hmc_df$coords, levels=unique(B_hmc_df$coords))
 
-ggplot(B_hmc_df) + geom_point(aes(x=coords, y=B_optim, color="red")) + ggtitle("B(red=optimization, green=HMC), closer to 0 is better") + geom_point(aes(x=coords, y=B_hmc, color="green")) + geom_segment(aes(x=coords, y=B_optim, xend=coords, yend=B_hmc), size=0.2) + theme(axis.title.x = element_text(margin=unit(c(10, 0, 0, 0), "mm"))) + xlab("mu, var") + ylab("B") + theme(legend.position = "none") + geom_hline(yintercept = 0, linetype="dashed", size=1)
+ggplot(B_hmc_df) + geom_point(aes(x=coords, y=B_optim, color="red")) + ggtitle("B(red=optimization, green=HMC), closer to 0 is better") + geom_point(aes(x=coords, y=B_hmc, color="green")) + geom_segment(aes(x=coords, y=B_optim, xend=coords, yend=B_hmc), size=0.2) + theme(axis.title.x = element_text(margin=unit(c(10, 0, 0, 0), "mm"))) + xlab("meam, variance") + ylab("B") + theme(legend.position = "none") + geom_hline(yintercept = 0, linetype="dashed", size=1)
 ```
 
-The X axis represent the prior mean-variance combinations. The bias metric values are shown on the Y axis. We plotted the bias metric calculated from optimization as red dots, and green dots for HMC. You can see that overall HMC's metrics are lower than that of optimization.
+The X axis represent the prior mean-variance combinations. The bias metric values are shown on the Y axis. We plotted the bias metric calculated from optimization as red dots, and green dots for HMC. Excluding extreme variance values, we can actually see that the two inference algorithms do not vary by much.
 
-Let's also examine the bias values individually. It appears that when `mu` is equal to 5 or 7, HMC tends to have the highest absolute bias metric.
-In addition, high variance priors coupled with high mean values show severe bias for both inference algorithms, and thus should be avoided.
+Let's also examine the bias values individually. Like from the above arrow plots, we can see that variance is the big factor when it comes to calibration. Variance values smaller than 0.1 have fantastic bias metrics, but as variance gets larger, the bias metrics also get big, telling us that the DAP gets further and further away. 
 
-Overall, we can conclude that in order to achieve minimal bias, priors with variance as 1 would the best choice out of the tested priors.
+In addition, the mean hyperparameter does not show any significant influence apart from extreme variance values, which would already be disregarded when actually comparing models.
+
+Overall, we can conclude that priors with variance closer to 0 indicate better calibration, in the context of the bias metric.
 
 ```{r, cache=TRUE, fig.width = 14, fig.align='center'}
 knitr::opts_chunk$set(cache = TRUE)
@@ -419,14 +427,12 @@ V_hmc_df[, "coords"] <- factor(V_hmc_df$coords, levels=unique(V_hmc_df$coords))
 ggplot(V_hmc_df) + geom_point(aes(x=coords, y=V_optim, color="red")) + ggtitle("V(red=optimization, green=HMC), lower is better") + geom_point(aes(x=coords, y=V_hmc, color="green")) + geom_segment(aes(x=coords, y=V_optim, xend=coords, yend=V_hmc), size=0.2) + theme(axis.title.x = element_text(margin=unit(c(10, 0, 0, 0), "mm"))) + xlab("mu, var") + ylab("V") + theme(legend.position = "none") + geom_hline(yintercept = 0, linetype="dashed", size=1)
 ```
 
-But for variance, we can see that for some prior regions HMC yields a higher variance metric. And as expected, the variance metric scales with the prior variance.
-
-A particularly interesting observation is that we can see the variance metric suddenly spiking with values of prior mean that's greater than 5 for all inference algorithms. This may lead us to believe that the prior region around mean = (5, 10] is a somewhat unfavorable region for the inference algorithms to explore.
+But for the variance metric, we can see that for larger variance prior values, HMC outperforms optimization by a big margin, suggesting HMC under/over-estimates to a lesser degree when priors become hard to perform inference. Otherwise, the plot strengthens our belief that the variance parameter is the most influential, and that smaller values are preferable.
 
 
-### Iteratively prior calibration update
+### Iteratively updating prior for well-calibration
 
-Up to now, we've worked with metrics and identified miscalibrated regions. Can we try and go the other direction? How can we use the prior-posterior discrepency information to refine our prior? In this section, we explore a prior update algorithm which attempts to move from a badly calibrated region to a more well-calibrated area.
+Up to now, we've worked with metrics and identified miscalibrated regions. Can we try and go the other direction? How can we use the prior-posterior discrepancy information to refine our prior? In this section, we explore a prior update algorithm which attempts to move from a badly calibrated region to a more well-calibrated area.
 
 The iterative update algorithm uses the metric attained from a calculated DAP to update the prior's hyperparameters. Recall the DAP equation:
 
@@ -442,7 +448,7 @@ We generate metric from the DAP $\pi(\tilde{\theta})$, which allows us to direct
 We'll try to start from a "bad", miscalibrated prior region and try to iteratively refine the prior into a more favorable region. We'll be starting from $N(5, 10)$ with optimization. Let's generate a rank plot as a quick check to see how bad the region is:
 ```{R, warning=FALSE, error=FALSE}
 lambda_init_eightschools <- list(
-  eta = list(mu=5, var=10)
+  log_tau = list(mu=2, var=0.01)
 )
 
 datasets_eightschools_new <- generate_datasets(SBC_generator_function(generator_eightschools_cp, lambda_init_eightschools, fixed_args_eightschools), n_sims = fixed_args_eightschools$nsims)
@@ -454,19 +460,17 @@ plot_rank_hist(result_eightschools_opt_new, variables=list("tau", "log_tau"))
 
 We can see that the ranks are not uniform, and thus the starting point is not well calibrated. Let's try the iterative update:
 
-```{r}
+```{R, warning=FALSE}
 updator = "mc_update"
 
-# maximal number of SBC iterations
-niter <- 100
 
 # tolerance
-tol <- 0.1
+tol <- 0.01
 
 # learning rate
 gamma <- 1.5 # 0.5 for gradient update, 10 for normal_str_update
 
-sc_eightschools_opt <- self_calib_adaptive(calib_generator, backend_eightschools_opt, updator, c("log_tau"), lambda_init_eightschools, nsims, gamma, tol, fixed_args = fixed_args_eightschools)
+sc_eightschools_opt <- self_calib_adaptive(calib_generator, backend_eightschools_opt, updator, c("log_tau"), lambda_init_eightschools, nsims, 15, gamma, tol, fixed_args = fixed_args_eightschools)
 ```
 
 This algorithm continuously updates the prior with the previous iteration's posterior, which drives the posterior into a well-calibrated region.
@@ -475,7 +479,7 @@ This algorithm continuously updates the prior with the previous iteration's post
 sc_eightschools_opt$t_df
 ```
 
-The iterative update algorithm determined the following $\mu, \sigma^2$ prior to be optimal:
+The iterative update algorithm determined the following $\mu, \sigma^2$ prior to be better calibrated:
 
 ```{r}
 sc_eightschools_opt$lambda$var = sc_eightschools_opt$lambda$var ^ 2
@@ -493,7 +497,31 @@ result_eightschools_opt_new <- compute_results(datasets_eightschools_new, backen
 plot_rank_hist(result_eightschools_opt_new, variables=list("log_tau", "tau"))
 ```
 
-The resulting rank plots show that the updated region is a more calibrated region as to the initial region.
+Unfortunately, no apparent improvement could be identified. The prior on $\mathrm{log}(\tau)$ was found to be extremely sensitive to subtle changes to the variance. Therefore, the iterative algorithm is assumed to have difficulties in fine-tuning the hyperparameters.
+
+We'll try again with HMC this time:
+
+
+```{R, warning=FALSE}
+updator = "mc_update"
+
+
+# tolerance
+tol <- 0.01
+
+# learning rate
+gamma <- 1.5 # 0.5 for gradient update, 10 for normal_str_update
+
+sc_eightschools_opt <- self_calib_adaptive(calib_generator, backend_eightschools_hmc, updator, c("log_tau"), lambda_init_eightschools, nsims, 10, gamma, tol, fixed_args = fixed_args_eightschools)
+
+datasets_eightschools_new <- generate_datasets(SBC_generator_function(generator_eightschools_cp,  sc_eightschools_opt$lambda, fixed_args_eightschools), n_sims = fixed_args_eightschools$nsims)
+
+result_eightschools_opt_new <- compute_results(datasets_eightschools_new, backend_eightschools_opt, thin_ranks = 1)
+    
+plot_rank_hist(result_eightschools_opt_new, variables=list("log_tau", "tau"))
+```
+
+This proved to be only marginally better; the algorithm still struggled to find better calibrated priors even after 10 iterations.
 
 ## The role of the calibration algorithm and the interpretation of calibrated $\lambda$
 
@@ -504,6 +532,8 @@ In the case of the sequential update algorithm, the goal is to allocate high pro
 We would believe that in most cases the calibrated prior will not be used directly; instead it will be used as a reference for determining the bounds of the calibrated region. Given this information, domain knowledge will be elicited into an actual prior distribution, while hopefully abiding the calibrated region information.
 
 In conclusion, finding calibrated regions does not involve domain knowledge elicitation and in most cases the simple probability densities may be sufficient just for identifying calibrated regions of the prior. The user then may use this range of values as a reference when defining priors in an attempt for a computationally calibrated prior.
+
+In addition, we have demonstrated that it struggles in highly sensitive and difficult prior regions; this method may not be preferable for models in which prior influence trumps that of the likelihood.
 
 ## Wrap-up
 

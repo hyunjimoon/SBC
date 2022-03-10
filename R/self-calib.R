@@ -9,11 +9,12 @@
 ##' @param init_mu initial lambda_mu value to use
 ##' @param init_sigma initial lambda_sigma value to use
 ##' @param nsims number of datasets i.e. prior draws
+##' @param niter number of calibration iterations to run
 ##' @param gamma convergence speed e.g. step size
 ##' @param tol tolerence for determining termination
 ##' @param fixed_args *named list* containing additional arguments to pass to generator, *after mu and sigma*
 ##' @export
-self_calib_adaptive <- function(generator, backend, updator, target_params, init_lambdas, nsims, gamma, tol, fixed_args){
+self_calib_adaptive <- function(generator, backend, updator, target_params, init_lambdas, nsims, niter, gamma, tol, fixed_args){
   dist_types <- fixed_args$dist_types
 
   ############3
@@ -58,7 +59,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
       if(fixed_args$dist_type[[target_param]] == "normal"){
         mu <- mean(draws_etas[[target_param]])
         sigma <- sd(draws_etas[[target_param]])
-        return_lambdas[[target_param]] <- list(mu=mu, sigma=sigma)
+        return_lambdas[[target_param]] <- list(mu=mu, var=sigma^2)
       }
       else if(fixed_args$dist_type[[target_param]] == "gamma"){
         gamma_params <- tryCatch(
@@ -126,7 +127,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
 
   eta_loss <- function(dap_eta, new_lambdas) {
     if("mu" %in% names(new_lambdas)){  # normal
-      eta <- rnorm(length(dap_eta), mean=new_lambdas$mu, sd = new_lambdas$sigma)
+      eta <- rnorm(length(dap_eta), mean=new_lambdas$mu, sd = sqrt(new_lambdas$var))
     }
     else if("alpha" %in% names(new_lambdas)){  # gamma
       eta <- rgamma(length(dap_eta), shape=new_lambdas$alpha, rate = new_lambdas$beta)
@@ -159,7 +160,7 @@ self_calib_adaptive <- function(generator, backend, updator, target_params, init
         t_df[[lambda_colname]] <- c(t_df[[lambda_colname]], param_lambdas[[names(param_lambdas)[i]]])
       }
       if (dist_types[[target_param]] == "normal"){
-        prior_dist_samples <- rnorm(length(dap_result$draws_etas[[target_param]]), mean=param_lambdas$mu, sd=param_lambdas$sigma)
+        prior_dist_samples <- rnorm(length(dap_result$draws_etas[[target_param]]), mean=param_lambdas$mu, sd=sqrt(param_lambdas$var))
       }
       else if (dist_types[[target_param]] == "gamma"){
         prior_dist_samples <- rgamma(length(dap_result$draws_etas[[target_param]]), shape=param_lambdas$alpha, r=param_lambdas$beta)
