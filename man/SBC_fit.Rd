@@ -2,12 +2,12 @@
 % Please edit documentation in R/backends.R
 \name{SBC_fit}
 \alias{SBC_fit}
-\title{Use backend to fit a model to data.}
+\title{S3 generic using backend to fit a model to data.}
 \usage{
 SBC_fit(backend, generated, cores)
 }
 \description{
-S3 generic, needs to be implemented by all backends.
+Needs to be implemented by all backends.
 All implementations have to return an object for which you can safely
 call \code{\link[=SBC_fit_to_draws_matrix]{SBC_fit_to_draws_matrix()}} and get some draws.
 If that's not possible an error should be raised.

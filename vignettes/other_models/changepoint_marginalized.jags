@@ -1,0 +1,40 @@
+data {
+  for(i in 1:T) {
+    prior_unif[i] = -log(T)
+  }
+
+  # Using the zeroes crossing trick to compute the likelihood
+  # See e.g. https://667-per-cm.net/2014/02/17/the-zero-crossings-trick-for-jags-finding-roots-stochastically/
+  z = 0
+}
+
+model {
+  e ~ dexp(r_e);
+  l ~ dexp(r_l);
+
+  # Prepare the zero trick
+  z ~ dpois(z_mean)
+
+  # Compute the likelihood
+  # The lp is a matrix to avoid having to redefine nodes
+  lp[1, 1:T] = prior_unif
+  for (s in 1:T) {
+    for (t in 1:T) {
+      lp[1 + t, s] = lp[t, s] + log(ifelse(t < s, e, l)) * y[t] - ifelse(t < s, e, l)
+    }
+    p[s] = exp(lp[T + 1, s])
+  }
+
+  # log-sum-exp to compute the log likelihood in a numerically stable way
+  m = max(lp[T + 1, ])
+  sum_exp_rest[1] = 0
+  for(t in 1:T) {
+    sum_exp_rest[1 + t] = sum_exp_rest[t] + exp(lp[T + 1, s] - m)
+  }
+  lp_total = m + log(sum_exp_rest[T + 1])
+
+  # We have the likelihood now add it to z_mean for the zeros trick
+  z_mean = -lp_total + 10000
+
+  s ~ dcat(p)
+}

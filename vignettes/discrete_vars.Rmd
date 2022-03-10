@@ -1,19 +1,21 @@
 ---
-title: "SBC with discrete parameters"
+title: "SBC with discrete parameters in Stan and JAGS"
 author: "Martin Modrák"
 date: "`r Sys.Date()`"
 output: 
   rmarkdown::html_vignette:
     toc: yes
 vignette: >
-  %\VignetteIndexEntry{SBC with discrete parameters}
+  %\VignetteIndexEntry{SBC with discrete parameters in Stan and JAGS}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
 
 SBC was primarily designed for continuous parameters, but can be used
 with models that have discrete parameters - whether the parameters
-are directly represented (e.g. in JAGS) or marginalized out (as is usual in Stan).
+are directly represented (e.g. in BUGS/JAGS) or marginalized out (as is usual in Stan).
+
+## Stan version and debugging
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC); 
@@ -106,10 +108,25 @@ datasets_1 <- generate_datasets(generator_1, 30)
 
 ```
 
+Additionally,
+we'll add a generated quantity expressing the total log-likelihood of data given the
+fitted parameters. The expression within the `generated_quantities()` call is evaluated
+for both prior and posterior draws and
+included as another variable in SBC checks. It turns out this type of generated quantities
+can increase the sensitivity of the SBC against some issues in the model. 
+See `vignette("limits_of_SBC")` for a more detailed discussion of this.
+
+```{r}
+log_lik_gq <- generated_quantities(log_lik = sum(dpois(y, ifelse(1:T < s, e, l), log = TRUE)))
+```
+
+So finally, lets actually compute SBC:
+
 ```{r}
 results_1 <- compute_SBC(datasets_1, backend_1, 
                     cache_mode = "results", 
-                    cache_location = file.path(cache_dir, "model1"))
+                    cache_location = file.path(cache_dir, "model1"),
+                    gen_quants = log_lik_gq)
 ```
 
 Here we also use the caching feature to avoid recomputing the fits when recompiling this vignette. 
@@ -127,7 +144,8 @@ dplyr::filter(results_1$stats, variable == "s")
 
 Inspecting the statistics shows that quite often, the model is quite sure of the value of `s` while the simulated value is just one less. 
 
-Looking at the `ecdf_diff` plot we see that this seems to compromise heavily the inference for `s`, but the other parameters do not show such bad behaviour.
+Looking at the `ecdf_diff` plot we see that this seems to compromise heavily the inference for `s`, but the other parameters do not show such bad behaviour. Note that the `log_lik` generated quantity shows even starker
+failure than `s`, so it indeed poses a stricter check in this scenario. 
 
 ```{r results1_plots}
 plot_ecdf_diff(results_1)
@@ -184,7 +202,8 @@ And we can recompute:
 ```{r}
 set.seed(5846502)
 datasets_2 <- generate_datasets(generator_2, 30)
-results_2 <- compute_SBC(datasets_2, backend_1, 
+results_2 <- compute_SBC(datasets_2, backend_1,
+                    gen_quants = log_lik_gq, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "model2"))
 ```
@@ -199,19 +218,105 @@ Looks good, so let us add some more simulations to make sure the model behaves w
 
 ```{r}
 set.seed(54321488)
-datasets_3 <- generate_datasets(generator_2, 100)
-results_3 <- compute_SBC(datasets_3, backend_1, 
+datasets_2_more <- generate_datasets(generator_2, 100)
+results_2_more <- compute_SBC(datasets_2_more, backend_1,
+                    gen_quants = log_lik_gq, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "model3"))
 
-results_all <- bind_results(results_2, results_3)
+results_2_all <- bind_results(results_2, results_2_more)
 ```
 
-```{r results_all_plots}
-plot_rank_hist(results_all)
-plot_ecdf_diff(results_all)
+```{r results_2_all_plots}
+plot_rank_hist(results_2_all)
+plot_ecdf_diff(results_2_all)
 ```
 
 
-Now - as far as this amount of SBC steps can see, the model is good and we get good behaviour for both the continuous and the discrete parameters.
+Now - as far as this amount of SBC steps can see, the model is good and we get good behaviour for both the continuous and the discrete parameters and the `log_lik` generated quantity. Hooray!
+
+## JAGS version
+
+We can now write the same model in JAGS. This becomes a bit easier as JAGS lets
+us represent discrete parameters directly:
+
+```{r, comment = ""}
+cat(readLines("other_models/changepoint.jags"), sep = "\n")
+```
+
+We will use the `rjags` package - and relatively large number of samples as 
+we can expect some autocorrelation in the Gibbs sampler.
+
+```{r}
+backend_jags <- SBC_backend_rjags("other_models/changepoint.jags",
+                                  variable.names = c("e","l","s"),
+                                  n.iter = 10000,
+                                  n.burnin = 1000,
+                                  n.chains = 4,
+                                  thin = 10)
+```
+
+
+Running SBC with all the corrected datasets from before (rJAGS accepts input
+data in exactly the same format as Stan, so we can reuse the datasets without any change):
+
+```{r}
+datasets_2_all <- bind_datasets(datasets_2, datasets_2_more)
+results_jags <- compute_SBC(datasets_2_all, backend_jags,
+                            gen_quants = log_lik_gq,
+                        cache_mode = "results",
+                        cache_location = file.path(cache_dir, "rjags"))
+```
+
+Similarly to the case above, the Rhat and ESS warnings are false positives due to the `s` parameter, which
+we need to handle better.
+
+The rank plots show no problems.
+
+```{r ranks_jags}
+plot_rank_hist(results_jags)
+plot_ecdf_diff(results_jags)
+```
+
+As an exercise, we can also write the marginalized version of the model in JAGS.
+In some cases, marginalization improves performance even for JAGS models, however,
+for this model it is actually not an improvement, presumably because the model
+is very simple.
+
+
+```{r, comment = ""}
+cat(readLines("other_models/changepoint_marginalized.jags"), sep = "\n")
+```
+
+The code got quite a bit more complex, se let's check if we didn't mess up
+the rewrite - first we 
+build a backend with this new representation:
+
+```{r}
+backend_jags_marginalized <- SBC_backend_rjags("other_models/changepoint_marginalized.jags",
+                                  variable.names = c("e","l","s"),
+                                  n.iter = 10000,
+                                  n.burnin = 1000,
+                                  n.chains = 4,
+                                  thin = 10)
+```
+
+Then we run the actual SBC:
+
+```{r}
+results_jags_marginalized <- compute_SBC(datasets_2_all, backend_jags_marginalized,
+                                         gen_quants = log_lik_gq,
+                        cache_mode = "results",
+                        cache_location = file.path(cache_dir, "rjags_marginalized"))
+```
+
+And the ranks plots look good, so we indeed probably did succeed in correctly marginalizing
+the `s` parameter!
+
+```{r  ranks_jags_marginalized}
+plot_rank_hist(results_jags_marginalized)
+plot_ecdf_diff(results_jags_marginalized)
+```
+
+
 

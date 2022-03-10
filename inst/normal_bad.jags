@@ -1,0 +1,7 @@
+model {
+  for(i in 1:N) {
+    y[i] ~ dnorm(mu, sigma);
+  }
+  mu ~ dnorm(0, 1);
+  sigma ~ dnorm(0, 1) T(0,);
+}

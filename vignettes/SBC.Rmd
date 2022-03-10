@@ -1,10 +1,10 @@
 ---
-title: "SBC Interface Introduction"
+title: "Getting Started with SBC"
 author: "Hyunji Moon, Martin Modrák, Shinyoung Kim"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{SBC Interface Introduction}
+  %\VignetteIndexEntry{Getting Started with SBC}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -26,7 +26,7 @@ The rough sketch of SBC is that we simulate some datasets and then for each simu
    - Where rank is defined as the number of draws < simulated value
 
 It can be shown that if model matched the generator and algorithm works correctly,
-then for each variable, the ranks obtained in SBC should be uniformly distributed between $0$ and $S$.
+then for each variable, the ranks obtained in SBC should be uniformly distributed between $0$ and $D$.
 This corresponds quite directly to claims like 
 "the posterior 84% credible interval should contain the simulated value in 84% of simulations",
 the rank uniformity represents this claim for all interval widths at once. The theory of SBC is fully
@@ -260,7 +260,7 @@ results$stats
 
 ### Plots
 
-And finally, we can plot the rank distribution to check if the ranks are uniformly distributed. We can check the rank histogram and ECDF plots:
+And finally, we can plot the rank distribution to check if the ranks are uniformly distributed. We can check the rank histogram and ECDF plots (see `vignette("rank_visualizations")` for description of the plots):
 
 ```{r rank_hist}
 plot_rank_hist(results)
@@ -318,3 +318,7 @@ practice in [model-building workflow](https://hyunjimoon.github.io/SBC/articles/
 Alternatively, you might be interested in the [limits of SBC](https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html) 
 --- the types of problems that are hard / impossible to catch with SBC and
 what can we do to guard against those.
+
+## Acknowledgements
+
+Development of this package was supported by [ELIXIR CZ](https://www.elixir-czech.cz/) research infrastructure project (Ministry of Youth, Education and Sports of the Czech Republic, Grant No: LM2018131) including access to computing and storage facilities.

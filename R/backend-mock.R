@@ -38,3 +38,42 @@ SBC_fit.SBC_backend_mock <- function(backend, generated, cores) {
   backend$result
 }
 
+#' @export
+SBC_backend_mock_rng <- function(..., n_draws = 1000) {
+  var_to_rng <- list(...)
+  if(is.null(names(var_to_rng)) ||
+     length(unique(names(var_to_rng))) != length(var_to_rng) ||
+     any(names(var_to_rng) == "")
+  ) {
+    stop("All arguments must have a unique name")
+  }
+  var_to_rng <- purrr::map(var_to_rng, purrr::as_mapper)
+
+  purrr::iwalk(var_to_rng, function(rng, name) {
+    tryCatch({
+      res <- rng(13)
+    }, error = function(e) {
+      message(e)
+      stop("Test invocation for argument '", name, "' failed.\n",
+           "All arguments must be convertible to a function that takes the number of draws as input and returns a 1D array of draws.")
+    })
+    if(!is.numeric(res) || length(res) != 13) {
+      stop("Test invocation for argument '", name, "' returned unexpected result.\n",
+           "All arguments must be convertible to a function that takes the number of draws as input and returns a 1D array of draws.")
+    }
+  })
+
+  structure(list(var_to_rng = var_to_rng, n_draws = n_draws), class = "SBC_backend_mock_rng")
+}
+
+#' @export
+SBC_fit.SBC_backend_mock_rng <- function(backend, generated, cores) {
+  draws_list <- purrr::map(backend$var_to_rng, ~ .x(backend$n_draws))
+
+  do.call(posterior::draws_matrix, draws_list)
+}
+
+#' @export
+SBC_backend_iid_draws.SBC_backend_mock_rng <- function(backend) {
+  TRUE
+}

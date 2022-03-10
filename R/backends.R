@@ -1,6 +1,6 @@
-#' Use backend to fit a model to data.
+#' S3 generic using backend to fit a model to data.
 #'
-#' S3 generic, needs to be implemented by all backends.
+#' Needs to be implemented by all backends.
 #' All implementations have to return an object for which you can safely
 #' call [SBC_fit_to_draws_matrix()] and get some draws.
 #' If that's not possible an error should be raised.
@@ -9,11 +9,18 @@ SBC_fit <- function(backend, generated, cores) {
   UseMethod("SBC_fit")
 }
 
+#' S3 generic converting a fitted model to a `draws_matrix` object.
+#'
+#' Needs to be implemented for all types of objects the backend can
+#' return from [SBC_fit()]. Default implementation just calls,
+#' [posterior::as_draws_matrix()], so if the fit object already supports
+#' this, it will work out of the box.
 #' @export
 SBC_fit_to_draws_matrix <- function(fit) {
   UseMethod("SBC_fit_to_draws_matrix")
 }
 
+#' @rdname SBC_fit_to_draws_matrix
 #' @export
 SBC_fit_to_draws_matrix.default <- function(fit) {
   posterior::as_draws_matrix(fit)
@@ -298,7 +305,7 @@ summary.SBC_nuts_diagnostics <- function(diagnostics) {
   )
 
   if(!is.null(diagnostics$min_bfmi)) {
-    summ$has_low_bfmi = sum(diagnostics$min_bfmi < 0.2)
+    summ$has_low_bfmi = sum(is.na(diagnostics$min_bfmi) | diagnostics$min_bfmi < 0.2)
   }
 
   if(!is.null(diagnostics$n_failed_chains)) {

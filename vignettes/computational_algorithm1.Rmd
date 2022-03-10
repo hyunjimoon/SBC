@@ -315,9 +315,13 @@ cat(readLines("stan/hmm_poisson.stan"), sep = "\n")
 We start with the default (meanfield) variational backend via Stan:
 
 ```{r}
+if(package_version(cmdstanr::cmdstan_version()) < package_version("2.26.0") ) {
+  stop("The models int this section require CmdStan 2.26 or later.")
+}
 model_HMM <- cmdstan_model("stan/hmm_poisson.stan")
 backend_HMM <- SBC_backend_cmdstan_variational(model_HMM, n_retries_init = 3)
 ```
+
 Since we are feeling confident that our model is implemented correctly (and the model runs quickly), we start with 100 simulations and assume 100 observations for each.
 If you are developing a new model, it might be useful to start with fewer simulations, as discussed in the 
 [small model workflow vignette](https://hyunjimoon.github.io/SBC/articles/small_model_workflow.html).
