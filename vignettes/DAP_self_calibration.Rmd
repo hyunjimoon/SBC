@@ -178,7 +178,7 @@ Note the code line ` log_tau <- rnorm(1, lambda_mu, sqrt(lambda_var))`. Like exa
 
 Now we define the HMC and optimizing `SBC` backends, which represent $\hat{g}$.
 
-```{r}
+```{R, warning=FALSE, message=FALSE, error=FALSE}
 knitr::opts_chunk$set(cache = TRUE)
 cmdstan_mod_eightschools <- cmdstanr::cmdstan_model("models/eightschools_ncp_posteriordb.stan")
 backend_eightschools_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_eightschools, chains = 4, iter_sampling = ndraws / 4)
@@ -369,7 +369,7 @@ Although to a lesser degree, we can still observe extreme deviations from the pr
 
 Let's zoom in to identify which prior combinations are being problematic:
 
-```{R}
+```{R, fig.align='center', fig.cap="zoomed prior-posterior grid plot of HMC"}
 ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2, arrow = arrow(length = unit(0.3, "cm"))) + xlab("mean") + ylab("variance") + ggtitle("HMC") + coord_cartesian(ylim=c(0, 7), xlim = c(-10, 5)) + scale_y_continuous(breaks=c(1:9))
 ```
 We can see that variance plays the big factor; large variance values(>=1) start to show miscalibration.
@@ -460,7 +460,7 @@ plot_rank_hist(result_eightschools_opt_new, variables=list("tau", "log_tau"))
 
 We can see that the ranks are not uniform, and thus the starting point is not well calibrated. Let's try the iterative update:
 
-```{R, warning=FALSE}
+```{R, warning=FALSE, message=FALSE}
 updator = "mc_update"
 
 
@@ -502,7 +502,7 @@ Unfortunately, no apparent improvement could be identified. The prior on $\mathr
 We'll try again with HMC this time:
 
 
-```{R, warning=FALSE}
+```{R, warning=FALSE, message=FALSE}
 updator = "mc_update"
 
 
@@ -521,7 +521,7 @@ result_eightschools_opt_new <- compute_results(datasets_eightschools_new, backen
 plot_rank_hist(result_eightschools_opt_new, variables=list("log_tau", "tau"))
 ```
 
-This proved to be only marginally better; the algorithm still struggled to find better calibrated priors even after 10 iterations.
+This proved to be only marginally better but the algorithm still struggled to find better calibrated priors even after 10 iterations.
 
 ## The role of the calibration algorithm and the interpretation of calibrated $\lambda$
 
