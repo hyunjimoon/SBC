@@ -447,3 +447,93 @@ plot_rank_hist(res_corr)
 plot_ecdf_diff(res_corr)
 ```
 
+
+# GQ exploration
+
+```{r}
+curve(dbeta(x, 2, 1), from = 0, to = 1)
+curve(0.5 * dbeta(x, 2, 1) + 0.5 * dbeta(x, 1, 2), from = 0, to = 1)
+```
+
+```{r}
+curve(2*x - 0.5 * (dbeta(1 - x, 1,2) + dbeta(x, 2, 1)), from = 0, to = 1) 
+```
+
+
+```{r}
+curve(1 - 2 * x + 2 * x ^2, from = 0, to = 1)
+```
+
+```{r}
+N_sim <- 1e6
+theta <- runif(N_sim)
+y <- rbinom(N_sim, size = 1, prob = theta)
+L <- ifelse(y == 0, 1 - theta, theta)
+plot(density(L, from = 0, to = 1))
+hist(L)
+```
+
+```{r}
+plan(sequential)
+
+set.seed(1558655)
+
+N_sims_simple_gq <- 100
+variables_simple_gq <- runif(N_sims_simple_gq)
+generated_simple_gq <- 
+  purrr::map(variables_simple_gq, ~ list(y = rbinom(1, size = 1, .x)))
+
+datasets_simple_gq <- SBC_datasets(variables = posterior::draws_matrix(theta = variables_simple_gq),
+                               generated = generated_simple_gq)
+
+
+my_backend_func <- function(func0, func1) {
+  structure(list(func0 = func0, func1 = func1), class = "my_backend_func")
+}
+
+SBC_fit.my_backend_func <- function(backend, generated, cores) {
+  if(generated$y == 0) {
+    posterior::draws_matrix(theta = backend$func0())
+  } else if (generated$y == 1) {
+    posterior::draws_matrix(theta = backend$func1())
+  } else {
+    stop("Invalid")
+  }
+}
+
+SBC_backend_iid_draws.my_backend_func <- function(backend) {
+  TRUE
+}
+
+backend_simple_gq_beta <- my_backend_func(
+  func0 = rlang::as_function(~ rbeta(1000, 1, 2)),
+  func1 = rlang::as_function(~ rbeta(1000, 2, 1)))
+
+gq_simple_gq <- generated_quantities(log_lik = dbinom(y, size = 1, prob = theta, log = TRUE),
+   sq = theta ^ 2,
+   sin5 = sin(theta * 5))
+
+res_simple_gq_beta <- compute_SBC(datasets_simple_gq, backend_simple_gq_beta, keep_fits = FALSE,
+                        gen_quants = gq_simple_gq)
+```
+
+```{r}
+plot_rank_hist(res_simple_gq_beta)
+plot_ecdf_diff(res_simple_gq_beta)
+```
+
+```{r}
+#TODO: write the func from
+# backend_simple_gq_fake <- my_backend_func(
+#   func0 = rlang::as_function(~ sample(runif(1, 0, 0.25), runif(1, 0.25, 0.5), , runif(1, 0.75, 1)),
+#   func1 = rlang::as_function(~ rbeta(1000, 2, 1)))
+
+gq_simple_gq <- generated_quantities(log_lik = dbinom(y, size = 1, prob = theta, log = TRUE),
+   sq = theta ^ 2,
+   sin5 = sin(theta * 5))
+
+res_simple_gq_beta <- compute_SBC(datasets_simple_gq, backend_simple_gq_beta, keep_fits = FALSE,
+                        gen_quants = gq_simple_gq)
+
+```
+
