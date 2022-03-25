@@ -882,9 +882,16 @@ compute_gen_quants <- function(draws, generated, gen_quants) {
   draws_rv <- posterior::as_draws_rvars(draws)
 
   draws_env <- list2env(draws_rv)
-  generated_env <- list2env(generated, parent = draws_env)
+  if(!is.null(generated)) {
+    if(!is.list(generated)) {
+      stop("compute_gen_quants assumes that generated is a list, but this is not the case")
+    }
+    generated_env <- list2env(generated, parent = draws_env)
 
-  data_mask <- rlang::new_data_mask(bottom = generated_env, top = draws_env)
+    data_mask <- rlang::new_data_mask(bottom = generated_env, top = draws_env)
+  } else {
+    data_mask <- rlang::new_data_mask(bottom = draws_env)
+  }
 
   eval_func <- function(gq) {
     # Wrap the expression in `rdo` which will mostly do what we need
