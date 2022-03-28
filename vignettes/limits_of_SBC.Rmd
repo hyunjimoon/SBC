@@ -505,22 +505,38 @@ SBC_backend_iid_draws.my_backend_func <- function(backend) {
   TRUE
 }
 
-backend_simple_gq_beta <- my_backend_func(
-  func0 = rlang::as_function(~ rbeta(1000, 1, 2)),
-  func1 = rlang::as_function(~ rbeta(1000, 2, 1)))
+backend_simple_gq_ok <- my_backend_func(
+  func0 = rlang::as_function(~ rbeta(100, 1, 2)),
+  func1 = rlang::as_function(~ rbeta(100, 2, 1)))
 
 gq_simple_gq <- generated_quantities(log_lik = dbinom(y, size = 1, prob = theta, log = TRUE),
    sq = theta ^ 2,
    sin5 = sin(theta * 5))
 
-res_simple_gq_beta <- compute_SBC(datasets_simple_gq, backend_simple_gq_beta, keep_fits = FALSE,
+res_simple_gq_ok <- compute_SBC(datasets_simple_gq, backend_simple_gq_ok, keep_fits = FALSE,
                         gen_quants = gq_simple_gq)
 ```
 
 ```{r}
-plot_rank_hist(res_simple_gq_beta)
-plot_ecdf_diff(res_simple_gq_beta)
+plot_rank_hist(res_simple_gq_ok)
+plot_ecdf_diff(res_simple_gq_ok)
 ```
+
+```{r}
+backend_simple_gq_flip <- my_backend_func(
+  func0 = rlang::as_function(~ rbeta(100, 2, 1)),
+  func1 = rlang::as_function(~ rbeta(100, 1, 2)))
+
+
+res_simple_gq_flip <- compute_SBC(datasets_simple_gq, backend_simple_gq_flip, keep_fits = FALSE,
+                        gen_quants = gq_simple_gq)
+
+plot_rank_hist(res_simple_gq_flip)
+plot_ecdf_diff(res_simple_gq_flip)
+
+
+```
+
 
 ```{r}
 #TODO: write the func from
@@ -528,9 +544,6 @@ plot_ecdf_diff(res_simple_gq_beta)
 #   func0 = rlang::as_function(~ sample(runif(1, 0, 0.25), runif(1, 0.25, 0.5), , runif(1, 0.75, 1)),
 #   func1 = rlang::as_function(~ rbeta(1000, 2, 1)))
 
-gq_simple_gq <- generated_quantities(log_lik = dbinom(y, size = 1, prob = theta, log = TRUE),
-   sq = theta ^ 2,
-   sin5 = sin(theta * 5))
 
 res_simple_gq_beta <- compute_SBC(datasets_simple_gq, backend_simple_gq_beta, keep_fits = FALSE,
                         gen_quants = gq_simple_gq)
