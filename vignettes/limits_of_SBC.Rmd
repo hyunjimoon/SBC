@@ -393,7 +393,7 @@ plan(sequential)
 library(mvtnorm)
 mvn_sigma <- matrix(c(1, 0.8,0.8,1), nrow = 2)
 
-set.seed(1556654)
+set.seed(1556654)/
 
 N_sims_corr <- 100
 variables_corr <- rmvnorm(N_sims_corr, sigma = mvn_sigma)
@@ -419,8 +419,9 @@ plot_ecdf_diff(res_corr)
 
 # Correlations
 
+No data, should be correlated but is ucorrelated
+
 ```{r}
-plan(sequential)
 library(mvtnorm)
 mvn_sigma <- matrix(c(1, 0.8,0.8,1), nrow = 2)
 
@@ -436,10 +437,10 @@ backend_corr <- SBC_backend_mock_rng(a = ~ rnorm(.), b = ~ rnorm(.))
 gq_corr <- generated_quantities(sum_a_b = a + b, 
                                 diff_a_b = a - b,
                                 prod_a_b = a * b,
-                                mvn_log_lik = dmvnorm(c(a, b), sigma = mvn_sigma, log = TRUE))
+                                mvn_log_lik = mvtnorm::dmvnorm(c(a, b), sigma = mvn_sigma, log = TRUE))
 
 res_corr <- compute_SBC(datasets_sigma, backend_corr, keep_fits = FALSE,
-                        gen_quants = gq_corr)
+                        gen_quants = gq_corr, globals = "mvn_sigma")
 ```
 
 ```{r}
@@ -448,105 +449,65 @@ plot_ecdf_diff(res_corr)
 ```
 
 
-# GQ exploration
+
+The same with some data
 
 ```{r}
-curve(dbeta(x, 2, 1), from = 0, to = 1)
-curve(0.5 * dbeta(x, 2, 1) + 0.5 * dbeta(x, 1, 2), from = 0, to = 1)
-```
+set.seed(546852)
 
-```{r}
-curve(2*x - 0.5 * (dbeta(1 - x, 1,2) + dbeta(x, 2, 1)), from = 0, to = 1) 
-```
+library(mvtnorm)
+mvn_sigma <- matrix(c(1, 0.8,0.8,1), nrow = 2)
 
-
-```{r}
-curve(1 - 2 * x + 2 * x ^2, from = 0, to = 1)
-```
-
-```{r}
-N_sim <- 1e6
-theta <- runif(N_sim)
-y <- rbinom(N_sim, size = 1, prob = theta)
-L <- ifelse(y == 0, 1 - theta, theta)
-plot(density(L, from = 0, to = 1))
-hist(L)
-```
-
-```{r}
-plan(sequential)
-
-set.seed(1558655)
-
-N_sims_simple_gq <- 100
-variables_simple_gq <- runif(N_sims_simple_gq)
-generated_simple_gq <- 
-  purrr::map(variables_simple_gq, ~ list(y = rbinom(1, size = 1, .x)))
-
-datasets_simple_gq <- SBC_datasets(variables = posterior::draws_matrix(theta = variables_simple_gq),
-                               generated = generated_simple_gq)
-
-
-my_backend_func <- function(func0, func1) {
-  structure(list(func0 = func0, func1 = func1), class = "my_backend_func")
+generator_func_correlated <- function(N) {
+  mu <- rmvnorm(1, sigma = mvn_sigma)
+  y <- rmvnorm(N, mean = mu, sigma = mvn_sigma)
+  list(variables = list(mu = mu[1,]),
+       generated = list(y = y))
 }
 
-SBC_fit.my_backend_func <- function(backend, generated, cores) {
-  if(generated$y == 0) {
-    posterior::draws_matrix(theta = backend$func0())
-  } else if (generated$y == 1) {
-    posterior::draws_matrix(theta = backend$func1())
-  } else {
-    stop("Invalid")
+N_sims_corr <- 100
+
+datasets_correlated <- generate_datasets(SBC_generator_function(generator_func_correlated, N = 3), N_sims_corr)
+
+analytic_backend_uncorr <- function(prior_sigma = 1) {
+  structure(list(prior_sigma = prior_sigma), class = "analytic_backend_uncorr")
+}
+
+SBC_fit.analytic_backend_uncorr <- function(backend, generated, cores) {
+  K <- ncol(generated$y)
+  N <- nrow(generated$y)
+  
+  ybar = colMeans(generated$y)
+
+  N_samp <- 100
+  res_raw <- matrix(nrow = N_samp, ncol = K)
+  colnames(res_raw) <- paste0("mu[", 1:K, "]")
+  for(k in 1:K) {
+    post_mean <- N * ybar[k] / (N  + 1)
+    post_sd <- sqrt(1 / (N + 1)) * backend$prior_sigma 
+    res_raw[,k] <- rnorm(N_samp, mean = post_mean, sd = post_sd)
   }
+  posterior::as_draws_matrix(res_raw)
 }
 
-SBC_backend_iid_draws.my_backend_func <- function(backend) {
+SBC_backend_iid_draws.analytic_backend_uncorr <- function(backend) {
   TRUE
 }
 
-backend_simple_gq_ok <- my_backend_func(
-  func0 = rlang::as_function(~ rbeta(100, 1, 2)),
-  func1 = rlang::as_function(~ rbeta(100, 2, 1)))
+backend_uncorr <- analytic_backend_uncorr(prior_sigma = 1)
 
-gq_simple_gq <- generated_quantities(log_lik = dbinom(y, size = 1, prob = theta, log = TRUE),
-   sq = theta ^ 2,
-   sin5 = sin(theta * 5))
+gq_corr <- generated_quantities(sum = mu[1] + mu[2], 
+                                diff = mu[1] - mu[2],
+                                prod = mu[1] * mu[2],
+                                log_lik = sum(dnorm(y[,1], mean = mu[1], sd = 1, log = TRUE) + dnorm(y[,2], mean = mu[2], sd = 1, log = TRUE)))
 
-res_simple_gq_ok <- compute_SBC(datasets_simple_gq, backend_simple_gq_ok, keep_fits = FALSE,
-                        gen_quants = gq_simple_gq)
+res_corr <- compute_SBC(datasets_correlated, backend_uncorr, keep_fits = FALSE,
+                        gen_quants = gq_corr, globals = c("SBC_fit.analytic_backend_uncorr",
+                                                          "SBC_backend_iid_draws.analytic_backend_uncorr"))
 ```
 
 ```{r}
-plot_rank_hist(res_simple_gq_ok)
-plot_ecdf_diff(res_simple_gq_ok)
-```
-
-```{r}
-backend_simple_gq_flip <- my_backend_func(
-  func0 = rlang::as_function(~ rbeta(100, 2, 1)),
-  func1 = rlang::as_function(~ rbeta(100, 1, 2)))
-
-
-res_simple_gq_flip <- compute_SBC(datasets_simple_gq, backend_simple_gq_flip, keep_fits = FALSE,
-                        gen_quants = gq_simple_gq)
-
-plot_rank_hist(res_simple_gq_flip)
-plot_ecdf_diff(res_simple_gq_flip)
-
-
-```
-
-
-```{r}
-#TODO: write the func from
-# backend_simple_gq_fake <- my_backend_func(
-#   func0 = rlang::as_function(~ sample(runif(1, 0, 0.25), runif(1, 0.25, 0.5), , runif(1, 0.75, 1)),
-#   func1 = rlang::as_function(~ rbeta(1000, 2, 1)))
-
-
-res_simple_gq_beta <- compute_SBC(datasets_simple_gq, backend_simple_gq_beta, keep_fits = FALSE,
-                        gen_quants = gq_simple_gq)
-
+plot_rank_hist(res_corr)
+plot_ecdf_diff(res_corr)
 ```
 

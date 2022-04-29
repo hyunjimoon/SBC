@@ -53,7 +53,7 @@ $$
 R=\iint f\left(y\right)\pi\left(y|\theta\right)\pi\left(\theta\right)\mathrm{d}y\mathrm{d}\theta=\int L\left(\theta\right)\pi\left(\theta\right)\mathrm{d}\theta
 $$
 
-Rejecting the variable draw when it generates “bad” data effectively distorts the prior
+Rejecting the simulation when it generates “bad” data effectively distorts the prior
 
 $$
 \pi\left(\theta\right)\to\frac{L\left(\theta\right)}{R}\pi\left(\theta\right)
