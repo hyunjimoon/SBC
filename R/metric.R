@@ -1,4 +1,4 @@
-#' Distance between binned samples (rank for SBC) and discrete uniform
+#' Distance between binned draws (rank for SBC) and discrete uniform
 #'
 #' @param ranks array of dimension (n_iter, n_pars) where n_iter=number of posterior draw iterations, n_pars the number of parameters of interest
 #' @param par names of parameter to plot
@@ -28,10 +28,10 @@ rank2unif <- function(results, par, bins = 20){
   return(list(par = par, rank_list = rank_list))
 }
 
-#' Summarize relational property of overall prior and posterior samples
+#' Summarize relational property of overall prior and posterior draws
 #'
-#' @param priors A posterior::draws_rvars of dimension(n_iterations=1, n_chains=n_sbc_iterations, n_variables=n_variables) which stores prior samples
-#' @param posteriors A posterior::draws_Rvars of dimension(n_iterations=n_posterior_samples, n_chains=n_sbc_iterations, n_variables=n_variables), which stores fitted posterior samples
+#' @param priors A posterior::draws_rvars of dimension(n_iterations=1, n_chains=n_sbc_iterations, n_variables=n_variables) which stores prior draws
+#' @param posteriors A posterior::draws_Rvars of dimension(n_iterations=n_posterior_draws, n_chains=n_sbc_iterations, n_variables=n_variables), which stores fitted posterior draws
 #' @param par names of parameter to summarize
 #' @param bins number of bins for prior and post density
 #' @export
@@ -68,7 +68,7 @@ max_diff <- function(x, y){
 # TODO need testing
 wasserstein <- function(x, y){
   tempf <- Vectorize(function(i) abs((x[i]/sum(x)  - y[i]/sum(y)))) # expected sums = 1
-  val <- integrate(tempf,1,bins, rel.tol=.Machine$double.eps^.05)$value
+  val <- integrate(tempf,1,5, rel.tol=.Machine$double.eps^.05)$value
   return(val)
 }
 # wasserstein <- function(x, y, bin_count){
@@ -97,8 +97,8 @@ wasserstein <- function(x, y){
 ##'
 ##' This has an upper bound of \eqn{\sqrt \sum (P(x) + Q(x))}
 ##'
-##' @param x numeric vector of samples from first distribution
-##' @param y numeric vector of samples from second distribution
+##' @param x numeric vector of draws from first distribution
+##' @param y numeric vector of draws from second distribution
 ##' @param x_weights numeric vector of weights of first distribution
 ##' @param y_weights numeric vector of weights of second distribution
 ##' @param ... unused
@@ -110,8 +110,17 @@ wasserstein <- function(x, y){
 ##'   Notes in Computer Science, vol 9285.  Springer, Cham.
 ##'   \code{doi:10.1007/978-3-319-23525-7_11}
 ##' @export
-cjs_dist <- function(x, y, x_weights = rep(1/length(x), length(x)), y_weights = rep(1/length(y), length(y)), ...) {
-
+cjs_dist <- function(x, y, x_weights, y_weights, ...) {
+  if (class(x)[1] == "rvar"){
+    x <- c(draws_of(x))
+    #cat("y at cjs")
+    #print(y)
+    y <- c(draws_of(y))
+    x_weights <-  rep(1/length(x), length(x))
+    y_weights <-  rep(1/length(y), length(y))
+  }
+  x_weights <-  rep(1/length(x), length(x))
+  y_weights <-  rep(1/length(y), length(y))
   # sort draws and weights
   x_idx <- order(x)
   x <- x[x_idx]

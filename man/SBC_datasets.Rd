@@ -4,14 +4,16 @@
 \alias{SBC_datasets}
 \title{Create new \code{SBC_datasets} object.}
 \usage{
-SBC_datasets(parameters, generated)
+SBC_datasets(variables, generated, parameters = NULL)
 }
 \arguments{
-\item{parameters}{samples of "true" values of unobserved parameters.
+\item{variables}{draws of "true" values of unobserved parameters or other derived variables.
 An object of class \code{draws_matrix} (from the \code{posterior} package)}
 
 \item{generated}{a list of objects that can be passed as data to the backend you plan to use.
 (e.g. list of values for Stan-based backends, a data frame for \code{SBC_backend_brms})}
+
+\item{parameters}{DEPRECATED. Use variables instead.}
 }
 \description{
 In most cases, you may want to use \code{generate_datasets} to build the object, but

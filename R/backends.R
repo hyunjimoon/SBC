@@ -1,6 +1,6 @@
-#' Use backend to fit a model to data.
+#' S3 generic using backend to fit a model to data.
 #'
-#' S3 generic, needs to be implemented by all backends.
+#' Needs to be implemented by all backends.
 #' All implementations have to return an object for which you can safely
 #' call [SBC_fit_to_draws_matrix()] and get some draws.
 #' If that's not possible an error should be raised.
@@ -9,11 +9,18 @@ SBC_fit <- function(backend, generated, cores) {
   UseMethod("SBC_fit")
 }
 
+#' S3 generic converting a fitted model to a `draws_matrix` object.
+#'
+#' Needs to be implemented for all types of objects the backend can
+#' return from [SBC_fit()]. Default implementation just calls,
+#' [posterior::as_draws_matrix()], so if the fit object already supports
+#' this, it will work out of the box.
 #' @export
 SBC_fit_to_draws_matrix <- function(fit) {
   UseMethod("SBC_fit_to_draws_matrix")
 }
 
+#' @rdname SBC_fit_to_draws_matrix
 #' @export
 SBC_fit_to_draws_matrix.default <- function(fit) {
   posterior::as_draws_matrix(fit)
@@ -55,32 +62,32 @@ SBC_backend_hash_for_cache.default <- function(backend) {
   rlang::hash(backend)
 }
 
-#' S3 generic to let backends signal that they produced independent samples.
+#' S3 generic to let backends signal that they produced independent draws.
 #'
 #' Most backends (e.g. those based on variatns of MCMC) don't produce
-#' independent samples and thus diagnostics like Rhat and ESS are important
-#' and samples may need thinning. Backends that already produce independent
-#' samples (e.g. ADVI/optimizing) can implement this method to return `TRUE`
+#' independent draws and thus diagnostics like Rhat and ESS are important
+#' and draws may need thinning. Backends that already produce independent
+#' draws (e.g. ADVI/optimizing) can implement this method to return `TRUE`
 #' to signal this is the case. If this method returns `TRUE`, ESS and Rhat will
 #' always attain their best possible values and [SBC_backend_default_thin_ranks()]
 #' will return `1`.
 #'  The default implementation returns `FALSE`.
 #' @param backend to check
 #' @export
-SBC_backend_iid_samples <- function(backend) {
-  UseMethod("SBC_backend_iid_samples")
+SBC_backend_iid_draws <- function(backend) {
+  UseMethod("SBC_backend_iid_draws")
 }
 
-#' @rdname SBC_backend_iid_samples
+#' @rdname SBC_backend_iid_draws
 #' @export
-SBC_backend_iid_samples.default <- function(backend) {
+SBC_backend_iid_draws.default <- function(backend) {
   FALSE
 }
 
 #' S3 generic to get backend-specific default thinning for rank computation.
 #'
 #' The default implementation plays it relatively safe and returns 10, unless
-#' [SBC_backend_iid_samples()] returns `TRUE` in which case it returns 1.
+#' [SBC_backend_iid_draws()] returns `TRUE` in which case it returns 1.
 #'
 #' @export
 SBC_backend_default_thin_ranks <- function(backend) {
@@ -90,7 +97,7 @@ SBC_backend_default_thin_ranks <- function(backend) {
 #' @rdname SBC_backend_default_thin_ranks
 #' @export
 SBC_backend_default_thin_ranks.default <- function(backend) {
-  if(SBC_backend_iid_samples(backend)) {
+  if(SBC_backend_iid_draws(backend)) {
     1
   } else {
     10
@@ -125,7 +132,7 @@ SBC_backend_rstan_sample <- function(model, ...) {
 
 #' @export
 SBC_fit.SBC_backend_rstan_sample <- function(backend, generated, cores) {
-  do.call(rstan::sampling,
+  fit <- do.call(rstan::sampling,
           combine_args(list(object = backend$model,
                  data = generated,
                  ## TODO: Forcing a single core until we can capture output with multiple cores
@@ -133,6 +140,12 @@ SBC_fit.SBC_backend_rstan_sample <- function(backend, generated, cores) {
                  cores = 1),
             backend$args
             ))
+
+  if(fit@mode != 0) {
+    stop("Fit does not contain draws.")
+  }
+
+  fit
 }
 
 #' @export
@@ -154,6 +167,130 @@ SBC_backend_hash_for_cache.SBC_backend_rstan_sample <- function(backend) {
   rlang::hash(list(model = backend$model@model_code, args = backend$args))
 }
 
+
+#' SBC backend using the `optimizing` method from `rstan`.
+#'
+#' @param model a `stanmodel` object (created via `rstan::stan_model`)
+#' @param ... other arguments passed to `optimizing` (number of iterations, ...).
+#'   Argument `data` cannot be set this way as they need to be
+#'   controlled by the package.
+#' @param n_retries_hessian the number of times the backend is allow to retry optimization
+#' (with different seeed) to produce a usable Hessian that can produce draws. In some cases,
+#' the Hessian may be numerically unstable and not be positive definite.
+#' @export
+SBC_backend_rstan_optimizing <- function(model, ..., n_retries_hessian = 1) {
+  stopifnot(inherits(model, "stanmodel"))
+  n_retries_hessian <- as.integer(n_retries_hessian)
+  stopifnot(length(n_retries_hessian) == 1)
+  stopifnot(n_retries_hessian > 0)
+
+  args <- list(...)
+  unacceptable_params <- c("data", "hessian")
+  if(any(names(args) %in% unacceptable_params)) {
+    stop(paste0("Parameters ", paste0("'", unacceptable_params, "'", collapse = ", "),
+                " cannot be provided when defining a backend as they need to be set ",
+                "by the SBC package"))
+  }
+
+  args$hessian <- TRUE
+  if(is.null(args$draws)) {
+    args$draws <- 1000
+  } else if(args$draws <= 1) {
+    stop("Cannot use optimizing backend with less than 2 draws")
+  }
+  structure(list(model = model, args = args, n_retries_hessian = n_retries_hessian), class = "SBC_backend_rstan_optimizing")
+}
+
+
+#' @export
+SBC_fit.SBC_backend_rstan_optimizing <- function(backend, generated, cores) {
+  for(attempt in 1:backend$n_retries_hessian) {
+    start <- proc.time()
+    fit <- do.call(rstan::optimizing,
+                   combine_args(list(object = backend$model,
+                                     data = generated),
+                                backend$args)
+    )
+    end <- proc.time()
+    fit$time <- (end - start)["elapsed"]
+
+    if(fit$return_code != 0) {
+      stop("Optimizing was not succesful")
+    }
+    # This signals production of draws was OK
+    if(nrow(fit$theta_tilde) > 1) {
+      break;
+    }
+  }
+
+  fit$n_attempts <- attempt
+
+  if(nrow(fit$theta_tilde) == 1) {
+    stop("Optimizing did not return draws.\n",
+    "This is most likely due to numerical problems with the Hessian, check model output.\n",
+    "You may also consider increasing `n_retries_hessian`")
+  }
+
+
+  structure(fit, class = "RStanOptimizingFit")
+}
+
+#' @export
+SBC_backend_hash_for_cache.SBC_backend_rstan_optimizing <- function(backend) {
+  rlang::hash(list(model = backend$model@model_code, args = backend$args))
+}
+
+#' @export
+SBC_fit_to_draws_matrix.RStanOptimizingFit <- function(fit) {
+  posterior::as_draws_matrix(fit$theta_tilde)
+}
+
+
+#' @export
+SBC_backend_iid_draws.SBC_backend_rstan_optimizing <- function(backend) {
+  TRUE
+}
+
+#' @export
+SBC_fit_to_diagnostics.RStanOptimizingFit <- function(fit, fit_output, fit_messages, fit_warnings) {
+  res <- data.frame(
+    time = fit$time,
+    n_attempts = fit$n_attempts
+  )
+
+  class(res) <- c("SBC_RStanOptimizing_diagnostics", class(res))
+  res
+}
+
+#' @export
+summary.SBC_RStanOptimizing_diagnostics <- function(x) {
+  summ <- list(
+    n_fits = nrow(x),
+    max_time = max(x$time),
+    n_multiple_attempts = sum(x$n_attempts > 1)
+  )
+
+  structure(summ, class = "SBC_RStanOptimizing_diagnostics_summary")
+}
+
+#' @export
+get_diagnostic_messages.SBC_RStanOptimizing_diagnostics <- function(x) {
+  get_diagnostic_messages(summary(x))
+}
+
+
+#' @export
+get_diagnostic_messages.SBC_RStanOptimizing_diagnostics_summary <- function(x) {
+  SBC_diagnostic_messages(
+    rbind(
+      data.frame(ok = TRUE, message = paste0("Maximum time was ", x$max_time, " sec.")),
+      data.frame(ok = x$n_multiple_attempts == 0,
+               message = paste0( x$n_multiple_attempts, " (", round(100 * x$n_multiple_attempts / x$n_fits),
+                                 "%) of fits required multiple attempts to produce usable Hessian."))
+    )
+  )
+}
+
 #' @export
 summary.SBC_nuts_diagnostics <- function(diagnostics) {
   summ <- list(
@@ -168,13 +305,13 @@ summary.SBC_nuts_diagnostics <- function(diagnostics) {
   )
 
   if(!is.null(diagnostics$min_bfmi)) {
-    summ$has_low_bfmi = sum(diagnostics$min_bfmi < 0.2)
+    summ$has_low_bfmi = sum(is.na(diagnostics$min_bfmi) | diagnostics$min_bfmi < 0.2)
   }
 
   if(!is.null(diagnostics$n_failed_chains)) {
     if(any(is.na(diagnostics$n_failed_chains))) {
-      problematic_fit_ids <- paste0(which(is.na(diagnostics$n_failed_chains)), collapse = ", ")
-      warning("Fits for datasets ", problematic_fit_ids, " had NA for n_failed_chains.")
+      problematic_sim_ids <- paste0(which(is.na(diagnostics$n_failed_chains)), collapse = ", ")
+      warning("Fits for simulations ", problematic_sim_ids, " had NA for n_failed_chains.")
     }
     summ$has_failed_chains = sum(is.na(diagnostics$n_failed_chains) | diagnostics$n_failed_chains > 0)
   }
@@ -418,16 +555,7 @@ SBC_fit.SBC_backend_cmdstan_variational <- function(backend, generated, cores) {
     }
   }
 
-  #Re-emit outputs, warnings, messages
-  for(i in 1:length(fit_outputs)) {
-    cat(fit_outputs[[i]]$output, sep = "\n")
-    for(m in 1:length(fit_outputs[[i]]$messages)) {
-      message(fit_outputs[[i]]$messages[m])
-    }
-    for(w in 1:length(fit_outputs[[i]]$warnings)) {
-      warning(fit_outputs[[i]]$warnings[w])
-    }
-  }
+  reemit_captured(fit_outputs[[i]])
 
   if(all(fit$return_codes() != 0)) {
     stop("Variational inference did not finish succesfully")
@@ -449,7 +577,7 @@ SBC_fit_to_draws_matrix.CmdStanVB <- function(fit) {
 }
 
 #' @export
-SBC_backend_iid_samples.SBC_backend_cmdstan_variational <- function(backend) {
+SBC_backend_iid_draws.SBC_backend_cmdstan_variational <- function(backend) {
   TRUE
 }
 
@@ -521,8 +649,18 @@ new_SBC_backend_brms <- function(compiled_model,
 ) {
   require_brms_version("brms backend")
 
-  arg_names_for_stan <- c("chains", "inits", "iter", "warmup", "thin")
+  arg_names_for_stan <- c("chains", "inits", "init", "iter", "warmup", "thin")
   args_for_stan <- args[intersect(names(args), arg_names_for_stan)]
+
+  args_for_stan_renames <- c("inits" = "init")
+  for(i in 1:length(args_for_stan_renames)) {
+    orig <- names(args_for_stan_renames)[i]
+    new <- args_for_stan_renames[i]
+    if(!is.null(args_for_stan[[orig]])) {
+      args_for_stan[[new]] <- args_for_stan[[orig]]
+      args_for_stan[[orig]] <- NULL
+    }
+  }
   stan_backend <- sampling_backend_from_stanmodel(compiled_model, args_for_stan)
 
   structure(list(stan_backend = stan_backend, args = args), class = "SBC_backend_brms")
@@ -544,13 +682,21 @@ validate_SBC_backend_brms_args <- function(args) {
 #' Build a backend based on the `brms` package.
 #'
 #' @param ... arguments passed to `brm`.
-#' @param template_dataset a representative dataset that can be used to generate code.
+#' @param template_data a representative value for the `data` argument in `brm`
+#'    that can be used to generate code.
+#' @param template_dataset DEPRECATED. Use `template_data`
 #' @export
-SBC_backend_brms <- function(..., template_dataset) {
+SBC_backend_brms <- function(..., template_data, template_dataset = NULL) {
+  if(!is.null(template_dataset)) {
+    warning("Argument 'template_dataset' is deprecated, use 'template_data' instead")
+    if(missing(template_data)) {
+      template_data <- template_dataset
+    }
+  }
   args = list(...)
   validate_SBC_backend_brms_args(args)
 
-  stanmodel <- stanmodel_for_brms(data = template_dataset, ...)
+  stanmodel <- stanmodel_for_brms(data = template_data, ...)
 
   new_SBC_backend_brms(stanmodel, args)
 }

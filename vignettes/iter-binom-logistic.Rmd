@@ -1,0 +1,810 @@
+---
+title: "iter-binomial-laplace"
+output: html_document
+author: "Hyunji Moon"
+---
+```{r setup, include=FALSE, warning=FALSE}
+library(SBC)
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(dplyr)
+library(rstan)
+library(future)
+library(ggpubr)
+library(rstanarm)
+library(ggplot2)
+options(mc.cores = parallel::detectCores())
+plan(multisession)
+options(SBC.min_chunk_size = 5)
+set.seed(1984)
+```
+
+
+Definition:
+
+- simulation prior := prior distribution that informs the prior predictive simulations and is being iteratively updated
+
+- inference prior := prior distribution that informs the posterior distribution, and hence the posterior sampling method
+
+- prior predictive distribution $P(y)$:= marginal distribution of $y, p(y)$ 
+
+- data-averaged posterior $P(\theta')$:= combined posterior samples from each datasets
+
+- posterior sampling method := a.k.a. inference algorithm in which distribution is the function of prior predictive distribution and inference prior
+
+- default prior of chosen likelihood and posterior sampling method := wide enough prior to the level of not hurting self-consistency
+
+Prior predictive distribution is determined by two components, prior distribution and likelihood.
+$$p(y_1,..,y_n) = \int \prod_{i=1}^{n} f(y_i|\theta)p(\theta)d\theta$$
+
+Let us denote the distribution of likelihood and posterior sampling method as $F, G^{-1}$. Inverse is used to denote most poterior sampling methods reversely uses likelihood distribution to minimize the distance between the target and generated distribution. In SBC package, `glm` formula used for predictive distribution can be used as a approximation, what we call backend. See [implementing_backends](https://hyunjimoon.github.io/SBC/articles/implementing_backends.htmls) vignette for this.
+
+![F, G_t^{-1}, Regularizer determine the outcome of converged distribution, which we call default prior.](iter_overview.png)
+
+Proposition: Iteration of prior predictive simulation, posterior sampling, and regularizing converge to a default prior for a given prior distribution family, likelihood, and inference algorithm.
+
+This is due to the recurrence of well-calibrated regions which will be illustrated in experiment 1 which shows different priors converging to the same distribution for simple Bernoulli likelihood and Laplace approximation as a inference algorithm. This approximation truncates Taylor expansion of the log target density at the mode to the sencond order i.e. $\mu_{t+1} = argmax \;f(w)$, $\sigma_{t+1} = -\frac{d^{2}}{d w^{2}} \log f(w) ; w=w_{0}$.
+
+# PASSIVE UPDATE
+# Experient 1. 1.Normal simulation prior (samples: 100), 2.Bernouli-logit prior predictive simultation, 3. Laplace approximation posterior sampling (draws: 100), 4. Plugging mean and sd of the data-averaged posterior to the next simulation prior as the regularizer
+
+Target parameter is logit-transformed probability, $a$. Binomial likelihood and laplace approximation inference algorithm on logit scale is used. Hyperparameters for laplace approximation are $\mu, \sigma$ which correspond to posterior distribution mode and second derivative at the mode. These hyperparameter values are set as the prior parameter for the iteration. Results show starting from $N(0, 3^2)$ distribution, initial non-normal distribution slowly transforms to normal form to adjust to the constraints imposed by the approximation of inference algorithm, in this case normal distribution. Final convergence is around $N(0, 0.5^2)$.
+
+```{r, warning=FALSE, error=FALSE}
+generator_binom <- function(lambda_mu, lambda_sigma, fixed_sim_args){
+  # fixed value across simulated datasets
+  # experiment settings
+  nobs <- fixed_sim_args$nobs
+  link_type <- fixed_sim_args$link_type
+  # clamped parameters
+
+  # generate
+  eta <- rnorm(1, mean = lambda_mu, sd=lambda_sigma)
+  mu <- invtf_param_vec(eta, link_type = link_type)
+  Y <- rbinom(nobs, size = nsize, prob = mu) 
+  list(
+    parameters = list(eta = eta),
+    generated = list(nobs= nobs, K = K, X = X, shape = shape,
+                          lambda_mu = lambda_mu, lambda_log_sigma = log(lambda_sigma), 
+                          Y = Y)
+  )
+}
+fixed_sim_args_binom <- list(nobs = nobs, link_type = 1)
+datasets_binom <- generate_datasets(SBC_generator_function(generator_binom, lambda_mu, lambda_sigma, fixed_sim_args_binom), n_datasets = nsims)
+
+# prior hyperparameters
+lambda_mu <- 2
+lambda_sigma <- 5
+
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# maximal number of SBC iterations
+niter <- 100
+
+# number of SBC simulations per iteration (generator)
+nsims <- 80
+
+# number of draws per posterior approximation (backend)
+ndraws <- 100
+
+# number of observations
+nobs <- 2
+
+# number of binomial trials per observation
+nsize <- 10
+
+nchains <- 1
+# tolerance
+tol <- 0.02
+
+# learning rate
+gamma <- 0.5
+
+# hyperparameter update type 
+updator = "heuristic"
+
+# step2: posterior sampling
+rstan_mod <- stan_model("models/binom-laplace.stan")
+cmdstan_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
+rstan_backend_hmc <- SBC_backend_rstan_sample(rstan_mod, chains = nchains, iter = ndraws / nchains + 1000, warmup=1000)
+
+backend_vi <- SBC_backend_cmdstan_variational(cmdstan_mod, output_samples = ndraws, algorithm = "fullrank")
+
+# TODO
+#backend_laplace <- SBC_backend_rstan_laplace(rstan_mod, iter_sampling = ndraws)
+# backend_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod, chains = 2, iter_sampling = ndraws / 2) if cmdstanr return hession
+                
+# initial badly calibrated
+result_hmc <- compute_results(datasets, rstan_backend_hmc, thin_ranks = 1)
+result_vi <- compute_results(datasets, backend_vi, thin_ranks = 1)
+plot_rank_hist(result_hmc)
+plot_rank_hist(result_vi)
+
+# step3: updating hyperparmeters
+param_sc_hmc <- self_calib_adaptive(generator_binom, rstan_backend_hmc, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_sim_args = fixed_sim_args))
+plot_rank_hist(param_sc_hmc)
+
+param_sc_vi <- self_calib_adaptive(generator_binom, backend_vi, updator, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_sim_args = fixed_sim_args))
+plot_rank_hist(param_sc_vi)
+```
+
+
+HMC is underdispersed. ADVI is skewed to the right and has a tendency to under-estimate.
+
+```{r  warning=FALSE}
+generator_gamma <- function(lambda_mu, lambda_sigma, fixed_sim_args){
+  # fixed value across simulated datasets
+  ## meta
+  nobs <- fixed_sim_args$nobs
+  K <- fixed_sim_args$K
+  shape <- fixed_sim_args$shape
+
+  # predictor
+  X <- array(rnorm(nobs * K, mean = 1, sd = 1), dim = c(nobs, K))
+  b <- rnorm(K, mean = 0, sd = 1)
+  # generate
+  eta <- rnorm(1, mean = lambda_mu, sd=lambda_sigma)
+  logmu <- as.numeric(eta+ X %*% b)
+  mu <- exp(logmu)
+  Y <- rgamma(nobs, shape = shape, scale = mu/shape) 
+  list(
+    parameters = list(eta = eta),
+    generated = list(nobs= nobs, K = K, X = X, shape = shape,
+                          lambda_mu = lambda_mu, lambda_log_sigma = log(lambda_sigma), 
+                          Y = Y)
+  )
+}
+
+```
+
+```{r, warning=FALSE, error=FALSE}
+backend_vi <- SBC_backend_cmdstan_variational(mod_gr, output_samples = M, algorithm = "fullrank")
+result_25_vi <- compute_results(datasets_25, backend_vi, thin_ranks = 1)
+plot_rank_hist(result_25_vi)
+param_sc_vi <- self_calib_adaptive(generator_binom, cmdstan_backend_vi, "eta", lambda_mu, lambda_sigma, nsims, tol, fixed_args = list(fixed_sim_args = fixed_sim_args))
+plot_rank_hist(param_sc_vi)
+```
+
+Would this converging distribution be unique? From the result below, starting from $N(3, 1^2)$ which is unsymmetrical compared to $N(0, 3^2)$, also converges to a similar distribution. A likeable explanation is the recurrence of parameter values within well-calibrated region as opposed to that are not. For instance, if $logit^{-1}(\theta)$ starts from 0.9, is likely to form a non-normal posterior whose mode is more likely to move away from 0.9. On the other hand, parameter values near .5 forms a symmetric and stable posterior which in most cases has its mode near .5. In this case, the disstribution converge to around $N(0, 0.4^2)$
+
+```{r, warning=FALSE, error=FALSE}
+model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 1000
+# prior hyperparameters
+mu <- 3
+sigma <- 1
+mu_lst <- c()
+sigma_lst <- c()
+# experiment settings
+## the number of dataset
+nsims <- 100
+## outcome dimension for each dataset
+nobs <- 2
+## posterior samples for each dataset
+ndraws <- 100
+## number of binomial trials
+nsize <- 1
+for (j in 1:SBC_iter){
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(theta[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_theta <- fit$par["theta"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_theta <- sqrt(solve(-fit$hessian))
+  	post_draws_theta <- c(post_draws_theta, rnorm(ndraws, post_mean_theta, post_sd_theta))
+  }
+  if ((j-1) %% 300 == 0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  
+  # regularizer: update hyperparameters
+  mu_est <- mean(post_draws_theta)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_theta)
+  sigma <- sigma_est
+    
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
+print(sigma_lst[length(sigma_lst)])
+```
+
+# Experiment 2. Change experimental settings
+## 2-1. Decreasing the number of prior samples from 100 to 10
+
+Drastic jumps are observed. This may be due to simultation noise but observed oscillation of after the jump tells zero calibration bias prior is the form of a point, not a range. 
+
+```{r, warning=FALSE, error=FALSE}
+model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 10000
+# prior hyperparameters
+mu <- 1
+sigma <- 10
+mu_lst <- c()
+sigma_lst <- c()
+# experiment settings
+## the number of dataset
+nsims <- 100
+## outcome dimension for each dataset
+nobs <- 2
+## posterior samples for each dataset
+ndraws <- 100
+## number of binomial trials
+nsize <- 1
+for (j in 1:SBC_iter){
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(theta[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_theta <- fit$par["theta"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_theta <- sqrt(solve(-fit$hessian))
+  	post_draws_theta <- c(post_draws_theta, rnorm(ndraws, post_mean_theta, post_sd_theta))
+  }
+  
+  # regularizer: update hyperparameters
+  mu_est <- mean(post_draws_theta)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_theta)
+  sigma <- sigma_est
+    
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
+```
+
+## 2-2. Increasing outcome dimension what is usually called sample size
+
+```{r, warning=FALSE, error=FALSE}
+model = stan_model("./models/binom-laplace.stan")
+SBC_iter <- 10000
+# prior hyperparameters
+mu <- 1
+sigma <- 10
+mu_lst <- c()
+sigma_lst <- c()
+# experiment settings
+## the number of dataset
+nsims <- 100
+## outcome dimension for each dataset
+nobs <- 100
+## posterior samples for each dataset
+ndraws <- 100
+## number of binomial trials
+nsize <- 1
+for (j in 1:SBC_iter){
+  post_draws_theta <- c()
+  theta <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+  	p <- invlogit(theta[i])
+  	y <- rbinom(nobs, nsize, p)
+  	dat <- list(Y=as.array(y), nsize=nsize, nobs=nobs, mu = mu, sigma = sigma)
+  	fit <- optimizing(model, data = dat, hessian = TRUE)
+  	
+  	# approximate posterior mean via posterior mode
+  	post_mean_theta <- fit$par["theta"]
+  	
+  	# approximate posterior sd via (sqrt) of the inverse negative Hessian
+  	post_sd_theta <- sqrt(solve(-fit$hessian))
+  	post_draws_theta <- c(post_draws_theta, rnorm(ndraws, post_mean_theta, post_sd_theta))
+  }
+  
+  # regularizer: update hyperparameters
+  mu_est <- mean(post_draws_theta)
+  mu <- mu_est
+  sigma_est <- sd(post_draws_theta)
+  sigma <- sigma_est
+    
+  if ((j-1) %% 30 ==0){
+    hist(invlogit(post_draws_theta), xlim = range(0,1), main = paste(j, "th itheration histogram"))  
+  }
+  mu_lst <- c(mu_lst, mu)
+  sigma_lst <- c(sigma_lst, sigma)
+}
+plot(unlist(mu_lst), ylab = "prior mean")
+plot(unlist(sigma_lst), ylab = "prior sd")
+```
+## 2-3. Changing the order of the procedure.
+Data-averaged posterior where average happens in outcome level (gather y from each dataset then computation once) vs parameter level (computation in each dataset then gather parameter). The former is of course more normal-like as the Laplace approximation (computation) happened lastly. Procedure change. 
+```{r}
+model <- stan_model("models/binom-laplace.stan")
+# prior hyperparameters
+mu <- 0
+sigma <- 10
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+ # maximal number of SBC iterations
+niter <- 20
+
+# number of SBC simulations per iteration
+nsims <- 100
+
+# number of draws per posterior approximation
+ndraws <- 100
+
+# number of observations
+nobs <- 1
+
+# number of binomial trials per observation
+nsize <- 2
+get_posterior_1 <- function(eta, mu, sigma) {
+    # multiple options for link functions
+  if (link == 1) {
+    p = brms:::inv_logit(eta)
+  } else if (link == 2) {
+    p = dnorm(eta)
+  } else if (link == 3) {
+    p = brms:::inv_cloglog(eta);
+  }
+  p = brms:::inv_logit(eta)
+  y <- rbinom(nobs, nsize, p)
+  dat <- list(Y = as.array(y), nsize=nsize, nobs=nobs, 
+              mu = mu, sigma = sigma, link = link)
+  
+  fit <- optimizing(model, data = dat, hessian = TRUE)
+  
+  # approximate posterior mean via posterior mode
+  post_mean_eta <- fit$par["eta"]
+  
+  # approximate posterior sd via (sqrt) of the inverse negative Hessian
+  post_sd_eta <- sqrt(solve(-fit$hessian))
+  
+  # approximate the posterior using eta normal distribution
+  rnorm(ndraws, post_mean_eta, post_sd_eta)
+}
+
+get_posterior_2 <- function(y, mu, sigma) {
+  dat <- list(Y = as.array(y), nsize=nsize, nobs=nobs*nsims, 
+              mu = mu, sigma = sigma)
+  
+  fit <- optimizing(model, data = dat, hessian = TRUE)
+  
+  # approximate posterior mean via posterior mode
+  post_mean_eta <- fit$par["eta"]
+  
+  # approximate posterior sd via (sqrt) of the inverse negative Hessian
+  post_sd_eta <- sqrt(solve(-fit$hessian))
+  
+  # approximate the posterior using eta normal distribution
+  rnorm(ndraws, post_mean_eta, post_sd_eta)
+}
+
+# maximal number of SBC iterations
+niter <- 50
+# number of SBC simulations per iteration
+nsims <- 100
+# number of draws per posterior approximation
+ndraws <- 100
+# number of observations
+nobs <- 1
+# number of binomial trials per observation
+nsize <- 2
+
+# First procedure
+for (j in 1:niter) {
+  post_draws_eta <- c()
+  eta <- rnorm(nsims, mu[j], sigma[j])
+  for (i in 1:nsims) {
+    draws_new <- get_posterior_1(eta[i], mu = mu[j], sigma = sigma[j])
+    post_draws_eta <- c(post_draws_eta, draws_new)
+  }
+  mu[j+1] <- mean(post_draws_eta)
+  sigma[j+1] <-  sd(post_draws_eta)
+  message("mu : ", mu[j], " mu_est : ", mu[j+1])
+  hist(post_draws_eta, probability = TRUE, 30, main = paste(j, "th itheration"))
+  xval <- seq(min(post_draws_eta), max(post_draws_eta), length.out = 100)
+  lines(xval, dnorm(xval, mu[j], sigma[j]))
+}
+
+# Second procedure
+for (j in 1:niter) {
+  draws_y <- c()
+  eta <- rnorm(nsims, mu[j], sigma[j])
+  for (i in 1:nsims) {
+    p = brms:::inv_logit(eta[i])
+    draws_new <- rbinom(nobs, nsize, p)
+    draws_y <- c(draws_y, draws_new)
+  }
+  post_draws_eta <- get_posterior_2(draws_y, mu[j], sigma[j])
+  mu[j+1] <- mean(post_draws_eta)
+  sigma[j+1] <-  sd(post_draws_eta)
+  message("mu : ", mu[j], " mu_est : ", mu[j+1])
+  hist(post_draws_eta, probability = TRUE, 30, main = paste(j, "th itheration"))
+  xval <- seq(min(post_draws_eta), max(post_draws_eta), length.out = 100)
+  lines(xval, dnorm(xval, mu[j], sigma[j]))
+}
+```
+
+
+# ACTIVE UPDATE
+Using fixed point iteration for convergence
+``` {r, warning=FALSE, error=FALSE}
+
+data_generator <- function(eta, mu, sigma) {
+  # multiple options for link functions
+  if (link == 1) {
+    p = brms:::inv_logit(eta)
+  } else if (link == 2) {
+    p = dnorm(eta)
+  } else if (link == 3) {
+    p = brms:::inv_cloglog(eta);
+  }
+  y <- rbinom(nobs, nsize, p)
+  dat <- list(Y = as.array(y), nsize=nsize, nobs=nobs,
+              mu = mu, sigma = sigma, link = link)
+  dat
+}
+
+posterior_approximator <- function(eta, mu, sigma, approximator) {
+  dat <- data_generator(eta, mu, sigma)
+  
+  # fit the model
+  neval <<- neval + 1
+  if (approximator == "sampling"){
+    fit <- sampling(model, data = dat, iter=1000, warmup=1000-(ndraws), cores = 1, show_messages = FALSE, chains=1, refresh=0)
+    return(list(posterior = extract(fit, "eta")$eta, y = dat$Y))
+  }else if(approximator == "optimizing") {
+    fit <- optimizing(model, data = dat, hessian = TRUE)
+  
+    # approximate posterior mean via posterior mode
+    post_mean_eta <- fit$par["eta"]
+    
+    # approximate posterior sd via (sqrt) of the inverse negative Hessian
+    post_sd_eta <- sqrt(solve(-fit$hessian))
+    
+    # approximate the posterior using eta normal distribution
+    return(list(posterior = rnorm(ndraws, post_mean_eta, post_sd_eta), y = dat$Y))
+  }
+
+}
+
+# compute the hyperparameters of the data-averaged posterior
+data_averaged_posterior_p_dat_hp <- function(mu, log_sigma, approximator = "optimizing") {
+  sigma <- exp(log_sigma)
+  post_draws_eta <- c()
+  draws_y <- c()
+  eta <- rnorm(nsims, mu, sigma)
+  for (i in 1:nsims) {
+    draws_new <- posterior_approximator(eta[i], mu, sigma, approximator)
+    post_draws_eta <- c(post_draws_eta, draws_new$posterior)
+    draws_y <- c(draws_y, draws_new$y)
+  }
+  dat_tot <- list(Y = as.array(draws_y), nsize=nsize, nobs = nobs * nsims, 
+              mu = mu, log_sigma = log_sigma, link = link)
+  hist(post_draws_eta, probability = TRUE, 30)
+  xval <- seq(min(post_draws_eta), max(post_draws_eta), length.out = 100)
+  lines(xval, dnorm(xval, mu, sigma))
+
+  mu_est <- mean(post_draws_eta)
+  sigma_est <- sd(post_draws_eta)
+  message("mu : ", mu, " mu_est : ", mu_est)
+  message("sigma : ", sigma, " sigma_est : ", sigma_est)
+  
+  list(eta = eta, post_draws_eta = post_draws_eta, lambda = c(mu = mu_est, log_sigma = log(sigma_est)), dat = dat_tot)
+}
+loss <- function(lambda, approximator) {
+  dap_lambda <- data_averaged_posterior_pars_dat(lambda[1], lambda[2], approximator)$lambda
+  message("loss : ", sum((lambda - dap_lambda)^2))
+  sum((lambda - dap_lambda)^2)
+}
+grad_loss <- function(lambda) {
+  # rough finite difference gradients such that steps are bigger
+  # than the expected error caused by the simulations from prior and posterior
+  numDeriv::grad(loss, lambda, method.args=list(eps=0.3, d = 0.3))
+}
+grad_loss_sens <- function(lambda, model_sens1){
+  dap_lambda_dat <- data_averaged_posterior_pars_dat(lambda[1], lambda[2], approximator)
+  dap_lambda <- dap_lambda_dat$lambda
+  dap_dat_sens <- dap_lambda_dat$dat_sens
+  # Run the sampler.
+  #sampling_result <- sampling(model_sens1, data=dap_dat_sens, chains=2, iter=1000)
+  model_sens2 <- GetStanSensitivityModel(model_name, dap_dat_sens)
+  sampling_result <- optimizing(model_sens1, dap_dat_sens, draws = 100)
+  setClass("optimizingfit", representation(fit="list", sim="list"))
+  setMethod("extract", signature="optimizingfit", function(object, permute=TRUE){
+    param_names <- colnames(object@fit$theta_tilde)
+    ret <- object@fit$theta_tilde
+    dim(ret) <- c(dim(object@fit$theta_tilde)[1], 1, dim(object@fit$theta_tilde)[-1])
+    dimnames(ret)[[3]] <- param_names
+    return(ret)
+    })
+  setMethod("get_inits", signature="optimizingfit", function(object, iter){list(split(as.numeric(object@fit$theta_tilde[iter, ]), colnames(object@fit$theta_tilde)))})
+  of <- new("optimizingfit", fit=sampling_result, sim=list(warmup=0, iter=100, chains=1))
+  
+  #sampling_result <- sampling(model_sens1, data=dap_dat_sens, chains=2, iter=1000)
+  #of <- sampling_result
+
+  sens_res <- GetStanSensitivityFromModelFit(of, model_sens2)
+  # gradient of hyperparameter averaged over data-averaged posterior
+  n <- nrow(sens_res$draws_mat)
+  sens_mat <- (sens_res$grad_mat %*% sens_res$draws_mat) / (n - 1)
+                - rowMeans(sens_res$grad_mat) %*% t(colMeans(sens_res$draws_mat)) * (n / (n - 1))
+  grad_self_cons <- sens_mat[,1] - 1
+  return (abs(grad_self_cons))
+}
+# results from solving (x-y)^2 = 0 after x
+# fix points are all x = y
+quad_recursion1 <- function(x, y) {
+  (y^2 + x^2) / (2 * y)
+}
+quad_recursion2 <- function(x, y) {
+  sqrt(2*x*y - y^2)
+}
+quad_recursion3 <- function(x, y) {
+  (y^2 + x^2) / (x + y)
+}
+cubic_recursion1 <- function(x, y) {
+  (x^3 - 3*x^2*y - y^3) / (-3*y^2)
+}
+cubic_recursion2 <- function(x, y) {
+  sqrt((x^3 + 3*x*y^2 - y^3) / (3*y))
+}
+max_coupling <- function(lambda, approximator){
+  eta_dapeta <- data_averaged_posterior_p_dat_hp(lambda[1], lambda[2], approximator)
+  #eta_dapeta <- data_averaged_posterior_pars_dat(lambda[1], lambda[2], approximator)
+  eta <- eta_dapeta$eta
+  dap_eta <- eta_dapeta$post_draws_eta
+  breaks <- seq(-20, 20, by = 1)
+  # p is categorized samples of prior
+  p <- hist(eta, breaks = breaks)$counts / length(eta)
+  # q is categorized samples of data-averaged posterior
+  q <- hist(dap_eta, breaks = breaks)$counts / length(dap_eta)
+  w = 1 - sum(abs(p - q))
+  pqmin = pmin(p, q)
+  Z <- sum(pqmin)
+  # common random number generation for coupling
+  u <- runif(1)
+  if (u < w){
+    tmp <- runif(pqmin / Z)
+    p_coup <- tmp
+    q_coup <- tmp
+  }else{
+    p_coup <- runif((p - pqmin)/ 1 - Z)
+    q_coup <- runif((q - pqmin)/ 1 - Z)
+  }
+  p_coup
+}
+
+# TODO: find better fix point functions
+model <- stan_model("models/binom-laplace.stan")
+# prior hyperparameters
+mu <- -5
+sigma <- 3
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+# maximal number of SBC iterations
+niter <- 100
+# number of SBC simulations per iteration
+nsims <- 20
+# number of draws per posterior approximation
+ndraws <- 100
+# number of observations
+nobs <- 1
+# number of binomial trials per observation
+nsize <- 10
+# tolerance
+tol <- 0.02
+# learning rate
+gamma <- 0.5
+# approximator type
+approximator = "sampling"
+# type fix point method ("newton" or "heuristic")
+# newton (gradient-based update does not work well at all)
+fp_method <- "sensitivity"
+# number of posterior approximator evaluations
+neval <- 0
+loss_vec <- c()
+for (j in 1:niter) {
+  if (fp_method == "newton") {
+    # use log(sigma) to have parameters on the unconstrained scale
+    lambda <- c(mu[j], log(sigma[j]))
+    loss_j <- loss(lambda, approximator)
+    grad_loss_j <- grad_loss(lambda)
+    # gradient descent update
+    lambda_new <- lambda - gamma * grad_loss_j
+    mu_new <- lambda_new[1]
+    sigma_new <- exp(lambda_new[2])
+  } else if (fp_method == "heuristic") {
+    dap_pars <- data_averaged_posterior_pars_dat(mu[j], log(sigma[j]), approximator)$lambda
+    mu_est <- dap_pars["mu"]
+    log_sigma_est <- dap_pars["log_sigma"]
+    sigma_est <- exp(log_sigma_est)
+    mu_new <- quad_recursion3(mu_est, mu[j])
+    log_sigma_new <- cubic_recursion1(log_sigma_est, log(sigma[j]))
+    sigma_new <- exp(log_sigma_new)
+    lambda <- c(mu[j], log(sigma[j]))
+  } else if (fp_method == "sensitivity") {
+    # use log(sigma) to have parameters on the unconstrained scale
+    lambda <- c(mu[j], log(sigma[j]))
+    p_coup <- max_coupling(lambda, approximator)
+    lambda <- c(mean(p_coup), sd(p_coup))
+    model_name <- GenerateSensitivityFromModel("models/binom-laplace-sens.stan")
+    # compile to comform stansensitiy functions
+    model_sens1 <- stan_model(GetSamplingModelFilename(model_name))
+    # compute gradient of E_p_lambda[g(theta)]
+    grad_loss_sens_j <- grad_loss_sens(lambda, model_sens1)
+    # gradient update
+    lambda_new <- lambda -  c(grad_loss_sens_j["mu"], 0)#grad_loss_sens_j["log_sigma"])
+    mu_new <- lambda_new[1]
+    sigma_new <- exp(lambda_new[2])
+  } else {
+    stop("Invalid 'fp_method' argument.")
+  }
+  message("Iteration complete")
+  message("mu : ", mu[j], " mu_new : ", mu_new)
+  message("sigma : ", sigma[j], " sigma_new : ", sigma_new)
+  message("\n")
+  mu[j+1] <- mu_new
+  sigma[j+1] <- sigma_new
+  loss_vec[j+1] <- loss(c(mu[j+1], log(sigma[j+1])), approximator)
+  if (abs(mu[j] - mu_new) < tol & abs(sigma[j] - sigma_new) < tol) {
+    message("Stopping after ", j, " iterations using ",
+            neval, " evaluations of the posterior approximator.")
+    break
+  }
+}
+plot(mu)
+plot(sigma)
+plot(loss_vec)
+# optim doesn't work well at the moment
+# optim(c(mu, log(sigma)), loss)
+```
+
+## Heatmap plots
+
+```{R}
+
+mu_grid <- seq(from = -5, to = 5, by = 0.5)
+offset <- exp(seq(0, 0))
+sigma_grid <- log(offset)
+combinations <- expand.grid(mu = mu_grid, sigma = sigma_grid)
+combinations$z <- rep(0.0, nrow(combinations))
+neval <- 0
+for(i in 1:nrow(combinations)){
+  prior_mu <- combinations[i, "mu"]
+  prior_sd <- combinations[i, "sigma"]
+  eta <- rnorm(nsims, prior_mu, exp(prior_sd))
+  #post_pars <- posterior_approximator(eta, mu = prior_mu, sigma = exp(prior_sd))
+  post_ars <- data_averaged_posterior_pars(prior_mu, prior_sd)
+  #combinations[i, "z"] <- SBC::wasserstein(prior_samples, draws_new)
+  combinations[i, "z"] <- sqrt((prior_mu - post_ars["mu"]) ** 2 + (prior_sd - post_ars["log_sigma"]) ** 2)
+}
+
+ggplot(combinations, aes(x=mu, y=sigma, fill=z)) + geom_tile() + scale_x_continuous(breaks=mu_grid) + scale_y_continuous(breaks=sigma_grid) + ylab("log_sigma") + ggtitle("hmc")
+
+mu <- -100
+sigma <- log(10)
+eta <- rnorm(nsims, mu, exp(sigma))
+post_ars <- data_averaged_posterior_pars(mu, sigma)
+```
+
+## Fix sigma to 1 and try gridsearch of mu
+
+```{R}
+
+mu_grid <- seq(from = -5, to = 5, by = 0.5)
+offset <- exp(seq(0, 0))
+sigma_grid <- log(offset)
+combinations <- expand.grid(mu = mu_grid, sigma = sigma_grid)
+combinations$z <- rep(0.0, nrow(combinations))
+neval <- 0
+model_name <- GenerateSensitivityFromModel("models/binom-laplace-sens.stan")
+# compile to comform stansensitiy functions
+model_sens1 <- stan_model(GetSamplingModelFilename(model_name))
+for(i in 1:nrow(combinations)){
+  prior_mu <- combinations[i, "mu"]
+  prior_sd <- combinations[i, "sigma"]
+  eta <- rnorm(nsims, prior_mu, exp(prior_sd))
+  #combinations[i, "z"] <- SBC::wasserstein(prior_samples, draws_new)
+  lambda <- c(prior_mu, prior_sd)
+  for(k in 1:niter){
+    p_coup <- max_coupling(lambda, approximator)
+    lambda <- c(mean(p_coup), sd(p_coup))
+    grad_loss_sens_j <- grad_loss_sens(lambda, model_sens1)
+    # gradient update
+    lambda <- lambda -  c(grad_loss_sens_j["mu"], 0)#grad_loss_sens_j["log_sigma"])
+    combinations[i, "z"] <- loss(lambda, "sampling")
+  }
+}
+
+ggplot(combinations, aes(x=mu, y=sigma, fill=z)) + geom_tile() + scale_x_continuous(breaks=mu_grid) + scale_y_continuous(breaks=sigma_grid) + ylab("log_sigma") + ggtitle("hmc")
+
+mu <- -100
+sigma <- log(10)
+eta <- rnorm(nsims, mu, exp(sigma))
+post_ars <- data_averaged_posterior_pars(mu, sigma)
+```
+
+# Maximal coupling update
+```{R}
+# prior hyperparameters
+mu <- 0
+sigma <- 2
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# maximal number of SBC iterations
+niter <- 20
+
+# number of SBC simulations per iteration
+nsims <- 1000
+
+# number of draws per posterior approximation
+ndraws <- 100
+
+# number of observations
+nobs <- 1
+
+# number of binomial trials per observation
+nsize <- 2
+for (j in 1:niter) {
+  post_draws_eta <- c()
+  eta <- rnorm(nsims, mu[j], sigma[j])
+  for (i in 1:nsims) {
+    draws_new <- get_posterior(eta[i], mu = mu[j], sigma = sigma[j])
+    post_draws_eta <- c(post_draws_eta, draws_new)
+  }
+
+  hist(post_draws_eta, probability = TRUE, 30)
+  xval <- seq(min(post_draws_eta), max(post_draws_eta), length.out = 100)
+  lines(xval, dnorm(xval, mu[j], sigma[j]))
+  
+  breaks <- seq(-10, 10, by = .1)
+  # p is categorized samples of prior
+  p <- hist(eta, breaks = breaks)$counts / length(eta)
+  # q is categorized samples of data-averaged posterior
+  q <- hist(post_draws_eta, breaks = breaks)$counts / length(post_draws_eta)
+  w = 1 - sum(abs(p - q))
+  pqmin = pmin(p, q)
+  Z <- sum(pqmin)
+  # common random number generation for coupling
+  u <- runif(1)
+  if (u < w){
+    tmp <- runif(pqmin / Z)
+    p_coup <- tmp
+    q_coup <- tmp
+  }else{
+    p_coup <- runif((p - pqmin)/ 1 - Z)
+    q_coup <- runif((q - pqmin)/ 1 - Z)
+  }
+  # p_new is the new marginal sample for the next step prior 
+  mu_new <- mean(p_coup) 
+  mu[j+1] <- mu_new
+  message("mu : ", mu[j], " mu_est : ", mu_est, " mu_new : ", mu_new)
+  
+  sigma_new <- sd(p_coup)
+  sigma[j+1] <- sigma_new
+  message("sigma : ", sigma[j], " sigma_est : ", sigma_est, " sigma_new : ", sigma_new)
+}
+
+plot(mu)
+plot(sigma)
+```
+

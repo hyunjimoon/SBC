@@ -1,0 +1,237 @@
+---
+title: "Running self-calibration for eightschools model."
+output: html_notebook
+---
+
+Setup and dependency imports:
+
+```{r}
+library(cmdstanr)
+options(mc.cores = parallel::detectCores())
+library(cmdstanr)
+library(ggplot2)
+library(posterior)
+library(mclust)
+library(dplyr)
+```
+
+Define the number of simulations
+
+```{r}
+nsims = 30  # number of SBC datasets per calibration iteration
+ndraws = 1000  # number of posterior draws
+nchains = 4
+
+```
+
+
+## Attempt 1 - WRONG GENERATOR
+**DO NOT USE THIS AS A REFERENCE. INSTEAD TO GO ATTEMPT #2**
+Work with centered parameterization first:
+
+```{r}
+
+cat( readLines("models/eightschools_cp_calib.stan") , sep = "\n" )
+```
+
+Write out the generator for CP eightschools:
+
+```{r}
+
+generator_eightschools_cp_gmm <- function(mixture_mean_draws_rvars, mixture_bw_draws_rvars, fixed_values){
+  # fixed value across simulated datasets
+  nsims <- fixed_values$nsims
+  J <- fixed_values$J
+  sigma <- fixed_values$sigma
+  
+  # Draw tau from the proposed normal mixture
+  tau <- abs(rvar_rng(rnorm, 1, sample(mixture_mean_draws_rvars$tau, 1), sd = mixture_bw_draws_rvars$tau))
+  
+  # other parameters are drawn from the default prior
+  mu = rvar_rng(rnorm, 1, mean = 0, sd = 5, ndraws = ndraws(tau))
+  theta <- rvar_rng(rnorm, 1, mean = mu, sd = tau)
+  # draw y from simulated parameters
+  y <- rvar_rng(rnorm, J, mean = theta, sd = sigma)
+
+  gen_data_draws_rvars <- draws_rvars(J = J, y = y, sigma = sigma, nsims = nsims, mm_mean = mixture_mean_draws_rvars$tau, mm_bandwidth = mixture_bw_draws_rvars$tau)
+  
+  SBC_datasets(
+    parameters = as_draws_matrix(list(tau = tau)), 
+    generated = draws_rvars_to_standata(gen_data_draws_rvars)
+  )
+}
+```
+
+
+Initialize model data and initial hyperprior values:
+
+```{r}
+
+# fixed values taken from: https://github.com/stan-dev/posteriordb/blob/master/posterior_database/data/data-raw/eight_schools/eight_schools.R
+
+fixed_values <- list(J = 8, nsims = nsims, sigma = rvar(array(rep(as.integer(c(15, 10, 16, 11, 9, 11, 10, 18)), each = nsims), dim = c(nsims, 8))))
+
+initial_mixture_mean <- draws_rvars(tau = abs(rvar_rng(rcauchy, nsims, location = 0, scale = 5, ndraws = nsims)))
+initial_mixture_bw <- draws_rvars(tau = abs(rvar_rng(rnorm, 1, mean = 1, sd = 0.5, ndraws = nsims)))
+
+```
+
+Compile model and define the SBC backend:
+
+```{r}
+eightschools_cp_model <- cmdstan_model("models/eightschools_cp_calib.stan")
+backend_hmc <- SBC_backend_cmdstan_sample(eightschools_cp_model, chains = nchains, iter_sampling = ndraws / nchains)
+```
+
+Start calibration with an artificial limit to max calibration iterations(10):
+
+```{r}
+calibration_result <- self_calib(generator = generator_eightschools_cp_gmm, backend = backend_hmc, mixture_means_init_draws_rvars = initial_mixture_mean,
+                                 mixture_bw_init_draws_rvars = initial_mixture_bw, nsims_fn = function(...){nsims},thin = 4, max_selfcalib_iters = 10,
+                                 save_all_results = TRUE, fixed_generator_args = list(fixed_values = fixed_values))
+```
+
+
+Plot pooled fitted results of tau for each calibration iteration
+
+```{r}
+total_calib_iters <- length(names(calibration_result))
+combined_df <- matrix(nrow = length(names(calibration_result)) * nsims, ncol = 2)
+colnames(combined_df) <- c("tau_mean", "iteration")
+for(i in 1:length(names(calibration_result))){
+  for(j in 1:nsims){
+    combined_df[(i-1) * nsims + j, ] <- c(mean(as.vector(subset_draws(calibration_result[[paste0("result_", i)]]$fits[[j]]$draws(), variable = "tau"))), i)
+  }
+  
+}
+combined_df <- data.frame(combined_df)
+ggplot(combined_df, aes(x = iteration, y = tau_mean)) + geom_point(mapping = aes(x = iteration, y = tau_mean)) + 
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult = 2), geom = "pointrange", color = "red")# + scale_y_continuous(limits = c(0, 2000))
+
+```
+Manually Take a look at summary statistics:
+
+```{r}
+summ <- combined_df %>% 
+  group_by(iteration) %>% 
+  summarize(mean = mean(tau_mean), median = median(tau_mean), sd = sd(tau_mean))
+summ
+```
+Manually inspect spurious statistics
+
+```{r}
+calibration_result$result_4$fits[[20]]$cmdstan_summary()
+```
+Try plotting SBC for each iteration:
+
+```{r}
+for(i in 1:total_calib_iters){
+  print(plot_rank_hist(calibration_result[[paste0("result_", i)]], parameters = "tau"))
+  
+}
+```
+
+## Attempt 2. Fit GMM in unconstrained space
+
+Modify stan model to receive samples in R, convert to positive bounded value within the model.
+
+```{r}
+
+cat( readLines("models/eightschools_cp_calib.stan") , sep = "\n" )
+```
+
+```{r}
+generator_eightschools_cp_gmm_unbounded <- function(mixture_mean_draws_rvars, mixture_bw_draws_rvars, fixed_values){
+  # fixed value across simulated datasets
+  nsims <- fixed_values$nsims
+  J <- fixed_values$J
+  sigma <- fixed_values$sigma
+  
+  
+  while(1){
+    # Draw tau from the proposed normal mixture, unconstrained scale
+    tau_trans <- rvar_rng(rnorm, 1, sample(mixture_mean_draws_rvars$tau, 1), sd = mixture_bw_draws_rvars$tau)
+    tau = exp(tau_trans)
+    
+    # other parameters are drawn from the default prior
+    mu = rvar_rng(rnorm, 1, mean = 0, sd = 5, ndraws = ndraws(tau))
+    # transform tau to positive values before drawing samples
+    theta <- rvar_rng(rnorm, 1, mean = mu, sd = tau)
+
+    # draw y from simulated parameters
+    y <- rvar_rng(rnorm, J, mean = theta, sd = sigma)
+    
+    # > mean(c(28, 8, -3, 7, -1, 1, 18, 12)) + sd(c(28, 8, -3, 7, -1, 1, 18, 12)) * 3
+    # [1] 40.08118
+    
+    if(any(is.na(y))){
+      print("NA values created in generator")
+      print(mu)
+      print(tau_trans)
+      print(tau)
+      print(theta)
+      print(sigma)
+      stop("Terminating")
+    }
+    
+    if(all(draws_of(y) < 40)){  # mean(y) + sd(y) * 3
+      break
+    }
+  }
+  
+
+  # we give stan constrained tau values
+  gen_data_draws_rvars <- draws_rvars(J = J, y = y, sigma = sigma, nsims = nsims, mm_mean = mixture_mean_draws_rvars$tau, mm_bandwidth = mixture_bw_draws_rvars$tau)
+  
+  SBC_datasets(
+    parameters = as_draws_matrix(list(tau = tau)), 
+    generated = draws_rvars_to_standata(gen_data_draws_rvars)
+  )
+}
+```
+
+Since tau is now exp(tau_trans), we center the initial mixture to 0
+Bandwidth stays the same.
+
+```{r}
+fixed_values_unbounded <- list(J = 8, nsims = nsims, sigma = rvar(array(rep(as.integer(c(15, 10, 16, 11, 9, 11, 10, 18)), each = nsims), dim = c(nsims, 8))))
+
+initial_mixture_mean_unbounded <- draws_rvars(tau = rvar_rng(rcauchy, nsims, location = 0, scale = 0.01, ndraws = nsims))
+initial_mixture_bw_unbounded <- draws_rvars(tau = abs(rvar_rng(rnorm, 1, mean = 1, sd = 0.5, ndraws = nsims)))
+```
+
+Run self_calib again, with the same artificial max interaction limit:
+
+
+```{r}
+calibration_result_unbounded <- self_calib(generator = generator_eightschools_cp_gmm_unbounded, backend = backend_hmc, mixture_means_init_draws_rvars = initial_mixture_mean_unbounded,
+                                 mixture_bw_init_draws_rvars = initial_mixture_bw_unbounded, nsims_fn = function(...){nsims},thin = 4, max_selfcalib_iters = 10,
+                                 save_all_results = TRUE, fixed_generator_args = list(fixed_values = fixed_values_unbounded))
+```
+
+
+
+
+```{r}
+total_calib_iters <- length(names(calibration_result_unbounded))
+combined_df <- matrix(nrow = length(names(calibration_result_unbounded)) * nsims, ncol = 2)
+colnames(combined_df) <- c("tau_mean", "iteration")
+for(i in 1:length(names(calibration_result_unbounded))){
+  for(j in 1:nsims){
+    combined_df[(i-1) * nsims + j, ] <- c(mean(as.vector(subset_draws(calibration_result_unbounded[[paste0("result_", i)]]$fits[[j]]$draws(), variable = "tau"))), i)
+  }
+  
+}
+combined_df <- data.frame(combined_df)
+ggplot(combined_df, aes(x = iteration, y = tau_mean)) + geom_point(mapping = aes(x = iteration, y = tau_mean)) + 
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult = 2), geom = "pointrange", color = "red") + scale_x_continuous(limits = c(0, 5))# + scale_y_continuous(limits = c(0, 100))
+```
+
+
+
+```{r}
+for(i in 1:total_calib_iters){
+  print(plot_rank_hist(calibration_result_unbounded[[paste0("result_", i)]], parameters = "tau"))
+}
+```
+

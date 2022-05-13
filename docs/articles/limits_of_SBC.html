@@ -19,6 +19,8 @@
 <![endif]-->
 </head>
 <body data-spy="scroll" data-target="#toc">
+    
+
     <div class="container template-article">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -31,12 +33,15 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.0.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
       </span>
     </div>
 
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
+<li>
+  <a href="../articles/SBC.html">Get Started</a>
+</li>
 <li>
   <a href="../articles/index.html">Vignettes</a>
 </li>
@@ -51,56 +56,56 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="http://mc-stan.org/rstan">rstan</a>
+      <a href="http://mc-stan.org/rstan" class="external-link">rstan</a>
     </li>
     <li>
-      <a href="https://mc-stan.org/cmdstanr">cmdstanr</a>
+      <a href="https://mc-stan.org/cmdstanr" class="external-link">cmdstanr</a>
     </li>
     <li>
-      <a href="http://paul-buerkner.github.io/brms/">brms</a>
+      <a href="http://paul-buerkner.github.io/brms/" class="external-link">brms</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/rstanarm">rstanarm</a>
+      <a href="http://mc-stan.org/rstanarm" class="external-link">rstanarm</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/bayesplot">bayesplot</a>
+      <a href="http://mc-stan.org/bayesplot" class="external-link">bayesplot</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/shinystan">shinystan</a>
+      <a href="http://mc-stan.org/shinystan" class="external-link">shinystan</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/loo">loo</a>
+      <a href="http://mc-stan.org/loo" class="external-link">loo</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/projpred">projpred</a>
+      <a href="http://mc-stan.org/projpred" class="external-link">projpred</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/rstantools">rstantools</a>
+      <a href="http://mc-stan.org/rstantools" class="external-link">rstantools</a>
     </li>
     <li>
-      <a href="https://mc-stan.org/posterior">posterior</a>
+      <a href="https://mc-stan.org/posterior" class="external-link">posterior</a>
     </li>
   </ul>
 </li>
 <li>
-  <a href="http://mc-stan.org">Stan</a>
+  <a href="http://mc-stan.org" class="external-link">Stan</a>
 </li>
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://twitter.com/mcmc_stan">
+  <a href="https://twitter.com/mcmc_stan" class="external-link">
     <span class="fa fa-twitter"></span>
      
   </a>
 </li>
 <li>
-  <a href="https://github.com/hyunjimoon/SBC">
+  <a href="https://github.com/hyunjimoon/SBC" class="external-link">
     <span class="fa fa-github"></span>
      
   </a>
 </li>
 <li>
-  <a href="http://discourse.mc-stan.org/">
+  <a href="http://discourse.mc-stan.org/" class="external-link">
     <span class="fa fa-users"></span>
      
   </a>
@@ -115,15 +120,15 @@
 
       
 
-      </header><script src="limits_of_SBC_files/header-attrs-2.11/header-attrs.js"></script><div class="row">
+      </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Limits of SBC</h1>
-                        <h4 class="author">Martin Modrák</h4>
+                        <h4 data-toc-skip class="author">Martin Modrák</h4>
             
-            <h4 class="date">2021-09-26</h4>
+            <h4 data-toc-skip class="date">2022-02-17</h4>
       
-      
+      <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/limits_of_SBC.Rmd" class="external-link"><code>vignettes/limits_of_SBC.Rmd</code></a></small>
       <div class="hidden name"><code>limits_of_SBC.Rmd</code></div>
 
     </div>
@@ -132,56 +137,61 @@
     
 <p>Here, we’ll walk through some problems that are hard/impossible to diagnose with SBC. As usual the focus is on problems with models, assuming our inference algorithm is correct. But for each of those problems, one can imagine a corresponding failure in an algorithm — although some of those failures are quite unlikely for actual algorithms.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">SBC</span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org">ggplot2</a></span><span class="op">)</span>
-<span class="va">use_cmdstanr</span> <span class="op">&lt;-</span> <span class="cn">TRUE</span> <span class="co"># Set to false to use rstan instead</span>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://hyunjimoon.github.io/SBC/">SBC</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span>
+<span class="va">use_cmdstanr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"SBC.vignettes_cmdstanr"</span>, <span class="cn">TRUE</span><span class="op">)</span> <span class="co"># Set to false to use rstan instead</span>
 
 <span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr">cmdstanr</a></span><span class="op">)</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/">rstan</a></span><span class="op">)</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/" class="external-link">rstan</a></span><span class="op">)</span>
+  <span class="fu"><a href="https://mc-stan.org/rstan/reference/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
 <span class="op">}</span>
 
-<span class="fu"><a href="https://rdrr.io/r/base/options.html">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
 
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/HenrikBengtsson/future">future</a></span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/pkg/future/man/plan.html">plan</a></span><span class="op">(</span><span class="va">multisession</span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span>
+<span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span><span class="op">)</span>
 
 <span class="co"># The fits are very fast,</span>
 <span class="co"># so we force a minimum chunk size to reduce overhead of</span>
 <span class="co"># paralellization and decrease computation time.</span>
-<span class="fu"><a href="https://rdrr.io/r/base/options.html">options</a></span><span class="op">(</span>SBC.min_chunk_size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>SBC.min_chunk_size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>
 
 <span class="co"># Setup caching of results</span>
-<span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./limits_SBC_cache"</span>
-<span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>
+<span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./_limits_SBC_cache"</span>
+<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+  <span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./_limits_rstan_SBC_cache"</span>  
+<span class="op">}</span>
+<span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<div id="sbc-and-minor-changes-to-model" class="section level1">
-<h1 class="hasAnchor">
-<a href="#sbc-and-minor-changes-to-model" class="anchor"></a>SBC and minor changes to model</h1>
+<div class="section level1">
+<h1 id="sbc-and-minor-changes-to-model">SBC and minor changes to model<a class="anchor" aria-label="anchor" href="#sbc-and-minor-changes-to-model"></a>
+</h1>
 <p>SBC requires <em>a lot</em> of iterations to discover problems (either with model or the algorithm) that are subtle.</p>
 <p>To demonstrate this, we will fit a simple model with a normal likelihood, but use Student’s t distribution with 5 degrees of freedom to generate the data.</p>
 <p>To see the difference we’ll show the two densities</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5</span>, <span class="fl">5</span>, length.out <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>
-<span class="va">dens_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">rbind</a></span><span class="op">(</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, density <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">dnorm</a></span><span class="op">(</span><span class="va">x</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, 
-             log_density <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">dnorm</a></span><span class="op">(</span><span class="va">x</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"normal()"</span><span class="op">)</span>,
-  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, density <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/TDist.html">dt</a></span><span class="op">(</span><span class="va">x</span>, df <span class="op">=</span> <span class="fl">5</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, 
-             log_density <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/TDist.html">dt</a></span><span class="op">(</span><span class="va">x</span>, df <span class="op">=</span> <span class="fl">5</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"t(5)"</span><span class="op">)</span><span class="op">)</span> 
+<code class="sourceCode R"><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5</span>, <span class="fl">5</span>, length.out <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>
+<span class="va">dens_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, density <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm</a></span><span class="op">(</span><span class="va">x</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, 
+             log_density <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm</a></span><span class="op">(</span><span class="va">x</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"normal()"</span><span class="op">)</span>,
+  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, density <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x</span>, df <span class="op">=</span> <span class="fl">5</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, 
+             log_density <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">x</span>, df <span class="op">=</span> <span class="fl">5</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"t(5)"</span><span class="op">)</span><span class="op">)</span> 
 
-<span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="va">dens_data</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">density</span>, color <span class="op">=</span> <span class="va">type</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></code></pre></div>
+<span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">dens_data</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">density</span>, color <span class="op">=</span> <span class="va">type</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/dens_compare-1.png" width="700"></p>
 <p>As expected the t distribution has fatter tails, which is even better visible when looking at the logarithm of the density.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="va">dens_data</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">log_density</span>, color <span class="op">=</span> <span class="va">type</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">dens_data</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">log_density</span>, color <span class="op">=</span> <span class="va">type</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/log_dens_compare-1.png" width="700"></p>
 <p>Here is our Stan code for the simple normal model.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html">readLines</a></span><span class="op">(</span><span class="st">"stan/minor_discrepancy.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/minor_discrepancy.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N;
   vector[N] y;
@@ -202,93 +212,93 @@ model {
 <span class="va">iter_sampling</span> <span class="op">&lt;-</span> <span class="fl">1000</span>
 
 <span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">model_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/minor_discrepancy.stan"</span><span class="op">)</span>
+  <span class="va">model_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/minor_discrepancy.stan"</span><span class="op">)</span>
 
   <span class="va">backend_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span>
     <span class="va">model_minor</span>, iter_warmup <span class="op">=</span> <span class="va">iter_warmup</span>, iter_sampling <span class="op">=</span> <span class="va">iter_sampling</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="va">model_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html">stan_model</a></span><span class="op">(</span><span class="st">"stan/minor_discrepancy.stan"</span><span class="op">)</span>
+  <span class="va">model_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/minor_discrepancy.stan"</span><span class="op">)</span>
 
   <span class="va">backend_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
     <span class="va">model_minor</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>And here we simulate from a student’s t distribution. We scale the distribution so that the <code>sigma</code> parameter is the standard deviation of the distribution.</p>
+<p>And here we simulate from a student’s t distribution. We scale the distribution so that <code>sigma</code> is the standard deviation of the distribution.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">single_dataset_minor</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
-  <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span>
+<code class="sourceCode R"><span class="va">single_sim_minor</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
+  <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span>
   <span class="va">nu</span> <span class="op">&lt;-</span> <span class="fl">5</span>
-  <span class="va">student_scale</span> <span class="op">&lt;-</span> <span class="va">sigma</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html">sqrt</a></span><span class="op">(</span><span class="va">nu</span> <span class="op">/</span> <span class="op">(</span><span class="va">nu</span> <span class="op">-</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span>
-  <span class="va">y</span> <span class="op">&lt;-</span> <span class="va">mu</span> <span class="op">+</span> <span class="va">student_scale</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/stats/TDist.html">rt</a></span><span class="op">(</span><span class="va">N</span>, df <span class="op">=</span> <span class="va">nu</span><span class="op">)</span>
+  <span class="va">student_scale</span> <span class="op">&lt;-</span> <span class="va">sigma</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">nu</span> <span class="op">/</span> <span class="op">(</span><span class="va">nu</span> <span class="op">-</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span>
+  <span class="va">y</span> <span class="op">&lt;-</span> <span class="va">mu</span> <span class="op">+</span> <span class="va">student_scale</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">rt</a></span><span class="op">(</span><span class="va">N</span>, df <span class="op">=</span> <span class="va">nu</span><span class="op">)</span>
   
-  <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
-    parameters <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="va">mu</span>, sigma <span class="op">=</span> <span class="va">sigma</span><span class="op">)</span>,
-    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>N <span class="op">=</span> <span class="va">N</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
+    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="va">mu</span>, sigma <span class="op">=</span> <span class="va">sigma</span><span class="op">)</span>,
+    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>N <span class="op">=</span> <span class="va">N</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span>
   <span class="op">)</span>
 <span class="op">}</span>
 
-<span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">51336848</span><span class="op">)</span>
-<span class="va">generator_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_dataset_minor</span>, N <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
-<span class="va">datasets_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_minor</span>, n_datasets <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></code></pre></div>
-<p>Can we see something by looking at the results of just the first 10 datasets? (note that <code>SBC_datasets</code> objects support subsetting).</p>
+<span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">51336848</span><span class="op">)</span>
+<span class="va">generator_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_sim_minor</span>, N <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
+<span class="va">datasets_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_minor</span>, n_sims <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></code></pre></div>
+<p>Can we see something by looking at the results of just the first 10 simulations? (note that <code>SBC_datasets</code> objects support subsetting).</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">results_minor_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span>, <span class="va">backend_minor</span>, 
+<code class="sourceCode R"><span class="va">results_minor_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span>, <span class="va">backend_minor</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"minor_10"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'minor_10'</code></pre>
-<pre><code>##  - 1 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.024.</code></pre>
-<pre><code>##  - 2 (20%) fits had some steps rejected. Maximum number of rejections was 1.</code></pre>
-<pre><code>## Not all diagnostics are OK.
-## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
-## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"minor_10"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'minor_10'</span></code></pre>
+<pre><code><span class="co">##  - 1 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.024.</span></code></pre>
+<pre><code><span class="co">##  - 3 (30%) fits had some steps rejected. Maximum number of rejections was 2.</span></code></pre>
+<pre><code><span class="co">## Not all diagnostics are OK.</span>
+<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
+<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>Not really…</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_minor_10</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_10_plots-1.png" width="700"></p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_minor_10</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_minor_10</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_10_plots-2.png" width="700"></p>
-<p>Will we have better luck with 100 datasets? (Note that we can use <code>bind_results</code> to combine multiple results, letting us start small, but not throw away the computation spent for the initial SBC runs)</p>
+<p>Will we have better luck with 100 simulations? (Note that we can use <code>bind_results</code> to combine multiple results, letting us start small, but not throw away the computation spent for the initial simulations)</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_minor_100</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span>
   <span class="va">results_minor_10</span>,
-  <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">11</span><span class="op">:</span><span class="fl">100</span><span class="op">]</span>, <span class="va">backend_minor</span>, 
+  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">11</span><span class="op">:</span><span class="fl">100</span><span class="op">]</span>, <span class="va">backend_minor</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"minor_90"</span><span class="op">)</span><span class="op">)</span>
+                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"minor_90"</span><span class="op">)</span><span class="op">)</span>
 <span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'minor_90'</code></pre>
-<pre><code>##  - 6 (7%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.02.</code></pre>
-<pre><code>##  - 16 (18%) fits had some steps rejected. Maximum number of rejections was 1.</code></pre>
-<pre><code>## Not all diagnostics are OK.
-## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
-## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
-<p>Here we see something suspicios with the <code>sigma</code> parameter, but it is not very convincing.</p>
+<pre><code><span class="co">## Results loaded from cache file 'minor_90'</span></code></pre>
+<pre><code><span class="co">##  - 6 (7%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.02.</span></code></pre>
+<pre><code><span class="co">##  - 17 (19%) fits had some steps rejected. Maximum number of rejections was 2.</span></code></pre>
+<pre><code><span class="co">## Not all diagnostics are OK.</span>
+<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
+<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
+<p>Here we see something suspicios with the <code>sigma</code> variable, but it is not very convincing.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_minor_100</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_100_plots-1.png" width="700"></p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_minor_100</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_minor_100</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_100_plots-2.png" width="700"></p>
 <p>So let’s do additional 100 SBC steps</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">results_minor_200</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span>
   <span class="va">results_minor_100</span>,
-  <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">101</span><span class="op">:</span><span class="fl">200</span><span class="op">]</span>, <span class="va">backend_minor</span>, 
+  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">101</span><span class="op">:</span><span class="fl">200</span><span class="op">]</span>, <span class="va">backend_minor</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"minor_next_100"</span><span class="op">)</span><span class="op">)</span>
+                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"minor_next_100"</span><span class="op">)</span><span class="op">)</span>
 <span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'minor_next_100'</code></pre>
-<pre><code>##  - 8 (8%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.019.</code></pre>
-<pre><code>##  - 13 (13%) fits had some steps rejected. Maximum number of rejections was 2.</code></pre>
-<pre><code>## Not all diagnostics are OK.
-## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
-## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code><span class="co">## Results loaded from cache file 'minor_next_100'</span></code></pre>
+<pre><code><span class="co">##  - 8 (8%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.019.</span></code></pre>
+<pre><code><span class="co">##  - 15 (15%) fits had some steps rejected. Maximum number of rejections was 2.</span></code></pre>
+<pre><code><span class="co">## Not all diagnostics are OK.</span>
+<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
+<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>OK, so this looks at least a bit conclusive, but still, the violation of uniformity is not very big.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_minor_200</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_200_plots-1.png" width="700"></p>
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_minor_200</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_minor_200</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_200_plots-2.png" width="700"></p>
 <p>If we used more data points per simulation (here we simulated just 10), the problem would likely show faster. In any case, we need a relatively large number of runs to identify small discrepancies with high probability.</p>
 <p>But it is also the case that the estimates are not completely meaningless (as the distributions are quite close). One way to look into this is to plot the posterior mean + central 90% interval against the simulated value via <code>plot_sim_estimated</code>. The estimates should cluster around the y=x line (blue), which they mostly do.</p>
@@ -301,52 +311,52 @@ model {
 <p><img src="limits_of_SBC_files/figure-html/results_minor_200_coverage-1.png" width="700"></p>
 <p>Or we can even directly inspect some intervals of interest:</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">coverage</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">results_minor_200</span><span class="op">$</span><span class="va">stats</span>, width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.5</span>,<span class="fl">0.9</span>,<span class="fl">0.95</span><span class="op">)</span><span class="op">)</span>
+<code class="sourceCode R"><span class="va">coverage</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">results_minor_200</span><span class="op">$</span><span class="va">stats</span>, width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>,<span class="fl">0.9</span>,<span class="fl">0.95</span><span class="op">)</span><span class="op">)</span>
 <span class="va">coverage</span></code></pre></div>
-<pre><code>## # A tibble: 6 x 6
-##   parameter width width_represented ci_low estimate ci_high
-##   &lt;chr&gt;     &lt;dbl&gt;             &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;
-## 1 mu         0.5              0.495  0.407    0.475   0.544
-## 2 mu         0.9              0.901  0.839    0.89    0.926
-## 3 mu         0.95             0.950  0.936    0.97    0.986
-## 4 sigma      0.5              0.495  0.358    0.425   0.494
-## 5 sigma      0.9              0.901  0.744    0.805   0.854
-## 6 sigma      0.95             0.950  0.862    0.91    0.942</code></pre>
+<pre><code><span class="co">## <span style="color: #949494;"># A tibble: 6 x 6</span></span>
+<span class="co">##   variable width width_represented ci_low estimate ci_high</span>
+<span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="co">## <span style="color: #BCBCBC;">1</span> mu        0.5               0.5   0.407    0.475   0.544</span>
+<span class="co">## <span style="color: #BCBCBC;">2</span> mu        0.9               0.9   0.845    0.895   0.930</span>
+<span class="co">## <span style="color: #BCBCBC;">3</span> mu        0.95              0.95  0.936    0.97    0.986</span>
+<span class="co">## <span style="color: #BCBCBC;">4</span> sigma     0.5               0.5   0.363    0.43    0.499</span>
+<span class="co">## <span style="color: #BCBCBC;">5</span> sigma     0.9               0.9   0.734    0.795   0.845</span>
+<span class="co">## <span style="color: #BCBCBC;">6</span> sigma     0.95              0.95  0.845    0.895   0.930</span></code></pre>
 <div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">sigma_90_coverage_string</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span>
-  <span class="va">coverage</span><span class="op">[</span><span class="va">coverage</span><span class="op">$</span><span class="va">parameter</span> <span class="op">==</span> <span class="st">"sigma"</span> <span class="op">&amp;</span> <span class="va">coverage</span><span class="op">$</span><span class="va">width</span> <span class="op">==</span> <span class="fl">0.9</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ci_low"</span>,<span class="st">"ci_high"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>,
+<code class="sourceCode R"><span class="va">sigma_90_coverage_string</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span>
+  <span class="va">coverage</span><span class="op">[</span><span class="va">coverage</span><span class="op">$</span><span class="va">variable</span> <span class="op">==</span> <span class="st">"sigma"</span> <span class="op">&amp;</span> <span class="va">coverage</span><span class="op">$</span><span class="va">width</span> <span class="op">==</span> <span class="fl">0.9</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ci_low"</span>,<span class="st">"ci_high"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>,
   <span class="st">"%"</span>,
   collapse <span class="op">=</span> <span class="st">" - "</span><span class="op">)</span></code></pre></div>
-<p>where we see that for example for the 90% central credible interval of <code>sigma</code> we would expect the actual coverage to be 74% - 85%.</p>
+<p>where we see that for example for the 90% central credible interval of <code>sigma</code> we would expect the actual coverage to be 73% - 85%.</p>
 </div>
-<div id="prior-mismatch" class="section level1">
-<h1 class="hasAnchor">
-<a href="#prior-mismatch" class="anchor"></a>Prior mismatch</h1>
+<div class="section level1">
+<h1 id="prior-mismatch">Prior mismatch<a class="anchor" aria-label="anchor" href="#prior-mismatch"></a>
+</h1>
 <p>Especially when those affect only prior as SBC is based on fitted posterior - so if prior does not influence posterior very much…</p>
 <p>TODO</p>
 </div>
-<div id="missing-likelihood" class="section level1">
-<h1 class="hasAnchor">
-<a href="#missing-likelihood" class="anchor"></a>Missing likelihood</h1>
+<div class="section level1">
+<h1 id="missing-likelihood">Missing likelihood<a class="anchor" aria-label="anchor" href="#missing-likelihood"></a>
+</h1>
 <p>SBC will not notice if you completely omit likelihood from your Stan model!</p>
 <p>Here we have a generator for a very simple model with gaussian likelihood:</p>
 <div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">single_dataset_missing</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
-  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="va">N</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
+<code class="sourceCode R"><span class="va">single_sim_missing</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
+  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="va">N</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
   
-  <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
-    parameters <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="va">mu</span><span class="op">)</span>,
-    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>N <span class="op">=</span> <span class="va">N</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
+    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="va">mu</span><span class="op">)</span>,
+    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>N <span class="op">=</span> <span class="va">N</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span>
   <span class="op">)</span>
 <span class="op">}</span>
 
-<span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">25746223</span><span class="op">)</span>
-<span class="va">generator_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_dataset_missing</span>, N <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
-<span class="va">datasets_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_missing</span>, n_datasets <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></code></pre></div>
+<span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">25746223</span><span class="op">)</span>
+<span class="va">generator_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_sim_missing</span>, N <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
+<span class="va">datasets_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_missing</span>, n_sims <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></code></pre></div>
 <p>And here is a model that just completely ignores the data, but has the right prior:</p>
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html">readLines</a></span><span class="op">(</span><span class="st">"stan/missing_likelihood.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/missing_likelihood.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N;
   vector[N] y;
@@ -364,37 +374,37 @@ model {
 <span class="va">iter_sampling</span> <span class="op">&lt;-</span> <span class="fl">1000</span>
 
 <span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">model_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/missing_likelihood.stan"</span><span class="op">)</span>
+  <span class="va">model_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/missing_likelihood.stan"</span><span class="op">)</span>
 
   <span class="va">backend_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span>
     <span class="va">model_missing</span>, iter_warmup <span class="op">=</span> <span class="va">iter_warmup</span>, iter_sampling <span class="op">=</span> <span class="va">iter_sampling</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="va">model_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html">stan_model</a></span><span class="op">(</span><span class="st">"stan/missing_likelihood.stan"</span><span class="op">)</span>
+  <span class="va">model_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/missing_likelihood.stan"</span><span class="op">)</span>
 
   <span class="va">backend_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
     <span class="va">model_missing</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>Now we’ll compute the results for 200 simulated datasets:</p>
+<p>Now we’ll compute the results for 200 simulations:</p>
 <div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">results_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_missing</span>, <span class="va">backend_missing</span>, 
+<code class="sourceCode R"><span class="va">results_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_missing</span>, <span class="va">backend_missing</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"missing"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'missing'</code></pre>
-<pre><code>##  - 16 (8%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.027.</code></pre>
-<pre><code>## Not all diagnostics are OK.
-## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
-## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"missing"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'missing'</span></code></pre>
+<pre><code><span class="co">##  - 15 (8%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.027.</span></code></pre>
+<pre><code><span class="co">## Not all diagnostics are OK.</span>
+<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
+<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>And here are our rank plots:</p>
 <div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_missing</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_plots-1.png" width="700"></p>
 <div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_plots-2.png" width="700"></p>
 <p>It’s just nothing out of the ordinary.</p>
-<p>But we are not completely helpless: This specific type of problem can be noticed by prior/posterior contraction plot. In this plot we compare the prior and posterior standard deviation to get a measure of how much more we know about the parameter after fitting the model. For this model, we can get the prior sd directly, but one can also use a (preferably large) <code>SBC_datasets</code> object to estimate it empirically for more complex models.</p>
+<p>But we are not completely helpless: This specific type of problem can be noticed by prior/posterior contraction plot. In this plot we compare the prior and posterior standard deviation to get a measure of how much more we know about the variable after fitting the model. For this model, we can get the prior sd directly, but one can also use a (preferably large) <code>SBC_datasets</code> object to estimate it empirically for more complex models.</p>
 <div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">prior_sd</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"mu"</span> <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
+<code class="sourceCode R"><span class="va">prior_sd</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mu"</span> <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="co">#prior_sd &lt;- calculate_prior_sd(generate_datasets(generator_missing, 1000))</span>
 <span class="fu"><a href="../reference/plot_contraction.html">plot_contraction</a></span><span class="op">(</span><span class="va">results_missing</span>, <span class="va">prior_sd</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_contraction-1.png" width="700"></p>
@@ -403,43 +413,43 @@ model {
 <div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">results_missing</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_sim_estimated-1.png" width="700"></p>
-<p>There is however even more powerful method - and that is to include the likelihood in the SBC. This is most easily done by adding a “generated quantity” to the SBC results - this is a function that is evaluated within the context of the parameters AND data. And it can be added without recomputing the fits!</p>
+<p>There is however even more powerful method - and that is to include the likelihood in the SBC. This is most easily done by adding a “generated quantity” to the SBC results - this is a function that is evaluated within the context of the variables AND data. And it can be added without recomputing the fits!</p>
 <div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">normal_lpdf</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">y</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span> <span class="op">{</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html">dnorm</a></span><span class="op">(</span><span class="va">y</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="va">sigma</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm</a></span><span class="op">(</span><span class="va">y</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="va">sigma</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span>
 
 <span class="va">log_lik_gq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generated_quantities.html">generated_quantities</a></span><span class="op">(</span>log_lik <span class="op">=</span> <span class="fu">normal_lpdf</span><span class="op">(</span><span class="va">y</span>, <span class="va">mu</span>, <span class="fl">1</span><span class="op">)</span>, 
                                    .globals <span class="op">=</span> <span class="st">"normal_lpdf"</span> <span class="op">)</span>
 
-<span class="va">results_missing_gq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/recompute_statistics.html">recompute_statistics</a></span><span class="op">(</span>
+<span class="va">results_missing_gq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/recompute_SBC_statistics.html">recompute_SBC_statistics</a></span><span class="op">(</span>
   <span class="va">results_missing</span>, <span class="va">datasets_missing</span>, 
   backend <span class="op">=</span> <span class="va">backend_missing</span>, gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span><span class="op">)</span></code></pre></div>
-<pre><code>##  - 19 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.027.</code></pre>
-<pre><code>## Not all diagnostics are OK.
-## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
-## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+<pre><code><span class="co">##  - 19 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.027.</span></code></pre>
+<pre><code><span class="co">## Not all diagnostics are OK.</span>
+<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
+<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>The rank plots for the <code>log_lik</code> quantity immediately shows a severe problem:</p>
 <div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing_gq</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing_gq</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_gq_plots-1.png" width="700"></p>
 <div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_missing_gq</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_gq_plots-2.png" width="700"></p>
 </div>
-<div id="partially-missing-likelihood" class="section level1">
-<h1 class="hasAnchor">
-<a href="#partially-missing-likelihood" class="anchor"></a>Partially missing likelihood</h1>
+<div class="section level1">
+<h1 id="partially-missing-likelihood">Partially missing likelihood<a class="anchor" aria-label="anchor" href="#partially-missing-likelihood"></a>
+</h1>
 <p>A more complicated case is when the likelihood is only slightly wrong (and missing something) - e.g. due to an indexing error. Turns out missing just one data point needs a lot of simulations to see, so we’ll write a model that ignores a full half of the data points.</p>
 <div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html">readLines</a></span><span class="op">(</span><span class="st">"stan/partially_missing_likelihood.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/partially_missing_likelihood.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N;
   vector[N] y;
 }
 
 transformed data {
-  int N2 = N / 2 + 1;
+  int N2 = N %/% 2 + 1;
 }
 
 parameters {
@@ -454,37 +464,37 @@ model {
 }</code></pre>
 <div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">model_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/partially_missing_likelihood.stan"</span><span class="op">)</span>
+  <span class="va">model_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/partially_missing_likelihood.stan"</span><span class="op">)</span>
 
   <span class="va">backend_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span>
     <span class="va">model_missing_2</span>, iter_warmup <span class="op">=</span> <span class="va">iter_warmup</span>, iter_sampling <span class="op">=</span> <span class="va">iter_sampling</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="va">model_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html">stan_model</a></span><span class="op">(</span><span class="st">"stan/partially_missing_likelihood.stan"</span><span class="op">)</span>
+  <span class="va">model_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/partially_missing_likelihood.stan"</span><span class="op">)</span>
 
   <span class="va">backend_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
     <span class="va">model_missing_2</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>Let us use this model for the same dataset.</p>
+<p>Let us use this model for the same set of simulations.</p>
 <div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">results_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_missing</span>, <span class="va">backend_missing_2</span>, gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span>, 
+<code class="sourceCode R"><span class="va">results_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_missing</span>, <span class="va">backend_missing_2</span>, gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"missing_2"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'missing_2'</code></pre>
-<pre><code>##  - 20 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.031.</code></pre>
-<pre><code>## Not all diagnostics are OK.
-## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
-## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"missing_2"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'missing_2'</span></code></pre>
+<pre><code><span class="co">##  - 21 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.031.</span></code></pre>
+<pre><code><span class="co">## Not all diagnostics are OK.</span>
+<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
+<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>The contraction plot would not show anything suspicious - we get decent contraction</p>
 <div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_contraction.html">plot_contraction</a></span><span class="op">(</span><span class="va">results_missing_2</span>, <span class="va">prior_sd</span>, parameters <span class="op">=</span> <span class="st">"mu"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/plot_contraction.html">plot_contraction</a></span><span class="op">(</span><span class="va">results_missing_2</span>, <span class="va">prior_sd</span>, variables <span class="op">=</span> <span class="st">"mu"</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_2_contraction-1.png" width="700"></p>
 <p>Similarly, our posterior estimates now cluster around the true values.</p>
 <div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">results_missing_2</span>, parameters <span class="op">=</span> <span class="st">"mu"</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">results_missing_2</span>, variables <span class="op">=</span> <span class="st">"mu"</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_2_sim_estimated-1.png" width="700"></p>
 <p>Now contraction is pretty high, and <code>mu</code> is behaving well, but our <code>log_lik</code> generated quantity shows a clear problem</p>
 <div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing_2</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing_2</span><span class="op">)</span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_2_plots-1.png" width="700"></p>
 <div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_missing_2</span><span class="op">)</span></code></pre></div>
@@ -504,11 +514,13 @@ model {
 
 
       <footer><div class="copyright">
-  <p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák.</p>
+  <p></p>
+<p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák, Teemu Säilynoja.</p>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
+  <p></p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
 </div>
 
       </footer>
@@ -516,6 +528,8 @@ model {
 
   
 
+
+  
 
   </body>
 </html>

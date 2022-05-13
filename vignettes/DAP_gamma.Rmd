@@ -1,0 +1,256 @@
+---
+title: "DAP operator inspection - gamma"
+author: "Hyunji Moon"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE, warning=FALSE}
+library(SBC)
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(dplyr)
+library(rstan)
+library(future)
+library(ggpubr)
+library(rstanarm)
+library(ggplot2)
+library(mclust)
+library(plot3D)
+options(mc.cores = parallel::detectCores())
+options(SBC.min_chunk_size = 5)
+set.seed(1984)
+```
+
+We introduce a self-calibration algorithm. First, dap operator: $P \rightarrow P$ is $\hat{g}(f(\Phi X, U), \Phi X)$. Limiting to normal is inspected to verify its convexity and contraction characteristic. 
+
+```{R}
+## Generator settings
+# number of SBC simulations per iteration (generator)
+nsims <- 200
+
+# number of observations
+nobs <- 10
+
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# number of binomial trials per observation
+nsize <- 10
+
+## Backend settings
+# number of draws per posterior approximation 
+ndraws <- 100
+
+# number of chains for hmc posterior approximation
+nchains <- 2
+```
+
+#Inspecting DAP of binom-laplace 
+When 
+A1. |x-T(x)| is Convex
+A2. T is a contraction: |T(x) - T(Tx)| < |x-T(x)|, i.e., T is a "contraction".
+With update algorithm B(x) = px+qT(x) (p+q = 1),
+|px+qT(x) - T(px+qT(x))|  < p |x-T(x)| + q |T(x) - T(T(x))| (A1)< |x-T(x)|   (A2) and therefore the gap decreases. We empirically inspect this on Gamma-regression case.
+- convex (global) vs continuos (wiggly, can  )
+For $f^-1([0,\epsilon])$ to be compact, f needs to be convex. 
+
+A1 is about blackbox T (reward).
+A2 is about the quality of our update T (action).
+
+# Inspecting DAP of gamma-regression-hmc
+## Goal: CRP convex set (2d conditioned from 4d) construction
+
+````{R}
+generator_gr <- function(lambdas, fixed_args){
+  # fixed value across simulated datasets
+  ## meta
+  nobs <- fixed_args$nobs
+  K <- fixed_args$K
+  dist_types <- fixed_args$dist_types
+  while(TRUE){
+    # predictor
+    X <- array(rnorm(nobs * K, mean = 1, sd = 0.5), dim = c(nobs, K))
+    b <- rnorm(K, mean = 0, sd = 1)
+    # generate
+    lambda_arg1 <- c()
+    lambda_arg2 <- c()
+    if(dist_types$shape == "normal"){
+      shape <- rnorm(1, mean = lambdas$shape$mu, sd=lambdas$shape$sigma)
+      lambda_arg1 <- c(lambda_arg1, lambdas$shape$mu)
+      lambda_arg2 <- c(lambda_arg2, lambdas$shape$sigma)
+    }
+    else if(dist_types$shape == "gamma"){
+      shape <- rgamma(1, shape = lambdas$shape$alpha, rate = lambdas$shape$beta)
+      lambda_arg1 <- c(lambda_arg1, lambdas$shape$alpha)
+      lambda_arg2 <- c(lambda_arg2, lambdas$shape$beta)
+    }
+    else if(dist_types$shape == "lognormal"){
+      shape <- rlnorm(1, meanlog = lambdas$shape$mu, sdlog = lambdas$shape$sigma)
+      lambda_arg1 <- c(lambda_arg1, lambdas$shape$mu)
+      lambda_arg2 <- c(lambda_arg2, lambdas$shape$sigma)
+    }
+    
+    if(dist_types$a == "normal"){
+      a <- rnorm(1, mean = lambdas$a$mu, sd=lambdas$a$sigma)
+      lambda_arg1 <- c(lambda_arg1, lambdas$a$mu)
+      lambda_arg2 <- c(lambda_arg2, lambdas$a$sigma)
+    }
+    #a <- rnorm(1, mean = 2, sd = 5)
+    logmu <- as.numeric(a + X %*% b)
+    mu <- exp(logmu)
+    Y <- rgamma(nobs, shape = shape, rate = shape / mu)
+    
+    if(!any(Y <= 1e-32)){
+      return(list(
+              parameters = list(shape = shape),
+              generated = list(nobs= nobs, K = K, X = X, dist_types = match(unlist(dist_types), c("normal", "gamma")), 
+                               lambda_arg1 = lambda_arg1, lambda_arg2 = lambda_arg2, Y = Y)
+              )
+             )
+    }
+  }
+}
+
+fixed_args_gr <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="normal", a="normal"))
+cmdstan_mod_gr <- cmdstanr::cmdstan_model("models/gamma-reg.stan")
+rstan_mod_gr <- stan_model("models/gamma-reg.stan")
+backend_gr_opt <- SBC_backend_rstan_optimizing(rstan_mod_gr, draws = ndraws)
+backend_gr_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_gr, chains = nchains, iter_sampling = ndraws / nchains) 
+
+# combines target hp values with other hyperparameter settings
+calib_generator <- function(lambda_init_gamma, fixed_args){
+  generate_datasets(SBC_generator_function(generator_gr, lambda_init_gamma, fixed_args), n_datasets = fixed_args_gamma$nsims)
+}
+```
+
+```{R, warning = FALSE, error = FALSE, dap with two hp}
+calculate_dap <- function(mu, var, generator, backened, fixed_args){
+  lambda_init_gamma <- list(
+    shape = list(mu= mu, sigma = sqrt(var)), #list(alpha= mu^2 / var, beta= mu / var),
+    a = list(mu= 2, sigma = 1)
+  )
+  datasets <- do.call(generator, list(lambda_init_gamma, fixed_args = fixed_args))
+  sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
+  draws_eta <- c()
+  for(fit in sbc_result$fits){
+    samples <- SBC_fit_to_draws_matrix(fit)
+    draws_eta <- c(draws_eta, posterior::extract_variable(samples, "shape"))
+  }
+  # assume normal for dap
+  mu <- mean(draws_eta)
+  var <- sd(draws_eta)^2
+  # gamma_est <- MASS::fitdistr(draws_eta, "gamma", start=list(shape=1, rate=1))$estimate
+  # alpha <- as.numeric(gamma_est["shape"])
+  # beta <- as.numeric(gamma_est["rate"])
+  # mu = alpha / beta
+  # var = alpha / beta^2
+  return(list(mu=mu, var=var, draws_eta=draws_eta))
+}
+true_mu <- 20
+true_var <- 2
+mu_vals <- true_mu + seq(-10, 10, length.out = 6)
+var_vals <- true_var + seq(-1, 1, length.out = 3) 
+results <- rep(NA, length(mu_vals))
+dap_mu <- rep(NA, length(mu_vals))
+
+# (x-T(x)^2
+calib <-array(rep(NA, length(mu_vals) * length(var_vals)), dim = c(length(mu_vals), length(var_vals)))
+# (x-r)^2
+real <- array(rep(NA, length(mu_vals) * length(var_vals)), dim = c(length(mu_vals), length(var_vals)))
+# convex objective
+convex <- array(rep(NA, length(mu_vals) * length(var_vals)), dim = c(length(mu_vals), length(var_vals)))
+# contraction of T i.e. |T(x)-T(T(x))| <  |x-T(x)| with different norms
+contraction <- array(rep(NA, length(mu_vals) * length(var_vals)), dim = c(length(mu_vals), length(var_vals)))
+
+colnames(calib) <- var_vals
+rownames(calib) <- mu_vals
+colnames(real) <- var_vals
+rownames(real) <- mu_vals
+colnames(convex) <- var_vals
+rownames(convex) <- mu_vals
+colnames(contraction) <- var_vals
+rownames(contraction) <- mu_vals
+
+for(i in 1:length(mu_vals)){
+  for(j in 1:length(var_vals)){
+    dap <- calculate_dap(mu_vals[[i]],var_vals[[j]] , calib_generator, backend_gr_opt, fixed_args_gr)
+    dapdap <- calculate_dap(dap$mu, dap$var, calib_generator, backend_gr_opt, fixed_args_gr)
+    calib[i,j] <- (mu_vals[[i]] - dap$mu)^2 + (var_vals[[j]] - dap$var)^2 
+    real[i,j] <- (mu_vals[[i]] - 50)^2 + (var_vals[[i]] - 5)^2
+    convex[i,j] <- calib[i,j] + real[i,j]
+    contraction[i,j] <- (mu_vals[[i]] - dap$mu)^2 + (var_vals[[j]] - dap$var)^2 - ((dap$mu- dapdap$mu)^2 + (dap$var - dapdap$var)^2)
+  }
+}
+
+persp3D(x=mu_vals, y=var_vals, z = convex, theta=55, phi=10, xlab="mu", ylab="sigma", zlab="convex if ", ticks=5, ticktype="detailed")
+persp3D(x=mu_vals, y=var_vals, z = contraction, theta=55, phi=10, xlab="mu", ylab="var", zlab="contraction", ticks=5, ticktype="detailed")
+```
+### 2. Condition on one hyperparameter (sigma)
+calc_dap return sigma as always fixed value (a~ gibbs sampler) shape mu  vs intercept mu
+p3) sigma 1
+p4) sigma 0.1
+```{R, warning = FALSE, error = FALSE}
+calculate_dap <- function(shape_mu, a_mu, generator, backened, fixed_args){
+    # lambda_init_gamma <- list(
+    # shape = list(alpha= shape_mu^2 / 1^2, beta= shape_mu / 1^2),
+    # #a = list(alpha= a_mu^2 / 1^2, beta= a_mu / 1^2)
+    # a = list(mu=a_mu, sigma=1)
+  lambda_init_gamma <- list(
+    #shape=list(alpha=2, beta=1),
+    shape = list(mu = shape_mu, sigma=1),
+    a = list(mu = a_mu, sigma=1)
+  )
+  datasets <- do.call(generator, list(lambda_init_gamma, fixed_args = fixed_args))
+  sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
+  draws_shape <- c()
+  draws_a <- c()
+  for(fit in sbc_result$fits){
+    samples <- SBC_fit_to_draws_matrix(fit)
+    draws_shape <- c(draws_shape, posterior::extract_variable(samples, "shape")) ### TODO
+    draws_a <- c(draws_a, posterior::extract_variable(samples, "a"))
+  }
+  # assume fixed varss for dap
+  
+  #gamma_est <- MASS::fitdistr(draws_shape, "gamma", start=list(shape=1, rate=1))$estimate
+  #alpha <- as.numeric(gamma_est["shape"])
+  #beta <- as.numeric(gamma_est["rate"])
+  #shape_mu = alpha / beta
+  #shape_var = alpha / beta^2
+  shape_mu <- mean(draws_shape)
+  a_mu <- mean(draws_a)
+  var <- 1
+  return(list(shape_mu=shape_mu, a_mu=a_mu, var=var, draws_shape=draws_shape, draws_a=draws_a))
+}
+
+fixed_args_gr <- list(nobs = nobs, K = 15, nsims = nsims, dist_types=list(shape="normal", a="normal"))
+prior_dap <- list(shape_mu = c(), a_mu = c(), dap_shape_mu = c(), dap_a_mu = c(), dap_var = c(), shape_mu_loss = c(), a_mu_loss = c(), var_loss = c())
+for (shape_mu in seq(10, 100, length.out = 10)){
+  for(a_mu in seq(1, 5, length.out = 10)){
+    prior_dap$shape_mu <- c(prior_dap$shape_mu, shape_mu)
+    prior_dap$a_mu <- c(prior_dap$a_mu, a_mu)
+    dap <- calculate_dap(shape_mu, a_mu, calib_generator, backend_gr_hmc, fixed_args_gr)
+    prior_dap$dap_shape_mu <- c(prior_dap$dap_shape_mu, dap$shape_mu)
+    prior_dap$dap_a_mu <- c(prior_dap$dap_a_mu, dap$a_mu)
+    prior_dap$dap_var <- c(prior_dap$dap_var, dap$var)
+    prior_dap$shape_mu_loss <- c(prior_dap$shape_mu_loss, shape_mu - dap$shape_mu)
+    prior_dap$a_mu_loss <- c(prior_dap$a_mu_loss, a_mu - dap$a_mu)
+    prior_dap$var_loss <- c(prior_dap$var_loss, 1 - dap$var)
+  }
+}
+
+
+shape_mu_loss_mat <- array(rep(NA, 10), dim=c(10, 10))
+rownames(shape_mu_loss_mat) <- seq(10, 100, length.out = 10)
+colnames(shape_mu_loss_mat) <- seq(1, 5, length.out = 10)
+for(i in 1:10){
+  for(j in 1:10){
+    shape_mu_loss_mat[i, j] <- prior_dap$shape_mu_loss[10 * (i - 1) + j]^2 + prior_dap$a_mu_loss[10 * (i - 1) + j]^2
+    shape_mu_loss_mat[i, j] <- shape_mu_loss_mat[i, j] + (prior_dap$dap_shape_mu[10 * (i - 1) + j] - 50)^2 + (prior_dap$dap_a_mu[10 * (i - 1) + j] - 3)^2
+  }
+}
+library(plot3D)
+persp3D(x=seq(10, 100, length.out = 10), y=seq(1, 5, length.out = 10), z = shape_mu_loss_mat, theta=-30, phi=50, xlab="shape_mu", ylab="a_mu", zlab="convex")
+```

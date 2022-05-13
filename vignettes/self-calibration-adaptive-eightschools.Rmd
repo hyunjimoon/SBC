@@ -1,0 +1,164 @@
+---
+title: "self-calibration-adaptive"
+author: "Hyunji Moon, Shinyoung Kim"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE, warning=FALSE}
+library(SBC)
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(dplyr)
+library(rstan)
+library(future)
+library(ggpubr)
+library(rstanarm)
+library(ggplot2)
+library(mclust)
+options(mc.cores = parallel::detectCores())
+plan(multisession)
+options(SBC.min_chunk_size = 5)
+#set.seed(1984)
+```
+
+```{R, warning=FALSE, error=FALSE}
+## Generator settings
+# number of SBC simulations per iteration (generator)
+nsims <- 200
+
+# number of observations
+nobs <- 10#2
+
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# number of binomial trials per observation
+nsize <- 10
+
+## Backend settings
+# number of draws per posterior approximation 
+ndraws <- 100
+
+# number of chains for hmc posterior approximation
+nchains <- 2
+```
+
+```{R, warning=FALSE, error=FALSE}
+## Generator settings
+# number of SBC simulations per iteration (generator)
+nsims <- 200
+
+# number of observations
+nobs <- 10#2
+
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# number of binomial trials per observation
+nsize <- 10
+
+## Backend settings
+# number of draws per posterior approximation 
+ndraws <- 100
+
+# number of chains for hmc posterior approximation
+nchains <- 2
+```
+
+# Inspecting rank plots of eightschools
+Since tau requires a positive constraint, we will be working with log(tau).
+```{R, warning=FALSE, error=FALSE}
+generator_eightschools_cp <- function(lambda_mu, lambda_sigma, fixed_args){
+  # fixed value across simulated datasets
+  nsims <- fixed_args$nsims
+  J <- fixed_args$J
+  sigma <- fixed_args$sigma
+  
+  # Draw tau from the designated normal distribuiton
+  a_bar <- -lambda_mu/lambda_sigma
+  # tau <- NaN
+  # while(TRUE){
+  #   u <- runif(1)$
+  #   x_bar <- sqrt(a_bar^2 - 2 * log(1 - u))
+  #   nu <- runif(1)
+  #   tau <- lambda_sigma * x_bar + lambda_mu
+  #   if(nu <= x_bar/a_bar) break
+  # }
+  log_tau <- rnorm(1, lambda_mu, lambda_sigma)
+  tau <- exp(log_tau)
+  
+  
+  
+  # other parameters are drawn from the default prior
+  mu = rnorm(1, 0, 5)
+  theta <- rnorm(1, mu, tau)
+  # draw y from simulated parameters
+  y <- rnorm(J, mu, sigma)
+  
+  list(
+    parameters = list(log_tau = log_tau), 
+    generated = list(
+      J = J,
+      y = y,
+      sigma = sigma,
+      nsims = nsims,
+      lambda_mu = lambda_mu,
+      lambda_log_sigma = log(lambda_sigma)
+    )
+  )
+}
+
+cmdstan_mod_eightschools <- cmdstanr::cmdstan_model("models/eightschools_cp_posteriordb.stan")
+backend_eightschools_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_eightschools, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+fixed_args_eightschools <- list(J = 8, nsims = nsims, sigma = c(15, 10, 16, 11, 9, 11, 10, 18), nsims=nsims)
+datasets <- generate_datasets(SBC_generator_function(generator_eightschools_cp, 0, 1, fixed_args_eightschools), n_datasets = fixed_args_eightschools$nsims)
+sbc_result <- compute_results(datasets, backend_eightschools_hmc, thin_ranks = 4)
+plot_rank_hist(sbc_result)
+```
+
+# Run self calibration for centered eight schools model
+
+We now repeat the above procedure with eight-school's log(tau). We start at N(10, 10), which upon inspection of the DAP distribution, results in a very narrow distribution near 0. Rank histogram plots also imply extreme underdispersion. But after 6 self-calibration iterations, we can observe the extreme rank plots being tamed, with the DAP distribution and the lambda hyperdistribution being similar.
+```{R, warning=FALSE, error=FALSE}
+# hyperparameter update algorithm 
+updator = "normal_str_update"
+
+# maximal number of SBC iterations
+niter <- 100
+
+# tolerance
+tol <- 0.1
+
+# learning rate
+gamma <- 1.5 # 0.5 for gradient update, 10 for normal_str_update
+
+lambda_mu = 10
+lambda_sigma = 10
+cmdstan_mod_eightschools <- cmdstanr::cmdstan_model("models/eightschools_cp_posteriordb.stan")
+backend_eightschools_hmc <- SBC_backend_cmdstan_sample(cmdstan_mod_eightschools, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+fixed_args_eightschools <- list(J = 8, nsims = nsims, sigma = c(15, 10, 16, 11, 9, 11, 10, 18), nsims=nsims)
+datasets <- generate_datasets(SBC_generator_function(generator_eightschools_cp, 0, 1, fixed_args_eightschools), n_datasets = fixed_args_eightschools$nsims)
+result_eightschools_hmc <- compute_results(datasets, backend_eightschools_hmc, thin_ranks = 4)
+# initial badly calibrated
+plot_rank_hist(result_eightschools_hmc)
+calib_generator <- function(lambda_mu, lambda_sigma, fixed_args){
+  generate_datasets(SBC_generator_function(generator_eightschools_cp, lambda_mu, lambda_sigma, fixed_args), n_datasets = fixed_args$nsims)
+}
+
+sc_hmc_eightschools <- self_calib_adaptive(calib_generator, backend_eightschools_hmc, updator, "log_tau", lambda_mu, lambda_sigma, nsims, gamma, tol, fixed_args = fixed_args_eightschools)
+
+datasets_eightschools_new <- generate_datasets(SBC_generator_function(generator_eightschools_cp, sc_hmc_eightschools$mu, sc_hmc_eightschools$sigma, fixed_args_eightschools), n_datasets = fixed_args_eightschools$nsims)
+result_eightschools_hmc_new <- compute_results(datasets_eightschools_new, backend_eightschools_hmc)
+plot_rank_hist(result_eightschools_hmc_new)
+ggplot(sc_hmc_eightschools$t_df) + geom_point(aes(x=iter, y=lambda_loss))
+# plot calibration result
+```
+
+### Iteration details:
+
+```{R, warning=FALSE, error=FALSE}
+sc_hmc_eightschools$t_df
+```

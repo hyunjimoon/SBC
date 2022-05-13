@@ -19,6 +19,8 @@
 <![endif]-->
 </head>
 <body data-spy="scroll" data-target="#toc">
+    
+
     <div class="container template-article">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -31,12 +33,15 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.0.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
       </span>
     </div>
 
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
+<li>
+  <a href="../articles/SBC.html">Get Started</a>
+</li>
 <li>
   <a href="../articles/index.html">Vignettes</a>
 </li>
@@ -51,56 +56,56 @@
   </a>
   <ul class="dropdown-menu" role="menu">
 <li>
-      <a href="http://mc-stan.org/rstan">rstan</a>
+      <a href="http://mc-stan.org/rstan" class="external-link">rstan</a>
     </li>
     <li>
-      <a href="https://mc-stan.org/cmdstanr">cmdstanr</a>
+      <a href="https://mc-stan.org/cmdstanr" class="external-link">cmdstanr</a>
     </li>
     <li>
-      <a href="http://paul-buerkner.github.io/brms/">brms</a>
+      <a href="http://paul-buerkner.github.io/brms/" class="external-link">brms</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/rstanarm">rstanarm</a>
+      <a href="http://mc-stan.org/rstanarm" class="external-link">rstanarm</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/bayesplot">bayesplot</a>
+      <a href="http://mc-stan.org/bayesplot" class="external-link">bayesplot</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/shinystan">shinystan</a>
+      <a href="http://mc-stan.org/shinystan" class="external-link">shinystan</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/loo">loo</a>
+      <a href="http://mc-stan.org/loo" class="external-link">loo</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/projpred">projpred</a>
+      <a href="http://mc-stan.org/projpred" class="external-link">projpred</a>
     </li>
     <li>
-      <a href="http://mc-stan.org/rstantools">rstantools</a>
+      <a href="http://mc-stan.org/rstantools" class="external-link">rstantools</a>
     </li>
     <li>
-      <a href="https://mc-stan.org/posterior">posterior</a>
+      <a href="https://mc-stan.org/posterior" class="external-link">posterior</a>
     </li>
   </ul>
 </li>
 <li>
-  <a href="http://mc-stan.org">Stan</a>
+  <a href="http://mc-stan.org" class="external-link">Stan</a>
 </li>
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://twitter.com/mcmc_stan">
+  <a href="https://twitter.com/mcmc_stan" class="external-link">
     <span class="fa fa-twitter"></span>
      
   </a>
 </li>
 <li>
-  <a href="https://github.com/hyunjimoon/SBC">
+  <a href="https://github.com/hyunjimoon/SBC" class="external-link">
     <span class="fa fa-github"></span>
      
   </a>
 </li>
 <li>
-  <a href="http://discourse.mc-stan.org/">
+  <a href="http://discourse.mc-stan.org/" class="external-link">
     <span class="fa fa-users"></span>
      
   </a>
@@ -115,34 +120,35 @@
 
       
 
-      </header><script src="bad_parametrization_files/header-attrs-2.11/header-attrs.js"></script><div class="row">
+      </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Discovering bad parametrization with SBC</h1>
-                        <h4 class="author">Martin Modrák</h4>
+                        <h4 data-toc-skip class="author">Martin Modrák</h4>
             
-            <h4 class="date">2021-09-26</h4>
+            <h4 data-toc-skip class="date">2022-02-17</h4>
       
-      
+      <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/bad_parametrization.Rmd" class="external-link"><code>vignettes/bad_parametrization.Rmd</code></a></small>
       <div class="hidden name"><code>bad_parametrization.Rmd</code></div>
 
     </div>
 
     
     
-<p>This vignette provides the example used as Exercise 2 of the <a href="https://www.martinmodrak.cz/post/2021-sbc_tutorial/">SBC tutorial</a> presented at SBC StanConnect. Feel free to head to the tutorial website to get an interactive version and solve the problems yourself.</p>
+<p>This vignette provides the example used as Exercise 2 of the <a href="https://www.martinmodrak.cz/post/2021-sbc_tutorial/" class="external-link">SBC tutorial</a> presented at SBC StanConnect. Feel free to head to the tutorial website to get an interactive version and solve the problems yourself.</p>
 <p>Let’s setup the environment:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">SBC</span><span class="op">)</span>; 
-<span class="va">use_cmdstanr</span> <span class="op">&lt;-</span> <span class="cn">TRUE</span> <span class="co"># Set to false to use rstan instead</span>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://hyunjimoon.github.io/SBC/">SBC</a></span><span class="op">)</span>; 
+<span class="va">use_cmdstanr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"SBC.vignettes_cmdstanr"</span>, <span class="cn">TRUE</span><span class="op">)</span> <span class="co"># Set to false to use rstan instead</span>
 
 <span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr">cmdstanr</a></span><span class="op">)</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/">rstan</a></span><span class="op">)</span>
+  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/" class="external-link">rstan</a></span><span class="op">)</span>
+  <span class="fu"><a href="https://mc-stan.org/rstan/reference/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
 <span class="op">}</span>
 
-<span class="fu"><a href="https://rdrr.io/r/base/options.html">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
 
 <span class="co"># Uncomment below to have the fits evaluated in parallel</span>
 <span class="co"># However, as this example evaluates just a few fits, it</span>
@@ -153,13 +159,17 @@
 
 
 <span class="co"># Setup caching of results</span>
-<span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./bad_parametrization_SBC_cache"</span>
-<span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>
+<span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./_bad_parametrization_SBC_cache"</span>
+<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+  <span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./_bad_parametrization_rstan_SBC_cache"</span>
+<span class="op">}</span>
+<span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
-<p>Premise: we mistakenly assume that Stan does parametrize the Gamma distribution via shape and scale, when in fact Stan uses the shape and rate parametrization (see <a href="https://en.wikipedia.org/wiki/Gamma_distribution">Gamma distribution</a> on Wikipedia for details on the parametrizations.</p>
+<p>Premise: we mistakenly assume that Stan does parametrize the Gamma distribution via shape and scale, when in fact Stan uses the shape and rate parametrization (see <a href="https://en.wikipedia.org/wiki/Gamma_distribution" class="external-link">Gamma distribution</a> on Wikipedia for details on the parametrizations.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html">readLines</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization1.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization1.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
   int N;
   vector&lt;lower=0&gt;[N] y;
@@ -180,66 +190,66 @@ model {
 <span class="va">iter_sampling</span> <span class="op">&lt;-</span> <span class="fl">1000</span>
 
 <span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">model_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization1.stan"</span><span class="op">)</span>
+  <span class="va">model_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization1.stan"</span><span class="op">)</span>
 
   <span class="va">backend_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span>
     <span class="va">model_gamma</span>, iter_warmup <span class="op">=</span> <span class="va">iter_warmup</span>, iter_sampling <span class="op">=</span> <span class="va">iter_sampling</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="va">model_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html">stan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization1.stan"</span><span class="op">)</span>
+  <span class="va">model_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization1.stan"</span><span class="op">)</span>
 
   <span class="va">backend_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
     <span class="va">model_gamma</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>Build a generator to create simulated datasets.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">21448857</span><span class="op">)</span>
-<span class="va">n_datasets</span> <span class="op">&lt;-</span> <span class="fl">10</span>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">21448857</span><span class="op">)</span>
+<span class="va">n_sims</span> <span class="op">&lt;-</span> <span class="fl">10</span>
 
-<span class="va">single_dataset_gamma</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">shape</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Lognormal.html">rlnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, meanlog <span class="op">=</span>  <span class="fl">0</span>, sdlog <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
-  <span class="va">scale</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Lognormal.html">rlnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, meanlog <span class="op">=</span> <span class="fl">0</span>, sdlog <span class="op">=</span> <span class="fl">1.5</span><span class="op">)</span>
+<span class="va">single_sim_gamma</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
+  <span class="va">shape</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Lognormal.html" class="external-link">rlnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, meanlog <span class="op">=</span>  <span class="fl">0</span>, sdlog <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
+  <span class="va">scale</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Lognormal.html" class="external-link">rlnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, meanlog <span class="op">=</span> <span class="fl">0</span>, sdlog <span class="op">=</span> <span class="fl">1.5</span><span class="op">)</span>
   
-  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html">rgamma</a></span><span class="op">(</span><span class="va">N</span>, shape <span class="op">=</span> <span class="va">shape</span>, scale <span class="op">=</span> <span class="va">scale</span><span class="op">)</span>
+  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">rgamma</a></span><span class="op">(</span><span class="va">N</span>, shape <span class="op">=</span> <span class="va">shape</span>, scale <span class="op">=</span> <span class="va">scale</span><span class="op">)</span>
   
-  <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
-    parameters <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
+    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
       shape <span class="op">=</span> <span class="va">shape</span>,
       scale <span class="op">=</span> <span class="va">scale</span><span class="op">)</span>,
-    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
       N <span class="op">=</span> <span class="va">N</span>,
       y <span class="op">=</span> <span class="va">y</span><span class="op">)</span>
   <span class="op">)</span>
 <span class="op">}</span>
 
 
-<span class="va">generator_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_dataset_gamma</span>, N <span class="op">=</span> <span class="fl">40</span><span class="op">)</span>
+<span class="va">generator_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">single_sim_gamma</span>, N <span class="op">=</span> <span class="fl">40</span><span class="op">)</span>
 <span class="va">datasets_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span>
   <span class="va">generator_gamma</span>, 
-  <span class="va">n_datasets</span><span class="op">)</span></code></pre></div>
+  <span class="va">n_sims</span><span class="op">)</span></code></pre></div>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">results_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_gamma</span>, <span class="va">backend_gamma</span>, 
+<code class="sourceCode R"><span class="va">results_gamma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_gamma</span>, <span class="va">backend_gamma</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model1"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'model1'</code></pre>
-<pre><code>##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 5.</code></pre>
-<pre><code>## Not all diagnostics are OK.
-## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
-## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model1"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'model1'</span></code></pre>
+<pre><code><span class="co">##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 5.</span></code></pre>
+<pre><code><span class="co">## Not all diagnostics are OK.</span>
+<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
+<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>Here we also use the caching feature to avoid recomputing the fits when recompiling this vignette. In practice, caching is not necessary but is often useful.</p>
-<p>10 simulations are enough to see something is wrong with the model. The problem is best seen on an <code>ecdf_diff</code> plot - we even see the issue is primarily with the <code>scale</code> parameter!</p>
+<p>10 simulations are enough to see something is wrong with the model. The problem is best seen on an <code>ecdf_diff</code> plot - we even see the issue is primarily with the <code>scale</code> variable!</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_gamma</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_gamma</span><span class="op">)</span></code></pre></div>
 <p><img src="bad_parametrization_files/figure-html/results1_ecdf_diff-1.png" width="700"></p>
 <p>However, we can use the rank histogram (with suitable number of bins) and the <code>ecdf</code> plot to show different visualisations of the same problem. The rank histogram often tends to be intuitively more understandable than the <code>ecdf</code> plots, but tweaking the number of bins is often necessary and the confidence interval is only approximate and has decreased sensitivity.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_gamma</span>, bins <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></code></pre></div>
 <p><img src="bad_parametrization_files/figure-html/results1_other-1.png" width="700"></p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_gamma</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_gamma</span><span class="op">)</span></code></pre></div>
 <p><img src="bad_parametrization_files/figure-html/results1_other-2.png" width="700"></p>
 <p>So we see that the simulation does not match the model. In practice, the problem may lie with the simulation, with the model or both. Here, we’ll assume that the simulation is correct - we really wanted to work with scale and fix the model to match. I.e. we still represent scale in our model, but invert it to get rate before using Stan’s <code>gamma</code> distribution:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html">readLines</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization2.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization2.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
 <pre><code>data {
   int N;
   vector&lt;lower=0&gt;[N] y;
@@ -257,34 +267,34 @@ model {
 }</code></pre>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">model_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization2.stan"</span><span class="op">)</span>
+  <span class="va">model_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization2.stan"</span><span class="op">)</span>
 
   <span class="va">backend_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span>
     <span class="va">model_gamma_2</span>, iter_warmup <span class="op">=</span> <span class="va">iter_warmup</span>, iter_sampling <span class="op">=</span> <span class="va">iter_sampling</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>
 <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="va">model_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html">stan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization2.stan"</span><span class="op">)</span>
+  <span class="va">model_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/bad_parametrization2.stan"</span><span class="op">)</span>
 
   <span class="va">backend_gamma_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
     <span class="va">model_gamma_2</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">results_gamma2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_results.html">compute_results</a></span><span class="op">(</span><span class="va">datasets_gamma</span>, <span class="va">backend_gamma_2</span>, 
+<code class="sourceCode R"><span class="va">results_gamma2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_gamma</span>, <span class="va">backend_gamma_2</span>, 
                     cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model2"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>## Results loaded from cache file 'model2'</code></pre>
-<pre><code>##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 9.</code></pre>
-<pre><code>## Not all diagnostics are OK.
-## You can learn more by inspecting $default_diagnostics, $backend_diagnostics 
-## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</code></pre>
+                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model2"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code><span class="co">## Results loaded from cache file 'model2'</span></code></pre>
+<pre><code><span class="co">##  - 10 (100%) fits had some steps rejected. Maximum number of rejections was 6.</span></code></pre>
+<pre><code><span class="co">## Not all diagnostics are OK.</span>
+<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
+<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
 <p>No obvious problems here, but if we wanted to be sure, we should have ran a lot more simulations.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_gamma2</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_gamma2</span><span class="op">)</span></code></pre></div>
 <p><img src="bad_parametrization_files/figure-html/results2_plots-1.png" width="700"></p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_gamma2</span>, bins <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></code></pre></div>
 <p><img src="bad_parametrization_files/figure-html/results2_plots-2.png" width="700"></p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_ecdf.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_gamma2</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_gamma2</span><span class="op">)</span></code></pre></div>
 <p><img src="bad_parametrization_files/figure-html/results2_plots-3.png" width="700"></p>
   </div>
 
@@ -297,11 +307,13 @@ model {
 
 
       <footer><div class="copyright">
-  <p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák.</p>
+  <p></p>
+<p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák, Teemu Säilynoja.</p>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
+  <p></p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
 </div>
 
       </footer>
@@ -309,6 +321,8 @@ model {
 
   
 
+
+  
 
   </body>
 </html>

@@ -1,0 +1,155 @@
+---
+title: "self-calibration-adaptive"
+author: "Hyunji Moon, Shinyoung Kim"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE, warning=FALSE}
+library(SBC)
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(dplyr)
+library(rstan)
+library(future)
+library(ggpubr)
+library(rstanarm)
+library(ggplot2)
+library(mclust)
+options(mc.cores = parallel::detectCores())
+plan(multisession)
+options(SBC.min_chunk_size = 5)
+#set.seed(1984)
+```
+
+We introduce a self-calibration algorithm. First, dap operator: $P \rightarrow P$ is $\hat{g}(f(\Phi X, U), \Phi X)$. Limiting to normal is inspected to verify its sublinearity and monotonicity. Then, based on this hyperparmeter self-calibration algorithm is suggested. Final improvement of calibration is compared with SBC rank plot.
+
+We finally apply the self-calibration algorithm to the centered eightschools model, starting from an unstable region and attempting to find a self-consistent region. We found that for models that impose constraints, reparameterizing the model to include an unconstrained parameter, run self calibration in the unconstrained space, and the applying constraints manually showed the best results.
+
+```{R, warning=FALSE, error=FALSE}
+## Generator settings
+# number of SBC simulations per iteration (generator)
+nsims <- 200
+
+# number of observations
+nobs <- 10#2
+
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# number of binomial trials per observation
+nsize <- 10
+
+## Backend settings
+# number of draws per posterior approximation 
+ndraws <- 100
+
+# number of chains for hmc posterior approximation
+nchains <- 2
+```
+
+# Inspecting DAP of binom-laplace 
+```{R, warning=FALSE, error=FALSE}
+generator_binom <- function(lambdas, fixed_args){
+  # fixed value across simulated datasets
+  # experiment settings
+  nobs <- fixed_args$nobs
+  nsize <- fixed_args$nsize
+  dist_types <- fixed_args$dist_types
+  # modular settings
+  link_type <- fixed_args$link_type
+  
+  # generate
+  lambda_arg1 <- c()
+  lambda_arg2 <- c()
+  if(dist_types$eta == "normal"){
+    eta <- rnorm(1, mean = lambdas$eta$mu, sd=lambdas$eta$sigma)
+    lambda_arg1 <- c(lambda_arg1, lambdas$eta$mu)
+    lambda_arg2 <- c(lambda_arg2, lambdas$eta$sigma)
+  }
+  else if(dist_types$eta == "gamma"){
+    eta <- rgamma(1, shape = lambdas$eta$alpha, rate = lambdas$eta$beta)
+    lambda_arg1 <- c(lambda_arg1, lambdas$eta$alpha)
+    lambda_arg2 <- c(lambda_arg2, lambdas$eta$beta)
+  }
+  
+  
+    
+  mu <- invtf_param_vec(eta, link_type = link_type)
+  Y <- rbinom(nobs, size = nsize, prob = mu) 
+  list(
+    parameters = list(eta = eta),
+    generated = list(nobs= nobs, nsize = nsize, link = link_type,
+                     dist_types = match(unlist(dist_types), c("normal", "gamma")), lambda_arg1 = lambda_arg1, lambda_arg2 = lambda_arg2, 
+                     Y = Y)
+  )
+}
+
+fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws, dist_types=list(eta="normal"))
+
+```
+
+# Self-calibration of binomial-laplace
+Initially start from badly calibrated region:
+```{R, warning=FALSE, error=FALSE}
+# initial prior hyperparameters
+lambda_init_binom <- list(
+  eta = list(mu=100, sigma=100)
+)
+datasets_binom <- generate_datasets(SBC_generator_function(generator_binom, lambda_init_binom, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+
+# hyperparameter update algorithm 
+updator = "mc_update"
+
+# maximal number of SBC iterations
+niter <- 100
+
+# tolerance
+tol <- 0.1
+
+# learning rate
+gamma <- 1.5 # 0.5 for gradient update, 10 for normal_str_update
+
+# step2: inferring posterior
+rstan_binom_mod <- stan_model("models/binom-laplace.stan")
+cmdstan_binom_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
+
+backend_binom_opt <- SBC_backend_rstan_optimizing(rstan_binom_mod, draws = ndraws)
+#backend_binom_hmc <- SBC_backend_cmdstan_sample(cmdstan_binom_mod, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+
+# initial badly calibrated
+result_binom_opt <- compute_results(datasets_binom, backend_binom_opt, thin_ranks = 1)
+plot_rank_hist(result_binom_opt)
+# result_binom_hmc <- compute_results(datasets_binom, backend_binom_hmc)
+
+```
+
+# Run self-calibration for binomial-laplace approximation model
+
+```{R, warning=FALSE, error=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+# wrapper function to follow `self_calib_adaptive` interface
+calib_generator <- function(lambdas, fixed_args){
+  generate_datasets(SBC_generator_function(generator_binom, lambdas, fixed_args), n_datasets = fixed_args$nsims)
+}
+sc_binom_opt <- self_calib_adaptive(calib_generator, backend_binom_opt, updator, c("eta"), lambda_init_binom, nsims, gamma, tol, fixed_args = fixed_args_binom)
+```
+### Iteration details:
+```{R, warning=FALSE, error=FALSE}
+sc_binom_opt$t_df
+```
+
+```{R}
+ggplot(sc_binom_opt$t_df) + geom_point(aes(x=iter, y=eta_lambda_loss))
+```
+
+### Calculate rank from calibrated lambdas
+
+```{R, warning=FALSE, error=FALSE}
+datasets_binom_new <- generate_datasets(SBC_generator_function(generator_binom, sc_binom_opt$lambda, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+result_binom_opt_new <- compute_results(datasets_binom_new, backend_binom_opt, thin_ranks = 1)
+    
+plot_rank_hist(result_binom_opt_new)
+```

@@ -20,16 +20,21 @@ Let's setup the environment.
 library(SBC); 
 library(ggplot2)
 
-use_cmdstanr <- TRUE # Set to false to use rstan instead
+use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
 if(use_cmdstanr) {
   library(cmdstanr)
 } else {
   library(rstan)
+  rstan_options(auto_write = TRUE)
 }
 
 # Setup caching of results
-cache_dir <- "./indexing_SBC_cache"
+if(use_cmdstanr) {
+  cache_dir <- "./_indexing_SBC_cache"
+} else {
+  cache_dir <- "./_indexing_rstan_SBC_cache"
+}
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
@@ -86,7 +91,7 @@ worry about performance here.
 
 ```{r}
 
-single_dataset_regression <- function(N, K) {
+single_sim_regression <- function(N, K) {
   x <- matrix(rnorm(n = N * K, mean = 0, sd = 1), nrow = N, ncol = K)
   alpha <- rnorm(n = 1, mean = 0, sd = 1)
   beta <- rnorm(n = K, mean = 0, sd = 1)
@@ -102,7 +107,7 @@ single_dataset_regression <- function(N, K) {
   }
   
   list(
-    parameters = list(
+    variables = list(
       alpha = alpha,
       beta = beta,
       sigma = sigma),
@@ -115,26 +120,26 @@ single_dataset_regression <- function(N, K) {
 }
 ```
 
-We'll start with just 10 datasets to get a quick computation - this will still
+We'll start with just 10 simulations to get a quick computation - this will still
 let us see big problems (but not subtle issues)
 
 ```{r}
 set.seed(5666024)
 datasets_regression <- generate_datasets(
-  SBC_generator_function(single_dataset_regression, N = 100, K = 2), 10)
+  SBC_generator_function(single_sim_regression, N = 100, K = 2), 10)
 ```
 
 
 Now we can use all of the backends to fit the generated datasets.
 
 ```{r}
-results_regression_1 <- compute_results(datasets_regression, backend_regression_1, 
+results_regression_1 <- compute_SBC(datasets_regression, backend_regression_1, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "regression1"))
-results_regression_2 <- compute_results(datasets_regression, backend_regression_2, 
+results_regression_2 <- compute_SBC(datasets_regression, backend_regression_2, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "regression2"))
-results_regression_3 <- compute_results(datasets_regression, backend_regression_3, 
+results_regression_3 <- compute_SBC(datasets_regression, backend_regression_3, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "regression3"))
 ```
@@ -160,7 +165,7 @@ plot_rank_hist(results_regression_2)
 
 But the second model is actually not looking good.  In fact there is an indexing bug. The problem is the line
 `mu[i] += beta[j] * x[j, j];` which should have `x[i, j]` instead. We see that this 
-propagates most strongly to the `sigma` parameter (reusing the same `x` element leads to more similar predictions for each row, so `sigma` needs to be inflated to accommodate this)
+propagates most strongly to the `sigma` variable (reusing the same `x` element leads to more similar predictions for each row, so `sigma` needs to be inflated to accommodate this)
 
 
 ```{r plots_regression3}

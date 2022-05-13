@@ -1,20 +1,20 @@
 ---
-title: Rejection sampling in dataset generation
+title: Rejection sampling in simulations
 author: "Martin Modrák"
 date: "`r Sys.Date()`"
 output: 
   rmarkdown::html_vignette:
     toc: yes
 vignette: >
-  %\VignetteIndexEntry{Rejection sampling in dataset generation}
+  %\VignetteIndexEntry{Rejection sampling in simulations}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
 
-In some cases, one may want to exclude extreme datasets from SBC (e.g. because
-those datasets create divergences). It is best to use
+In some cases, one may want to exclude extreme simulations from SBC (e.g. because
+those simulations create divergences). It is best to use
 prior predictive checks to examine your priors and change them
-to avoid the extreme datasets. In some cases, this may however be impractical/impossible to 
+to avoid extremes in the simulated data. In some cases, this may however be impractical/impossible to 
 do via prior choice - one example are regression coefficients, where
 once we have many predictors, any independent prior that is not very strict
 will lead to unrealistic predictions. Joint priors are needed in such case, but
@@ -23,9 +23,9 @@ those are not well understood and easy to use. See
 for more context.
 
 An alternative is to use _rejection sampling_ i.e. we repeatedly generate a 
-dataset and only accept it as a dataset when it passes a certain condition we impose
+simulation and only accept it when it passes a certain condition we impose
 (e.g. that no observed count is larger than $10^8$).
-But does rejection sampling when generating datasets affect the validity of SBC?
+But does rejection sampling when generating simulations affect the validity of SBC?
 
 Thanks to forum user Niko Huurre who derived the necessary math
 at [Stan Discourse discussion of the topic](https://discourse.mc-stan.org/t/using-narrower-priors-for-sbc/21709/6?u=martinmodrak)
@@ -33,7 +33,7 @@ we know exactly when it is OK. Briefly: for algorithms
 that only need to know the posterior density up to a constant (which includes Stan
 and many others),
 it is OK as long as the rejection criterion only
-uses observed data and not the unobserved parameters.
+uses observed data and not the unobserved variables.
 
 We'll first walk through the math and then show examples of both OK and problematic
 rejection sampling.
@@ -41,7 +41,7 @@ rejection sampling.
 
 ## The math
 
-Let $f\left(y\right)$ be the probability that the simulated dataset $y$ is rejected (usually a 0-1 function if you have a clear idea what a "bad" dataset looks like, but could be probabilistic if you're relying on finicky diagnostics). The important numbers are the probability of rejection for parameter $\theta$
+Let $f\left(y\right)$ be the probability that the simulated data $y$ is rejected (usually a 0-1 function if you have a clear idea what a "bad" dataset looks like, but could be probabilistic if you're relying on finicky diagnostics). The important numbers are the probability of rejection for variable $\theta$
 
 $$
 L\left(\theta\right)=\int f\left(y\right)\pi\left(y|\theta\right)\mathrm{d}y
@@ -53,7 +53,7 @@ $$
 R=\iint f\left(y\right)\pi\left(y|\theta\right)\pi\left(\theta\right)\mathrm{d}y\mathrm{d}\theta=\int L\left(\theta\right)\pi\left(\theta\right)\mathrm{d}\theta
 $$
 
-Rejecting the parameter draw when it generates a “bad” dataset effectively distorts the prior
+Rejecting the variable draw when it generates “bad” data effectively distorts the prior
 
 $$
 \pi\left(\theta\right)\to\frac{L\left(\theta\right)}{R}\pi\left(\theta\right)
@@ -77,7 +77,7 @@ $$
 \pi(\theta | y) \propto \frac{L(\theta)}{R} \pi(y | \theta) \frac{f(y)}{L(\theta)} \pi(\theta) = \frac{f(y)}{R} \pi(y | \theta) \pi(\theta)
 $$
 
-And since $\frac{f(y)}{R}$ is a constant for any given dataset (and hence the fit), 
+And since $\frac{f(y)}{R}$ is a constant for any given simulation (and hence the fit), 
 the overall posterior for Stan (and most other MCMC algorithms) is the same, 
 because Stan only needs the posterior density up to a constant. 
 So whether we take rejection into account or not, the model will match the generating process. 
@@ -91,12 +91,13 @@ So let's see if that also happens in practice. Let's setup our environment:
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 
-use_cmdstanr <- TRUE # Set to false to use rstan instead
+use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
 if(use_cmdstanr) {
   library(cmdstanr)
 } else {
   library(rstan)
+  rstan_options(auto_write = TRUE)
 }
 
 library(bayesplot)
@@ -108,7 +109,11 @@ plan(multisession)
 options(SBC.min_chunk_size = 10)
 
 # Setup caching of results
-cache_dir <- "./rejection_sampling_SBC_cache"
+if(use_cmdstanr) {
+  cache_dir <- "./_rejection_sampling_SBC_cache"
+} else {
+  cache_dir <- "./_rejection_sampling_rstan_SBC_cache"
+}
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
@@ -140,7 +145,7 @@ N <- 10
 generator <- SBC_generator_function(function() {
    mu <- rnorm(1, 0, 2)
    list(
-     parameters = list(mu = mu),
+     variables = list(mu = mu),
      generated = list(N = N, y = rnorm(N, mu, 1))
    )
 })
@@ -154,7 +159,7 @@ datasets <- generate_datasets(generator, 1000)
 ```
 
 ```{r}
-results <- compute_results(datasets, backend, keep_fits = FALSE, 
+results <- compute_SBC(datasets, backend, keep_fits = FALSE, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "no_rejections"))
 ```
@@ -166,12 +171,12 @@ plot_rank_hist(results)
 
 Indeed, all looks good.
 
-### Rejection based on parameter values
+### Rejection based on unobserved variables
 
-Now let us modify the generator to reject based on parameter values. 
+Now let us modify the generator to reject based on values of an unobserved variable. 
 
 ```{r}
-generator_reject_param <- SBC_generator_function(function() {
+generator_reject_unobserved <- SBC_generator_function(function() {
    repeat {
     mu <- rnorm(1, 0, 2)
     if(mu > 3) {
@@ -179,7 +184,7 @@ generator_reject_param <- SBC_generator_function(function() {
     }
    }
    list(
-     parameters = list(mu = mu),
+     variables = list(mu = mu),
      generated = list(N = N, y = rnorm(N, mu, 1))
    )
 })
@@ -189,18 +194,18 @@ We don't even need to run very many fits to see the problem.
 
 ```{r}
 set.seed(21455)
-datasets_reject_param <- generate_datasets(generator_reject_param, 200)
+datasets_reject_unobserved <- generate_datasets(generator_reject_unobserved, 200)
 ```
 
 ```{r}
-results_reject_param <- compute_results(datasets_reject_param, backend, keep_fits = FALSE, 
+results_reject_unobserved <- compute_SBC(datasets_reject_unobserved, backend, keep_fits = FALSE, 
                     cache_mode = "results", 
-                    cache_location = file.path(cache_dir, "reject_param"))
+                    cache_location = file.path(cache_dir, "reject_unobserved"))
 ```
 
-```{r reject_param_plots}
-plot_ecdf_diff(results_reject_param)
-plot_rank_hist(results_reject_param)
+```{r reject_unobserved_plots}
+plot_ecdf_diff(results_reject_unobserved)
+plot_rank_hist(results_reject_unobserved)
 ```
 
 Indeed, we see a clear failure.
@@ -209,7 +214,7 @@ Indeed, we see a clear failure.
 
 But what if we reject based on the values of data? This should in theory result in just
 a constant change in posterior density and not affect SBC. (SBC will however then check only the 
-non-rejected parts of the data space). We will do a relatively aggressive rejection scheme (reject more than 50% of datasets).
+non-rejected parts of the data space). We will do a relatively aggressive rejection scheme (reject more than 50% of simulations).
 
 ```{r}
 generator_reject_y <- SBC_generator_function(function() {
@@ -221,7 +226,7 @@ generator_reject_y <- SBC_generator_function(function() {
     }
    }
    list(
-     parameters = list(mu = mu),
+     variables = list(mu = mu),
      generated = list(N = N, y = y)
    )
 })
@@ -233,7 +238,7 @@ datasets_reject_y <- generate_datasets(generator_reject_y, 1000)
 ```
 
 ```{r}
-results_reject_y <- compute_results(datasets_reject_y, backend, keep_fits = FALSE, 
+results_reject_y <- compute_SBC(datasets_reject_y, backend, keep_fits = FALSE, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "reject_y"))
 ```
@@ -247,9 +252,9 @@ We see that even with quite heavy rejection based on y, SBC to a high resolution
 
 ## Take home message
 
-If our priors can sometimes generate datasets that are unrealistic, but we are unable to 
+If our priors can sometimes result in simulated data that is unrealistic, but we are unable to 
 specify a better prior directly (e.g. because we would need to define some sort of joint prior),
-we can use rejection sampling to prune unrealistic datasets as long as we only filter by the observed
-data and don't directly use any unobserved parameter values. Notably, filtering based on divergences or other
+we can use rejection sampling to prune unrealistic simulations as long as we only filter by the observed
+data and don't directly use any unobserved variable values. Notably, filtering based on divergences or other
 fitting issues is also just a function of data and thus permissible. The resulting SBC will however provide guarantees
-only for datasets that would not be rejected by the same criteria.
+only for data that would not be rejected by the same criteria.

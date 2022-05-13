@@ -14,6 +14,89 @@ combine_args <- function(args1, args2) {
   }
 }
 
+##' Transform parameters from constrained to uncontrained
+##'
+##' @param param `draws_rvars` type parameter values
+##' @return list of uncontrained parameters and transformation type
+##' @export
+tf_param <- function(param){
+  tf <- list()
+  for (tv in names(param)){
+    if(all(param[[tv]] > 0) & all(param[[tv]] < 1)){
+      tf[[tv]] <- "logit"
+      param[[tv]] <- gtools::logit(param[[tv]])
+    }else if(all(param[[tv]] > 0)){
+      tf[[tv]] <- "log"
+      param[[tv]] <- log(param[[tv]])
+    }
+  }
+  return (list(param = param, tf = tf))
+}
+
+##' Transform parameters from constrained to uncontrained
+##'
+##' @param param a vector
+##' @param tf string indicating transformation type
+##' @return list containing uncontrained parameters and transformation type
+##' @export
+tf_param_vec <- function(param, tf){
+  if(is.null(tf) || missing(tf)){
+    param <- param
+  }
+  else if(tf == "logit"){
+    param <- gtools::logit(param)
+  }else if(tf == "log"){
+    param <- log(param)
+  }
+  return (param)
+}
+
+##' Inverse transform parameters from uncontrained to constrained
+##'
+##' @param param a vector
+##' @param link_type int indicating link type
+##' @return constrained parameter vector
+##' @export
+invtf_param_vec <- function(param, link_type){
+    if(is.null(link_type) || missing(link_type)){
+      param <- param
+    }
+    else if(link_type == 1){
+      param <- brms:::inv_logit(param)
+    } else if (link_type == 2) {
+      param = dnorm(param)
+    } else if (link_type == 3) {
+      param = brms:::inv_cloglog(eta)
+    }
+  param
+}
+
+
+#'Maximal coupling of two univariate Normal distributions
+#'from https://github.com/pierrejacob/debiasedhmc/blob/1a2eeeb041eea4e5c050e5188e7100f31e61e35b/R/gaussian_couplings.R
+#'@description Sample from maximal coupling of two univariate Normal distributions,
+#'specified through their means and standard deviations.
+#'@param mu1 mean of first distribution
+#'@param mu2 mean of second distribution
+#'@param sigma1 standard deviation of first distribution
+#'@param sigma2 standard deviation of second distribution
+#'
+#'@export
+rnorm_max_coupling <- function(mu1, mu2, sigma1, sigma2){
+  x <- rnorm(1, mu1, sigma1)
+  if (dnorm(x, mu1, sigma1, log = TRUE) + log(runif(1)) < dnorm(x, mu2, sigma2, log = TRUE)){
+    return(c(x,x))
+  } else {
+    reject <- TRUE
+    y <- NA
+    while (reject){
+      y <- rnorm(1, mu2, sigma2)
+      reject <- (dnorm(y, mu2, sigma2, log = TRUE) + log(runif(1)) < dnorm(y, mu1, sigma1, log = TRUE))
+    }
+    return(c(x,y))
+  }
+}
+
 
 SBC_error <- function(subclass, message, call = sys.call(-1), ...) {
   structure(

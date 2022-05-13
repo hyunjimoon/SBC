@@ -4,18 +4,12 @@
 \alias{cjs_dist}
 \title{Cumulative Jensen-Shannon divergence}
 \usage{
-cjs_dist(
-  x,
-  y,
-  x_weights = rep(1/length(x), length(x)),
-  y_weights = rep(1/length(y), length(y)),
-  ...
-)
+cjs_dist(x, y, x_weights, y_weights, ...)
 }
 \arguments{
-\item{x}{numeric vector of samples from first distribution}
+\item{x}{numeric vector of draws from first distribution}
 
-\item{y}{numeric vector of samples from second distribution}
+\item{y}{numeric vector of draws from second distribution}
 
 \item{x_weights}{numeric vector of weights of first distribution}
 

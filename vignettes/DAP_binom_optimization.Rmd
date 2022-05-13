@@ -1,0 +1,524 @@
+---
+title: "DAP Optimization Part 1"
+author: "Hyunji Moon, Shinyoung Kim"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE, warning=FALSE}
+library(SBC)
+library(cmdstanr)
+library(parallel)
+library(bayesplot)
+library(posterior)
+library(dplyr)
+library(rstan)
+library(future)
+library(ggpubr)
+library(rstanarm)
+library(ggplot2)
+library(mclust)
+library(plot3D)
+library(nloptr)
+options(mc.cores = parallel::detectCores())
+plan(multisession)
+options(SBC.min_chunk_size = 5)
+#set.seed(1984)
+```
+
+
+Given the previous definition of the Data Averaged Posterior(DAP) and MSE decomposition, in this vignette we will investigate the effect off different inference algorithms on DAP and MSE, and how we can try and optimize a given model to have desirable traits with respect to them.
+
+The Binomial-inverseLogit model we're using in this vignette has a parameter$\eta$ in which $p = \mathrm{inverse\_logit}(\eta)$ is used as the success probability. The vignette is largely separated into 3 parts:
+
+1. Given a fixed parameterization, investigate the behavior of DAP with respect to inference algorithm.
+2. Given a fixed inference algorithm, investigate the behavior of DAP with respect to parameterization.
+3. Given a fixed distribution family for $eta$, find the hyperparameters which minimizes the MSE.
+
+```{R, warning=FALSE, error=FALSE}
+## Generator settings
+# number of SBC simulations per iteration (generator)
+nsims <- 100
+
+# number of observations
+nobs <- 10#2
+
+# link function (1 = logit, 2 = probit, 3 = cloglog)
+link <- 1
+
+# number of binomial trials per observation
+nsize <- 10
+
+## Backend settings
+# number of draws per posterior approximation 
+ndraws <- 1000
+
+# number of chains for hmc posterior approximation
+nchains <- 2
+
+fixed_args_binom <- list(nobs = nobs, nsize = nsize, link_type = 1, nsims = nsims, ndraws = ndraws, dist_types=list(eta="normal"))
+```
+
+# Inspecting DAP of binom-laplace 
+The generator function is used to draw simulated parameter samples and data which are then used to fit the actual model.
+
+```{R, warning=FALSE, error=FALSE}
+generator_binom <- function(lambdas, fixed_args){
+  # fixed value across simulated datasets
+  # experiment settings
+  nobs <- fixed_args$nobs
+  nsize <- fixed_args$nsize
+  dist_types <- fixed_args$dist_types
+  # modular settings
+  link_type <- fixed_args$link_type
+  
+  # generate
+  lambda_arg1 <- c()
+  lambda_arg2 <- c()
+  if(dist_types$eta == "normal"){
+    eta <- rnorm(1, mean = lambdas$eta$mu, sd=lambdas$eta$sigma)
+    lambda_arg1 <- c(lambda_arg1, lambdas$eta$mu)
+    lambda_arg2 <- c(lambda_arg2, lambdas$eta$sigma)
+  }
+  else if(dist_types$eta == "gamma"){
+    eta <- rgamma(1, shape = lambdas$eta$alpha, rate = lambdas$eta$beta)
+    lambda_arg1 <- c(lambda_arg1, lambdas$eta$alpha)
+    lambda_arg2 <- c(lambda_arg2, lambdas$eta$beta)
+  }
+  
+  
+    
+  mu <- invtf_param_vec(eta, link_type = link_type)
+  Y <- rbinom(nobs, size = nsize, prob = mu) 
+  list(
+    parameters = list(eta = eta),
+    generated = list(nobs= nobs, nsize = nsize, link = link_type,
+                     dist_types = match(unlist(dist_types), c("normal", "gamma")), lambda_arg1 = lambda_arg1, lambda_arg2 = lambda_arg2, 
+                     Y = Y)
+  )
+}
+```
+
+In short, DAP pools together all samples from each fits and calculates the summary statistics, which are used as the "DAP parameter". In this cell, we define the function which pools the parameter draws together, as well as calculating the bias and variance of the DAP estimate.
+
+Note that we can either set the prior of the parameter of interest to either normal or gamma. In this example we will stick with normal.
+
+```{R, warning=FALSE, error=FALSE}
+# initial prior hyperparameters
+lambda_init_binom <- list(
+  eta = list(mu=100, sigma=100)
+)
+datasets_binom <- generate_datasets(SBC_generator_function(generator_binom, lambda_init_binom, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+
+# hyperparameter update algorithm 
+updator = "mc_update"
+
+# maximal number of SBC iterations
+niter <- 100
+
+# tolerance
+tol <- 0.1
+
+# learning rate
+gamma <- 1.5 # 0.5 for gradient update, 10 for normal_str_update
+
+# step2: inferring posterior
+rstan_binom_mod <- stan_model("models/binom-laplace.stan")
+cmdstan_binom_mod <- cmdstanr::cmdstan_model("models/binom-laplace.stan")
+
+backend_binom_opt <- SBC_backend_rstan_optimizing(rstan_binom_mod, draws = ndraws)
+backend_binom_hmc <- SBC_backend_cmdstan_sample(cmdstan_binom_mod, chains = 4, iter_sampling = ndraws / 4) # thin = 10
+calib_generator <- function(lambdas, fixed_args){
+  generate_datasets(SBC_generator_function(generator_binom, lambdas, fixed_args), n_datasets = fixed_args$nsims)
+}
+
+calculate_dap <- function(mu, var, generator, datasets=NULL, backened, fixed_args){
+  if(is.null(datasets)){
+      lambda_init_binom <- list(
+        eta = list(mu=mu, sigma=sqrt(var))
+      )
+      datasets <- do.call(generator, list(lambda_init_binom, fixed_args = fixed_args))
+  }
+  sbc_result <- compute_results(datasets, backened, thin_ranks = 1)
+  draws_eta <- c()
+  draws_Y <- c()
+  prior_thetas <- posterior::extract_variable(datasets$parameters, "eta")
+  var_theta_tilde_bar <- 0
+  var_theta_tilde <- 0
+  theta_bar <- mean(prior_thetas)
+  
+  B <- 0
+  V <- 0
+  for(i in 1:nsims){
+    draws_Y <- c(draws_Y, datasets$generated[[i]]$Y)
+    samples <- SBC_fit_to_draws_matrix(sbc_result$fits[[i]])
+    etas <- posterior::extract_variable(samples, "eta")
+    draws_eta <- c(draws_eta, etas)
+    
+    var_theta_tilde_bar <- var_theta_tilde_bar + (mean(etas) - mean(prior_thetas))^2
+    var_theta_tilde <- var_theta_tilde + sum((etas - mean(etas))^2)
+    
+    B <- B + mean(etas)
+    V <- V + sum((etas - mean(etas))^2)
+  }
+  
+  var_theta_tilde_bar <- var_theta_tilde_bar / fixed_args$nsims
+  var_theta_tilde <- var_theta_tilde / (fixed_args$nsims * ndraws)
+  
+  B <- B / fixed_args$nsims - mean(prior_thetas)
+  V <- V / (fixed_args$nsims * ndraws)
+  
+  # assume normal for dap
+  mu <- mean(draws_eta)
+  var <- sd(draws_eta)^2
+  #var <- 100
+  
+  return(list(mu=mu, var=var, draws_eta=draws_eta, draws_Y=draws_Y, B=B, V=V, datasets=datasets))
+}
+```
+
+##
+
+Since we're trying to investigate the structure of DAP for multiple hyperparameter values, we will do a naive "grid search" where we fit the model with various hyperparameter values arranged in a grid.
+
+Once we have the model and DAP generation ready, we run inference each for HMC and optimization. The hypothesis is that HMC will be less sensitive to the designated prior, and hyperparameters retrieved from the DAP should match the specified hyperparameter. On the other hand, optimization should yield more interesting results.
+
+For this example, we've parameterized $\eta$ as $\eta \sim \mathrm{normal}(\mu, \sigma^2)$. We then run inference with different combinations of the hyperparameters:
+
+```{r, cache=TRUE}
+gridsize_mu <- 5
+gridsize_var <- 5
+mu_seq <- seq(10, 50, length.out = gridsize_mu)
+var_seq <- seq(5, 50, length.out = gridsize_var)
+grid_size <- length(mu_seq) * length(var_seq)
+
+squared_lambda_diff <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(squared_lambda_diff) <- mu_seq
+colnames(squared_lambda_diff) <- var_seq
+
+lambda_diff <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(lambda_diff) <- mu_seq
+colnames(lambda_diff) <- var_seq
+
+dap_lambda_mu <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+dap_lambda_var <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(dap_lambda_mu) <- mu_seq
+rownames(dap_lambda_var) <- mu_seq
+colnames(dap_lambda_mu) <- var_seq
+colnames(dap_lambda_var) <- var_seq
+
+lambda_mu <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+lambda_var <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(lambda_mu) <- mu_seq
+rownames(lambda_var) <- mu_seq
+colnames(lambda_mu) <- var_seq
+colnames(lambda_var) <- var_seq
+
+var_theta_tilde_bar <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+var_theta_tilde <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(var_theta_tilde_bar) <- mu_seq
+rownames(var_theta_tilde_bar) <- mu_seq
+colnames(var_theta_tilde) <- var_seq
+colnames(var_theta_tilde) <- var_seq
+
+B_ghat <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+V_ghat <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(B_ghat) <- mu_seq
+rownames(V_ghat) <- mu_seq
+colnames(B_ghat) <- var_seq
+colnames(V_ghat) <- var_seq
+
+B_g <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+V_g <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(B_g) <- mu_seq
+rownames(V_g) <- mu_seq
+colnames(B_g) <- var_seq
+colnames(V_g) <- var_seq
+
+dap_lambda_mu_hmc <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+dap_lambda_var_hmc <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(dap_lambda_mu_hmc) <- mu_seq
+rownames(dap_lambda_var_hmc) <- mu_seq
+colnames(dap_lambda_mu_hmc) <- var_seq
+colnames(dap_lambda_var_hmc) <- var_seq
+
+
+
+theta_bar <- array(rep(NA, grid_size), dim = c(gridsize_mu, gridsize_var))
+rownames(theta_bar) <- mu_seq
+rownames(theta_bar) <- mu_seq
+
+generated_Y <- array(rep(NA, nsims * nobs * grid_size), dim=c(nsims * nobs, gridsize_mu, gridsize_var) )
+dimnames(generated_Y)[[2]] <- mu_seq
+dimnames(generated_Y)[[3]] <- var_seq
+
+for(j in 1:length(var_seq)){
+  for(i in 1:length(mu_seq)){
+    dap <- calculate_dap(mu_seq[[i]],var_seq[[j]] , calib_generator, NULL, backend_binom_opt, fixed_args_binom)
+    squared_lambda_diff[i,j] <- sqrt((mu_seq[[i]] - dap$mu)^2 + (var_seq[[j]] - dap$var)^2)
+    lambda_diff[i,j] <- (dap$mu - mu_seq[[i]]) + (dap$var - var_seq[[j]])
+    dap_lambda_mu[i, j] <- dap$mu
+    dap_lambda_var[i, j] <- dap$var
+    lambda_mu[i, j] <- mu_seq[[i]]
+    lambda_var[i, j] <- var_seq[[j]]
+    generated_Y[, i, j] <- dap$draws_Y
+    B_ghat[i, j] <- dap$B
+    V_ghat[i, j] <- dap$V
+    
+    dap_hmc <- calculate_dap(mu_seq[[i]],var_seq[[j]], calib_generator, dap$datasets, backend_binom_hmc, fixed_args_binom)
+    B_g[i, j] <- dap_hmc$B
+    V_g[i, j] <- dap_hmc$V
+    dap_lambda_mu_hmc[i, j] <- dap_hmc$mu
+    dap_lambda_var_hmc[i, j] <- dap_hmc$var
+  }
+}
+```
+
+
+
+```{R}
+scaleFUN <- function(x) sprintf("%.2f", x)
+dap_df <- as.data.frame.table(dap_lambda_mu)
+colnames(dap_df)[1] <- "mu"
+colnames(dap_df)[2] <- "var"
+dap_df[, "mu"] <- as.numeric(as.vector(dap_df[, "mu"]))  # not using as.vector converts the factor indices
+dap_df[, "var"] <- as.numeric(as.vector(dap_df[, "var"]))
+colnames(dap_df)[3] <- "dap_mu"
+dap_lambda_df <- as.data.frame.table(dap_lambda_var)
+dap_df[, "dap_var"] <- as.numeric(dap_lambda_df$Freq)
+ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2) + xlab("mu") + ylab("var") + ggtitle("binom + opt, nsims=100")
+```
+
+The red points denote the initially specified hyperparameter values. Blue points denote the hyperparameter values recovered from the computed DAP.
+
+We can see that for optimization, almost all initialization points shrinks to near $(0, 0)$. This means that the hyperparameter area that we have tested are severly miscalibrated.
+
+
+```{R}
+scaleFUN <- function(x) sprintf("%.2f", x)
+dap_df <- as.data.frame.table(dap_lambda_mu_hmc)
+colnames(dap_df)[1] <- "mu"
+colnames(dap_df)[2] <- "var"
+dap_df[, "mu"] <- as.numeric(as.vector(dap_df[, "mu"]))  # not using as.vector converts the factor indices
+dap_df[, "var"] <- as.numeric(as.vector(dap_df[, "var"]))
+colnames(dap_df)[3] <- "dap_mu"
+dap_lambda_df <- as.data.frame.table(dap_lambda_var_hmc)
+dap_df[, "dap_var"] <- as.numeric(dap_lambda_df$Freq)
+ggplot(dap_df, mapping=aes(x="mu", y="var")) + geom_point(aes(x=mu, y=var), color = "red") + geom_point(aes(x=dap_mu, y = dap_var), color = "blue") + scale_y_continuous(labels=scaleFUN) + geom_segment(aes(x=mu, y=var, xend=dap_mu, yend=dap_var), size=0.2) + xlab("mu") + ylab("var") + ggtitle("binom + hmc, nsims=100")
+```
+
+The two plots look too similar. Quite skeptical, let's compare the actual recovered hyperparater values. We will check the mean hyperparameter values:
+optimization:
+```{R}
+dap_lambda_mu
+```
+
+HMC:
+```{R}
+dap_lambda_mu_hmc
+```
+
+
+We now plot the DAP bias-variance decomposition with respect to the hyperparameters, and varying by inference algorithms. The goal here is to observe whether HMC provides better results than optimization as per the hypothesis, and find any systematic anomalies regarding each values.
+
+
+```{R, fig.width = 14}
+B_g_df <- as.data.frame.table(B_g)
+colnames(B_g_df)[colnames(B_g_df) == "Var1"] <- "Mu"
+colnames(B_g_df)[colnames(B_g_df) == "Var2"] <- "Var"
+colnames(B_g_df)[colnames(B_g_df) == "Freq"] <- "B_g"
+
+B_ghat_df <- as.data.frame.table(B_ghat)
+colnames(B_ghat_df)[colnames(B_ghat_df) == "Var1"] <- "Mu"
+colnames(B_ghat_df)[colnames(B_ghat_df) == "Var2"] <- "Var"
+colnames(B_ghat_df)[colnames(B_ghat_df) == "Freq"] <- "B_ghat"
+
+B_ghat_df[, "B_g"] <- B_g_df[, "B_g"]
+
+B_ghat_df[, "coords"] <- paste(B_ghat_df[, "Mu"], B_ghat_df[, "Var"], sep=",")
+B_ghat_df[, "coords"] <- factor(B_ghat_df$coords, levels=unique(B_ghat_df$coords))
+
+ggplot(B_ghat_df) + geom_point(aes(x=coords, y=B_g, color="red")) + ggtitle("B(red=g(hmc), green=ghat(opt))") + geom_point(aes(x=coords, y=B_ghat, color="green")) + geom_segment(aes(x=coords, y=B_g, xend=coords, yend=B_ghat), size=0.2) + theme(axis.title.x = element_text(margin=unit(c(10, 0, 0, 0), "mm"))) + xlab("mu, var") + ylab("B") + theme(legend.position = "none")
+
+```
+
+For bias, we can see that in general, bias increases with the mu hyperparameter. The plot is admittedly hard to see, but mu hyperparameter is the big factor here when it comes to to bias. We can see that the variance hyperparameter barely affects bias.
+
+
+```{R, fig.width = 14}
+V_g_df <- as.data.frame.table(V_g)
+colnames(V_g_df)[colnames(V_g_df) == "Var1"] <- "Mu"
+colnames(V_g_df)[colnames(V_g_df) == "Var2"] <- "Var"
+colnames(V_g_df)[colnames(V_g_df) == "Freq"] <- "V_g"
+
+V_ghat_df <- as.data.frame.table(V_ghat)
+colnames(V_ghat_df)[colnames(V_ghat_df) == "Var1"] <- "Mu"
+colnames(V_ghat_df)[colnames(V_ghat_df) == "Var2"] <- "Var"
+colnames(V_ghat_df)[colnames(V_ghat_df) == "Freq"] <- "V_ghat"
+
+V_ghat_df[, "V_g"] <- V_g_df[, "V_g"]
+
+V_ghat_df[, "coords"] <- paste(V_ghat_df[, "Mu"], V_ghat_df[, "Var"], sep="|")
+V_ghat_df[, "coords"] <- factor(V_ghat_df$coords, levels=unique(V_ghat_df$coords))
+
+ggplot(V_ghat_df) + geom_point(aes(x=coords, y=V_g, color="red")) + ggtitle("V(red=g(hmc), green=ghat(opt)") + geom_point(aes(x=coords, y=V_ghat, color="green")) + geom_segment(aes(x=coords, y=V_g, xend=coords, yend=V_ghat), size=0.2) + theme(axis.title.x = element_text(margin=unit(c(10, 0, 0, 0), "mm"))) + xlab("mu, var") + ylab("V") + theme(legend.position = "none")
+
+```
+
+However, the variance component is a bit more interesting. We first observe that the variance component is inversely proportional to the variance parameter: when the variance hyperparameter is at its smallest value, 5, we can observe that the variance component is the biggest there. Unlike the bias component, the mean parameter here doesn't have much impact.
+
+
+We now run posterior predictive checks with the intent of verifying whether the fits can recover the initial hyperparameters. Let's select hyperparameter values that we know are problematic and run PPC:
+
+```{R}
+# mu = 0, 5, 20, 40
+# var = 1, 5, 15
+test_mu <- 40
+test_var <- 15
+lambda_test <- list(
+  eta = list(mu=test_mu, sigma=sqrt(test_var))
+)
+test_dataset <- generate_datasets(SBC_generator_function(generator_binom, lambda_test, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+sbc_result <- compute_results(test_dataset, backend_binom_opt, thin_ranks = 1)
+
+#plot_ecdf_diff(sbc_result)
+#plot_rank_hist(sbc_result)
+#plot_sim_estimated(sbc_result)
+# plot_sim_estimated(sbc_result, estimate="median")
+test_eta <- c()
+fit_matrix <- matrix(data=rep(NA, nsims * ndraws), nrow = nsims, ncol = ndraws)
+for(i in 1:nsims){
+  samples <- sbc_result$fits[[i]]
+  draws <- SBC_fit_to_draws_matrix(samples)
+  eta_vals <- posterior::extract_variable(draws, "eta")
+  fit_matrix[i, ] <- eta_vals
+  test_eta <- c(test_eta, eta_vals)
+}
+
+x <- seq(-10, 40, length.out=10000)
+eta_rep <- rnorm(ndraws, test_mu, sqrt(test_var))
+ppc_dens_overlay(eta_rep, fit_matrix)
+
+```
+
+
+As expected, the results show that the miscalibration is severe; the posterior data distribution is not in agreement from the initial parameters. 
+
+Let's try some region that might perform a bit better:
+
+```{R}
+# mu = 0, 5, 20, 40
+# var = 1, 5, 15
+test_mu <- 1
+test_var <- 5
+lambda_test <- list(
+  eta = list(mu=test_mu, sigma=sqrt(test_var))
+)
+test_dataset <- generate_datasets(SBC_generator_function(generator_binom, lambda_test, fixed_args_binom), n_datasets = fixed_args_binom$nsims)
+sbc_result <- compute_results(test_dataset, backend_binom_opt, thin_ranks = 1)
+
+#plot_ecdf_diff(sbc_result)
+#plot_rank_hist(sbc_result)
+#plot_sim_estimated(sbc_result)
+# plot_sim_estimated(sbc_result, estimate="median")
+test_eta <- c()
+fit_matrix <- matrix(data=rep(NA, nsims * ndraws), nrow = nsims, ncol = ndraws)
+for(i in 1:nsims){
+  samples <- sbc_result$fits[[i]]
+  draws <- SBC_fit_to_draws_matrix(samples)
+  eta_vals <- posterior::extract_variable(draws, "eta")
+  fit_matrix[i, ] <- eta_vals
+  test_eta <- c(test_eta, eta_vals)
+}
+
+x <- seq(-10, 40, length.out=10000)
+eta_rep <- rnorm(ndraws, test_mu, sqrt(test_var))
+ppc_dens_overlay(eta_rep, fit_matrix)
+
+```
+
+```{R, eval=FALSE}
+
+normal_pdf <- dnorm(x, test_mu, sqrt(test_var))
+eta_draws <- sbc_result$fits[[5]]$fit_list$theta_tilde[, "eta"]
+#ggplot(pdf_df) + geom_line(aes(x=x, y=normal_pdf, colour="red"))  + geom_density(data=data.frame(val=eta_draws), aes(val, color="blue"))
+```
+
+
+```{R, eval=FALSE}
+# maximize entropy
+# partial derivative is: -log p_w - 1
+calc_entropy <- function(p){
+  return(as.numeric((p + 1e-8) %*% -log(p + 1e-8)) - 100 * (sum(p) - 1)^2)
+}
+
+calc_entropy_grad <- function(p){
+  return(-log(p + 1e-8) - 1 - 200 * (p + 1e-8))
+}
+
+# equal to minimize negative entropy
+neg_entropy <- function(p){
+  return(-calc_entropy(p))
+}
+
+neg_entropy_grad <- function(p){
+  return(-calc_entropy_grad(p))
+}
+
+theta <- 14
+# partial derivative is contraction_arr_{w}
+p_v_product_constraint <- function(p){
+  # equality constraint should equal 0
+  return(as.numeric(p %*% as.vector(contraction_arr)) - 6)
+}
+
+p_v_product_constraint_grad <- function(p){
+  return(as.vector(contraction_arr))
+}
+
+# calculate theta and p_init
+# start at uniform
+p_init <- as.numeric(c(rep(1e-8, grid_size - 1), 1))
+
+prob_ineq_constraints <- function(p){
+  # constraints <- c(p_v_product_constraint(p), probability_simplex_constraint(p))
+  # grad <- c(p_v_product_constraint_grad(p), probability_simplex_constraint_grad(p))
+  constraints <- c(p_v_product_constraint(p))
+  grad <- c(p_v_product_constraint_grad(p))
+  return( list(constraints=constraints, jacobian=grad) )
+}
+
+#If you want to use equality constraints, then you should use one of these algorithms NLOPT_LD_AUGLAG, NLOPT_LN_AUGLAG, NLOPT_LD_AUGLAG_EQ, NLOPT_LN_AUGLAG_EQ, NLOPT_GN_ISRES, NLOPT_LD_SLSQP
+
+probability_simplex_opts <- list(algorithm="NLOPT_LD_SLSQP", print_level=3, xtol_rel=1e-8, maxeval=1000)
+prob_lb <- rep(0.0, length(p_init))
+prob_ub <- rep(1.0, length(p_init))
+prob_opt <- nloptr::nloptr(p_init, 
+                           neg_entropy, 
+                           eval_grad_f = neg_entropy_grad, 
+                           eval_g_ineq = prob_ineq_constraints, 
+                           opts = probability_simplex_opts, 
+                           lb=prob_lb, ub=prob_ub)
+```
+
+```{R, eval=FALSE}
+
+result_out <- array(prob_opt$solution, dim = c(length(mu_seq), length(var_seq)))
+rownames(result_out) <- mu_seq
+colnames(result_out) <- var_seq
+persp3D(x=mu_seq, y=var_seq, z = result_out, theta=55, phi=10, xlab="mu", ylab="var", zlab="prob_opt_result", ticks=5, ticktype="detailed")
+persp3D(x=mu_seq, y=var_seq, z = contraction_arr, theta=25, phi=10, xlab="mu", ylab="var", zlab="convex if ", ticks=5, ticktype="detailed")
+```
+
+```{R, eval=FALSE}
+N = 10000
+sampled_probs <- sample(1:grid_size, N, prob=as.vector(result_out), replace=TRUE)
+mu <- rep(mu_seq, length(var_seq))
+sigma <- rep(var_seq, each=length(mu_seq))
+combined <- data.frame(mu=mu, sigma=sigma)
+thetas <- c()
+for(i in 1:N){
+  thetas[i] <- rnorm(1, combined[sampled_probs[i], "mu"], combined[sampled_probs[i], "sigma"])
+}
+hist(thetas, probability=TRUE, breaks=30)
+```

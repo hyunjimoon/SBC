@@ -2,7 +2,7 @@
 % Please edit documentation in R/results.R
 \name{SBC_results}
 \alias{SBC_results}
-\title{SBC_results objects.}
+\title{Create an \code{SBC_results} object}
 \usage{
 SBC_results(
   stats,
@@ -16,9 +16,12 @@ SBC_results(
 )
 }
 \description{
+This will build and validate an \code{SBC_results} object from its constituents.
+}
+\details{
 The \code{SBC_results} contains the following fields:
 \itemize{
-\item \verb{$stats} statistics for all parameters and fits (one row per parameter-fit combination)
+\item \verb{$stats} statistics for all variables and fits (one row per variable-fit combination)
 \item \verb{$fits}  the raw fits (unless \code{keep_fits = FALSE}) or \code{NULL} if the fit failed
 \item \verb{$errors} error messages that caused fit failures
 \item \verb{$outputs}, \verb{$messages}, \verb{$warnings} the outputs/messages/warnings written by fits

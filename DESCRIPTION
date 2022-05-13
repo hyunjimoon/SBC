@@ -1,6 +1,6 @@
 Package: SBC
 Title: Simulation Based Calibration for rstan/cmdstanr models
-Version: 0.0.1.9000
+Version: 0.1.1.9000
 Authors@R: 
     c(person(given = "Shinyoung",
            family = "Kim",
@@ -16,10 +16,18 @@ Authors@R:
            family = "Modrák",
            role = c("aut"),
            email = "martin.modrak@biomed.cas.cz",
-           comment = c()))
-Description: SBC helps perform Simulation Based Calibration on models using Stan or brms.
-  It contains various classes and functions to extract samples from models, calculate SBC metrics and visualize utility plots.
+           comment = c(ORCID= "0000-0002-8886-7797")),
+    person(given = "Teemu",
+           family = "Säilynoja",
+           role = "aut")
+           )
+Description: SBC helps perform Simulation Based Calibration on Bayesian models. 
+    SBC lets you check for bugs in your model code and/or algorithm that fits 
+    the model. SBC focuses on models built with 'Stan' <https://mc-stan.org>,
+    but can support other modelling languages as well.
 License: MIT + file LICENSE
+URL: https://hyunjimoon.github.io/SBC/, https://github.com/hyunjimoon/SBC/
+BugReports: https://github.com/hyunjimoon/SBC/issues
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
@@ -42,5 +50,6 @@ Suggests:
     rstan,
     knitr,
     rmarkdown,
-    brms
+    brms,
+    mclust
 VignetteBuilder: knitr
