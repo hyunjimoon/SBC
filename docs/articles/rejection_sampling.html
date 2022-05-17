@@ -126,7 +126,7 @@
       <h1 data-toc-skip>Rejection sampling in simulations</h1>
                         <h4 data-toc-skip class="author">Martin Modrák</h4>
             
-            <h4 data-toc-skip class="date">2022-02-17</h4>
+            <h4 data-toc-skip class="date">2022-05-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/rejection_sampling.Rmd" class="external-link"><code>vignettes/rejection_sampling.Rmd</code></a></small>
       <div class="hidden name"><code>rejection_sampling.Rmd</code></div>
@@ -150,7 +150,7 @@ L\left(\theta\right)=\int f\left(y\right)\pi\left(y|\theta\right)\mathrm{d}y
 <p><span class="math display">\[
 R=\iint f\left(y\right)\pi\left(y|\theta\right)\pi\left(\theta\right)\mathrm{d}y\mathrm{d}\theta=\int L\left(\theta\right)\pi\left(\theta\right)\mathrm{d}\theta
 \]</span></p>
-<p>Rejecting the variable draw when it generates “bad” data effectively distorts the prior</p>
+<p>Rejecting the simulation when it generates “bad” data effectively distorts the prior</p>
 <p><span class="math display">\[
 \pi\left(\theta\right)\to\frac{L\left(\theta\right)}{R}\pi\left(\theta\right)
 \]</span></p>
