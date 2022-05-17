@@ -20,6 +20,7 @@ actual algorithms.
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 library(ggplot2)
+library(mvtnorm)
 use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
 if(use_cmdstanr) {
@@ -386,76 +387,26 @@ plot_rank_hist(results_missing_2)
 We could definitely find even smaller deviations than omitting half the data points, that would however require more simulations for the SBC.
 This boils down to the earlier discussion on small changes to the model - omitting a few data points does not change the posterior very much in this case (as the model is simple and is already quite well informed by just a few data points) and thus it is harder to detect this problem by SBC - but it is possible.
 
-# Test
+# Incorrect Correlations
 
-```{r}
-plan(sequential)
-library(mvtnorm)
-mvn_sigma <- matrix(c(1, 0.8,0.8,1), nrow = 2)
+Here, we generate data using the multivariate normal distribution as:
 
-set.seed(1556654)/
+$$
+\mathbf{\mu} \sim MVN(0, \mathbf{\Sigma})\\
+y \sim MVN(\mathbf{\mu}, \mathbf{\Sigma})\\
+\mathbf{\Sigma} = \left(\begin{matrix}
+ 1 & 0.8 \\
+ 0.8 & 1 \\
+\end{matrix}\right)
+$$
 
-N_sims_corr <- 100
-variables_corr <- rmvnorm(N_sims_corr, sigma = mvn_sigma)
+In this case the posterior has analytical solution and should also be multivariate normal - especially when the number of data points is small, the correlations in the prior should persist in the posterior. Here, we'll assume we observe three realizations of $y$ in a single fit.
 
-datasets_sigma <- SBC_datasets(variables = posterior::draws_matrix(a = variables_corr[,1], b = variables_corr[,2]),
-                               generated = rep(list(list()), N_sims_corr))
-
-backend_corr <- SBC_backend_mock_rng(a = ~ rnorm(.), b = ~ rnorm(.))
-gq_corr <- generated_quantities(sum_a_b = a + b, 
-                                diff_a_b = a - b,
-                                prod_a_b = a * b,
-                                mvn_log_lik = dmvnorm(c(a, b), sigma = mvn_sigma, log = TRUE))
-
-res_corr <- compute_SBC(datasets_sigma, backend_corr, keep_fits = FALSE,
-                        gen_quants = gq_corr)
-```
-
-```{r}
-plot_rank_hist(res_corr)
-plot_ecdf_diff(res_corr)
-```
-
-
-# Correlations
-
-No data, should be correlated but is ucorrelated
-
-```{r}
-library(mvtnorm)
-mvn_sigma <- matrix(c(1, 0.8,0.8,1), nrow = 2)
-
-set.seed(1556654)
-
-N_sims_corr <- 100
-variables_corr <- rmvnorm(N_sims_corr, sigma = mvn_sigma)
-
-datasets_sigma <- SBC_datasets(variables = posterior::draws_matrix(a = variables_corr[,1], b = variables_corr[,2]),
-                               generated = rep(list(list()), N_sims_corr))
-
-backend_corr <- SBC_backend_mock_rng(a = ~ rnorm(.), b = ~ rnorm(.))
-gq_corr <- generated_quantities(sum_a_b = a + b, 
-                                diff_a_b = a - b,
-                                prod_a_b = a * b,
-                                mvn_log_lik = mvtnorm::dmvnorm(c(a, b), sigma = mvn_sigma, log = TRUE))
-
-res_corr <- compute_SBC(datasets_sigma, backend_corr, keep_fits = FALSE,
-                        gen_quants = gq_corr, globals = "mvn_sigma")
-```
-
-```{r}
-plot_rank_hist(res_corr)
-plot_ecdf_diff(res_corr)
-```
-
-
-
-The same with some data
+We however generate posterior samples from a set of independent normal distributions that happen to have the correct mean and standard deviation, just the correlation is missing.
 
 ```{r}
 set.seed(546852)
 
-library(mvtnorm)
 mvn_sigma <- matrix(c(1, 0.8,0.8,1), nrow = 2)
 
 generator_func_correlated <- function(N) {
@@ -465,7 +416,7 @@ generator_func_correlated <- function(N) {
        generated = list(y = y))
 }
 
-N_sims_corr <- 100
+N_sims_corr <- 1000
 
 datasets_correlated <- generate_datasets(SBC_generator_function(generator_func_correlated, N = 3), N_sims_corr)
 
@@ -494,20 +445,50 @@ SBC_backend_iid_draws.analytic_backend_uncorr <- function(backend) {
   TRUE
 }
 
+analytic_backend_uncorr_globals = c("SBC_fit.analytic_backend_uncorr",
+                                    "SBC_backend_iid_draws.analytic_backend_uncorr",
+                                    "mvn_sigma")
+
 backend_uncorr <- analytic_backend_uncorr(prior_sigma = 1)
 
-gq_corr <- generated_quantities(sum = mu[1] + mu[2], 
-                                diff = mu[1] - mu[2],
-                                prod = mu[1] * mu[2],
-                                log_lik = sum(dnorm(y[,1], mean = mu[1], sd = 1, log = TRUE) + dnorm(y[,2], mean = mu[2], sd = 1, log = TRUE)))
 
 res_corr <- compute_SBC(datasets_correlated, backend_uncorr, keep_fits = FALSE,
-                        gen_quants = gq_corr, globals = c("SBC_fit.analytic_backend_uncorr",
-                                                          "SBC_backend_iid_draws.analytic_backend_uncorr"))
+                        globals = analytic_backend_uncorr_globals,
+                        cache_mode = "results", 
+                        cache_location = file.path(cache_dir, "corr"))
 ```
 
-```{r}
+
+Although the posterior is incorrect, the default univariate checks don't show any problem even with `r N_sims_corr` simulations.
+
+```{r results_corr}
 plot_rank_hist(res_corr)
 plot_ecdf_diff(res_corr)
 ```
 
+We can however add derived quantities that depend on both elements of mu. We'll
+try their sum, difference, product and the multivarite normal log likelihood
+
+```{r}
+gq_corr <- generated_quantities(sum = mu[1] + mu[2], 
+                                diff = mu[1] - mu[2],
+                                prod = mu[1] * mu[2],
+                                mvn_log_lik = sum(mvtnorm::dmvnorm(y, mean = mu, sigma = mvn_sigma, log = TRUE)))
+
+
+res_corr_gq  <- compute_SBC(datasets_correlated, backend_uncorr, keep_fits = FALSE,
+                        globals = analytic_backend_uncorr_globals,
+                        gen_quants = gq_corr,
+                        cache_mode = "results", 
+                        cache_location = file.path(cache_dir, "corr_gq"))
+
+```
+
+We see that all of the derived quantities show problems, but with different strength
+of signal. We'll especially note that the log likelihood is once again a very good
+choice, while sum is probably the worst of those tested.
+
+```{r results_corr_gq}
+plot_rank_hist(res_corr_gq)
+plot_ecdf_diff(res_corr_gq)
+```
