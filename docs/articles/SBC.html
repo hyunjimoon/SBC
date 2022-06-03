@@ -126,7 +126,7 @@
       <h1 data-toc-skip>Getting Started with SBC</h1>
                         <h4 data-toc-skip class="author">Hyunji Moon, Martin Modrák, Shinyoung Kim</h4>
             
-            <h4 data-toc-skip class="date">2022-02-17</h4>
+            <h4 data-toc-skip class="date">2022-05-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/SBC.Rmd" class="external-link"><code>vignettes/SBC.Rmd</code></a></small>
       <div class="hidden name"><code>SBC.Rmd</code></div>
@@ -148,7 +148,7 @@
 </ul>
 </li>
 </ol>
-<p>It can be shown that if model matched the generator and algorithm works correctly, then for each variable, the ranks obtained in SBC should be uniformly distributed between <span class="math inline">\(0\)</span> and <span class="math inline">\(S\)</span>. This corresponds quite directly to claims like “the posterior 84% credible interval should contain the simulated value in 84% of simulations”, the rank uniformity represents this claim for all interval widths at once. The theory of SBC is fully described in <a href="https://arxiv.org/abs/1804.06788" class="external-link">Talts et al.</a></p>
+<p>It can be shown that if model matched the generator and algorithm works correctly, then for each variable, the ranks obtained in SBC should be uniformly distributed between <span class="math inline">\(0\)</span> and <span class="math inline">\(D\)</span>. This corresponds quite directly to claims like “the posterior 84% credible interval should contain the simulated value in 84% of simulations”, the rank uniformity represents this claim for all interval widths at once. The theory of SBC is fully described in <a href="https://arxiv.org/abs/1804.06788" class="external-link">Talts et al.</a></p>
 <p>This opens two principal use-cases of SBC:</p>
 <ol style="list-style-type: lower-alpha">
 <li>We have an algorithm that we trust is correct and a generator and and we want to check that we correctly implemented our Bayesian model</li>
