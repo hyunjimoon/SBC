@@ -91,6 +91,7 @@ reference:
   - compute_SBC
   - contains("SBC_results")
   - generated_quantities
+  - bind_generated_quantities
   - SBC_statistics_from_single_fit
   - recompute_SBC_statistics
   - bind_results

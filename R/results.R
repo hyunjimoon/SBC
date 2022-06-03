@@ -1,6 +1,5 @@
-#' @title Create an `SBC_results` object
+#' Create an `SBC_results` object
 #'
-#' @description
 #' This will build and validate an `SBC_results` object from its constituents.
 #'
 #' @details
@@ -468,6 +467,18 @@ compute_SBC <- function(datasets, backend,
       future.globals <- globals
     }
   }
+  # Handle mix of named and unnamed globals
+  if(is.list(future.globals)) {
+    if(is.null(names(future.globals))) {
+      unnamed_globals <- rep(TRUE, length(future.globals))
+    } else {
+      unnamed_globals <- names(future.globals) == "" | is.na(names(future.globals))
+    }
+    for(global_idx in which(unnamed_globals)) {
+      names(future.globals)[global_idx] <- future.globals[global_idx]
+      future.globals[[global_idx]] <- get(future.globals[[global_idx]], envir = parent.frame(), inherits = TRUE)
+    }
+  }
 
   results_raw <- future.apply::future_lapply(
     vars_and_generated_list, SBC:::compute_SBC_single,
@@ -874,6 +885,22 @@ generated_quantities <- function(..., .globals = list()) {
 validate_generated_quantities <- function(x) {
   stopifnot(inherits(x, "SBC_generated_quantities"))
   invisible(x)
+}
+
+#' Combine multiple generated quantities into a single object
+#' @export
+bind_generated_quantities <- function(...) {
+  args <- list(...)
+
+  purrr::walk(args, validate_generated_quantities)
+  #TODO check identical par names
+
+  globals_list <- purrr::map(args, function(x) attr(x, "globals"))
+
+  structure(do.call(c, args),
+            class = "SBC_generated_quantities",
+            globals = do.call(c, globals_list))
+
 }
 
 #'@export
