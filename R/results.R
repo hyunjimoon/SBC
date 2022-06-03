@@ -230,10 +230,11 @@ length.SBC_results <- function(x) {
   subset_run_df <- function(df) {
     if(is.null(df)) {
       NULL
+    } else {
+      filtered <- dplyr::filter(df, sim_id %in% indices_to_keep)
+      remapped <- dplyr::mutate(filtered, sim_id = index_map[as.character(sim_id)])
+      dplyr::arrange(remapped, sim_id)
     }
-    filtered <- dplyr::filter(df, sim_id %in% indices_to_keep)
-    remapped <- dplyr::mutate(filtered, sim_id = index_map[as.character(sim_id)])
-    dplyr::arrange(remapped, sim_id)
   }
 
   SBC_results(stats = subset_run_df(x$stats),
