@@ -217,31 +217,45 @@ empirical_coverage <- function(stats, width, prob = 0.95, interval_type = "centr
     }
   }
 
-  long <- tidyr::crossing(stats, data.frame(width = width))
+  # Some juggling to reduce memory footprint
+  stats_trimmed <- dplyr::select(stats, variable, rank, max_rank)
+
+  variable_was_character <- is.character(stats_trimmed$variable)
+  if(variable_was_character) {
+    stats_trimmed <- dplyr::mutate(stats_trimmed, variable = factor(variable))
+  }
+
+
+  long <- dplyr::full_join(stats_trimmed, data.frame(width = width), by = character())
   long <- dplyr::mutate(long,
-                       n_ranks_covered = round((max_rank + 1) * width),
-                       low_rank = get_low_rank(max_rank, n_ranks_covered),
-                       high_rank = low_rank + n_ranks_covered - 1,
-                       width_represented =  (high_rank - low_rank + 1) / (max_rank + 1),
-                       is_covered = rank >= low_rank & rank <= high_rank)
+                        n_ranks_covered = round((max_rank + 1) * width),
+                        low_rank = get_low_rank(max_rank, n_ranks_covered),
+                        high_rank = low_rank + n_ranks_covered - 1,
+                        width_represented =  (high_rank - low_rank + 1) / (max_rank + 1),
+                        is_covered = rank >= low_rank & rank <= high_rank)
 
-   summ <- dplyr::summarise(
-     dplyr::group_by(long, variable, width),
-     post_alpha = sum(is_covered) + 1,
-     post_beta = dplyr::n() - sum(is_covered) + 1,
-     width_represented = unique(width_represented),
-     # Special handling if width_represented is either 0 or 1 as in such case,
-     # the result can never be different from 0 / 1 and so the CI should collapse to a point
-     representable = width_represented > 0 & width_represented < 1,
-     ci_low =  dplyr::if_else(representable,
-                              qbeta(0.5 - prob / 2, post_alpha, post_beta),
-                              width_represented),
-     estimate = sum(is_covered) / dplyr::n(),
-     ci_high = dplyr::if_else(representable,
-                              qbeta(0.5 + prob / 2, post_alpha, post_beta),
-                              width_represented),
-     .groups = "drop"
-   )
+  summ <- dplyr::summarise(
+    dplyr::group_by(long, variable, width),
+    post_alpha = sum(is_covered) + 1,
+    post_beta = dplyr::n() - sum(is_covered) + 1,
+    width_represented = unique(width_represented),
+    # Special handling if width_represented is either 0 or 1 as in such case,
+    # the result can never be different from 0 / 1 and so the CI should collapse to a point
+    representable = width_represented > 0 & width_represented < 1,
+    ci_low =  dplyr::if_else(representable,
+                             qbeta(0.5 - prob / 2, post_alpha, post_beta),
+                             width_represented),
+    estimate = mean(is_covered),
+    ci_high = dplyr::if_else(representable,
+                             qbeta(0.5 + prob / 2, post_alpha, post_beta),
+                             width_represented),
+    .groups = "drop"
+  )
 
-   dplyr::select(summ, -post_alpha, -post_beta, -representable)
+  if(variable_was_character) {
+    summ <- dplyr::mutate(summ, variable = as.character(variable))
+  }
+
+
+  dplyr::select(summ, -post_alpha, -post_beta, -representable)
 }
