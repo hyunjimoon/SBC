@@ -635,18 +635,23 @@ plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean"
 #' @param x object containing results (a data.frame or [SBC_results()] object).
 #' @param variables variables to show in the plot or `NULL` to show all
 #' @param prob the with of the uncertainty interval to be shown
+#' @param max_points maximum number of points where to evaluate the coverage.
+#'   If set to `NULL`, coverage is evaluated across the whole range of ranks.
+#'   Setting to some smaller number may reduce memory footprint and increase speed.
 #' @param parameters DEPRECATED. Use `variables` instead.
 #' @return a ggplot2 plot object
 #' @seealso empirical_coverage
 #' @export
 plot_coverage <- function(x, variables = NULL, prob = 0.95,
-                          interval_type = "central", parameters = NULL) {
+                          interval_type = "central", parameters = NULL,
+                          max_points = NULL) {
   UseMethod("plot_coverage")
 }
 
 #' @export
 plot_coverage.SBC_results <- function(x, variables = NULL, prob = 0.95,
-                                      interval_type = "central", parameters = NULL) {
+                                      interval_type = "central", parameters = NULL,
+                                      max_points = NULL) {
 
   if(!is.null(parameters)) {
     warning("The `parameters` argument is deprecated use `variables` instead.")
@@ -655,12 +660,14 @@ plot_coverage.SBC_results <- function(x, variables = NULL, prob = 0.95,
     }
   }
 
-  plot_coverage(x$stats, variables = variables, prob = prob, interval_type = interval_type)
+  plot_coverage(x$stats, variables = variables, prob = prob, interval_type = interval_type,
+                max_points = max_points)
 }
 
 #' @export
 plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
-                                     interval_type = "central", parameters = NULL) {
+                                     interval_type = "central", parameters = NULL,
+                                     max_points = NULL) {
 
   # Ensuring backwards compatibility
   if("parameter" %in% names(x)) {
@@ -687,7 +694,12 @@ plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
   }
 
   max_max_rank <- max(x$max_rank)
-  coverage <- empirical_coverage(x, (0:max_max_rank) / (max_max_rank + 1), prob = prob,
+  if(is.null(max_points) || max_max_rank + 2 <= max_points) {
+    widths <- (0:(max_max_rank + 1)) / (max_max_rank + 1)
+  } else {
+    widths <- seq(0,1, length.out = max_points)
+  }
+  coverage <- empirical_coverage(x, widths, prob = prob,
                                 interval_type = interval_type)
 
   ggplot2::ggplot(coverage, aes(x = width_represented, y = estimate,
@@ -705,19 +717,23 @@ plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
 #' @rdname plot_coverage
 #' @export
 plot_coverage_diff <- function(x, variables = NULL, prob = 0.95,
-                          interval_type = "central", parameters = NULL) {
+                          interval_type = "central", parameters = NULL,
+                          max_points = NULL) {
   UseMethod("plot_coverage_diff")
 }
 
 #' @export
 plot_coverage_diff.SBC_results <- function(x, variables = NULL, prob = 0.95,
-                                      interval_type = "central") {
-  plot_coverage_diff(x$stats, variables = variables, prob = prob, interval_type = interval_type)
+                                      interval_type = "central",
+                                      max_points = NULL) {
+  plot_coverage_diff(x$stats, variables = variables, prob = prob,
+                     interval_type = interval_type, max_points = max_points)
 }
 
 #' @export
 plot_coverage_diff.data.frame <- function(x, variables = NULL, prob = 0.95,
-                                     interval_type = "central", parameters = NULL) {
+                                     interval_type = "central", parameters = NULL,
+                                     max_points = NULL) {
   if(!all(c("variable", "rank", "max_rank") %in% names(x))) {
     stop(SBC_error("SBC_invalid_argument_error",
                    "The stats data.frame needs a 'variable', 'rank' and 'max_rank' columns"))
@@ -728,7 +744,12 @@ plot_coverage_diff.data.frame <- function(x, variables = NULL, prob = 0.95,
   }
 
   max_max_rank <- max(x$max_rank)
-  coverage <- empirical_coverage(x, (0:max_max_rank) / (max_max_rank + 1), prob = prob,
+  if(is.null(max_points) || max_max_rank + 2 <= max_points) {
+    widths <- (0:(max_max_rank + 1)) / (max_max_rank + 1)
+  } else {
+    widths <- seq(0,1, length.out = max_points)
+  }
+  coverage <- empirical_coverage(x, widths, prob = prob,
                                  interval_type = interval_type)
 
   coverage <- dplyr::mutate(coverage,
