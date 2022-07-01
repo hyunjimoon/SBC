@@ -217,13 +217,15 @@ plot_side_by_side(res_1000, "Exact match")
 ```
 
 If the model is too certain, it will have over-abundance of extreme ranks and lower
-than expected coverage.
+than expected coverage. Note also that since we are looking at central intervals, the discrepancies 
+in the lower and upper tail combine to produce a large discrepancy on the coverage plot, although the discrepancy on the ECDF plot is modest.
 
 ```{r side_by_side_50_too_certain}
 plot_side_by_side(res_50, "Model too certain")
 ```
 
-If the model is overly uncertain, it will have overabundance of central ranks (and too few extreme ranks) and the coverage will be higher than expected.
+If the model is overly uncertain, it will have overabundance of central ranks (and too few extreme ranks) and the coverage will be higher than expected. Similarly to the previous case, the discrepancies 
+in the lower and upper tail combine to produce a large discrepancy on the coverage plot, although the discrepancy on the ECDF plot is barely visible.
 
 ```{r side_by_side_50_too_uncertain}
 plot_side_by_side(res_50, "Model too uncertain")
