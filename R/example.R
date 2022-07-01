@@ -135,7 +135,7 @@ SBC_example_results <- function(example = c("normal_ok", "normal_bad", "visualiz
   } else if (example == "visualizations") {
 
     df_x <- seq(-4, 4, length.out = 400)
-    prior_df <- tidyr::crossing(data.frame(x = df_x, density = dnorm(df_x), type = "Prior"),
+    prior_df <- tidyr::crossing(data.frame(x = df_x, density = dnorm(df_x), type = "Correct"),
                          variable = c("Exact match",
                          "Model too certain",
                          "Model too uncertain",
@@ -166,7 +166,7 @@ SBC_example_results <- function(example = c("normal_ok", "normal_bad", "visualiz
       data.frame(variable = "Some extra-low estimates", x = df_x,
                  density =  0.1 * dnorm(df_x, mean = -3, sd = 0.1) + 0.9 * dnorm(df_x))
     )
-    posterior_df$type = "Data-averaged posterior"
+    posterior_df$type = "Observed"
 
     backend <- SBC_backend_mock_rng(
       "Exact match" = ~ rnorm(.),

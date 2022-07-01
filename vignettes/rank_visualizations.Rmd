@@ -30,8 +30,8 @@ library(patchwork)
 
 ## Simulation setup
 
-We'll use the built-in example that simulates ranks from known prior and 
-data-averaged posterior distributions.
+We'll use the built-in example that simulates ranks using a known correct distribution and
+a specific distribution that is actually observed.
 
 ```{r}
 set.seed(22654885)
@@ -48,13 +48,13 @@ should signal issues.
 ```{r densities}
 plot_density_comparison <- function(density_df) {
   ggplot(density_df, aes(x = x, y = density, color = type, size = type)) + 
-    geom_line(data = dplyr::filter(density_df, type == "Prior")) + 
-    geom_line(data = dplyr::filter(density_df, type == "Data-averaged posterior"), alpha = 0.8) + 
+    geom_line(data = dplyr::filter(density_df, type == "Correct")) + 
+    geom_line(data = dplyr::filter(density_df, type == "Observed"), alpha = 0.8) + 
     facet_wrap(~variable) + 
-    scale_color_manual("", values = c("Prior" = "skyblue1", 
-                                    "Data-averaged posterior" = "black")) + 
-    scale_size_manual("", values = c("Prior" = 2, 
-                                    "Data-averaged posterior" = 1)) +
+    scale_color_manual("", values = c("Correct" = "skyblue1", 
+                                    "Observed" = "black")) + 
+    scale_size_manual("", values = c("Correct" = 2, 
+                                    "Observed" = 1)) +
     theme(legend.position = "bottom")
 }
 
