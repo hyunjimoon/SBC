@@ -81,7 +81,7 @@ adjust_gamma_simulate <-function(N, L, K, conf_level=0.95, M=5000) {
       scaled_ecdf <- colSums(outer(u, z, "<="))
       gamma[m] <- 2 * min(
         pbinom(scaled_ecdf, N, z),
-        pbinom(scaled_ecdfs - 1, N, z, lower.tail = FALSE)
+        pbinom(scaled_ecdf - 1, N, z, lower.tail = FALSE)
       )
     }
   }
