@@ -45,8 +45,13 @@ if(use_cmdstanr) {
 } else {
   cache_dir <- "./_discrete_vars_rstan_SBC_cache"
 }
+cache_dir_jags <- "./_discrete_vars_SBC_cache"
+
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
+}
+if(!dir.exists(cache_dir_jags)) {
+  dir.create(cache_dir_jags)
 }
 
 ```
@@ -244,7 +249,15 @@ us represent discrete parameters directly:
 cat(readLines("other_models/changepoint.jags"), sep = "\n")
 ```
 
-We will use the `rjags` package - and relatively large number of samples as 
+We will use the `rjags` package, let us verify it is installed correctly.
+
+
+```{r}
+library(rjags)
+```
+
+
+We will also default to relatively large number of samples as 
 we can expect some autocorrelation in the Gibbs sampler.
 
 ```{r}
@@ -265,7 +278,7 @@ datasets_2_all <- bind_datasets(datasets_2, datasets_2_more)
 results_jags <- compute_SBC(datasets_2_all, backend_jags,
                             gen_quants = log_lik_gq,
                         cache_mode = "results",
-                        cache_location = file.path(cache_dir, "rjags"))
+                        cache_location = file.path(cache_dir_jags, "rjags"))
 ```
 
 Similarly to the case above, the Rhat and ESS warnings are false positives due to the `s` parameter, which
@@ -307,7 +320,7 @@ Then we run the actual SBC:
 results_jags_marginalized <- compute_SBC(datasets_2_all, backend_jags_marginalized,
                                          gen_quants = log_lik_gq,
                         cache_mode = "results",
-                        cache_location = file.path(cache_dir, "rjags_marginalized"))
+                        cache_location = file.path(cache_dir_jags, "rjags_marginalized"))
 ```
 
 And the ranks plots look good, so we indeed probably did succeed in correctly marginalizing
