@@ -50,5 +50,12 @@ Suggests:
     rstan,
     knitr,
     rmarkdown,
-    brms
+    brms,
+    MCMCpack,
+    medicaldata,
+    formula.tools,
+    MASS,
+    mvtnorm,
+    patchwork,
+    bayesplot
 VignetteBuilder: knitr
