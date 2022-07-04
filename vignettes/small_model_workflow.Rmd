@@ -173,10 +173,14 @@ results_first <- compute_SBC(datasets_first, backend_first,
 Oh, we have convergence problems, let us examine the pairs plots
 
 ```{r mixture_first_convergence}
+# Fixing the condition for above/over diagonal chains, in a minority
+# of runs the plot shows the problem less clearly, as discussed at
+# https://github.com/stan-dev/bayesplot/issues/132
+p_cond <- pairs_condition(chains = list(c(1,3), c(2,4)))
 if(use_cmdstanr) {
-  mcmc_pairs(results_first$fits[[1]]$draws())
+  mcmc_pairs(results_first$fits[[1]]$draws(), condition = p_cond)
 } else {
-  mcmc_pairs(results_first$fits[[1]])  
+  mcmc_pairs(results_first$fits[[1]], condition = p_cond)  
 }
 ```
 
@@ -874,9 +878,10 @@ All the divergence are for low fano factors - this is the histogram of Fano fact
 
 ```{r fanos_divergent}
 hist(fanos[results_combined$backend_diagnostics$n_divergent > 0])
+fano_threshold <- 1.6
 ```
 
-So what we'll do is that we'll reject any simulation where the observed data have Fano factor < 1.5. In practice a simple way to implement this is to wrap our generator code in a loop and break from the loop only when the generated data meet our criteria (i.e. is not rejected). This is our code:
+So what we'll do is that we'll reject any simulation where the observed data have Fano factor < `r fano_threshold`. In practice a simple way to implement this is to wrap our generator code in a loop and break from the loop only when the generated data meet our criteria (i.e. is not rejected). This is our code:
 
 ```{r}
 generator_func_combined_reject <- function(N_obs, N_predictors) {
@@ -910,7 +915,7 @@ generator_func_combined_reject <- function(N_obs, N_predictors) {
       }
       
     }
-    if(var(y) / mean(y) > 1.5) {
+    if(var(y) / mean(y) > fano_threshold) {
       break;
     }
   }
