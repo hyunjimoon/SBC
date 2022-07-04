@@ -35,7 +35,7 @@ compile and fit Stan models and thus may take a while to complete.'><!-- mathjax
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -113,12 +113,12 @@ compile and fit Stan models and thus may take a while to complete.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">SBC_example_results</span><span class="op">(</span>
-  example <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"normal_ok"</span>, <span class="st">"normal_bad"</span>, <span class="st">"visualizations"</span><span class="op">)</span>,
-  interface <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rstan"</span>, <span class="st">"cmdstanr"</span>, <span class="st">"rjags"</span><span class="op">)</span>,
-  N <span class="op">=</span> <span class="fl">100</span>,
-  n_sims <span class="op">=</span> <span class="fl">50</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">SBC_example_results</span><span class="op">(</span></span>
+<span>  example <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"normal_ok"</span>, <span class="st">"normal_bad"</span>, <span class="st">"visualizations"</span><span class="op">)</span>,</span>
+<span>  interface <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rstan"</span>, <span class="st">"cmdstanr"</span>, <span class="st">"rjags"</span><span class="op">)</span>,</span>
+<span>  N <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  n_sims <span class="op">=</span> <span class="fl">50</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -133,12 +133,19 @@ that manifests in SBC (<code>normal_bad</code> combines the <code>normal</code> 
 that are meant to showcase the built-in plots (the <code>interface</code> parameter will
 be ignored).</p></li>
 </ul></dd>
+
+
 <dt>interface</dt>
 <dd><p>name of the interface to be used for the backend</p></dd>
+
+
 <dt>N</dt>
 <dd><p>number of datapoints to simulate from the generator for each simulation</p></dd>
+
+
 <dt>n_sims</dt>
 <dd><p>number of simulations to perform</p></dd>
+
 </dl></div>
 
   </div>
@@ -153,7 +160,7 @@ be ignored).</p></li>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

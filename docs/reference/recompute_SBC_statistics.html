@@ -32,7 +32,7 @@
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -108,34 +108,43 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">recompute_SBC_statistics</span><span class="op">(</span>
-  <span class="va">old_results</span>,
-  <span class="va">datasets</span>,
-  <span class="va">backend</span>,
-  thin_ranks <span class="op">=</span> <span class="fu"><a href="SBC_backend_default_thin_ranks.html">SBC_backend_default_thin_ranks</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span>,
-  ensure_num_ranks_divisor <span class="op">=</span> <span class="fl">2</span>,
-  gen_quants <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">recompute_SBC_statistics</span><span class="op">(</span></span>
+<span>  <span class="va">old_results</span>,</span>
+<span>  <span class="va">datasets</span>,</span>
+<span>  <span class="va">backend</span>,</span>
+<span>  thin_ranks <span class="op">=</span> <span class="fu"><a href="SBC_backend_default_thin_ranks.html">SBC_backend_default_thin_ranks</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span>,</span>
+<span>  ensure_num_ranks_divisor <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  gen_quants <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>datasets</dt>
 <dd><p>an object of class <code>SBC_datasets</code></p></dd>
+
+
 <dt>backend</dt>
 <dd><p>backend used to fit the results. Used to pull various defaults
 and other setting influencing the computation of statistics.</p></dd>
+
+
 <dt>thin_ranks</dt>
 <dd><p>how much thinning should be applied to posterior draws before computing
 ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
 thinned draws See details below.</p></dd>
+
+
 <dt>ensure_num_ranks_divisor</dt>
 <dd><p>Potentially drop some posterior samples to
 ensure that this number divides the total number of SBC ranks (see Details).</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>An S3 object of class <code>SBC_results</code> with updated <code>$stats</code> and <code>$default_diagnostics</code> fields.</p>
+    
+
+<p>An S3 object of class <code>SBC_results</code> with updated <code>$stats</code> and <code>$default_diagnostics</code> fields.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
@@ -155,7 +164,7 @@ or added generated quantities.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

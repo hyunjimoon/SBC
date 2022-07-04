@@ -36,7 +36,7 @@ does not use parallel processing, so .globals don't need to be set."><!-- mathja
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -116,18 +116,21 @@ does not use parallel processing, so <code>.globals</code> don't need to be set.
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">generated_quantities</span><span class="op">(</span><span class="va">...</span>, .globals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">generated_quantities</span><span class="op">(</span><span class="va">...</span>, .globals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>...</dt>
 <dd><p>named expressions representing the quantitites</p></dd>
+
+
 <dt>.globals</dt>
 <dd><p>A list of names of objects that are defined
 in the global environment and need to present for the gen. quants. to evaluate.
 It is added to the <code>globals</code> argument to <code><a href="https://future.futureverse.org/reference/future.html" class="external-link">future::future()</a></code>, to make those
 objects available on all workers.</p></dd>
+
 </dl></div>
 
   </div>
@@ -142,7 +145,7 @@ objects available on all workers.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

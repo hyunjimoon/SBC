@@ -32,7 +32,7 @@
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -108,35 +108,41 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">compute_SBC</span><span class="op">(</span>
-  <span class="va">datasets</span>,
-  <span class="va">backend</span>,
-  cores_per_fit <span class="op">=</span> <span class="fu"><a href="default_cores_per_fit.html">default_cores_per_fit</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">datasets</span><span class="op">)</span><span class="op">)</span>,
-  keep_fits <span class="op">=</span> <span class="cn">TRUE</span>,
-  thin_ranks <span class="op">=</span> <span class="fu"><a href="SBC_backend_default_thin_ranks.html">SBC_backend_default_thin_ranks</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span>,
-  ensure_num_ranks_divisor <span class="op">=</span> <span class="fl">2</span>,
-  chunk_size <span class="op">=</span> <span class="fu"><a href="default_chunk_size.html">default_chunk_size</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">datasets</span><span class="op">)</span><span class="op">)</span>,
-  gen_quants <span class="op">=</span> <span class="cn">NULL</span>,
-  cache_mode <span class="op">=</span> <span class="st">"none"</span>,
-  cache_location <span class="op">=</span> <span class="cn">NULL</span>,
-  globals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">compute_SBC</span><span class="op">(</span></span>
+<span>  <span class="va">datasets</span>,</span>
+<span>  <span class="va">backend</span>,</span>
+<span>  cores_per_fit <span class="op">=</span> <span class="fu"><a href="default_cores_per_fit.html">default_cores_per_fit</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">datasets</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  keep_fits <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  thin_ranks <span class="op">=</span> <span class="fu"><a href="SBC_backend_default_thin_ranks.html">SBC_backend_default_thin_ranks</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span>,</span>
+<span>  ensure_num_ranks_divisor <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  chunk_size <span class="op">=</span> <span class="fu"><a href="default_chunk_size.html">default_chunk_size</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">datasets</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  gen_quants <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cache_mode <span class="op">=</span> <span class="st">"none"</span>,</span>
+<span>  cache_location <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  globals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>datasets</dt>
 <dd><p>an object of class <code>SBC_datasets</code></p></dd>
+
+
 <dt>backend</dt>
 <dd><p>the model + sampling algorithm. The built-in backends can be constructed
 using <code><a href="SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample()</a></code>, <code><a href="SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational()</a></code>,
 <code><a href="SBC_backend_rstan_sample.html">SBC_backend_rstan_sample()</a></code>, <code><a href="SBC_backend_rstan_optimizing.html">SBC_backend_rstan_optimizing()</a></code> and <code><a href="SBC_backend_brms.html">SBC_backend_brms()</a></code>.
 (more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the <code><a href="SBC_fit.html">SBC_fit()</a></code>,
 <code><a href="SBC_fit_to_draws_matrix.html">SBC_fit_to_draws_matrix()</a></code> methods.</p></dd>
+
+
 <dt>cores_per_fit</dt>
 <dd><p>how many cores should the backend be allowed to use for a single fit?
 Defaults to the maximum number that does not produce more parallel chains
 than you have cores. See <code><a href="default_cores_per_fit.html">default_cores_per_fit()</a></code>.</p></dd>
+
+
 <dt>keep_fits</dt>
 <dd><p>boolean, when <code>FALSE</code> full fits are discarded from memory -
 reduces memory consumption and increases speed (when processing in parallel), but
@@ -144,13 +150,19 @@ prevents you from inspecting the fits and using <code><a href="recompute_SBC_sta
 We recommend to set to <code>TRUE</code> in early phases of workflow, when you run just a few fits.
 Once the model is stable and you want to run a lot of iterations, we recommend setting
 to <code>FALSE</code> (even for quite a simple model, 1000 fits can easily exhaust 32GB of RAM).</p></dd>
+
+
 <dt>thin_ranks</dt>
 <dd><p>how much thinning should be applied to posterior draws before computing
 ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
 thinned draws See details below.</p></dd>
+
+
 <dt>ensure_num_ranks_divisor</dt>
 <dd><p>Potentially drop some posterior samples to
 ensure that this number divides the total number of SBC ranks (see Details).</p></dd>
+
+
 <dt>chunk_size</dt>
 <dd><p>How many simulations within the <code>datasets</code> shall be processed in one batch
 by the same worker. Relevant only when using parallel processing.
@@ -160,24 +172,33 @@ enough that a single batch takes at least several seconds, i.e. for small models
 you can often reduce computation time noticeably by increasing this value.
 You can use <code>options(SBC.min_chunk_size = value)</code> to set a minimum chunk size globally.
 See documentation of <code>future.chunk.size</code> argument for <code><a href="https://future.apply.futureverse.org/reference/future_lapply.html" class="external-link">future.apply::future_lapply()</a></code> for more details.</p></dd>
+
+
 <dt>cache_mode</dt>
 <dd><p>Type of caching of results, currently the only supported modes are
 <code>"none"</code> (do not cache) and <code>"results"</code> where the whole results object is stored
 and recomputed only when the hash of the backend or dataset changes.</p></dd>
+
+
 <dt>cache_location</dt>
 <dd><p>The filesystem location of cache. For <code>cache_mode = "results"</code>
 this should be a name of a single file. If the file name does not end with
 <code>.rds</code>, this extension is appended.</p></dd>
+
+
 <dt>globals</dt>
 <dd><p>A list of names of objects that are defined
 in the global environment and need to present for the backend to work (
 if they are not already available in package).
 It is added to the <code>globals</code> argument to <code><a href="https://future.futureverse.org/reference/future.html" class="external-link">future::future()</a></code>, to make those
 objects available on all workers.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>An object of class <code><a href="SBC_results.html">SBC_results()</a></code>.</p>
+    
+
+<p>An object of class <code><a href="SBC_results.html">SBC_results()</a></code>.</p>
     </div>
     <div id="paralellization">
     <h2>Paralellization</h2>
@@ -232,7 +253,7 @@ pathologies while discarding at most a single sample.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

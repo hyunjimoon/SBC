@@ -32,7 +32,7 @@
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -108,19 +108,26 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">rank2unif</span><span class="op">(</span><span class="va">results</span>, <span class="va">par</span>, bins <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rank2unif</span><span class="op">(</span><span class="va">results</span>, <span class="va">par</span>, bins <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>par</dt>
 <dd><p>names of parameter to plot</p></dd>
+
+
 <dt>bins</dt>
 <dd><p>number of bins to use for summary</p></dd>
+
+
 <dt>ranks</dt>
 <dd><p>array of dimension (n_iter, n_pars) where n_iter=number of posterior draw iterations, n_pars the number of parameters of interest</p></dd>
+
+
 <dt>thin</dt>
 <dd><p>integer in which thinning was applied</p></dd>
+
 </dl></div>
 
   </div>
@@ -135,7 +142,7 @@
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

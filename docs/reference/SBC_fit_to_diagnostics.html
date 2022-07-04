@@ -34,7 +34,7 @@ for the returning object to implement get_diagnostic_messages()."><!-- mathjax -
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -112,23 +112,32 @@ for the returning object to implement <code><a href="get_diagnostic_messages.htm
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">SBC_fit_to_diagnostics</span><span class="op">(</span><span class="va">fit</span>, <span class="va">fit_output</span>, <span class="va">fit_messages</span>, <span class="va">fit_warnings</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">SBC_fit_to_diagnostics</span><span class="op">(</span><span class="va">fit</span>, <span class="va">fit_output</span>, <span class="va">fit_messages</span>, <span class="va">fit_warnings</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>fit</dt>
 <dd><p>The fit returned by <code>SBC_fit</code></p></dd>
+
+
 <dt>fit_output</dt>
 <dd><p>a character string capturing what the backend wrote to stdout</p></dd>
+
+
 <dt>fit_messages</dt>
 <dd><p>a character vector of messages the backend raised</p></dd>
+
+
 <dt>fit_warnings</dt>
 <dd><p>a character vector of warnings the backend raised</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>an single row <code>data.frame</code> that includes diagnostics or NULL, if no diagnostics available.</p>
+    
+
+<p>an single row <code>data.frame</code> that includes diagnostics or NULL, if no diagnostics available.</p>
     </div>
 
   </div>
@@ -143,7 +152,7 @@ for the returning object to implement <code><a href="get_diagnostic_messages.htm
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

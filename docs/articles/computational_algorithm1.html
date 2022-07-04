@@ -49,7 +49,7 @@
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -124,9 +124,10 @@
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>SBC for ADVI and optimizing in Stan (+HMMs)</h1>
-                        <h4 data-toc-skip class="author">Hyunji Moon, Martin Modrák</h4>
+                        <h4 data-toc-skip class="author">Hyunji Moon,
+Martin Modrák</h4>
             
-            <h4 data-toc-skip class="date">2022-05-17</h4>
+            <h4 data-toc-skip class="date">2022-07-04</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/computational_algorithm1.Rmd" class="external-link"><code>vignettes/computational_algorithm1.Rmd</code></a></small>
       <div class="hidden name"><code>computational_algorithm1.Rmd</code></div>
@@ -135,56 +136,88 @@
 
     
     
-<div class="section level1">
-<h1 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
-</h1>
-<p>Computational algorithms such as variational inference (VI) can fail due to the inability of the approximation family to capture the true posterior, under/over penalizing tendencies of convergence metric, and slow convergence of the optimization process. We’ll discuss 3 examples:</p>
+<div class="section level2">
+<h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
+</h2>
+<p>Computational algorithms such as variational inference (VI) can fail
+due to the inability of the approximation family to capture the true
+posterior, under/over penalizing tendencies of convergence metric, and
+slow convergence of the optimization process. We’ll discuss 3
+examples:</p>
 <ul>
-<li><p>In Example I a simple Poisson model is shown that is well handled by default ADVI if the size of the data is small, but becomes miscalibrated when larger amount of observations is available. It also turns out that for such a simple model using <code>optimizing</code> leads to very good results.</p></li>
-<li><p>In Example II we discuss a Hidden Markov Model where the approximation by ADVI is imperfect but not very wrong. We also show how the (mis)calibration responds to changing parameters of the ADVI implementation and that <code>optimizing</code> performs worse than ADVI.</p></li>
-<li><p>In Example III we show that a small modification to the model from Example II makes the ADVI approximation perform much worse.</p></li>
+<li><p>In Example I a simple Poisson model is shown that is well handled
+by default ADVI if the size of the data is small, but becomes
+miscalibrated when larger amount of observations is available. It also
+turns out that for such a simple model using <code>optimizing</code>
+leads to very good results.</p></li>
+<li><p>In Example II we discuss a Hidden Markov Model where the
+approximation by ADVI is imperfect but not very wrong. We also show how
+the (mis)calibration responds to changing parameters of the ADVI
+implementation and that <code>optimizing</code> performs worse than
+ADVI.</p></li>
+<li><p>In Example III we show that a small modification to the model
+from Example II makes the ADVI approximation perform much
+worse.</p></li>
 </ul>
-<p>When the fit between posterior and approximation family, convergence metric and its process are checked so that efficiency is gained without sacrificing accuracy too much, VI can be applied. On top of its role as “the test” computational algorithms should pass, SBC provides informative inferential results which directly affect workflow decisions.</p>
+<p>When the fit between posterior and approximation family, convergence
+metric and its process are checked so that efficiency is gained without
+sacrificing accuracy too much, VI can be applied. On top of its role as
+“the test” computational algorithms should pass, SBC provides
+informative inferential results which directly affect workflow
+decisions.</p>
 </div>
-<div class="section level1">
-<h1 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
-</h1>
-<p>HMC can be slow and depending on the joint posterior (as a combination of data, prior, and likelihood) and the user’s goal, deterministic approximation algorithms can be an aid. To be specific, if the joint posterior is well-formed enough for reliable approximation (symmetric for ADVI which has normal approximation family) or the user only needs point estimate (i.e. specification up to distribution-level is not needed) users can consider the deterministic alternatives for their inference tool such as ADVI supported by Stan. Note that Pathfinder (Zhang, 2021) which blends deterministic algorithm’s efficiency and stochastic algorithm’s accuracy in a timely manner is under development. SBC provides one standard to test whether ADVI works well for your model without ever needing to run full HMC for your model.</p>
+<div class="section level2">
+<h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
+</h2>
+<p>HMC can be slow and depending on the joint posterior (as a
+combination of data, prior, and likelihood) and the user’s goal,
+deterministic approximation algorithms can be an aid. To be specific, if
+the joint posterior is well-formed enough for reliable approximation
+(symmetric for ADVI which has normal approximation family) or the user
+only needs point estimate (i.e. specification up to distribution-level
+is not needed) users can consider the deterministic alternatives for
+their inference tool such as ADVI supported by Stan. Note that
+Pathfinder (Zhang, 2021) which blends deterministic algorithm’s
+efficiency and stochastic algorithm’s accuracy in a timely manner is
+under development. SBC provides one standard to test whether ADVI works
+well for your model without ever needing to run full HMC for your
+model.</p>
 <p>Let’s start by setting up our environment.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://hyunjimoon.github.io/SBC/">SBC</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span>
-
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/" class="external-link">rstan</a></span><span class="op">)</span>
-<span class="fu"><a href="https://mc-stan.org/rstan/reference/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
-
-
-<span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
-
-<span class="co"># Parallel processing</span>
-
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span>
-<span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span><span class="op">)</span>
-
-<span class="co"># The fits are very fast,</span>
-<span class="co"># so we force a minimum chunk size to reduce the overhead of</span>
-<span class="co"># paralellization and decrease computation time.</span>
-<span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>SBC.min_chunk_size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>
-
-
-<span class="co"># Setup caching of results</span>
-<span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./_approximate_computation_SBC_cache"</span>
-<span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>
-<span class="op">}</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://hyunjimoon.github.io/SBC/">SBC</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/" class="external-link">rstan</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://mc-stan.org/rstan/reference/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Parallel processing</span></span>
+<span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The fits are very fast,</span></span>
+<span><span class="co"># so we force a minimum chunk size to reduce the overhead of</span></span>
+<span><span class="co"># paralellization and decrease computation time.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>SBC.min_chunk_size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span></span>
+<span></span>
+<span><span class="co"># Setup caching of results</span></span>
+<span><span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./_approximate_computation_SBC_cache"</span></span>
+<span><span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
-<div class="section level1">
-<h1 id="example-i---poisson">Example I - Poisson<a class="anchor" aria-label="anchor" href="#example-i---poisson"></a>
-</h1>
-<p>We’ll start by the extremely simple Poisson model already introduced in the basic usage vignette:</p>
+<div class="section level2">
+<h2 id="example-i---poisson">Example I - Poisson<a class="anchor" aria-label="anchor" href="#example-i---poisson"></a>
+</h2>
+<p>We’ll start by the extremely simple Poisson model already introduced
+in the basic usage vignette:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data{
   int N;
   int y[N];
@@ -198,178 +231,223 @@ model{
 }</code></pre>
 <p>And here’s R code that generates data matching that model:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">poisson_generator_single</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">{</span>  
-  <span class="co"># N is the number of data points we are generating</span>
-  <span class="va">lambda</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">rgamma</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, shape <span class="op">=</span> <span class="fl">15</span>, rate <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>
-  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span>n <span class="op">=</span> <span class="va">N</span>, lambda <span class="op">=</span> <span class="va">lambda</span><span class="op">)</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-      lambda <span class="op">=</span> <span class="va">lambda</span>
-    <span class="op">)</span>,
-    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-      N <span class="op">=</span> <span class="va">N</span>,
-      y <span class="op">=</span> <span class="va">y</span>
-    <span class="op">)</span>
-  <span class="op">)</span>
-<span class="op">}</span></code></pre></div>
-<p>We’ll start with Stan’s ADVI with all default parameters, i.e. a mean-field variational approximation. We compile the model and create a variational SBC backend.</p>
+<code class="sourceCode R"><span><span class="va">poisson_generator_single</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">{</span>  </span>
+<span>  <span class="co"># N is the number of data points we are generating</span></span>
+<span>  <span class="va">lambda</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">rgamma</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, shape <span class="op">=</span> <span class="fl">15</span>, rate <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span>n <span class="op">=</span> <span class="va">N</span>, lambda <span class="op">=</span> <span class="va">lambda</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>      lambda <span class="op">=</span> <span class="va">lambda</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>      N <span class="op">=</span> <span class="va">N</span>,</span>
+<span>      y <span class="op">=</span> <span class="va">y</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>We’ll start with Stan’s ADVI with all default parameters, i.e. a
+mean-field variational approximation. We compile the model and create a
+variational SBC backend.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">model_poisson</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span>
-<span class="va">backend_poisson</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_poisson</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></code></pre></div>
-<p>Note that we allow the backend to retry initialization several times (<code>n_retries_init</code>), as the ADVI implementation in Stan can sometimes fail to start properly on the first try even for very simple models. This ability to retry is an extension in the SBC package and not implemented in Stan.</p>
+<code class="sourceCode R"><span><span class="va">model_poisson</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span></span>
+<span><span class="va">backend_poisson</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_poisson</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<p>Note that we allow the backend to retry initialization several times
+(<code>n_retries_init</code>), as the ADVI implementation in Stan can
+sometimes fail to start properly on the first try even for very simple
+models. This ability to retry is an extension in the SBC package and not
+implemented in Stan.</p>
 <p>Throughout the vignette, we’ll also use caching for the results.</p>
-<p>Since the model runs quickly and is simple, we start with 1000 simulations.</p>
+<p>Since the model runs quickly and is simple, we start with 1000
+simulations.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">46522641</span><span class="op">)</span>
-<span class="va">ds_poisson</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span>
-  <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">poisson_generator_single</span>, N <span class="op">=</span> <span class="fl">20</span><span class="op">)</span>, 
-  n_sims <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span>
-<span class="va">res_poisson</span> <span class="op">&lt;-</span> 
-  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span>
-    <span class="va">ds_poisson</span>, <span class="va">backend_poisson</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,
-    cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"poisson"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'poisson'</span></code></pre>
-<p>Even with the quite high precision afforded by 1000 simulations, the ECDF diff plot and the ranks show no problems - the model is quite well calibrated, although the wavy shape of the ECDF suggest a minor overconfidence of the approximation:</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">46522641</span><span class="op">)</span></span>
+<span><span class="va">ds_poisson</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">poisson_generator_single</span>, N <span class="op">=</span> <span class="fl">20</span><span class="op">)</span>, </span>
+<span>  n_sims <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span>
+<span><span class="va">res_poisson</span> <span class="op">&lt;-</span> </span>
+<span>  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span></span>
+<span>    <span class="va">ds_poisson</span>, <span class="va">backend_poisson</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>    cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"poisson"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'poisson'</span></span></code></pre>
+<p>Even with the quite high precision afforded by 1000 simulations, the
+ECDF diff plot and the ranks show no problems - the model is quite well
+calibrated, although the wavy shape of the ECDF suggest a minor
+overconfidence of the approximation:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_poisson</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_poisson</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/ecdf_rank_poisson-1.png" width="700"></p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_poisson</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_poisson</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/ecdf_rank_poisson-2.png" width="700"></p>
-<p>To put this in different terms we can look at the observed coverage of central 50%, 80% and 95% intervals. We see that the observed coverage for 50% and 80% intervals is a bit lower than expected.</p>
+<p>To put this in different terms we can look at the observed coverage
+of central 50%, 80% and 95% intervals. We see that the observed coverage
+for 50% and 80% intervals is a bit lower than expected.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">res_poisson</span><span class="op">$</span><span class="va">stats</span>,width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.95</span>, <span class="fl">0.8</span>, <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## <span style="color: #949494;"># A tibble: 3 x 6</span></span>
-<span class="co">##   variable width width_represented ci_low estimate ci_high</span>
-<span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">## <span style="color: #BCBCBC;">1</span> lambda    0.5               0.5   0.418    0.449   0.480</span>
-<span class="co">## <span style="color: #BCBCBC;">2</span> lambda    0.8               0.8   0.749    0.776   0.801</span>
-<span class="co">## <span style="color: #BCBCBC;">3</span> lambda    0.95              0.95  0.934    0.949   0.961</span></code></pre>
-<div class="section level2">
-<h2 id="is-more-data-better">Is more data better?<a class="anchor" aria-label="anchor" href="#is-more-data-better"></a>
-</h2>
-<p>One would expect that the normal approximation implemented in ADVI becomes better with increased size of the data, this is however not necessarily true - let’s run the same model, but increase <code>N</code> - the number of observed data points:</p>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">res_poisson</span><span class="op">$</span><span class="va">stats</span>,width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.95</span>, <span class="fl">0.8</span>, <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 3 × 6</span></span></span>
+<span><span class="co">##   variable width width_represented ci_low estimate ci_high</span></span>
+<span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span> lambda    0.5               0.5   0.418    0.449   0.480</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> lambda    0.8               0.8   0.751    0.778   0.803</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> lambda    0.95              0.95  0.934    0.949   0.961</span></span></code></pre>
+<div class="section level3">
+<h3 id="is-more-data-better">Is more data better?<a class="anchor" aria-label="anchor" href="#is-more-data-better"></a>
+</h3>
+<p>One would expect that the normal approximation implemented in ADVI
+becomes better with increased size of the data, this is however not
+necessarily true - let’s run the same model, but increase <code>N</code>
+- the number of observed data points:</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">23546224</span><span class="op">)</span>
-<span class="va">ds_poisson_100</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span>
-  <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">poisson_generator_single</span>, N <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, 
-  n_sims <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span>
-<span class="va">res_poisson_100</span> <span class="op">&lt;-</span> 
-  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_poisson_100</span>, <span class="va">backend_poisson</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,
-                  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"poisson_100"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'poisson_100'</span></code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">23546224</span><span class="op">)</span></span>
+<span><span class="va">ds_poisson_100</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">poisson_generator_single</span>, N <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, </span>
+<span>  n_sims <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span>
+<span><span class="va">res_poisson_100</span> <span class="op">&lt;-</span> </span>
+<span>  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_poisson_100</span>, <span class="va">backend_poisson</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>                  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"poisson_100"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'poisson_100'</span></span></code></pre>
 <p>In this case the model becomes clearly overconfident:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_poisson_100</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_poisson_100</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/ecdf_rank_poisson_100-1.png" width="700"></p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_poisson_100</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_poisson_100</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/ecdf_rank_poisson_100-2.png" width="700"></p>
 <p>The empirical coverage of the central intervals confirms this:</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">res_poisson_100</span><span class="op">$</span><span class="va">stats</span>,width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.95</span>, <span class="fl">0.8</span>, <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## <span style="color: #949494;"># A tibble: 3 x 6</span></span>
-<span class="co">##   variable width width_represented ci_low estimate ci_high</span>
-<span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">## <span style="color: #BCBCBC;">1</span> lambda    0.5               0.5   0.411    0.442   0.473</span>
-<span class="co">## <span style="color: #BCBCBC;">2</span> lambda    0.8               0.8   0.684    0.713   0.740</span>
-<span class="co">## <span style="color: #BCBCBC;">3</span> lambda    0.95              0.95  0.883    0.903   0.920</span></code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">res_poisson_100</span><span class="op">$</span><span class="va">stats</span>,width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.95</span>, <span class="fl">0.8</span>, <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 3 × 6</span></span></span>
+<span><span class="co">##   variable width width_represented ci_low estimate ci_high</span></span>
+<span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span> lambda    0.5               0.5   0.412    0.443   0.474</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> lambda    0.8               0.8   0.682    0.711   0.738</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> lambda    0.95              0.95  0.883    0.903   0.920</span></span></code></pre>
 </div>
-<div class="section level2">
-<h2 id="optimizing">Optimizing<a class="anchor" aria-label="anchor" href="#optimizing"></a>
-</h2>
-<p>If the model is so simple, maybe a simple Laplace approximation around the posterior mode would suffice? We can use Stan’s <code>optimizing</code> mode exactly for that. Although unfortunately, this is currently implemented only in <code>rstan</code> and not for <code>cmdstanr</code> (because the underlying CmdStan does not expose the Hessian of the optimizing fit).</p>
+<div class="section level3">
+<h3 id="optimizing">Optimizing<a class="anchor" aria-label="anchor" href="#optimizing"></a>
+</h3>
+<p>If the model is so simple, maybe a simple Laplace approximation
+around the posterior mode would suffice? We can use Stan’s
+<code>optimizing</code> mode exactly for that. Although unfortunately,
+this is currently implemented only in <code>rstan</code> and not for
+<code>cmdstanr</code> (because the underlying CmdStan does not expose
+the Hessian of the optimizing fit).</p>
 <p>So let us build an optimizing backend</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">model_poisson_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span>
-<span class="va">backend_poisson_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_optimizing.html">SBC_backend_rstan_optimizing</a></span><span class="op">(</span><span class="va">model_poisson_rstan</span><span class="op">)</span></code></pre></div>
-<p>and use it to fit the same datasets - first to the one with <code>N = 20</code>.</p>
+<code class="sourceCode R"><span><span class="va">model_poisson_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span></span>
+<span><span class="va">backend_poisson_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_optimizing.html">SBC_backend_rstan_optimizing</a></span><span class="op">(</span><span class="va">model_poisson_rstan</span><span class="op">)</span></span></code></pre></div>
+<p>and use it to fit the same datasets - first to the one with
+<code>N = 20</code>.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">res_poisson_optimizing</span> <span class="op">&lt;-</span> 
-  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_poisson</span>, <span class="va">backend_poisson_optimizing</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,
-    cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"poisson_opt"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'poisson_opt'</span></code></pre>
+<code class="sourceCode R"><span><span class="va">res_poisson_optimizing</span> <span class="op">&lt;-</span> </span>
+<span>  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_poisson</span>, <span class="va">backend_poisson_optimizing</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>    cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"poisson_opt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'poisson_opt'</span></span></code></pre>
 <p>The resulting ECDF and rank plots are very good.</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_poisson_optimizing</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_poisson_optimizing</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/ecdf_rank_poisson_optimizing-1.png" width="700"></p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_poisson_optimizing</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_poisson_optimizing</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/ecdf_rank_poisson_optimizing-2.png" width="700"></p>
 <p>Similarly, we can fit the <code>N = 100</code> datasets.</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">res_poisson_optimizing_100</span> <span class="op">&lt;-</span> 
-  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_poisson_100</span>, <span class="va">backend_poisson_optimizing</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,
-    cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"poisson_opt_100"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'poisson_opt_100'</span></code></pre>
-<p>The resulting rank plot once again indicates no serious issues and we thus get better results here than with ADVI.</p>
+<code class="sourceCode R"><span><span class="va">res_poisson_optimizing_100</span> <span class="op">&lt;-</span> </span>
+<span>  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_poisson_100</span>, <span class="va">backend_poisson_optimizing</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>    cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"poisson_opt_100"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'poisson_opt_100'</span></span></code></pre>
+<p>The resulting rank plot once again indicates no serious issues and we
+thus get better results here than with ADVI.</p>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_poisson_optimizing_100</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_poisson_optimizing_100</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/ecdf_rank_poisson_optimizing_100-1.png" width="700"></p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_poisson_optimizing_100</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_poisson_optimizing_100</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/ecdf_rank_poisson_optimizing_100-2.png" width="700"></p>
 </div>
+<div class="section level3">
+<h3 id="summary-1">Summary<a class="anchor" aria-label="anchor" href="#summary-1"></a>
+</h3>
+<p>We see that for simple models ADVI can provide very tight
+approximation to exact inference, but this cannot be taken for granted.
+Surprisingly, having more data does not make the ADVI approximation
+necessarily better. Additionally, for such simple models, a simple
+Laplace approximation around the posterior mode works better (and likely
+faster) than ADVI.</p>
+</div>
+</div>
 <div class="section level2">
-<h2 id="summary-1">Summary<a class="anchor" aria-label="anchor" href="#summary-1"></a>
+<h2 id="example-ii---hidden-markov-model">Example II - Hidden Markov Model<a class="anchor" aria-label="anchor" href="#example-ii---hidden-markov-model"></a>
 </h2>
-<p>We see that for simple models ADVI can provide very tight approximation to exact inference, but this cannot be taken for granted. Surprisingly, having more data does not make the ADVI approximation necessarily better. Additionally, for such simple models, a simple Laplace approximation around the posterior mode works better (and likely faster) than ADVI.</p>
-</div>
-</div>
-<div class="section level1">
-<h1 id="example-ii---hidden-markov-model">Example II - Hidden Markov Model<a class="anchor" aria-label="anchor" href="#example-ii---hidden-markov-model"></a>
-</h1>
-<p>We’ll jump to a quite more complex model (partially because we wanted to have a HMM example).</p>
-<p>In this example, we have collected a set of counts of particles emitted by a specimen in a relatively large number of experimental runs. We however noticed that there is a suspiciously large number of low counts. Inspecting the equipment, it turns out that the experiment was not set up properly and in some of the runs, our detector could only register background noise. We however don’t know which runs were erroneous.</p>
-<p>So we assume that some experiments contain both background noise and the signal of interest and the rest contain just the background. For simplicity, we assume a Poisson distribution for the counts.</p>
-<p>Additionally, observing background only vs. signal in individual data points is not independent and we want to model how the experimental setup switches between these two states over time. We add additional structure to the model to account for this autocorrelation.</p>
-<p>One possible choice for such structure is hidden Markov models (HMMs) where we assume the probability of transitioning from one state to another is identical across all time points. The <a href="https://mc-stan.org/users/documentation/case-studies/hmm-example.html" class="external-link">case study for HMMs</a> has a more thorough discussion and also shows how to code those in Stan.</p>
-<p>Maybe the simplest way to describe the model is to show how we simulate the data:</p>
+<p>We’ll jump to a quite more complex model (partially because we wanted
+to have a HMM example).</p>
+<p>In this example, we have collected a set of counts of particles
+emitted by a specimen in a relatively large number of experimental runs.
+We however noticed that there is a suspiciously large number of low
+counts. Inspecting the equipment, it turns out that the experiment was
+not set up properly and in some of the runs, our detector could only
+register background noise. We however don’t know which runs were
+erroneous.</p>
+<p>So we assume that some experiments contain both background noise and
+the signal of interest and the rest contain just the background. For
+simplicity, we assume a Poisson distribution for the counts.</p>
+<p>Additionally, observing background only vs. signal in individual data
+points is not independent and we want to model how the experimental
+setup switches between these two states over time. We add additional
+structure to the model to account for this autocorrelation.</p>
+<p>One possible choice for such structure is hidden Markov models (HMMs)
+where we assume the probability of transitioning from one state to
+another is identical across all time points. The <a href="https://mc-stan.org/users/documentation/case-studies/hmm-example.html" class="external-link">case
+study for HMMs</a> has a more thorough discussion and also shows how to
+code those in Stan.</p>
+<p>Maybe the simplest way to describe the model is to show how we
+simulate the data:</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">generator_HMM</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
-  
-  <span class="va">mu_background</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Lognormal.html" class="external-link">rlnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="op">-</span><span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span>
-  <span class="va">mu_signal</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Lognormal.html" class="external-link">rlnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span>
-
-  <span class="co"># Draw the transition probabilities</span>
-  <span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>
-  <span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>
-
-  <span class="va">states</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="cn">NA_integer_</span>, <span class="va">N</span><span class="op">)</span>
-  <span class="co"># Draw from initial state distribution</span>
-  <span class="va">rho</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span>
-
-  <span class="co"># Simulate the hidden states</span>
-  <span class="va">states</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/model-method-sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">rho</span><span class="op">)</span>
-  <span class="kw">for</span><span class="op">(</span><span class="va">n</span> <span class="kw">in</span> <span class="fl">2</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">states</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">if</span><span class="op">(</span><span class="va">states</span><span class="op">[</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1</span><span class="op">]</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span>
-      <span class="va">states</span><span class="op">[</span><span class="va">n</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/model-method-sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">t1</span><span class="op">)</span>
-    <span class="kw">else</span> <span class="kw">if</span><span class="op">(</span><span class="va">states</span><span class="op">[</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1</span><span class="op">]</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span>
-      <span class="va">states</span><span class="op">[</span><span class="va">n</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/model-method-sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">t2</span><span class="op">)</span>
-  <span class="op">}</span>  
-
-  <span class="co"># Simulate observations given the state</span>
-  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">mu_background</span>, <span class="va">mu_background</span> <span class="op">+</span> <span class="va">mu_signal</span><span class="op">)</span>
-  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="va">N</span>, <span class="va">mu</span><span class="op">[</span><span class="va">states</span><span class="op">]</span><span class="op">)</span>
-  
-  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-      mu_background <span class="op">=</span> <span class="va">mu_background</span>,
-      mu_signal <span class="op">=</span> <span class="va">mu_signal</span>,
-      <span class="co"># rdirichlet returns matrices, convert to 1D vectors</span>
-      t1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">t1</span><span class="op">)</span>,
-      t2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">t2</span><span class="op">)</span>,
-      rho <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">rho</span><span class="op">)</span>
-    <span class="op">)</span>,
-    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-      N <span class="op">=</span> <span class="va">N</span>,
-      y <span class="op">=</span> <span class="va">y</span>
-    <span class="op">)</span>
-  <span class="op">)</span>
-<span class="op">}</span></code></pre></div>
-<p>And here is the Stan code that models this process (it is based on the example from the HMM case study but simplified and modified).</p>
+<code class="sourceCode R"><span><span class="va">generator_HMM</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  </span>
+<span>  <span class="va">mu_background</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Lognormal.html" class="external-link">rlnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="op">-</span><span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="va">mu_signal</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Lognormal.html" class="external-link">rlnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="co"># Draw the transition probabilities</span></span>
+<span>  <span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">states</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="cn">NA_integer_</span>, <span class="va">N</span><span class="op">)</span></span>
+<span>  <span class="co"># Draw from initial state distribution</span></span>
+<span>  <span class="va">rho</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="co"># Simulate the hidden states</span></span>
+<span>  <span class="va">states</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">rho</span><span class="op">)</span></span>
+<span>  <span class="kw">for</span><span class="op">(</span><span class="va">n</span> <span class="kw">in</span> <span class="fl">2</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">states</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">if</span><span class="op">(</span><span class="va">states</span><span class="op">[</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1</span><span class="op">]</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span></span>
+<span>      <span class="va">states</span><span class="op">[</span><span class="va">n</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">t1</span><span class="op">)</span></span>
+<span>    <span class="kw">else</span> <span class="kw">if</span><span class="op">(</span><span class="va">states</span><span class="op">[</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1</span><span class="op">]</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span></span>
+<span>      <span class="va">states</span><span class="op">[</span><span class="va">n</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">t2</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>  </span>
+<span></span>
+<span>  <span class="co"># Simulate observations given the state</span></span>
+<span>  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">mu_background</span>, <span class="va">mu_background</span> <span class="op">+</span> <span class="va">mu_signal</span><span class="op">)</span></span>
+<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="va">N</span>, <span class="va">mu</span><span class="op">[</span><span class="va">states</span><span class="op">]</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>      mu_background <span class="op">=</span> <span class="va">mu_background</span>,</span>
+<span>      mu_signal <span class="op">=</span> <span class="va">mu_signal</span>,</span>
+<span>      <span class="co"># rdirichlet returns matrices, convert to 1D vectors</span></span>
+<span>      t1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">t1</span><span class="op">)</span>,</span>
+<span>      t2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">t2</span><span class="op">)</span>,</span>
+<span>      rho <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">rho</span><span class="op">)</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>      N <span class="op">=</span> <span class="va">N</span>,</span>
+<span>      y <span class="op">=</span> <span class="va">y</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>And here is the Stan code that models this process (it is based on
+the example from the HMM case study but simplified and modified).</p>
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data {
   int N; // Number of observations
   array[N] int y;
@@ -415,255 +493,335 @@ model {
 
   target += hmm_marginal(log_omega, Gamma, rho);
 }</code></pre>
-<div class="section level2">
-<h2 id="default-advi">Default ADVI<a class="anchor" aria-label="anchor" href="#default-advi"></a>
-</h2>
-<p>We start with the default (meanfield) variational backend via Stan:</p>
+<div class="section level3">
+<h3 id="default-advi">Default ADVI<a class="anchor" aria-label="anchor" href="#default-advi"></a>
+</h3>
+<p>We start with the default (meanfield) variational backend via
+Stan:</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric_version.html" class="external-link">package_version</a></span><span class="op">(</span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/set_cmdstan_path.html" class="external-link">cmdstan_version</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric_version.html" class="external-link">package_version</a></span><span class="op">(</span><span class="st">"2.26.0"</span><span class="op">)</span> <span class="op">)</span> <span class="op">{</span>
-  <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"The models int this section require CmdStan 2.26 or later."</span><span class="op">)</span>
-<span class="op">}</span>
-<span class="va">model_HMM</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson.stan"</span><span class="op">)</span>
-<span class="va">backend_HMM</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></code></pre></div>
-<p>Since we are feeling confident that our model is implemented correctly (and the model runs quickly), we start with 100 simulations and assume 100 observations for each. If you are developing a new model, it might be useful to start with fewer simulations, as discussed in the <a href="https://hyunjimoon.github.io/SBC/articles/small_model_workflow.html">small model workflow vignette</a>.</p>
+<code class="sourceCode R"><span><span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric_version.html" class="external-link">package_version</a></span><span class="op">(</span><span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/set_cmdstan_path.html" class="external-link">cmdstan_version</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric_version.html" class="external-link">package_version</a></span><span class="op">(</span><span class="st">"2.26.0"</span><span class="op">)</span> <span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"The models int this section require CmdStan 2.26 or later."</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">model_HMM</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson.stan"</span><span class="op">)</span></span>
+<span><span class="va">backend_HMM</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<p>Since we are feeling confident that our model is implemented
+correctly (and the model runs quickly), we start with 100 simulations
+and assume 100 observations for each. If you are developing a new model,
+it might be useful to start with fewer simulations, as discussed in the
+<a href="https://hyunjimoon.github.io/SBC/articles/small_model_workflow.html">small
+model workflow vignette</a>.</p>
 <p>And we compute results</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">642354822</span><span class="op">)</span>
-<span class="va">ds_hmm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_HMM</span>, N <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, n_sims <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>
-<span class="va">res_hmm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_hmm</span>, <span class="va">backend_HMM</span>,
-                           cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'hmm'</span></code></pre>
-<p>There are not huge problems, but the <code>mu_signal</code> variable seems to not be well calibrated:</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">642354822</span><span class="op">)</span></span>
+<span><span class="va">ds_hmm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_HMM</span>, N <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, n_sims <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span>
+<span><span class="va">res_hmm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_hmm</span>, <span class="va">backend_HMM</span>,</span>
+<span>                           cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'hmm'</span></span></code></pre>
+<p>There are not huge problems, but the <code>mu_signal</code> variable
+seems to not be well calibrated:</p>
 <div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ecdf_ranks-1.png" width="700"></p>
 <div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ecdf_ranks-2.png" width="700"></p>
-<p>We may also look at the observed coverage of central intervals - we see that for <code>mu_signal</code> the approximation tends to be overconfident for the wider intervals.</p>
+<p>We may also look at the observed coverage of central intervals - we
+see that for <code>mu_signal</code> the approximation tends to be
+overconfident for the wider intervals.</p>
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">res_hmm</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">res_hmm</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_coverage-1.png" width="700"></p>
 <p>To make sure this is not a fluke we add 400 more simulations.</p>
 <div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2254355</span><span class="op">)</span>
-<span class="va">ds_hmm_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_HMM</span>, N <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, n_sims <span class="op">=</span> <span class="fl">400</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2254355</span><span class="op">)</span></span>
+<span><span class="va">ds_hmm_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_HMM</span>, N <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, n_sims <span class="op">=</span> <span class="fl">400</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">res_hmm_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span>
-  <span class="va">res_hmm</span>,
-  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_hmm_2</span>,<span class="va">backend_HMM</span>,
-                  cache_mode <span class="op">=</span> <span class="st">"results"</span>,
-                  cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm2"</span><span class="op">)</span><span class="op">)</span>
-<span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'hmm2'</span></code></pre>
-<p>This confirms the problems with <code>mu_signal</code>. additionally, we see that <code>mu_background</code> and the <code>rho</code> variables also show some irregularities.</p>
+<code class="sourceCode R"><span><span class="va">res_hmm_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span></span>
+<span>  <span class="va">res_hmm</span>,</span>
+<span>  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_hmm_2</span>,<span class="va">backend_HMM</span>,</span>
+<span>                  cache_mode <span class="op">=</span> <span class="st">"results"</span>,</span>
+<span>                  cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm2"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'hmm2'</span></span></code></pre>
+<p>This confirms the problems with <code>mu_signal</code>. additionally,
+we see that <code>mu_background</code> and the <code>rho</code>
+variables also show some irregularities.</p>
 <div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_2</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_2_ecdf_ranks-1.png" width="700"></p>
 <div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_2</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_2_ecdf_ranks-2.png" width="700"></p>
-<p>Looking at the observed coverage, both <code>mu_background</code> and <code>mu_signal</code> are now clearly somewhat overconfident for the wider intervals.</p>
+<p>Looking at the observed coverage, both <code>mu_background</code> and
+<code>mu_signal</code> are now clearly somewhat overconfident for the
+wider intervals.</p>
 <div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">res_hmm_2</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">res_hmm_2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_2_coverage-1.png" width="700"></p>
-<p>This is what we get when we focus on the 90% posterior credible interval:</p>
+<p>This is what we get when we focus on the 90% posterior credible
+interval:</p>
 <div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">coverage_hmm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">res_hmm_2</span><span class="op">$</span><span class="va">stats</span>, width <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"variable"</span>, <span class="st">"ci_low"</span>, <span class="st">"ci_high"</span><span class="op">)</span><span class="op">]</span>
-<span class="va">coverage_hmm</span></code></pre></div>
-<pre><code><span class="co">## <span style="color: #949494;"># A tibble: 8 x 3</span></span>
-<span class="co">##   variable      ci_low ci_high</span>
-<span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.822   0.884</span>
-<span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.754   0.825</span>
-<span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.864   0.918</span>
-<span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.864   0.918</span>
-<span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.803   0.868</span>
-<span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.803   0.868</span>
-<span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.838   0.897</span>
-<span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.838   0.897</span></code></pre>
-<p>So the 90% central credible interval for <code>mu_signal</code> likely contains less than 83% of true values.</p>
-<p>For a crude result, the default ADVI setup we just tested is not terrible: we don’t expect to see a strong bias and the model will be somewhat overconfident, but not catastrophically so.</p>
-<p>Note that when the user is aiming for a point estimate of mean or other central tendency, a summary of VI posterior may provide a good point estimate even when the uncertainty is miscalibrated. VSBC, a diagnostic that concentrates on bias in marginal quantity, was developed to test this (Yao et. al., 2018), but is currently not implemented in our package (see <a href="https://github.com/hyunjimoon/SBC/issues/60" class="external-link uri">https://github.com/hyunjimoon/SBC/issues/60</a> for progress). Other diagnostic such as PSIS-based which is associated with specific data and test quantity, is less flexible for target-testing.</p>
+<code class="sourceCode R"><span><span class="va">coverage_hmm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">res_hmm_2</span><span class="op">$</span><span class="va">stats</span>, width <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"variable"</span>, <span class="st">"ci_low"</span>, <span class="st">"ci_high"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="va">coverage_hmm</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 8 × 3</span></span></span>
+<span><span class="co">##   variable      ci_low ci_high</span></span>
+<span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.820   0.882</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.746   0.818</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.864   0.918</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.864   0.918</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.805   0.869</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.805   0.869</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.831   0.891</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.831   0.891</span></span></code></pre>
+<p>So the 90% central credible interval for <code>mu_signal</code>
+likely contains less than 82% of true values.</p>
+<p>For a crude result, the default ADVI setup we just tested is not
+terrible: we don’t expect to see a strong bias and the model will be
+somewhat overconfident, but not catastrophically so.</p>
+<p>Note that when the user is aiming for a point estimate of mean or
+other central tendency, a summary of VI posterior may provide a good
+point estimate even when the uncertainty is miscalibrated. VSBC, a
+diagnostic that concentrates on bias in marginal quantity, was developed
+to test this (Yao et. al., 2018), but is currently not implemented in
+our package (see <a href="https://github.com/hyunjimoon/SBC/issues/60" class="external-link uri">https://github.com/hyunjimoon/SBC/issues/60</a> for
+progress). Other diagnostic such as PSIS-based which is associated with
+specific data and test quantity, is less flexible for
+target-testing.</p>
 </div>
-<div class="section level2">
-<h2 id="full-rank">Full-rank<a class="anchor" aria-label="anchor" href="#full-rank"></a>
-</h2>
-<p>We may try if the situation improves with full-rank ADVI - let’s run it for the same datasets.</p>
+<div class="section level3">
+<h3 id="full-rank">Full-rank<a class="anchor" aria-label="anchor" href="#full-rank"></a>
+</h3>
+<p>We may try if the situation improves with full-rank ADVI - let’s run
+it for the same datasets.</p>
 <div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">ds_hmm_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_datasets.html">bind_datasets</a></span><span class="op">(</span><span class="va">ds_hmm</span>, <span class="va">ds_hmm_2</span><span class="op">)</span>
-<span class="va">res_hmm_fullrank</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span>
-  <span class="va">ds_hmm_all</span>, 
-  <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM</span>, algorithm <span class="op">=</span> <span class="st">"fullrank"</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,
-  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_fullrank"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'hmm_fullrank'</span></code></pre>
-<p>We still have problems, but different ones (and arguably somewhat less severe):</p>
+<code class="sourceCode R"><span><span class="va">ds_hmm_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_datasets.html">bind_datasets</a></span><span class="op">(</span><span class="va">ds_hmm</span>, <span class="va">ds_hmm_2</span><span class="op">)</span></span>
+<span><span class="va">res_hmm_fullrank</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span></span>
+<span>  <span class="va">ds_hmm_all</span>, </span>
+<span>  <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM</span>, algorithm <span class="op">=</span> <span class="st">"fullrank"</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
+<span>  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_fullrank"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'hmm_fullrank'</span></span></code></pre>
+<p>We still have problems, but different ones (and arguably somewhat
+less severe):</p>
 <div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_fullrank</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_fullrank</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_fullrank_ecdf_ranks-1.png" width="700"></p>
 <div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_fullrank</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_fullrank</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_fullrank_ecdf_ranks-2.png" width="700"></p>
-<p>Interestingly, the rank plot for <code>mu_signal</code> shows a “frowning” shape, meaning the mean-field approximation is slightly underconfident here.</p>
-<p>This is nicely demonstrated by looking at the central interval coverage - now the coverage of <code>mu_signal</code> is <em>larger</em> than it should be, so the model is underconfident (i.e. more conservative), while the coverages for other variables track the nominal values quite closely.</p>
+<p>Interestingly, the rank plot for <code>mu_signal</code> shows a
+“frowning” shape, meaning the mean-field approximation is slightly
+underconfident here.</p>
+<p>This is nicely demonstrated by looking at the central interval
+coverage - now the coverage of <code>mu_signal</code> is <em>larger</em>
+than it should be, so the model is underconfident (i.e. more
+conservative), while the coverages for other variables track the nominal
+values quite closely.</p>
 <div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">res_hmm_fullrank</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">res_hmm_fullrank</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_fullrank_coverage-1.png" width="700"></p>
-<p>Or alternatively looking at the numerical values for coverage of the central 90% interval</p>
+<p>Or alternatively looking at the numerical values for coverage of the
+central 90% interval</p>
 <div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">coverage_hmm_fullrank</span> <span class="op">&lt;-</span> 
-  <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">res_hmm_fullrank</span><span class="op">$</span><span class="va">stats</span>, width <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"variable"</span>, <span class="st">"ci_low"</span>, <span class="st">"ci_high"</span><span class="op">)</span><span class="op">]</span>
-<span class="va">coverage_hmm_fullrank</span></code></pre></div>
-<pre><code><span class="co">## <span style="color: #949494;"># A tibble: 8 x 3</span></span>
-<span class="co">##   variable      ci_low ci_high</span>
-<span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.851   0.907</span>
-<span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.891   0.939</span>
-<span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.875   0.927</span>
-<span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.875   0.927</span>
-<span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.868   0.922</span>
-<span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.868   0.922</span>
-<span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.879   0.930</span>
-<span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.879   0.930</span></code></pre>
-<p>This pattern where the default meanfield approximation is overconfident and the fullrank approximation is underconfident is in fact quite frequently seen, which motivated some experiments with a low rank approximation that would fall in between those, but as of early 2022 this is not ready for use in Stan.</p>
+<code class="sourceCode R"><span><span class="va">coverage_hmm_fullrank</span> <span class="op">&lt;-</span> </span>
+<span>  <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">res_hmm_fullrank</span><span class="op">$</span><span class="va">stats</span>, width <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"variable"</span>, <span class="st">"ci_low"</span>, <span class="st">"ci_high"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="va">coverage_hmm_fullrank</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 8 × 3</span></span></span>
+<span><span class="co">##   variable      ci_low ci_high</span></span>
+<span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.849   0.906</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.888   0.937</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.875   0.927</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.875   0.927</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.866   0.920</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.866   0.920</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.879   0.930</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.879   0.930</span></span></code></pre>
+<p>This pattern where the default meanfield approximation is
+overconfident and the fullrank approximation is underconfident is in
+fact quite frequently seen, which motivated some experiments with a low
+rank approximation that would fall in between those, but as of early
+2022 this is not ready for use in Stan.</p>
 </div>
-<div class="section level2">
-<h2 id="meanfield-lower-tolerance">Meanfield + lower tolerance<a class="anchor" aria-label="anchor" href="#meanfield-lower-tolerance"></a>
-</h2>
-<p>In some cases, it might also help to reduce the tolerance (<code>tol_rel_obj</code>) of the algorithm. This is a restriction on evidence lower bound (ELBO) for tighter optimization convergence. Here we’ll use the default mean-field algorithm, but decrease the <code>tol_rel_obj</code> (the default value is 0.01). So let’s try that.</p>
+<div class="section level3">
+<h3 id="meanfield-lower-tolerance">Meanfield + lower tolerance<a class="anchor" aria-label="anchor" href="#meanfield-lower-tolerance"></a>
+</h3>
+<p>In some cases, it might also help to reduce the tolerance
+(<code>tol_rel_obj</code>) of the algorithm. This is a restriction on
+evidence lower bound (ELBO) for tighter optimization convergence. Here
+we’ll use the default mean-field algorithm, but decrease the
+<code>tol_rel_obj</code> (the default value is 0.01). So let’s try
+that.</p>
 <div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">res_hmm_lowtol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span>
-  <span class="va">ds_hmm_all</span>, 
-  <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM</span>, tol_rel_obj <span class="op">=</span> <span class="fl">0.001</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,
-  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_lowtol"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'hmm_lowtol'</span></code></pre>
-<pre><code><span class="co">##  - 14 (3%) of fits did not converge.</span></code></pre>
-<pre><code><span class="co">## Not all diagnostics are OK.</span>
-<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
-<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
-<p>Reducing tolerance leads to a small proportion of non-converging fits. In theory, increasing <code>grad_samples</code> improve non-convergence but in our experience, current ADVI (2021) convergence does not easily change with this adjustment. Also, since the non-converged cases are relatively rare, we’ll just remove the non-converging fits from the SBC results (this is OK as long as we would discard non-converging fits for real data, see the <a href="https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html">rejection sampling vignette</a>).</p>
+<code class="sourceCode R"><span><span class="va">res_hmm_lowtol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span></span>
+<span>  <span class="va">ds_hmm_all</span>, </span>
+<span>  <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM</span>, tol_rel_obj <span class="op">=</span> <span class="fl">0.001</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
+<span>  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_lowtol"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'hmm_lowtol'</span></span></code></pre>
+<pre><code><span><span class="co">##  - 14 (3%) of fits did not converge.</span></span></code></pre>
+<pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
+<span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
+<span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
+<p>Reducing tolerance leads to a small proportion of non-converging
+fits. In theory, increasing <code>grad_samples</code> improve
+non-convergence but in our experience, current ADVI (2021) convergence
+does not easily change with this adjustment. Also, since the
+non-converged cases are relatively rare, we’ll just remove the
+non-converging fits from the SBC results (this is OK as long as we would
+discard non-converging fits for real data, see the <a href="https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html">rejection
+sampling vignette</a>).</p>
 <div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">res_hmm_lowtol_conv</span> <span class="op">&lt;-</span>
-    <span class="va">res_hmm_lowtol</span><span class="op">[</span><span class="va">res_hmm_lowtol</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">elbo_converged</span><span class="op">]</span> </code></pre></div>
+<code class="sourceCode R"><span><span class="va">res_hmm_lowtol_conv</span> <span class="op">&lt;-</span></span>
+<span>    <span class="va">res_hmm_lowtol</span><span class="op">[</span><span class="va">res_hmm_lowtol</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">elbo_converged</span><span class="op">]</span> </span></code></pre></div>
 <div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_lowtol_conv</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_lowtol_conv</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_lowtol_ecdf_ranks-1.png" width="700"></p>
 <div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_lowtol_conv</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_lowtol_conv</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_lowtol_ecdf_ranks-2.png" width="700"></p>
-<p>The problems seem to have become even less pronounced. We may once again inspect the observed coverage of central intervals</p>
+<p>The problems seem to have become even less pronounced. We may once
+again inspect the observed coverage of central intervals</p>
 <div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">res_hmm_lowtol_conv</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">res_hmm_lowtol_conv</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_lowtol_coverage-1.png" width="700"></p>
-<p>and the numerical values for the coverage of the central 90% interval.</p>
+<p>and the numerical values for the coverage of the central 90%
+interval.</p>
 <div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">res_hmm_lowtol</span><span class="op">$</span><span class="va">stats</span>, width <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"variable"</span>, <span class="st">"ci_low"</span>, <span class="st">"ci_high"</span><span class="op">)</span><span class="op">]</span></code></pre></div>
-<pre><code><span class="co">## <span style="color: #949494;"># A tibble: 8 x 3</span></span>
-<span class="co">##   variable      ci_low ci_high</span>
-<span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.827   0.888</span>
-<span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.831   0.891</span>
-<span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.882   0.932</span>
-<span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.882   0.932</span>
-<span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.814   0.877</span>
-<span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.814   0.877</span>
-<span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.844   0.902</span>
-<span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.844   0.902</span></code></pre>
-<p>This variant has somewhat lower overall mismatch, but tends to be overconfident, which might in some cases be less desirable than the more conservative fullrank.</p>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">res_hmm_lowtol</span><span class="op">$</span><span class="va">stats</span>, width <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"variable"</span>, <span class="st">"ci_low"</span>, <span class="st">"ci_high"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 8 × 3</span></span></span>
+<span><span class="co">##   variable      ci_low ci_high</span></span>
+<span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.827   0.888</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.833   0.893</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.879   0.930</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.879   0.930</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.816   0.879</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.816   0.879</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.844   0.902</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.844   0.902</span></span></code></pre>
+<p>This variant has somewhat lower overall mismatch, but tends to be
+overconfident, which might in some cases be less desirable than the more
+conservative fullrank.</p>
 </div>
-<div class="section level2">
-<h2 id="optimizing-1">Optimizing<a class="anchor" aria-label="anchor" href="#optimizing-1"></a>
-</h2>
-<p>Would optimizing provide sensible results in this case? We build an optimizng backend and run it.</p>
+<div class="section level3">
+<h3 id="optimizing-1">Optimizing<a class="anchor" aria-label="anchor" href="#optimizing-1"></a>
+</h3>
+<p>Would optimizing provide sensible results in this case? We build an
+optimizng backend and run it.</p>
 <div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu">SBC</span><span class="fu">:::</span><span class="fu">require_package_version</span><span class="op">(</span><span class="st">"rstan"</span>, <span class="st">"2.26"</span>, <span class="st">"The models in the following sections need more recent rstan than what is available on CRAN - use https://mc-stan.org/r-packages/ to get it"</span><span class="op">)</span>
-
-<span class="va">model_HMM_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson.stan"</span><span class="op">)</span>
-
-<span class="va">res_hmm_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span>
-  <span class="va">ds_hmm_all</span>, 
-  <span class="fu"><a href="../reference/SBC_backend_rstan_optimizing.html">SBC_backend_rstan_optimizing</a></span><span class="op">(</span><span class="va">model_HMM_rstan</span>, n_retries_hessian <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,
-  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_optimizing"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'hmm_optimizing'</span></code></pre>
-<pre><code><span class="co">##  - 1 (0%) of fits required multiple attempts to produce usable Hessian.</span></code></pre>
-<pre><code><span class="co">## Not all diagnostics are OK.</span>
-<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
-<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
-<p>We see that while for some variables (<code>mu_signal</code>, the transition probabilities <code>t[]</code>), the Laplace approximation is reasonably well calibrated, it is very badly calibrated with respect to the initial states <code>rho</code> and also for <code>mu_background</code>, where there is substantial bias. So if we were only interested in a subset of the variables, the optimizing fit could still be on OK choice.</p>
+<code class="sourceCode R"><span><span class="fu">SBC</span><span class="fu">:::</span><span class="fu">require_package_version</span><span class="op">(</span><span class="st">"rstan"</span>, <span class="st">"2.26"</span>, <span class="st">"The models in the following sections need more recent rstan than what is available on CRAN - use https://mc-stan.org/r-packages/ to get it"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">model_HMM_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson.stan"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">res_hmm_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span></span>
+<span>  <span class="va">ds_hmm_all</span>, </span>
+<span>  <span class="fu"><a href="../reference/SBC_backend_rstan_optimizing.html">SBC_backend_rstan_optimizing</a></span><span class="op">(</span><span class="va">model_HMM_rstan</span>, n_retries_hessian <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
+<span>  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_optimizing"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'hmm_optimizing'</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (0%) of fits required multiple attempts to produce usable Hessian.</span></span></code></pre>
+<pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
+<span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
+<span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
+<p>We see that while for some variables (<code>mu_signal</code>, the
+transition probabilities <code>t[]</code>), the Laplace approximation is
+reasonably well calibrated, it is very badly calibrated with respect to
+the initial states <code>rho</code> and also for
+<code>mu_background</code>, where there is substantial bias. So if we
+were only interested in a subset of the variables, the optimizing fit
+could still be on OK choice.</p>
 <div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_optimizing</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_optimizing</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_optimizing_ecdf_ranks-1.png" width="700"></p>
 <div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_optimizing</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_optimizing</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_optimizing_ecdf_ranks-2.png" width="700"></p>
 </div>
-<div class="section level2">
-<h2 id="summary-2">Summary<a class="anchor" aria-label="anchor" href="#summary-2"></a>
-</h2>
-<p>To summarise, the HMM model turns out to pose minor problems for ADVI that can be partially resolved by tweaking the parameters of the ADVI algorithm. Just using optimizing results in much worse calibration than ADVI.</p>
-<p>Another relevant question is how much speed we gained. To have a comparison, we run full MCMC with Stan for the same datasets.</p>
+<div class="section level3">
+<h3 id="summary-2">Summary<a class="anchor" aria-label="anchor" href="#summary-2"></a>
+</h3>
+<p>To summarise, the HMM model turns out to pose minor problems for ADVI
+that can be partially resolved by tweaking the parameters of the ADVI
+algorithm. Just using optimizing results in much worse calibration than
+ADVI.</p>
+<p>Another relevant question is how much speed we gained. To have a
+comparison, we run full MCMC with Stan for the same datasets.</p>
 <div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">res_hmm_sample</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span>
-  <span class="va">ds_hmm</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">50</span><span class="op">]</span>, 
-  <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="va">model_HMM</span><span class="op">)</span>,
-  keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,
-  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_sample"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'hmm_sample'</span></code></pre>
-<pre><code><span class="co">##  - 1 (2%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.019.</span></code></pre>
-<pre><code><span class="co">##  - 1 (2%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span>
-<span class="co">## the rank statistics. The lowest tail ESS was 154.</span>
-<span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span>
-<span class="co">## or number of posterior draws (by refitting) might help.</span></code></pre>
-<pre><code><span class="co">##  - 1 (2%) fits had divergent transitions. Maximum number of divergences was 51.</span></code></pre>
-<pre><code><span class="co">## Not all diagnostics are OK.</span>
-<span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span>
-<span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></code></pre>
-<p>We get a small number of problematic fits, which we will ignore for now. We check that there are no obvious calibration problems:</p>
+<code class="sourceCode R"><span><span class="va">res_hmm_sample</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span></span>
+<span>  <span class="va">ds_hmm</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">50</span><span class="op">]</span>, </span>
+<span>  <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="va">model_HMM</span><span class="op">)</span>,</span>
+<span>  keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_sample"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'hmm_sample'</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (2%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.019.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (2%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
+<span><span class="co">## the rank statistics. The lowest tail ESS was 154.</span></span>
+<span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
+<span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (2%) fits had divergent transitions. Maximum number of divergences was 51.</span></span></code></pre>
+<pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
+<span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
+<span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
+<p>We get a small number of problematic fits, which we will ignore for
+now. We check that there are no obvious calibration problems:</p>
 <div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_sample</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_sample</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_sample_ecdf_ranks-1.png" width="700"></p>
 <div class="sourceCode" id="cb74"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_sample</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_sample</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_sample_ecdf_ranks-2.png" width="700"></p>
-<p>For the machine we built the vignette on, here are the distributions of times (for ADVI and optimizing) and time of longest chain (for HMC):</p>
+<p>For the machine we built the vignette on, here are the distributions
+of times (for ADVI and optimizing) and time of longest chain (for
+HMC):</p>
 <div class="sourceCode" id="cb75"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">hmm_time</span> <span class="op">&lt;-</span> 
-  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>
-      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>alg <span class="op">=</span> <span class="st">"Optimizing"</span>, 
-                     time <span class="op">=</span> <span class="va">res_hmm_optimizing</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">time</span><span class="op">)</span>,
-      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>alg <span class="op">=</span> <span class="st">"Meanfield"</span>, 
-                     time <span class="op">=</span> <span class="va">res_hmm</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">time</span><span class="op">)</span>,
-        <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>alg <span class="op">=</span> <span class="st">"Fullrank"</span>, 
-                   time <span class="op">=</span> <span class="va">res_hmm_fullrank</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">time</span><span class="op">)</span>,
-        <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>alg <span class="op">=</span> <span class="st">"Meanfield + low tol."</span>, 
-                   time <span class="op">=</span> <span class="va">res_hmm_lowtol</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">time</span><span class="op">)</span>,
-        <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>alg <span class="op">=</span> <span class="st">"Sampling (longest chain)"</span>, 
-                   time <span class="op">=</span> <span class="va">res_hmm_sample</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">max_chain_time</span><span class="op">)</span><span class="op">)</span>
-
-<span class="va">max_time_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">res_hmm_optimizing</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">time</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>
-
-
-<span class="va">hmm_time</span><span class="op">$</span><span class="va">alg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">hmm_time</span><span class="op">$</span><span class="va">alg</span>, 
-                       levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Optimizing"</span>,
-                                  <span class="st">"Meanfield"</span>,
-                                  <span class="st">"Fullrank"</span>,
-                                  <span class="st">"Meanfield + low tol."</span>,
-                                  <span class="st">"Sampling (longest chain)"</span><span class="op">)</span><span class="op">)</span>
- 
-<span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">hmm_time</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">time</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> 
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_histogram.html" class="external-link">geom_histogram</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">..density..</span><span class="op">)</span>, bins <span class="op">=</span> <span class="fl">20</span><span class="op">)</span> <span class="op">+</span> 
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">alg</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_x_continuous</a></span><span class="op">(</span><span class="st">"Time [seconds]"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">hmm_time</span> <span class="op">&lt;-</span> </span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>alg <span class="op">=</span> <span class="st">"Optimizing"</span>, </span>
+<span>                     time <span class="op">=</span> <span class="va">res_hmm_optimizing</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">time</span><span class="op">)</span>,</span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>alg <span class="op">=</span> <span class="st">"Meanfield"</span>, </span>
+<span>                     time <span class="op">=</span> <span class="va">res_hmm</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">time</span><span class="op">)</span>,</span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>alg <span class="op">=</span> <span class="st">"Fullrank"</span>, </span>
+<span>                   time <span class="op">=</span> <span class="va">res_hmm_fullrank</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">time</span><span class="op">)</span>,</span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>alg <span class="op">=</span> <span class="st">"Meanfield + low tol."</span>, </span>
+<span>                   time <span class="op">=</span> <span class="va">res_hmm_lowtol</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">time</span><span class="op">)</span>,</span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>alg <span class="op">=</span> <span class="st">"Sampling (longest chain)"</span>, </span>
+<span>                   time <span class="op">=</span> <span class="va">res_hmm_sample</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">max_chain_time</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">max_time_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">res_hmm_optimizing</span><span class="op">$</span><span class="va">backend_diagnostics</span><span class="op">$</span><span class="va">time</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span></span>
+<span></span>
+<span><span class="va">hmm_time</span><span class="op">$</span><span class="va">alg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">hmm_time</span><span class="op">$</span><span class="va">alg</span>, </span>
+<span>                       levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Optimizing"</span>,</span>
+<span>                                  <span class="st">"Meanfield"</span>,</span>
+<span>                                  <span class="st">"Fullrank"</span>,</span>
+<span>                                  <span class="st">"Meanfield + low tol."</span>,</span>
+<span>                                  <span class="st">"Sampling (longest chain)"</span><span class="op">)</span><span class="op">)</span></span>
+<span> </span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">hmm_time</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">time</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_histogram.html" class="external-link">geom_histogram</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">..density..</span><span class="op">)</span>, bins <span class="op">=</span> <span class="fl">20</span><span class="op">)</span> <span class="op">+</span> </span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">alg</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_x_continuous</a></span><span class="op">(</span><span class="st">"Time [seconds]"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_time-1.png" width="700"></p>
-<p>Depressingly, while using lower tolerance let us get almost as good uncertainty quantification as sampling, it also erased a big part of the performance advantage variational inference had over sampling for this model. However, both the fullrank and meanfield approximations provide not-terrible estimates and are noticeably faster than sampling. Optimizing is by far the fastest as the longest time observed is just 1.58 seconds.</p>
+<p>Depressingly, while using lower tolerance let us get almost as good
+uncertainty quantification as sampling, it also erased a big part of the
+performance advantage variational inference had over sampling for this
+model. However, both the fullrank and meanfield approximations provide
+not-terrible estimates and are noticeably faster than sampling.
+Optimizing is by far the fastest as the longest time observed is just
+0.17 seconds.</p>
 </div>
 </div>
-<div class="section level1">
-<h1 id="example-iii---hidden-markov-model-ordered-variant">Example III - Hidden Markov Model, ordered variant<a class="anchor" aria-label="anchor" href="#example-iii---hidden-markov-model-ordered-variant"></a>
-</h1>
-<p>Unforutnately, ADVI as implemented in Stan can be quite fragile. Let us consider a very small change to the HMM model from the previous section: let us model the means of the counts for the two states directly (the previous version modelled the background state and the difference between the two states) and move to the log scale. So instead of <code>mu_background</code> and <code>mu_signal</code> we have an <code>ordered</code> vector <code>log_mu</code>:</p>
+<div class="section level2">
+<h2 id="example-iii---hidden-markov-model-ordered-variant">Example III - Hidden Markov Model, ordered variant<a class="anchor" aria-label="anchor" href="#example-iii---hidden-markov-model-ordered-variant"></a>
+</h2>
+<p>Unforutnately, ADVI as implemented in Stan can be quite fragile. Let
+us consider a very small change to the HMM model from the previous
+section: let us model the means of the counts for the two states
+directly (the previous version modelled the background state and the
+difference between the two states) and move to the log scale. So instead
+of <code>mu_background</code> and <code>mu_signal</code> we have an
+<code>ordered</code> vector <code>log_mu</code>:</p>
 <div class="sourceCode" id="cb76"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson_ordered.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson_ordered.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data {
   int N; // Number of observations
   array[N] int y;
@@ -713,127 +871,161 @@ model {
 generated quantities {
   positive_ordered[2] mu = exp(log_mu);
 }</code></pre>
-<p>This model is almost identical - in theory the only difference is that it implies a slightly different prior on the active (higher mean) state. Here is how we can generate data with this mildly different prior (we need rejection sampling to fulfill the ordering constraint):</p>
+<p>This model is almost identical - in theory the only difference is
+that it implies a slightly different prior on the active (higher mean)
+state. Here is how we can generate data with this mildly different prior
+(we need rejection sampling to fulfill the ordering constraint):</p>
 <div class="sourceCode" id="cb78"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">generator_HMM_ordered</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span>
-  
-  <span class="co"># Rejection sampling for ordered mu with the correct priors</span>
-  <span class="kw">repeat</span> <span class="op">{</span>
-    <span class="va">log_mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="op">-</span><span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span>
-    <span class="kw">if</span><span class="op">(</span><span class="va">log_mu</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;</span> <span class="va">log_mu</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span> <span class="op">{</span>
-      <span class="kw">break</span>;
-    <span class="op">}</span>
-  <span class="op">}</span>
-  
-  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">log_mu</span><span class="op">)</span>
-
-  <span class="co"># Draw the transition probabilities</span>
-  <span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>
-  <span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>
-
-  <span class="va">states</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="cn">NA_integer_</span>, <span class="va">N</span><span class="op">)</span>
-  <span class="co"># Draw from initial state distribution</span>
-  <span class="va">rho</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span>
-
-  <span class="va">states</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/model-method-sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">rho</span><span class="op">)</span>
-  <span class="kw">for</span><span class="op">(</span><span class="va">n</span> <span class="kw">in</span> <span class="fl">2</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">states</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">if</span><span class="op">(</span><span class="va">states</span><span class="op">[</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1</span><span class="op">]</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span>
-      <span class="va">states</span><span class="op">[</span><span class="va">n</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/model-method-sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">t1</span><span class="op">)</span>
-    <span class="kw">else</span> <span class="kw">if</span><span class="op">(</span><span class="va">states</span><span class="op">[</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1</span><span class="op">]</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span>
-      <span class="va">states</span><span class="op">[</span><span class="va">n</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/model-method-sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">t2</span><span class="op">)</span>
-  <span class="op">}</span>  
-  
-  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="va">N</span>, <span class="va">mu</span><span class="op">[</span><span class="va">states</span><span class="op">]</span><span class="op">)</span>
-  
-  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-      log_mu <span class="op">=</span> <span class="va">log_mu</span>,
-      <span class="co"># rdirichlet returns matrices, convert to 1D vectors</span>
-      t1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">t1</span><span class="op">)</span>,
-      t2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">t2</span><span class="op">)</span>,
-      rho <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">rho</span><span class="op">)</span>
-    <span class="op">)</span>,
-    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-      N <span class="op">=</span> <span class="va">N</span>,
-      y <span class="op">=</span> <span class="va">y</span>
-    <span class="op">)</span>
-  <span class="op">)</span>
-<span class="op">}</span></code></pre></div>
-<p>So let us build a default variational backend and fit it to just 20 simulations.</p>
+<code class="sourceCode R"><span><span class="va">generator_HMM_ordered</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  </span>
+<span>  <span class="co"># Rejection sampling for ordered mu with the correct priors</span></span>
+<span>  <span class="kw">repeat</span> <span class="op">{</span></span>
+<span>    <span class="va">log_mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="op">-</span><span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="kw">if</span><span class="op">(</span><span class="va">log_mu</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;</span> <span class="va">log_mu</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="kw">break</span>;</span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span></span>
+<span>  </span>
+<span>  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">log_mu</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="co"># Draw the transition probabilities</span></span>
+<span>  <span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">states</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="cn">NA_integer_</span>, <span class="va">N</span><span class="op">)</span></span>
+<span>  <span class="co"># Draw from initial state distribution</span></span>
+<span>  <span class="va">rho</span> <span class="op">&lt;-</span> <span class="fu">MCMCpack</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MCMCpack/man/Dirichlet.html" class="external-link">rdirichlet</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">states</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">rho</span><span class="op">)</span></span>
+<span>  <span class="kw">for</span><span class="op">(</span><span class="va">n</span> <span class="kw">in</span> <span class="fl">2</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">states</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">if</span><span class="op">(</span><span class="va">states</span><span class="op">[</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1</span><span class="op">]</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span></span>
+<span>      <span class="va">states</span><span class="op">[</span><span class="va">n</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">t1</span><span class="op">)</span></span>
+<span>    <span class="kw">else</span> <span class="kw">if</span><span class="op">(</span><span class="va">states</span><span class="op">[</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1</span><span class="op">]</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span></span>
+<span>      <span class="va">states</span><span class="op">[</span><span class="va">n</span><span class="op">]</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">t2</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>  </span>
+<span>  </span>
+<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="va">N</span>, <span class="va">mu</span><span class="op">[</span><span class="va">states</span><span class="op">]</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>      log_mu <span class="op">=</span> <span class="va">log_mu</span>,</span>
+<span>      <span class="co"># rdirichlet returns matrices, convert to 1D vectors</span></span>
+<span>      t1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">t1</span><span class="op">)</span>,</span>
+<span>      t2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">t2</span><span class="op">)</span>,</span>
+<span>      rho <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">rho</span><span class="op">)</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>      N <span class="op">=</span> <span class="va">N</span>,</span>
+<span>      y <span class="op">=</span> <span class="va">y</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>So let us build a default variational backend and fit it to just 20
+simulations.</p>
 <div class="sourceCode" id="cb79"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">model_HMM_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson_ordered.stan"</span><span class="op">)</span>
-<span class="va">backend_HMM_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM_ordered</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">model_HMM_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson_ordered.stan"</span><span class="op">)</span></span>
+<span><span class="va">backend_HMM_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM_ordered</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb80"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">12333654</span><span class="op">)</span>
-<span class="va">ds_hmm_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span>
-  <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_HMM_ordered</span>, N <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, 
-  n_sims <span class="op">=</span> <span class="fl">20</span><span class="op">)</span>
-
-<span class="va">res_hmm_ordered</span> <span class="op">&lt;-</span> 
-  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_hmm_ordered</span>, <span class="va">backend_HMM_ordered</span>,
-                  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_ordered"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'hmm_ordered'</span></code></pre>
-<p>Immediately we see that the <code>log_mu[1]</code> variable is heavily miscalibrated.</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">12333654</span><span class="op">)</span></span>
+<span><span class="va">ds_hmm_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_HMM_ordered</span>, N <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, </span>
+<span>  n_sims <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">res_hmm_ordered</span> <span class="op">&lt;-</span> </span>
+<span>  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_hmm_ordered</span>, <span class="va">backend_HMM_ordered</span>,</span>
+<span>                  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_ordered"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'hmm_ordered'</span></span></code></pre>
+<p>Immediately we see that the <code>log_mu[1]</code> variable is
+heavily miscalibrated.</p>
 <div class="sourceCode" id="cb82"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_ordered</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_ordered</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_ecdf_ranks-1.png" width="700"></p>
 <div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_ordered</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_ordered</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_ecdf_ranks-2.png" width="700"></p>
-<p>What changed? To understand that we need to remember how Stan <a href="https://mc-stan.org/docs/2_28/reference-manual/variable-transforms.html" class="external-link">represents constrained data types</a>. In short, in the model in Example II, Stan will internally work with the so called <em>unconstrained</em> parameters <code>mu_background__ = log(mu_background)</code> and <code>mu_signal__ = log(mu_signal)</code>. In this modified model, the internal representation will be: <code>log_mu_1__ = log_mu[1]</code> (without any change) and <code>log_mu_2__ = log(log_mu[2] - log_mu[1])</code>. So the mean for the active component is actually <code>exp(log_mu_1__ + exp(log_mu_2__))</code>. This then introduces a complex correlation structure between the unconstrained parameters that the ADVI algorithm is unable to handle well.</p>
+<p>What changed? To understand that we need to remember how Stan <a href="https://mc-stan.org/docs/2_28/reference-manual/variable-transforms.html" class="external-link">represents
+constrained data types</a>. In short, in the model in Example II, Stan
+will internally work with the so called <em>unconstrained</em>
+parameters <code>mu_background__ = log(mu_background)</code> and
+<code>mu_signal__ = log(mu_signal)</code>. In this modified model, the
+internal representation will be: <code>log_mu_1__ = log_mu[1]</code>
+(without any change) and
+<code>log_mu_2__ = log(log_mu[2] - log_mu[1])</code>. So the mean for
+the active component is actually
+<code>exp(log_mu_1__ + exp(log_mu_2__))</code>. This then introduces a
+complex correlation structure between the unconstrained parameters that
+the ADVI algorithm is unable to handle well.</p>
 <p>Even trying the fullrank variant does not help:</p>
 <div class="sourceCode" id="cb84"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">backend_HMM_ordered_fullrank</span> <span class="op">&lt;-</span> 
-  <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM_ordered</span>,
-                                  algorithm <span class="op">=</span> <span class="st">"fullrank"</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>
-
-<span class="va">res_hmm_ordered_fullrank</span> <span class="op">&lt;-</span> 
-  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_hmm_ordered</span>, <span class="va">backend_HMM_ordered</span>,
-                  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_ordered_fullrank"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'hmm_ordered_fullrank'</span></code></pre>
+<code class="sourceCode R"><span><span class="va">backend_HMM_ordered_fullrank</span> <span class="op">&lt;-</span> </span>
+<span>  <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM_ordered</span>,</span>
+<span>                                  algorithm <span class="op">=</span> <span class="st">"fullrank"</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">res_hmm_ordered_fullrank</span> <span class="op">&lt;-</span> </span>
+<span>  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">ds_hmm_ordered</span>, <span class="va">backend_HMM_ordered</span>,</span>
+<span>                  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_ordered_fullrank"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'hmm_ordered_fullrank'</span></span></code></pre>
 <p>The results are still strongly miscalibrated.</p>
 <div class="sourceCode" id="cb86"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_ordered_fullrank</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_ordered_fullrank</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_fullrank_ecdf_ranks-1.png" width="700"></p>
 <div class="sourceCode" id="cb87"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_ordered_fullrank</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_ordered_fullrank</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_fullrank_ecdf_ranks-2.png" width="700"></p>
 <p>To have a complete overview we may also try the optimizing fit:</p>
 <div class="sourceCode" id="cb88"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">model_HMM_ordered_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson_ordered.stan"</span><span class="op">)</span>
-
-<span class="va">res_hmm_ordered_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span>
-  <span class="va">ds_hmm_ordered</span>, 
-  <span class="fu"><a href="../reference/SBC_backend_rstan_optimizing.html">SBC_backend_rstan_optimizing</a></span><span class="op">(</span><span class="va">model_HMM_ordered_rstan</span><span class="op">)</span>,
-  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_ordered_optimizing"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'hmm_ordered_optimizing'</span></code></pre>
-<p>in this case, optimizing has better calibration for <code>log_mu</code>, but worse calibration for <code>rho</code> than ADVI.</p>
+<code class="sourceCode R"><span><span class="va">model_HMM_ordered_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson_ordered.stan"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">res_hmm_ordered_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span></span>
+<span>  <span class="va">ds_hmm_ordered</span>, </span>
+<span>  <span class="fu"><a href="../reference/SBC_backend_rstan_optimizing.html">SBC_backend_rstan_optimizing</a></span><span class="op">(</span><span class="va">model_HMM_ordered_rstan</span><span class="op">)</span>,</span>
+<span>  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_ordered_optimizing"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'hmm_ordered_optimizing'</span></span></code></pre>
+<p>in this case, optimizing has better calibration for
+<code>log_mu</code>, but worse calibration for <code>rho</code> than
+ADVI.</p>
 <div class="sourceCode" id="cb90"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_ordered_optimizing</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_ordered_optimizing</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_optimizing_ecdf_ranks-1.png" width="700"></p>
 <div class="sourceCode" id="cb91"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_ordered_optimizing</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_ordered_optimizing</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_optimizing_ecdf_ranks-2.png" width="700"></p>
 </div>
-<div class="section level1">
-<h1 id="conclusion">Conclusion<a class="anchor" aria-label="anchor" href="#conclusion"></a>
-</h1>
-<p>As this vignette has shown, for some models, ADVI will provide results that are close to what we get with sampling, but it may also fail catastrophically on models that are just slightly different. Tweaking the algorithm parameters might also be necessary. For some cases where ADVI works, the Laplace approximation with optimizing will also work well. ADVI (and optimizng) cannot thus be used blindly. Fortunately SBC can be used to check against this type of problem without ever needing to run the full sampling.</p>
+<div class="section level2">
+<h2 id="conclusion">Conclusion<a class="anchor" aria-label="anchor" href="#conclusion"></a>
+</h2>
+<p>As this vignette has shown, for some models, ADVI will provide
+results that are close to what we get with sampling, but it may also
+fail catastrophically on models that are just slightly different.
+Tweaking the algorithm parameters might also be necessary. For some
+cases where ADVI works, the Laplace approximation with optimizing will
+also work well. ADVI (and optimizng) cannot thus be used blindly.
+Fortunately SBC can be used to check against this type of problem
+without ever needing to run the full sampling.</p>
 </div>
-<div class="section level1">
-<h1 id="next-step-evolving-computation-and-diagnostic-">Next step: Evolving computation and diagnostic.<a class="anchor" aria-label="anchor" href="#next-step-evolving-computation-and-diagnostic-"></a>
-</h1>
-<p>In computational_algorithm2, we will focus on hopeful aspects of approximate computation. The adversarial relation between computation and diagnostic is introduced based on which mutual evolvement happens. This can give insight to computational algorithm designers aiming to pass SBC. For illustration, when and how VI can be used is discussed which include customized SBC (e.g. VSBC) and first or second-order correction.</p>
+<div class="section level2">
+<h2 id="next-step-evolving-computation-and-diagnostic-">Next step: Evolving computation and diagnostic.<a class="anchor" aria-label="anchor" href="#next-step-evolving-computation-and-diagnostic-"></a>
+</h2>
+<p>In computational_algorithm2, we will focus on hopeful aspects of
+approximate computation. The adversarial relation between computation
+and diagnostic is introduced based on which mutual evolvement happens.
+This can give insight to computational algorithm designers aiming to
+pass SBC. For illustration, when and how VI can be used is discussed
+which include customized SBC (e.g. VSBC) and first or second-order
+correction.</p>
 </div>
-<div class="section level1">
-<h1 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
-</h1>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
 <ul>
-<li>Zhang et. al. (2021) Pathfinder: Parallel quasi-Newton variational inference <a href="https://arxiv.org/abs/2108.03782" class="external-link uri">https://arxiv.org/abs/2108.03782</a>
+<li>Zhang et. al. (2021) Pathfinder: Parallel quasi-Newton variational
+inference <a href="https://arxiv.org/abs/2108.03782" class="external-link uri">https://arxiv.org/abs/2108.03782</a>
 </li>
-<li>Turner and Sahani (2010) Two problems with variational expectation maximisation for time-series models <a href="http://www.gatsby.ucl.ac.uk/~maneesh/papers/turner-sahani-2010-ildn.pdf" class="external-link uri">http://www.gatsby.ucl.ac.uk/~maneesh/papers/turner-sahani-2010-ildn.pdf</a>
+<li>Turner and Sahani (2010) Two problems with variational expectation
+maximisation for time-series models <a href="http://www.gatsby.ucl.ac.uk/~maneesh/papers/turner-sahani-2010-ildn.pdf" class="external-link uri">http://www.gatsby.ucl.ac.uk/~maneesh/papers/turner-sahani-2010-ildn.pdf</a>
 </li>
-<li>Yao et. al. (2018) Yes, but Did It Work?: Evaluating Variational Inference <a href="http://proceedings.mlr.press/v80/yao18a/yao18a.pdf" class="external-link uri">http://proceedings.mlr.press/v80/yao18a/yao18a.pdf</a>
+<li>Yao et. al. (2018) Yes, but Did It Work?: Evaluating Variational
+Inference <a href="http://proceedings.mlr.press/v80/yao18a/yao18a.pdf" class="external-link uri">http://proceedings.mlr.press/v80/yao18a/yao18a.pdf</a>
 </li>
 </ul>
 </div>
@@ -856,7 +1048,7 @@ generated quantities {
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer>

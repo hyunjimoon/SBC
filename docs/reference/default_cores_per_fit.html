@@ -35,7 +35,7 @@ running so many chains in parallel that there will be more chains than cores."><
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -114,11 +114,11 @@ running so many chains in parallel that there will be more chains than cores.</p
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">default_cores_per_fit</span><span class="op">(</span>
-  <span class="va">n_fits</span>,
-  total_cores <span class="op">=</span> <span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/re-exports.html" class="external-link">availableCores</a></span><span class="op">(</span><span class="op">)</span>,
-  chunk_size <span class="op">=</span> <span class="fu"><a href="default_chunk_size.html">default_chunk_size</a></span><span class="op">(</span><span class="va">n_fits</span><span class="op">)</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">default_cores_per_fit</span><span class="op">(</span></span>
+<span>  <span class="va">n_fits</span>,</span>
+<span>  total_cores <span class="op">=</span> <span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">availableCores</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  chunk_size <span class="op">=</span> <span class="fu"><a href="default_chunk_size.html">default_chunk_size</a></span><span class="op">(</span><span class="va">n_fits</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
 
@@ -134,7 +134,7 @@ running so many chains in parallel that there will be more chains than cores.</p
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

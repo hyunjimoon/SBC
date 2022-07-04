@@ -38,7 +38,7 @@ the given backend differs too much for our purposes from the optimal value)."><!
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -120,7 +120,7 @@ the given backend differs too much for our purposes from the optimal value).</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">empirical_coverage</span><span class="op">(</span><span class="va">stats</span>, <span class="va">width</span>, prob <span class="op">=</span> <span class="fl">0.95</span>, interval_type <span class="op">=</span> <span class="st">"central"</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">empirical_coverage</span><span class="op">(</span><span class="va">stats</span>, <span class="va">width</span>, prob <span class="op">=</span> <span class="fl">0.95</span>, interval_type <span class="op">=</span> <span class="st">"central"</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -128,18 +128,27 @@ the given backend differs too much for our purposes from the optimal value).</p>
     <dl><dt>stats</dt>
 <dd><p>a data.frame of rank statistics (e.g. as returned in the <code>$stats</code> component of <a href="SBC_results.html">SBC_results</a>),
 at minimum should have at least <code>variable</code>, <code>rank</code> and <code>max_rank</code> columns)</p></dd>
+
+
 <dt>width</dt>
 <dd><p>a vector of values between 0 and 1 representing widths of credible intervals for
 which we compute coverage.</p></dd>
+
+
 <dt>prob</dt>
 <dd><p>determines width of the uncertainty interval around the observed coverage</p></dd>
+
+
 <dt>inteval_type</dt>
 <dd><p><code>"central"</code> to show coverage of central credible intervals
 or <code>"leftmost"</code> to show coverage of leftmost credible intervals (i.e. the observed CDF).</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A <code>data.frame</code> with columns <code>variable</code>, <code>width</code> (width of the interval as given
+    
+
+<p>A <code>data.frame</code> with columns <code>variable</code>, <code>width</code> (width of the interval as given
 in the <code>width</code> parameter), <code>width_represented</code> the closest width that can be represented by
 the ranks in the input (any discrepancy needs to be judged against this rather than <code>width</code>),
 <code>estimate</code> - observed coverage for the interval, <code>ci_low</code>, <code>ci_high</code> the uncertainty
@@ -173,7 +182,7 @@ then all intervals are well calibrated.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

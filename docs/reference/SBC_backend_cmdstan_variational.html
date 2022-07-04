@@ -32,7 +32,7 @@
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -108,22 +108,27 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">SBC_backend_cmdstan_variational</span><span class="op">(</span><span class="va">model</span>, <span class="va">...</span>, n_retries_init <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">SBC_backend_cmdstan_variational</span><span class="op">(</span><span class="va">model</span>, <span class="va">...</span>, n_retries_init <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>model</dt>
 <dd><p>an object of class <code>CmdStanModel</code> (as created by <code><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstanr::cmdstan_model</a></code>)</p></dd>
+
+
 <dt>...</dt>
 <dd><p>other arguments passed to the <code>$variational()</code> method of the model.
 The <code>data</code> argument cannot be set this way as they need to be controlled by the SBC
 package.</p></dd>
+
+
 <dt>n_retries_init</dt>
 <dd><p>number of times to retry the variational fit if the algorithm
 has trouble initializing (e.g. too many dropped evaluations
 (see https://discourse.mc-stan.org/t/advi-too-many-dropped-evaluations-even-for-well-behaved-models/24338),
 or "cannot compute ELBO using the initial variational distribution")</p></dd>
+
 </dl></div>
 
   </div>
@@ -138,7 +143,7 @@ or "cannot compute ELBO using the initial variational distribution")</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

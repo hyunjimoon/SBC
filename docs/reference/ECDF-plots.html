@@ -34,7 +34,7 @@ See the methods for data_for_ecdf_plots() for available data formats.'><!-- math
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -112,55 +112,72 @@ See the methods for <code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">plot_ecdf</span><span class="op">(</span>
-  <span class="va">x</span>,
-  variables <span class="op">=</span> <span class="cn">NULL</span>,
-  K <span class="op">=</span> <span class="cn">NULL</span>,
-  gamma <span class="op">=</span> <span class="cn">NULL</span>,
-  prob <span class="op">=</span> <span class="fl">0.95</span>,
-  size <span class="op">=</span> <span class="fl">1</span>,
-  alpha <span class="op">=</span> <span class="fl">0.33</span>,
-  <span class="va">...</span>,
-  parameters <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span>
-
-<span class="fu">plot_ecdf_diff</span><span class="op">(</span>
-  <span class="va">x</span>,
-  variables <span class="op">=</span> <span class="cn">NULL</span>,
-  K <span class="op">=</span> <span class="cn">NULL</span>,
-  gamma <span class="op">=</span> <span class="cn">NULL</span>,
-  prob <span class="op">=</span> <span class="fl">0.95</span>,
-  size <span class="op">=</span> <span class="fl">1</span>,
-  alpha <span class="op">=</span> <span class="fl">0.33</span>,
-  <span class="va">...</span>,
-  parameters <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">plot_ecdf</span><span class="op">(</span></span>
+<span>  <span class="va">x</span>,</span>
+<span>  variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  K <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  gamma <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  prob <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  size <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  alpha <span class="op">=</span> <span class="fl">0.33</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  parameters <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">plot_ecdf_diff</span><span class="op">(</span></span>
+<span>  <span class="va">x</span>,</span>
+<span>  variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  K <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  gamma <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  prob <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  size <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  alpha <span class="op">=</span> <span class="fl">0.33</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  parameters <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>x</dt>
 <dd><p>object supporting the <code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots()</a></code> method.</p></dd>
+
+
 <dt>variables</dt>
 <dd><p>optional subset of variables to show in the plot</p></dd>
+
+
 <dt>K</dt>
 <dd><p>number of uniformly spaced evaluation points for the ECDF or ECDFs. Affects
 the granularity of the plot and can significantly speed up the computation
 of the simultaneous confidence bands. Defaults to the smaller of number of
 ranks per variable and the maximum rank.</p></dd>
+
+
 <dt>gamma</dt>
 <dd><p>TODO</p></dd>
+
+
 <dt>prob</dt>
 <dd><p>the width of the plotted confidence interval for the ECDF.</p></dd>
+
+
 <dt>size</dt>
 <dd><p>size passed to <code><a href="https://ggplot2.tidyverse.org/reference/geom_ribbon.html" class="external-link">ggplot2::geom_ribbon()</a></code> for the confidence band</p></dd>
+
+
 <dt>alpha</dt>
 <dd><p>alpha level of the confidence band</p></dd>
+
+
 <dt>...</dt>
 <dd><p>additional arguments passed to <code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots()</a></code>.
 Most notably, if <code>x</code> is matrix, a <code>max_rank</code> parameter needs to be given.</p></dd>
+
+
 <dt>parameters</dt>
 <dd><p>DEPRECATED, use <code>variables</code> instead.</p></dd>
+
 </dl></div>
     <div id="details">
     <h2>Details</h2>
@@ -183,7 +200,7 @@ Most notably, if <code>x</code> is matrix, a <code>max_rank</code> parameter nee
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

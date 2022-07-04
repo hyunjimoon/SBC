@@ -34,7 +34,7 @@ Towards A Principled Bayesian Workflow."><!-- mathjax --><script src="https://cd
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -112,38 +112,51 @@ Mike Betancourt's
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">plot_contraction</span><span class="op">(</span>
-  <span class="va">x</span>,
-  <span class="va">prior_sd</span>,
-  variables <span class="op">=</span> <span class="cn">NULL</span>,
-  scale <span class="op">=</span> <span class="st">"sd"</span>,
-  alpha <span class="op">=</span> <span class="fl">0.8</span>,
-  parameters <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">plot_contraction</span><span class="op">(</span></span>
+<span>  <span class="va">x</span>,</span>
+<span>  <span class="va">prior_sd</span>,</span>
+<span>  variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  scale <span class="op">=</span> <span class="st">"sd"</span>,</span>
+<span>  alpha <span class="op">=</span> <span class="fl">0.8</span>,</span>
+<span>  parameters <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>x</dt>
 <dd><p>object containing results (a data.frame or <code><a href="SBC_results.html">SBC_results()</a></code> object).</p></dd>
+
+
 <dt>prior_sd</dt>
 <dd><p>a named vector of prior standard deviations for your variables.
 Either pass in analytically obtained values or use <code><a href="calculate_prior_sd.html">calculate_prior_sd()</a></code> to get an empirical estimate from
 an <code>SBC_datasets</code> object.</p></dd>
+
+
 <dt>variables</dt>
 <dd><p>variables to show in the plot or <code>NULL</code> to show all
 must correspond a field already computed in the results (most likely <code>"mean"</code> and <code>"median"</code>).</p></dd>
+
+
 <dt>scale</dt>
 <dd><p>which scale of variability you want to see - either <code>"sd"</code> for standard deviation
 or <code>"var"</code> for variance.</p></dd>
+
+
 <dt>alpha</dt>
 <dd><p>the alpha for the points</p></dd>
+
+
 <dt>parameters</dt>
 <dd><p>DEPRECATED, use <code>variables</code> instead.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>a ggplot2 plot object</p>
+    
+
+<p>a ggplot2 plot object</p>
     </div>
 
   </div>
@@ -158,7 +171,7 @@ or <code>"var"</code> for variance.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

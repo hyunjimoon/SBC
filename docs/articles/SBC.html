@@ -49,7 +49,7 @@
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -124,9 +124,10 @@
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Getting Started with SBC</h1>
-                        <h4 data-toc-skip class="author">Hyunji Moon, Martin Modrák, Shinyoung Kim</h4>
+                        <h4 data-toc-skip class="author">Hyunji Moon,
+Martin Modrák, Shinyoung Kim</h4>
             
-            <h4 data-toc-skip class="date">2022-05-17</h4>
+            <h4 data-toc-skip class="date">2022-07-04</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/SBC.Rmd" class="external-link"><code>vignettes/SBC.Rmd</code></a></small>
       <div class="hidden name"><code>SBC.Rmd</code></div>
@@ -138,50 +139,123 @@
 <div class="section level2">
 <h2 id="what-is-sbc">What is SBC?<a class="anchor" aria-label="anchor" href="#what-is-sbc"></a>
 </h2>
-<p>SBC stands for “simulation-based calibration” and it is a tool to validate statistical models and/or algorithms fitting those models. In SBC we are given a statistical model, a method to generate draws from the prior predictive distribution (i.e. generate simulated datasets that match the model’s priors + likelihood) and an algorithm that fits the model to data.</p>
-<p>The rough sketch of SBC is that we simulate some datasets and then for each simulated dataset:</p>
+<p>SBC stands for “simulation-based calibration” and it is a tool to
+validate statistical models and/or algorithms fitting those models. In
+SBC we are given a statistical model, a method to generate draws from
+the prior predictive distribution (i.e. generate simulated datasets that
+match the model’s priors + likelihood) and an algorithm that fits the
+model to data.</p>
+<p>The rough sketch of SBC is that we simulate some datasets and then
+for each simulated dataset:</p>
 <ol style="list-style-type: decimal">
-<li>Fit the model and obtain <span class="math inline">\(D\)</span> independent draws from the posterior.</li>
-<li>For each variable of interest, take the rank of the simulated value within the posterior draws
+<li>Fit the model and obtain <span class="math inline">\(D\)</span>
+independent draws from the posterior.</li>
+<li>For each variable of interest, take the rank of the simulated value
+within the posterior draws
 <ul>
-<li>Where rank is defined as the number of draws &lt; simulated value</li>
+<li>Where rank is defined as the number of draws &lt; simulated
+value</li>
 </ul>
 </li>
 </ol>
-<p>It can be shown that if model matched the generator and algorithm works correctly, then for each variable, the ranks obtained in SBC should be uniformly distributed between <span class="math inline">\(0\)</span> and <span class="math inline">\(D\)</span>. This corresponds quite directly to claims like “the posterior 84% credible interval should contain the simulated value in 84% of simulations”, the rank uniformity represents this claim for all interval widths at once. The theory of SBC is fully described in <a href="https://arxiv.org/abs/1804.06788" class="external-link">Talts et al.</a></p>
+<p>It can be shown that if model matched the generator and algorithm
+works correctly, then for each variable, the ranks obtained in SBC
+should be uniformly distributed between <span class="math inline">\(0\)</span> and <span class="math inline">\(D\)</span>. This corresponds quite directly to
+claims like “the posterior 84% credible interval should contain the
+simulated value in 84% of simulations”, the rank uniformity represents
+this claim for all interval widths at once. The theory of SBC is fully
+described in <a href="https://arxiv.org/abs/1804.06788" class="external-link">Talts et
+al.</a></p>
 <p>This opens two principal use-cases of SBC:</p>
 <ol style="list-style-type: lower-alpha">
-<li>We have an algorithm that we trust is correct and a generator and and we want to check that we correctly implemented our Bayesian model</li>
-<li>We have a generator and a model we trust and we want to check whether a given algorithm correctly computes the posterior.</li>
+<li>We have an algorithm that we trust is correct and a generator and
+and we want to check that we correctly implemented our Bayesian
+model</li>
+<li>We have a generator and a model we trust and we want to check
+whether a given algorithm correctly computes the posterior.</li>
 </ol>
-<p>In any case, a failure of SBC only tells us that at least one of the three pillars of our inference (generator/model/algorithm) is mismatched to others.</p>
-<p>In the context of larger Bayesian workflow (as discussed e.g. in <a href="https://arxiv.org/abs/2011.01808" class="external-link">Bayesian Workflow</a> by Gelman et al.  or <a href="https://betanalpha.github.io/assets/case_studies/principled_bayesian_workflow.html" class="external-link">Towards A Principled Bayesian Workflow</a> by Betancourt), SBC can be used to validate the implementation of a model/algorithm, which is just one of many things to check if one needs a robust analysis. In particular, SBC does not use any real data and thus cannot tell you anything about potential mismatch between your model and the actual data you plan to analyze. However, this is in some sense an advantage: if our model fails (e.g. we have convergence problems) on real data, we don’t know whether the problem is a bug in our model or a mismatch between the model and the data. If we simulate data exactly as the model assumes, any problem has to be a bug. Additionally, we can use SBC to better understand whether the data we plan to collect are actually capable of answering the questions we have.</p>
-<p>This vignette will demonstrate how the basic package interface can be used to run simulations, calculate ranks and investigate calibration.</p>
+<p>In any case, a failure of SBC only tells us that at least one of the
+three pillars of our inference (generator/model/algorithm) is mismatched
+to others.</p>
+<p>In the context of larger Bayesian workflow (as discussed e.g. in <a href="https://arxiv.org/abs/2011.01808" class="external-link">Bayesian Workflow</a> by Gelman
+et al.  or <a href="https://betanalpha.github.io/assets/case_studies/principled_bayesian_workflow.html" class="external-link">Towards
+A Principled Bayesian Workflow</a> by Betancourt), SBC can be used to
+validate the implementation of a model/algorithm, which is just one of
+many things to check if one needs a robust analysis. In particular, SBC
+does not use any real data and thus cannot tell you anything about
+potential mismatch between your model and the actual data you plan to
+analyze. However, this is in some sense an advantage: if our model fails
+(e.g. we have convergence problems) on real data, we don’t know whether
+the problem is a bug in our model or a mismatch between the model and
+the data. If we simulate data exactly as the model assumes, any problem
+has to be a bug. Additionally, we can use SBC to better understand
+whether the data we plan to collect are actually capable of answering
+the questions we have.</p>
+<p>This vignette will demonstrate how the basic package interface can be
+used to run simulations, calculate ranks and investigate
+calibration.</p>
 </div>
 <div class="section level2">
 <h2 id="aims-of-the-package">Aims of the package<a class="anchor" aria-label="anchor" href="#aims-of-the-package"></a>
 </h2>
-<p>The SBC package aims to provide a richer and more usable alternative to <code><a href="https://mc-stan.org/rstan/reference/sbc.html" class="external-link">rstan::sbc()</a></code>. The main design goals is to make it easy to incorporate SBC in your everyday modelling workflow. To this end:</p>
+<p>The SBC package aims to provide a richer and more usable alternative
+to <code><a href="https://mc-stan.org/rstan/reference/sbc.html" class="external-link">rstan::sbc()</a></code>. The main design goals is to make it easy
+to incorporate SBC in your everyday modelling workflow. To this end:</p>
 <ul>
 <li>No changes to your model are needed to test it with SBC.</li>
-<li>Once you have your model and code to simulate data ready, it is easy to gradually move from 1 simulation to check your model does not crash to 1000 simulations that can resolve even small inaccuracies.</li>
+<li>Once you have your model and code to simulate data ready, it is easy
+to gradually move from 1 simulation to check your model does not crash
+to 1000 simulations that can resolve even small inaccuracies.</li>
 </ul>
-<p>We intentionally do not focus on mechanisms that would let you automatically construct a simulator just from your model: if we did that, any bugs in your model would automatically carry over to the simulator and the SBC would only check that the algorithm works. Instead we believe it is good practice to implement the simulator in the most easy way possible while altering aspects of the implementation that should not matter (e.g. for loops vs. matrix multiplication). The best solution would be to have one person write the simulator and a different person the model (though that would often be impractical). This way you get two independent pieces of code that should correspond to the same data generating process and it becomes less likely that there is the same mistake in both versions. A mistake that is in just one version can then be (at least in principle) caught by SBC.</p>
-<p>This is actually a well known pattern in software safety: critical components in airplanes are required to have two completely independent implementations of the same software (or even hardware) and the system checks that both produce the same output for the same input. Similarly, pharmaceutical companies analyzing drug trials are required to have the data analysis pipeline written by two separate teams and the results of both must match (this is not required for academic trials - who would need safety there, right?). The main reason this method is used relatively rarely is that implementing the same thing twice is costly. But statistical models are usually relatively small pieces of code and the added cost of the second implementation (the generator) thus tends to very small.</p>
+<p>We intentionally do not focus on mechanisms that would let you
+automatically construct a simulator just from your model: if we did
+that, any bugs in your model would automatically carry over to the
+simulator and the SBC would only check that the algorithm works. Instead
+we believe it is good practice to implement the simulator in the most
+easy way possible while altering aspects of the implementation that
+should not matter (e.g. for loops vs. matrix multiplication). The best
+solution would be to have one person write the simulator and a different
+person the model (though that would often be impractical). This way you
+get two independent pieces of code that should correspond to the same
+data generating process and it becomes less likely that there is the
+same mistake in both versions. A mistake that is in just one version can
+then be (at least in principle) caught by SBC.</p>
+<p>This is actually a well known pattern in software safety: critical
+components in airplanes are required to have two completely independent
+implementations of the same software (or even hardware) and the system
+checks that both produce the same output for the same input. Similarly,
+pharmaceutical companies analyzing drug trials are required to have the
+data analysis pipeline written by two separate teams and the results of
+both must match (this is not required for academic trials - who would
+need safety there, right?). The main reason this method is used
+relatively rarely is that implementing the same thing twice is costly.
+But statistical models are usually relatively small pieces of code and
+the added cost of the second implementation (the generator) thus tends
+to very small.</p>
 </div>
 <div class="section level2">
 <h2 id="naming">Naming<a class="anchor" aria-label="anchor" href="#naming"></a>
 </h2>
-<p>To avoid confusion the package and the docs tries to consistently give the same meaning to the following potentially ambiguous words:</p>
+<p>To avoid confusion the package and the docs tries to consistently
+give the same meaning to the following potentially ambiguous words:</p>
 <ul>
 <li>
-<em>variable</em> All quantities of interest for SBC - this includes both parameters that are directly estimated by the model and quantities derived from those parameters.</li>
+<em>variable</em> All quantities of interest for SBC - this includes
+both parameters that are directly estimated by the model and quantities
+derived from those parameters.</li>
 <li>
-<em>draws</em> are assumed to come from either a single realized posterior distribution of a fitted model or the prior distribution of the model. The number of draws ( <code>n_draws</code>) is the number of posterior draws produced by fitting the model.</li>
+<em>draws</em> are assumed to come from either a single realized
+posterior distribution of a fitted model or the prior distribution of
+the model. The number of draws ( <code>n_draws</code>) is the number of
+posterior draws produced by fitting the model.</li>
 <li>
-<em>simulation</em> / <em>sim</em> a set of simulated values for all variables and the accompanying generated data. I.e. the number of simulations (<code>n_sims</code>) is the number of times an individual model is fitted</li>
+<em>simulation</em> / <em>sim</em> a set of simulated values for all
+variables and the accompanying generated data. I.e. the number of
+simulations (<code>n_sims</code>) is the number of times an individual
+model is fitted</li>
 <li>
-<em>fit</em> represents the result of fitting a single simulation</li>
+<em>fit</em> represents the result of fitting a single
+simulation</li>
 </ul>
 </div>
 <div class="section level2">
@@ -190,52 +264,77 @@
 <div class="figure">
 <img src="overview_wide.png" alt=""><p class="caption">Overview of the package structure</p>
 </div>
-<p>To perform SBC, one needs to first generate simulated datasets and then fit the model to those simulations. The <code>SBC_datasets</code> object holds the simulated prior and data draws. <code>SBC_datasets</code> objects can be created directly by the user, but it is often easier to use one of provided <em>Generator</em> implementations that let you e.g. wrap a function that returns the variables and observed data for a single simulation or use a <code>brms</code> specification to generate draws corresponding to a given <code>brms</code> model.</p>
-<p>The other big part of the process is a <em>backend</em>. The SBC package uses a backend object to actually fit the model to the simulated data and generate posterior draws. In short, backend bundles together the algorithm in which inference is run (<code>cmdstanr</code>, <code>rstan</code>, <code>brms</code>, <code>jags</code>, etc.), the model, and additional platform-specific inference parameters which are necessary to run inference for the model-platform combination (e.g. number of iterations, initial values, …). In other words backend is a function that takes data as its only input and provides posterior draws.</p>
-<p>Once we have a backend and an <code>SBC_datasets</code> instance, we can call <code>compute_SBC</code> to actually perform the SBC. The resulting object can then be passed to various plotting and summarising functions to let us easily learn if our model works as expected.</p>
+<p>To perform SBC, one needs to first generate simulated datasets and
+then fit the model to those simulations. The <code>SBC_datasets</code>
+object holds the simulated prior and data draws.
+<code>SBC_datasets</code> objects can be created directly by the user,
+but it is often easier to use one of provided <em>Generator</em>
+implementations that let you e.g. wrap a function that returns the
+variables and observed data for a single simulation or use a
+<code>brms</code> specification to generate draws corresponding to a
+given <code>brms</code> model.</p>
+<p>The other big part of the process is a <em>backend</em>. The SBC
+package uses a backend object to actually fit the model to the simulated
+data and generate posterior draws. In short, backend bundles together
+the algorithm in which inference is run (<code>cmdstanr</code>,
+<code>rstan</code>, <code>brms</code>, <code>jags</code>, etc.), the
+model, and additional platform-specific inference parameters which are
+necessary to run inference for the model-platform combination
+(e.g. number of iterations, initial values, …). In other words backend
+is a function that takes data as its only input and provides posterior
+draws.</p>
+<p>Once we have a backend and an <code>SBC_datasets</code> instance, we
+can call <code>compute_SBC</code> to actually perform the SBC. The
+resulting object can then be passed to various plotting and summarising
+functions to let us easily learn if our model works as expected.</p>
 </div>
 <div class="section level2">
 <h2 id="simple-poisson-regression">Simple Poisson Regression<a class="anchor" aria-label="anchor" href="#simple-poisson-regression"></a>
 </h2>
-<p>In this vignette we will demonstrate how the interface is used with a simple poisson model. First we’ll setup and configure our environment.</p>
+<p>In this vignette we will demonstrate how the interface is used with a
+simple poisson model. First we’ll setup and configure our
+environment.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://hyunjimoon.github.io/SBC/">SBC</a></span><span class="op">)</span>;
-
-<span class="va">use_cmdstanr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"SBC.vignettes_cmdstanr"</span>, <span class="cn">TRUE</span><span class="op">)</span> <span class="co"># Set to false to use rstan instead</span>
-
-<span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span>
-<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/" class="external-link">rstan</a></span><span class="op">)</span>
-  <span class="fu"><a href="https://mc-stan.org/rstan/reference/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
-<span class="op">}</span>
-
-<span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
-
-<span class="co"># Enabling parallel processing via future</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span>
-<span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span><span class="op">)</span>
-
-<span class="co"># The fits are very fast,</span>
-<span class="co"># so we force a minimum chunk size to reduce overhead of</span>
-<span class="co"># paralellization and decrease computation time.</span>
-<span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>SBC.min_chunk_size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>
-
-<span class="co"># Setup caching of results</span>
-<span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./_basic_usage_SBC_cache"</span>
-<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./_basic_usage_rstan_SBC_cache"</span>
-<span class="op">}</span>
-<span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span>
-<span class="op">}</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://hyunjimoon.github.io/SBC/">SBC</a></span><span class="op">)</span>;</span>
+<span></span>
+<span><span class="va">use_cmdstanr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"SBC.vignettes_cmdstanr"</span>, <span class="cn">TRUE</span><span class="op">)</span> <span class="co"># Set to false to use rstan instead</span></span>
+<span></span>
+<span><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span></span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/" class="external-link">rstan</a></span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://mc-stan.org/rstan/reference/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Enabling parallel processing via future</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The fits are very fast,</span></span>
+<span><span class="co"># so we force a minimum chunk size to reduce overhead of</span></span>
+<span><span class="co"># paralellization and decrease computation time.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>SBC.min_chunk_size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Setup caching of results</span></span>
+<span><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./_basic_usage_SBC_cache"</span></span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="st">"./_basic_usage_rstan_SBC_cache"</span></span>
+<span><span class="op">}</span></span>
+<span><span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="model-setup">Model Setup<a class="anchor" aria-label="anchor" href="#model-setup"></a>
 </h3>
-<p>We will be running SBC against a model that defines <code>y ~ Poisson(lambda)</code>, where <code>lambda ~ Gamma(15, 5)</code>. We will use the following Stan model:</p>
+<p>We will be running SBC against a model that defines
+<code>y ~ Poisson(lambda)</code>, where
+<code>lambda ~ Gamma(15, 5)</code>. We will use the following Stan
+model:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data{
   int N;
   int y[N];
@@ -248,128 +347,189 @@ model{
   y ~ poisson(lambda);
 }</code></pre>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">cmdstan_model</span> <span class="op">&lt;-</span> <span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span>
-<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="va">rstan_model</span> <span class="op">&lt;-</span> <span class="fu">rstan</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span>
-<span class="op">}</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">cmdstan_model</span> <span class="op">&lt;-</span> <span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span></span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="va">rstan_model</span> <span class="op">&lt;-</span> <span class="fu">rstan</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="generator">Generator<a class="anchor" aria-label="anchor" href="#generator"></a>
 </h3>
-<p>Once we have defined the model, we can create a generator function which will generate prior and data draws:</p>
+<p>Once we have defined the model, we can create a generator function
+which will generate prior and data draws:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># A generator function should return a named list containing elements "variables" and "generated"</span>
-
-<span class="va">poisson_generator_single</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">{</span>  <span class="co"># N is the number of data points we are generating</span>
-  <span class="va">lambda</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">rgamma</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, shape <span class="op">=</span> <span class="fl">15</span>, rate <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>
-  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span>n <span class="op">=</span> <span class="va">N</span>, lambda <span class="op">=</span> <span class="va">lambda</span><span class="op">)</span>
-  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-      lambda <span class="op">=</span> <span class="va">lambda</span>
-    <span class="op">)</span>,
-    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>
-      N <span class="op">=</span> <span class="va">N</span>,
-      y <span class="op">=</span> <span class="va">y</span>
-    <span class="op">)</span>
-  <span class="op">)</span>
-<span class="op">}</span></code></pre></div>
-<p>As you can see, the generator returns a named list containing random draws from the prior and generated data realized from the prior draws - the data are already in the format expected by Stan.</p>
+<code class="sourceCode R"><span><span class="co"># A generator function should return a named list containing elements "variables" and "generated"</span></span>
+<span></span>
+<span><span class="va">poisson_generator_single</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">{</span>  <span class="co"># N is the number of data points we are generating</span></span>
+<span>  <span class="va">lambda</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">rgamma</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, shape <span class="op">=</span> <span class="fl">15</span>, rate <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span>n <span class="op">=</span> <span class="va">N</span>, lambda <span class="op">=</span> <span class="va">lambda</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>      lambda <span class="op">=</span> <span class="va">lambda</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>      N <span class="op">=</span> <span class="va">N</span>,</span>
+<span>      y <span class="op">=</span> <span class="va">y</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>As you can see, the generator returns a named list containing random
+draws from the prior and generated data realized from the prior draws -
+the data are already in the format expected by Stan.</p>
 </div>
 <div class="section level3">
 <h3 id="create-sbc_datasets-from-generator">Create <code>SBC_datasets</code> from generator<a class="anchor" aria-label="anchor" href="#create-sbc_datasets-from-generator"></a>
 </h3>
-<p><code>SBC</code> provides helper functions <code>SBC_generator_function</code> and <code>generate_datasets</code> which takes a generator function and calls it repeatedly to create a valid <code>SBC_datasets</code> object.</p>
+<p><code>SBC</code> provides helper functions
+<code>SBC_generator_function</code> and <code>generate_datasets</code>
+which takes a generator function and calls it repeatedly to create a
+valid <code>SBC_datasets</code> object.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">54882235</span><span class="op">)</span>
-<span class="va">n_sims</span> <span class="op">&lt;-</span> <span class="fl">100</span>  <span class="co"># Number of SBC iterations to run</span>
-
-<span class="va">poisson_generator</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">poisson_generator_single</span>, N <span class="op">=</span> <span class="fl">40</span><span class="op">)</span>
-<span class="va">poisson_dataset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span>
-  <span class="va">poisson_generator</span>, 
-  <span class="va">n_sims</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">54882235</span><span class="op">)</span></span>
+<span><span class="va">n_sims</span> <span class="op">&lt;-</span> <span class="fl">100</span>  <span class="co"># Number of SBC iterations to run</span></span>
+<span></span>
+<span><span class="va">poisson_generator</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">poisson_generator_single</span>, N <span class="op">=</span> <span class="fl">40</span><span class="op">)</span></span>
+<span><span class="va">poisson_dataset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span></span>
+<span>  <span class="va">poisson_generator</span>, </span>
+<span>  <span class="va">n_sims</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="defining-backend">Defining backend<a class="anchor" aria-label="anchor" href="#defining-backend"></a>
 </h3>
-<p>Once we have the model compiled we’ll create a backend object from the model. <code>SBC</code> includes pre-defined backend objects for HMC sampling with <code>cmdstan</code> and <code>rstan</code>. In addition, it also provides generator function and backend for <code>brms</code> based models.</p>
-<p>Note that you can create your own backend if you wish to use a different sampling/optimization platform, such as variational inference or JAGS.</p>
-<p>Here we’ll just use the pre-defined cmdstan backend, in which we pass our compiled model and any additional arguments we would like to pass over to the sampling method:</p>
+<p>Once we have the model compiled we’ll create a backend object from
+the model. <code>SBC</code> includes pre-defined backend objects for HMC
+sampling with <code>cmdstan</code> and <code>rstan</code>. In addition,
+it also provides generator function and backend for <code>brms</code>
+based models.</p>
+<p>Note that you can create your own backend if you wish to use a
+different sampling/optimization platform, such as variational inference
+or JAGS.</p>
+<p>Here we’ll just use the pre-defined cmdstan backend, in which we pass
+our compiled model and any additional arguments we would like to pass
+over to the sampling method:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span>
-  <span class="va">poisson_backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span>
-    <span class="va">cmdstan_model</span>, iter_warmup <span class="op">=</span> <span class="fl">1000</span>, iter_sampling <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>
-<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
-  <span class="va">poisson_backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span>
-    <span class="va">rstan_model</span>, iter <span class="op">=</span> <span class="fl">2000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>  
-<span class="op">}</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">poisson_backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span></span>
+<span>    <span class="va">cmdstan_model</span>, iter_warmup <span class="op">=</span> <span class="fl">1000</span>, iter_sampling <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="va">poisson_backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span></span>
+<span>    <span class="va">rstan_model</span>, iter <span class="op">=</span> <span class="fl">2000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>  </span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="computing-ranks">Computing Ranks<a class="anchor" aria-label="anchor" href="#computing-ranks"></a>
 </h3>
-<p>we can then use <code>compute_SBC</code> to fit our simulations with the backend:</p>
+<p>we can then use <code>compute_SBC</code> to fit our simulations with
+the backend:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">poisson_dataset</span>, <span class="va">poisson_backend</span>, 
-                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, 
-                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"results"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code><span class="co">## Results loaded from cache file 'results'</span></code></pre>
-<p>Here we also use the caching feature to avoid recomputing the fits when recompiling this vignette. In practice, caching is not necessary but is often useful.</p>
+<code class="sourceCode R"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">poisson_dataset</span>, <span class="va">poisson_backend</span>, </span>
+<span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
+<span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"results"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##  - 1 (1%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.015.</span></span></code></pre>
+<pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
+<span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
+<span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
+<p>Here we also use the caching feature to avoid recomputing the fits
+when recompiling this vignette. In practice, caching is not necessary
+but is often useful.</p>
 </div>
 <div class="section level3">
 <h3 id="viewing-results">Viewing Results<a class="anchor" aria-label="anchor" href="#viewing-results"></a>
 </h3>
-<p>We can now inspect the results to see if there were any errors and check individual stats:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">results</span><span class="op">$</span><span class="va">stats</span></code></pre></div>
-<pre><code><span class="co">## <span style="color: #949494;"># A tibble: 100 x 15</span></span>
-<span class="co">##    sim_id variable simulated_value  rank z_score  mean median    sd   mad    q5</span>
-<span class="co">##     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="co">## <span style="color: #BCBCBC;"> 1</span>      1 lambda              1.44    10  -<span style="color: #BB0000;">1.46</span>   1.74   1.73 0.202 0.200  1.42</span>
-<span class="co">## <span style="color: #BCBCBC;"> 2</span>      2 lambda              2.99    74  -<span style="color: #BB0000;">0.226</span>  3.05   3.04 0.265 0.262  2.63</span>
-<span class="co">## <span style="color: #BCBCBC;"> 3</span>      3 lambda              2.51    44  -<span style="color: #BB0000;">0.740</span>  2.69   2.68 0.249 0.253  2.29</span>
-<span class="co">## <span style="color: #BCBCBC;"> 4</span>      4 lambda              2.86    59  -<span style="color: #BB0000;">0.666</span>  3.04   3.03 0.265 0.256  2.63</span>
-<span class="co">## <span style="color: #BCBCBC;"> 5</span>      5 lambda              2.97   181   1.28   2.66   2.66 0.244 0.244  2.27</span>
-<span class="co">## <span style="color: #BCBCBC;"> 6</span>      6 lambda              2.54   149   0.776  2.36   2.36 0.236 0.240  1.97</span>
-<span class="co">## <span style="color: #BCBCBC;"> 7</span>      7 lambda              2.65    17  -<span style="color: #BB0000;">1.48</span>   3.04   3.03 0.268 0.274  2.61</span>
-<span class="co">## <span style="color: #BCBCBC;"> 8</span>      8 lambda              2.99   125   0.319  2.91   2.90 0.258 0.263  2.49</span>
-<span class="co">## <span style="color: #BCBCBC;"> 9</span>      9 lambda              2.55    20  -<span style="color: #BB0000;">1.22</span>   2.87   2.86 0.255 0.250  2.46</span>
-<span class="co">## <span style="color: #BCBCBC;">10</span>     10 lambda              1.73     9  -<span style="color: #BB0000;">1.54</span>   2.05   2.04 0.211 0.205  1.70</span>
-<span class="co">## <span style="color: #949494;"># ... with 90 more rows, and 5 more variables: q95 &lt;dbl&gt;, rhat &lt;dbl&gt;,</span></span>
-<span class="co">## <span style="color: #949494;">#   ess_bulk &lt;dbl&gt;, ess_tail &lt;dbl&gt;, max_rank &lt;int&gt;</span></span></code></pre>
+<p>We can now inspect the results to see if there were any errors and
+check individual stats:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">results</span><span class="op">$</span><span class="va">stats</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 100 × 15</span></span></span>
+<span><span class="co">##    sim_id variable simulated_value  rank z_score  mean median    sd   mad    q5</span></span>
+<span><span class="co">##     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 1</span>      1 lambda              1.44    10  -<span style="color: #BB0000;">1.46</span>   1.74   1.73 0.202 0.200  1.42</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 2</span>      2 lambda              2.99    74  -<span style="color: #BB0000;">0.226</span>  3.05   3.04 0.265 0.262  2.63</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 3</span>      3 lambda              2.51    44  -<span style="color: #BB0000;">0.740</span>  2.69   2.68 0.249 0.253  2.29</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 4</span>      4 lambda              2.86    59  -<span style="color: #BB0000;">0.666</span>  3.04   3.03 0.265 0.256  2.63</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 5</span>      5 lambda              2.97   181   1.28   2.66   2.66 0.244 0.244  2.27</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 6</span>      6 lambda              2.54   157   0.819  2.35   2.35 0.237 0.246  1.97</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 7</span>      7 lambda              2.65    17  -<span style="color: #BB0000;">1.48</span>   3.04   3.03 0.268 0.274  2.61</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 8</span>      8 lambda              2.99   125   0.319  2.91   2.90 0.258 0.263  2.49</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 9</span>      9 lambda              2.55    20  -<span style="color: #BB0000;">1.22</span>   2.87   2.86 0.255 0.250  2.46</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">10</span>     10 lambda              1.73     8  -<span style="color: #BB0000;">1.56</span>   2.05   2.04 0.209 0.211  1.71</span></span>
+<span><span class="co">## <span style="color: #949494;"># … with 90 more rows, and 5 more variables: q95 &lt;dbl&gt;, rhat &lt;dbl&gt;,</span></span></span>
+<span><span class="co">## <span style="color: #949494;">#   ess_bulk &lt;dbl&gt;, ess_tail &lt;dbl&gt;, max_rank &lt;int&gt;</span></span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="plots">Plots<a class="anchor" aria-label="anchor" href="#plots"></a>
 </h3>
-<p>And finally, we can plot the rank distribution to check if the ranks are uniformly distributed. We can check the rank histogram and ECDF plots (see <code><a href="../articles/rank_visualizations.html">vignette("rank_visualizations")</a></code> for description of the plots):</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></code></pre></div>
-<p><img src="SBC_files/figure-html/rank_hist-1.png" width="700"></p>
+<p>And finally, we can plot the rank distribution to check if the ranks
+are uniformly distributed. We can check the rank histogram and ECDF
+plots (see <code><a href="../articles/rank_visualizations.html">vignette("rank_visualizations")</a></code> for description
+of the plots):</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></code></pre></div>
-<p><img src="SBC_files/figure-html/ecdf-1.png" width="700"></p>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
+<p><img src="SBC_files/figure-html/rank_hist-1.png" width="700"></p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
+<p><img src="SBC_files/figure-html/ecdf-1.png" width="700"></p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
 <p><img src="SBC_files/figure-html/ecdf_diff-1.png" width="700"></p>
-<p>Since our simulator and model do match and Stan works well, we see that the plots don’t show any violation.</p>
+<p>Since our simulator and model do match and Stan works well, we see
+that the plots don’t show any violation.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="is-sbc-frequentist">Is SBC frequentist?<a class="anchor" aria-label="anchor" href="#is-sbc-frequentist"></a>
 </h2>
-<p>A bit of philosophy at the end - SBC is designed to test Bayesian models and/or algorithms, but it fits very well with standard frequentist ideas (and there is no shame about this). In fact, SBC can be understood as a very pure form of hypothesis testing as the “null hypothesis” that the ranks are uniformly distributed is completely well specified, can (beyond numerical error) actually hold exactly and we are conducting the test against a hypothesis of interest. SBC thus lets us follow a simple naive-Popperian way of thinking: we try hard to disprove a hypothesis (that our model + algorithm + generator is correct) and when we fail to disprove it, we can consider the hypothesis corroborated to the extent our test was severe. This is unlike many scientific applications of hypothesis testing where people use a rejection of the null hypothesis as evidence for alternative (which is usually not warranted).</p>
-<p>We currently can’t provide a good theoretical understanding of the severity of a given SBC test, but obviously the more iterations and the narrower the confidence bands of the <code>ecdf</code> and <code>ecdf_diff</code> plots, the more severe the test. One can also use <code><a href="../reference/empirical_coverage.html">empirical_coverage()</a></code> and <code><a href="../reference/plot_coverage.html">plot_coverage()</a></code> functions to investigate the extent of miscalibration that we cannot rule out given our results so far.</p>
-<p>Alternatively, one can somewhat sidestep the discussions about philosophy of statistics and understand SBC as a probabilistic unit test for your model. In this view, SBC tests a certain identity that we expect to hold if our system is implemented correctly, similarly how one could test an implementation of an arithmetical system by comparing the results of computing <span class="math inline">\((x + y)^2\)</span> and <span class="math inline">\(x^2 + 2xy + y^2\)</span> - any mismatch means the test failed.</p>
+<p>A bit of philosophy at the end - SBC is designed to test Bayesian
+models and/or algorithms, but it fits very well with standard
+frequentist ideas (and there is no shame about this). In fact, SBC can
+be understood as a very pure form of hypothesis testing as the “null
+hypothesis” that the ranks are uniformly distributed is completely well
+specified, can (beyond numerical error) actually hold exactly and we are
+conducting the test against a hypothesis of interest. SBC thus lets us
+follow a simple naive-Popperian way of thinking: we try hard to disprove
+a hypothesis (that our model + algorithm + generator is correct) and
+when we fail to disprove it, we can consider the hypothesis corroborated
+to the extent our test was severe. This is unlike many scientific
+applications of hypothesis testing where people use a rejection of the
+null hypothesis as evidence for alternative (which is usually not
+warranted).</p>
+<p>We currently can’t provide a good theoretical understanding of the
+severity of a given SBC test, but obviously the more iterations and the
+narrower the confidence bands of the <code>ecdf</code> and
+<code>ecdf_diff</code> plots, the more severe the test. One can also use
+<code><a href="../reference/empirical_coverage.html">empirical_coverage()</a></code> and <code><a href="../reference/plot_coverage.html">plot_coverage()</a></code>
+functions to investigate the extent of miscalibration that we cannot
+rule out given our results so far.</p>
+<p>Alternatively, one can somewhat sidestep the discussions about
+philosophy of statistics and understand SBC as a probabilistic unit test
+for your model. In this view, SBC tests a certain identity that we
+expect to hold if our system is implemented correctly, similarly how one
+could test an implementation of an arithmetical system by comparing the
+results of computing <span class="math inline">\((x + y)^2\)</span> and
+<span class="math inline">\(x^2 + 2xy + y^2\)</span> - any mismatch
+means the test failed.</p>
 </div>
 <div class="section level2">
 <h2 id="where-to-go-next">Where to go next?<a class="anchor" aria-label="anchor" href="#where-to-go-next"></a>
 </h2>
-<p>You may want to explore short examples showing how SBC can be used to diagnose <a href="https://hyunjimoon.github.io/SBC/articles/bad_parametrization.html">bad parametrization</a> or <a href="https://hyunjimoon.github.io/SBC/articles/indexing.html">indexing bugs</a> or you may want to read through a longer example of what we consider best practice in <a href="https://hyunjimoon.github.io/SBC/articles/small_model_workflow.html">model-building workflow</a>.</p>
-<p>Alternatively, you might be interested in the <a href="https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html">limits of SBC</a> — the types of problems that are hard / impossible to catch with SBC and what can we do to guard against those.</p>
+<p>You may want to explore short examples showing how SBC can be used to
+diagnose <a href="https://hyunjimoon.github.io/SBC/articles/bad_parametrization.html">bad
+parametrization</a> or <a href="https://hyunjimoon.github.io/SBC/articles/indexing.html">indexing
+bugs</a> or you may want to read through a longer example of what we
+consider best practice in <a href="https://hyunjimoon.github.io/SBC/articles/small_model_workflow.html">model-building
+workflow</a>.</p>
+<p>Alternatively, you might be interested in the <a href="https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html">limits
+of SBC</a> — the types of problems that are hard / impossible to catch
+with SBC and what can we do to guard against those.</p>
 </div>
 <div class="section level2">
 <h2 id="acknowledgements">Acknowledgements<a class="anchor" aria-label="anchor" href="#acknowledgements"></a>
 </h2>
-<p>Development of this package was supported by <a href="https://www.elixir-czech.cz/" class="external-link">ELIXIR CZ</a> research infrastructure project (Ministry of Youth, Education and Sports of the Czech Republic, Grant No: LM2018131) including access to computing and storage facilities.</p>
+<p>Development of this package was supported by <a href="https://www.elixir-czech.cz/" class="external-link">ELIXIR CZ</a> research
+infrastructure project (Ministry of Youth, Education and Sports of the
+Czech Republic, Grant No: LM2018131) including access to computing and
+storage facilities.</p>
 </div>
   </div>
 
@@ -390,7 +550,7 @@ model{
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer>

@@ -32,7 +32,7 @@
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -108,34 +108,47 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">SBC_backend_rjags</span><span class="op">(</span>
-  <span class="va">file</span>,
-  <span class="va">n.iter</span>,
-  <span class="va">n.burnin</span>,
-  <span class="va">variable.names</span>,
-  thin <span class="op">=</span> <span class="fl">1</span>,
-  na.rm <span class="op">=</span> <span class="cn">TRUE</span>,
-  <span class="va">...</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">SBC_backend_rjags</span><span class="op">(</span></span>
+<span>  <span class="va">file</span>,</span>
+<span>  <span class="va">n.iter</span>,</span>
+<span>  <span class="va">n.burnin</span>,</span>
+<span>  <span class="va">variable.names</span>,</span>
+<span>  thin <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  na.rm <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>file</dt>
 <dd><p>model file or connection to model code (passed to <code><a href="https://rdrr.io/pkg/rjags/man/jags.model.html" class="external-link">rjags::jags.model()</a></code>)</p></dd>
+
+
 <dt>n.iter</dt>
 <dd><p>number of iterations for sampling (passed to [rjags::coda.samples())</p></dd>
+
+
 <dt>n.burnin</dt>
 <dd><p>number of iterations used for burnin</p></dd>
+
+
 <dt>variable.names</dt>
 <dd><p>names of variables to monitor (passed to <code><a href="https://rdrr.io/pkg/rjags/man/coda.samples.html" class="external-link">rjags::coda.samples()</a></code>)</p></dd>
+
+
 <dt>thin</dt>
 <dd><p>thinning (passed to <code><a href="https://rdrr.io/pkg/rjags/man/coda.samples.html" class="external-link">rjags::coda.samples()</a></code>)</p></dd>
+
+
 <dt>na.rm</dt>
 <dd><p>whether to omit variables containing NA (passed to <code><a href="https://rdrr.io/pkg/rjags/man/coda.samples.html" class="external-link">rjags::coda.samples()</a></code>)</p></dd>
+
+
 <dt>...</dt>
 <dd><p>additional optional arguments passed to <code><a href="https://rdrr.io/pkg/rjags/man/jags.model.html" class="external-link">rjags::jags.model()</a></code></p><ul><li><p>most notably <code>n.chains</code>, <code>n.adapt</code> and <code>inits</code>.</p></li>
 </ul></dd>
+
 </dl></div>
 
   </div>
@@ -150,7 +163,7 @@
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

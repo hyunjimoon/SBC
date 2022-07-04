@@ -32,7 +32,7 @@
   <a href="../reference/index.html">Functions</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
      
     <span class="caret"></span>
@@ -108,7 +108,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">generate_datasets</span><span class="op">(</span><span class="va">generator</span>, <span class="va">n_sims</span>, n_datasets <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">generate_datasets</span><span class="op">(</span><span class="va">generator</span>, <span class="va">n_sims</span>, n_datasets <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -116,14 +116,24 @@
     <dl><dt>generator</dt>
 <dd><p>a generator object - build e.g. via <code>SBC_generator_function</code> or
 <code>SBC_generator_brms</code>.</p></dd>
+
+
 <dt>n_sims</dt>
 <dd><p>the number of simulated datasets to use</p></dd>
+
+
 <dt>n_datasets</dt>
 <dd><p>DEPRECATED, use <code>n_sims</code> instead.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>object of class <code>SBC_datasets</code>TODO: seed</p>
+    
+
+<p>object of class <code>SBC_datasets</code></p>
+
+
+<p>TODO: seed</p>
     </div>
 
   </div>
@@ -138,7 +148,7 @@
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>
