@@ -72,7 +72,9 @@ test_that("subset_bind", {
     remove_sim_id_names <- function(x) {
         names(x$stats$sim_id) <- NULL
         names(x$default_diagnostics$sim_id) <- NULL
-        names(x$backend_diagnostics$sim_id) <- NULL
+        if(!is.null(x$backend_diagnostics)) {
+          names(x$backend_diagnostics$sim_id) <- NULL
+        }
         x
     }
 
@@ -80,6 +82,24 @@ test_that("subset_bind", {
     expect_equal(res, remove_sim_id_names(bind_results(res[1:2], res[3])))
     expect_equal(remove_sim_id_names(res[3:1]), remove_sim_id_names(bind_results(res[3:2], res[1])))
     expect_equal(remove_sim_id_names(res[2]), remove_sim_id_names(((res[2:3])[1])))
+
+    # The same, but with some NULLs
+    res2 <- SBC_results(stats = data.frame(sim_id = rep(1:3, each = 4), s = 1:12),
+                       fits = list("A", NULL, "C"),
+                       outputs = rep(list(NULL), 3),
+                       warnings = rep(list(NULL), 3),
+                       messages = rep(list(NULL), 3),
+                       errors = rep(list(NULL), 3),
+                       default_diagnostics = data.frame(sim_id = 1:3, qq = rnorm(3)),
+                       backend_diagnostics = NULL
+    )
+
+    expect_equal(res2, remove_sim_id_names(bind_results(res2[1], res2[2:3])))
+    expect_equal(res2, remove_sim_id_names(bind_results(res2[1:2], res2[3])))
+    expect_equal(remove_sim_id_names(res2[3:1]), remove_sim_id_names(bind_results(res2[3:2], res2[1])))
+    expect_equal(remove_sim_id_names(res2[2]), remove_sim_id_names(((res2[2:3])[1])))
+
+
 })
 
 test_that("calculate_ranks_draws_matrix works", {

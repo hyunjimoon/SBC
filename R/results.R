@@ -62,7 +62,7 @@ validate_SBC_results <- function(x) {
   }
 
   if(!is.data.frame(x$default_diagnostics)) {
-    stop("If the SBC_results object has a 'default_diagnostics' field, it has to inherit from data.frame")
+    stop("The SBC_results needs a 'default_diagnostics' field, and it has to inherit from data.frame")
   }
 
   # Ensure backwards compatibility
@@ -183,10 +183,17 @@ bind_results <- function(...) {
 
   # Combines multiple data frame objects and then sorts by sim_id
   bind_and_rearrange_df <- function(df_list) {
-    dplyr::arrange(
-      do.call(rbind, df_list),
-      sim_id
-    )
+    null_dfs <- purrr::map_lgl(df_list, is.null)
+    if(all(null_dfs)) {
+      NULL
+    } else if(any(null_dfs)) {
+      stop("Binding results where NULL and non-NULL components are mixed is not yet supported.")
+    } else {
+      dplyr::arrange(
+        do.call(rbind, df_list),
+        sim_id
+      )
+    }
   }
 
   # Apply the shifts of IDs to individual stats/diagnostics data frames
