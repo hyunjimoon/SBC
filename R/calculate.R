@@ -1,4 +1,5 @@
 
+# Note that this function is memoized in .onLoad
 adjust_gamma <- function(N, L, K=N, conf_level=0.95) {
   if (any(c(K, N, L) < 1)) {
     abort("Parameters 'N', 'L' and 'K' must be positive integers.")

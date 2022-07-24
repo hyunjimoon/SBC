@@ -43,7 +43,8 @@ Imports:
     dplyr,
     tidyr,
     tidyselect,
-    purrr
+    purrr,
+    memoise
 Suggests: 
     testthat,
     cmdstanr (>= 0.4.0),
