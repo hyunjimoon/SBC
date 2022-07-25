@@ -30,9 +30,6 @@ ensure that this number divides the total number of SBC ranks (see Details).}
 An S3 object of class \code{SBC_results} with updated \verb{$stats} and \verb{$default_diagnostics} fields.
 }
 \description{
-Recompute SBC statistics without refitting models.
-}
-\details{
 Useful for example to recompute SBC ranks with a different choice of \code{thin_ranks}
 or added generated quantities.
 }

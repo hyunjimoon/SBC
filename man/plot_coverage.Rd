@@ -10,7 +10,8 @@ plot_coverage(
   variables = NULL,
   prob = 0.95,
   interval_type = "central",
-  parameters = NULL
+  parameters = NULL,
+  max_points = NULL
 )
 
 plot_coverage_diff(
@@ -18,7 +19,8 @@ plot_coverage_diff(
   variables = NULL,
   prob = 0.95,
   interval_type = "central",
-  parameters = NULL
+  parameters = NULL,
+  max_points = NULL
 )
 }
 \arguments{
@@ -29,6 +31,10 @@ plot_coverage_diff(
 \item{prob}{the with of the uncertainty interval to be shown}
 
 \item{parameters}{DEPRECATED. Use \code{variables} instead.}
+
+\item{max_points}{maximum number of points where to evaluate the coverage.
+If set to \code{NULL}, coverage is evaluated across the whole range of ranks.
+Setting to some smaller number may reduce memory footprint and increase speed.}
 }
 \value{
 a ggplot2 plot object
