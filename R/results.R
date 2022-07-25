@@ -462,15 +462,14 @@ compute_SBC <- function(datasets, backend,
     future.globals <- globals
   } else {
     gq_globals <- attr(gen_quants, "globals")
-    if(length(globals) > 0 && length(gq_globals > 0)) {
+    if(length(globals) > 0 && length(gq_globals)  > 0) {
       if(is.list(gq_globals) && !is.list(globals)) {
         stop(SBC_error("Not implemented: Currently, when globals in generated quantites are a list, globals argument has to be also a list  (not a character vector)."))
       } else if(!is.list(gq_globals) && is.list(globals)) {
         stop(SBC_error("Not implemented: Currently, when globals is a list, globals in generated quantites have to be also a list (not a character vector)."))
       }
       future.globals <- c(globals, gq_globals)
-    }
-    if(length(gq_globals) > 0) {
+    } else if(length(gq_globals) > 0) {
       future.globals <- gq_globals
     } else {
       future.globals <- globals
