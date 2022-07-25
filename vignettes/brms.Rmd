@@ -185,7 +185,10 @@ vignette for discussion on why this is useful).
 
 ```{r}
 log_lik_gq_func <- generated_quantities(
-  log_lik = sum(dnorm(y, b_Intercept + x * b_x + r_group[group], sigma, log = TRUE)))
+  log_lik = sum(dnorm(y, b_Intercept + x * b_x + r_group[group], sigma, log = TRUE))
+  # Testing CRPS, probably not worth it
+  #, CRPS = mean(scoringRules::crps_norm(y, b_Intercept + x * b_x + r_group[group], sigma))
+  )
 
 ```
 
