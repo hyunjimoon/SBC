@@ -254,6 +254,19 @@ length.SBC_results <- function(x) {
               errors = x$errors[indices])
 }
 
+#' Bind globals used in gen quants or backend
+bind_globals <- function(globals1, globals2) {
+    if(length(globals1) > 0 && length(globals2)  > 0) {
+      if(is.list(globals1) != is.list(globals2)) {
+        stop(SBC_error("Not implemented: Currently, when globals in one context are a list, other globals also have to be a list  (not a character vector)."))
+      }
+      c(globals1, globals2)
+    } else if(length(globals1) > 0) {
+      globals1
+    } else {
+      globals2
+    }
+}
 
 #' @title Compute SBC results
 #' @description Delegates directly to `compute_SBC()`.
@@ -462,18 +475,7 @@ compute_SBC <- function(datasets, backend,
     future.globals <- globals
   } else {
     gq_globals <- attr(gen_quants, "globals")
-    if(length(globals) > 0 && length(gq_globals)  > 0) {
-      if(is.list(gq_globals) && !is.list(globals)) {
-        stop(SBC_error("Not implemented: Currently, when globals in generated quantites are a list, globals argument has to be also a list  (not a character vector)."))
-      } else if(!is.list(gq_globals) && is.list(globals)) {
-        stop(SBC_error("Not implemented: Currently, when globals is a list, globals in generated quantites have to be also a list (not a character vector)."))
-      }
-      future.globals <- c(globals, gq_globals)
-    } else if(length(gq_globals) > 0) {
-      future.globals <- gq_globals
-    } else {
-      future.globals <- globals
-    }
+    future.globals <- bind_globals(globals, gq_globals)
   }
 
   results_raw <- future.apply::future_lapply(
@@ -883,6 +885,15 @@ validate_generated_quantities <- function(x) {
   invisible(x)
 }
 
+#' @export
+bind_generated_quantities <- function(gq1, gq2) {
+  validate_generated_quantities(gq1)
+  validate_generated_quantities(gq2)
+  structure(c(gq1, gq2),
+            class = "SBC_generated_quantities",
+            globals = bind_globals(attr(gq1, "globals"), attr(gq2, "globals")))
+}
+
 #'@export
 compute_gen_quants <- function(draws, generated, gen_quants) {
   gen_quants <- validate_generated_quantities(gen_quants)
@@ -929,8 +940,6 @@ recompute_statistics <- function(...) {
 }
 
 #' Recompute SBC statistics without refitting models.
-#'
-#'
 #'
 #' Useful for example to recompute SBC ranks with a different choice of `thin_ranks`
 #' or added generated quantities.
