@@ -466,8 +466,7 @@ compute_SBC <- function(datasets, backend,
   vars_and_generated_list <- list()
   for(i in 1:length(datasets)) {
     vars_and_generated_list[[i]] <- list(
-      variables = posterior::subset_draws(datasets$variables,
-                                           draw = i),
+      variables = datasets$variables[i,],
       generated = datasets$generated[[i]]
     )
   }

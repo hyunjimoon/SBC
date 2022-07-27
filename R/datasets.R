@@ -417,6 +417,7 @@ generate_datasets.SBC_generator_brms <- function(generator, n_sims, n_datasets =
 draws_rvars_to_standata <- function(x) {
   res <- list()
   for(i in 1:posterior::ndraws(x)) {
+    # TODO use direct indexing - subset_draws is unnecessarily slow
     res[[i]] <- draws_rvars_to_standata_single(posterior::subset_draws(x, draw = i))
   }
   res
