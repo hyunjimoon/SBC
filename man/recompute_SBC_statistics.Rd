@@ -10,6 +10,7 @@ recompute_SBC_statistics(
   backend,
   thin_ranks = SBC_backend_default_thin_ranks(backend),
   ensure_num_ranks_divisor = 2,
+  dquants = NULL,
   gen_quants = NULL
 )
 }
@@ -25,11 +26,15 @@ thinned draws See details below.}
 
 \item{ensure_num_ranks_divisor}{Potentially drop some posterior samples to
 ensure that this number divides the total number of SBC ranks (see Details).}
+
+\item{dquants}{Derived quantities to include in SBC. Use \code{\link[=derived_quantities]{derived_quantities()}} to construct them.}
+
+\item{gen_quants}{Deprecated, use dquants instead}
 }
 \value{
 An S3 object of class \code{SBC_results} with updated \verb{$stats} and \verb{$default_diagnostics} fields.
 }
 \description{
 Useful for example to recompute SBC ranks with a different choice of \code{thin_ranks}
-or added generated quantities.
+or added derived quantities.
 }
