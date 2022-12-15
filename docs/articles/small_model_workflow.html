@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
       </span>
     </div>
 
@@ -127,7 +127,7 @@
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2022-07-04</h4>
+            <h4 data-toc-skip class="date">2022-12-15</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/small_model_workflow.Rmd" class="external-link"><code>vignettes/small_model_workflow.Rmd</code></a></small>
       <div class="hidden name"><code>small_model_workflow.Rmd</code></div>
@@ -528,16 +528,16 @@ causing problems:</p>
 <div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_fixed_ordered</span><span class="op">$</span><span class="va">backend_diagnostics</span></span></code></pre></div>
 <pre><code><span><span class="co">##    sim_id max_chain_time n_failed_chains n_divergent n_max_treedepth n_rejects</span></span>
-<span><span class="co">## 1       1          0.505               0           7               0         0</span></span>
-<span><span class="co">## 2       2          0.715               0         145               0         0</span></span>
-<span><span class="co">## 3       3          0.539               0           0               0         0</span></span>
-<span><span class="co">## 4       4          0.461               0           0               0         0</span></span>
-<span><span class="co">## 5       5          2.524               0           0               0         0</span></span>
-<span><span class="co">## 6       6          0.723               0           0               0         0</span></span>
+<span><span class="co">## 1       1          0.484               0           7               0         0</span></span>
+<span><span class="co">## 2       2          0.777               0         145               0         0</span></span>
+<span><span class="co">## 3       3          0.556               0           0               0         0</span></span>
+<span><span class="co">## 4       4          0.501               0           0               0         0</span></span>
+<span><span class="co">## 5       5          2.629               0           0               0         0</span></span>
+<span><span class="co">## 6       6          0.665               0           0               0         0</span></span>
 <span><span class="co">## 7       7          0.498               0           0               0         0</span></span>
-<span><span class="co">## 8       8          0.440               0           0               0         0</span></span>
-<span><span class="co">## 9       9          0.361               0           0               0         0</span></span>
-<span><span class="co">## 10     10          0.354               0           0               0         0</span></span></code></pre>
+<span><span class="co">## 8       8          0.455               0           0               0         0</span></span>
+<span><span class="co">## 9       9          0.376               0           0               0         0</span></span>
+<span><span class="co">## 10     10          0.374               0           0               0         0</span></span></code></pre>
 <p>One of the fits has quite a lot of divergent transitions. Let’s look
 at the pairs plot for the model:</p>
 <div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
@@ -612,7 +612,7 @@ vignette.</p>
 <span><span class="co">##  - No fits had divergent transitions.</span></span>
 <span><span class="co">##  - No fits had iterations that saturated max treedepth.</span></span>
 <span><span class="co">##  - No fits had steps rejected.</span></span>
-<span><span class="co">##  - Maximum time per chain was 2.524 sec.</span></span></code></pre>
+<span><span class="co">##  - Maximum time per chain was 2.629 sec.</span></span></code></pre>
 <p>This gives us no obvious problems.</p>
 <div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_fixed_ordered_subset</span><span class="op">)</span></span></code></pre></div>
@@ -695,7 +695,7 @@ removes all the problematic Rhats and ESS.</p>
 <span><span class="co">##  - No fits had divergent transitions.</span></span>
 <span><span class="co">##  - No fits had iterations that saturated max treedepth.</span></span>
 <span><span class="co">##  - No fits had steps rejected.</span></span>
-<span><span class="co">##  - Maximum time per chain was 4.253 sec.</span></span></code></pre>
+<span><span class="co">##  - Maximum time per chain was 4.316 sec.</span></span></code></pre>
 <p>And we can use <code>bind_results</code> to combine the new results
 with the previous fits to not waste our computational effort.</p>
 <div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
@@ -1482,7 +1482,7 @@ hope the workflow ideas will be useful for you!</p>
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer>

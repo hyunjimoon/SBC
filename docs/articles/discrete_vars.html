@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
       </span>
     </div>
 
@@ -128,7 +128,7 @@ JAGS</h1>
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2022-07-04</h4>
+            <h4 data-toc-skip class="date">2022-12-15</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/discrete_vars.Rmd" class="external-link"><code>vignettes/discrete_vars.Rmd</code></a></small>
       <div class="hidden name"><code>discrete_vars.Rmd</code></div>
@@ -256,24 +256,24 @@ generated quantities {
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">85394672</span><span class="op">)</span></span>
 <span><span class="va">datasets_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_1</span>, <span class="fl">30</span><span class="op">)</span></span></code></pre></div>
-<p>Additionally, we’ll add a generated quantity expressing the total
+<p>Additionally, we’ll add a derived quantity expressing the total
 log-likelihood of data given the fitted parameters. The expression
-within the <code><a href="../reference/generated_quantities.html">generated_quantities()</a></code> call is evaluated for
-both prior and posterior draws and included as another variable in SBC
-checks. It turns out this type of generated quantities can increase the
+within the <code><a href="../reference/derived_quantities.html">derived_quantities()</a></code> call is evaluated for both
+prior and posterior draws and included as another variable in SBC
+checks. It turns out this type of derived quantities can increase the
 sensitivity of the SBC against some issues in the model. See
 <code><a href="../articles/limits_of_SBC.html">vignette("limits_of_SBC")</a></code> for a more detailed discussion of
 this.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">log_lik_gq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generated_quantities.html">generated_quantities</a></span><span class="op">(</span>log_lik <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">dpois</a></span><span class="op">(</span><span class="va">y</span>, <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="cn">T</span> <span class="op">&lt;</span> <span class="va">s</span>, <span class="va">e</span>, <span class="va">l</span><span class="op">)</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">log_lik_dq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/derived_quantities.html">derived_quantities</a></span><span class="op">(</span>log_lik <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">dpois</a></span><span class="op">(</span><span class="va">y</span>, <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="cn">T</span> <span class="op">&lt;</span> <span class="va">s</span>, <span class="va">e</span>, <span class="va">l</span><span class="op">)</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>So finally, lets actually compute SBC:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_1</span>, <span class="va">backend_1</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model1"</span><span class="op">)</span>,</span>
-<span>                    gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span><span class="op">)</span></span></code></pre></div>
+<span>                    dquants <span class="op">=</span> <span class="va">log_lik_dq</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'model1'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 5 (17%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 4 (13%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
 <pre><code><span><span class="co">##  - 20 (67%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
 <span><span class="co">## the rank statistics. The lowest tail ESS was NA.</span></span>
 <span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
@@ -297,12 +297,12 @@ convince us that there is something fundamentally wrong.</p>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 30 × 15</span></span></span>
 <span><span class="co">##    sim_id variable simulated_value  rank   z_score  mean median    sd   mad</span></span>
 <span><span class="co">##     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 1</span>      1 s                      3   185    0.018<span style="text-decoration: underline;">2</span>  2.97      3 1.61   2.97</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 1</span>      1 s                      3   186    0.020<span style="text-decoration: underline;">0</span>  2.97      3 1.59   2.97</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 2</span>      2 s                      1    24   -<span style="color: #BB0000;">1.90</span>    2.02      2 0.537  0   </span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 3</span>      3 s                      4   126   -<span style="color: #BB0000;">1.37</span>    4.67      5 0.489  0   </span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 4</span>      4 s                      1    10   -<span style="color: #BB0000;">2.85</span>    2.86      3 0.651  0   </span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 5</span>      5 s                      5   397    2.76    2.86      3 0.775  0   </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 6</span>      6 s                      2   271    0.044<span style="text-decoration: underline;">9</span>  1.94      1 1.42   0   </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 6</span>      6 s                      2   290    0.118   1.84      1 1.35   0   </span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 7</span>      7 s                      3     0 -<span style="color: #BB0000;">Inf</span>       4         4 0      0   </span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 8</span>      8 s                      2   129   -<span style="color: #BB0000;">0.594</span>   2.87      3 1.46   1.48</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 9</span>      9 s                      2     0   -<span style="color: #BB0000;">6.84</span>    2.99      3 0.144  0   </span></span>
@@ -315,7 +315,7 @@ one less.</p>
 <p>Looking at the <code>ecdf_diff</code> plot we see that this seems to
 compromise heavily the inference for <code>s</code>, but the other
 parameters do not show such bad behaviour. Note that the
-<code>log_lik</code> generated quantity shows even starker failure than
+<code>log_lik</code> derived quantity shows even starker failure than
 <code>s</code>, so it indeed poses a stricter check in this
 scenario.</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
@@ -376,7 +376,7 @@ simulator to match the model:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">5846502</span><span class="op">)</span></span>
 <span><span class="va">datasets_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_2</span>, <span class="fl">30</span><span class="op">)</span></span>
 <span><span class="va">results_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2</span>, <span class="va">backend_1</span>,</span>
-<span>                    gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span>, </span>
+<span>                    dquants <span class="op">=</span> <span class="va">log_lik_dq</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model2"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'model2'</span></span></code></pre>
@@ -401,16 +401,16 @@ model behaves well.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">54321488</span><span class="op">)</span></span>
 <span><span class="va">datasets_2_more</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_2</span>, <span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">results_2_more</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2_more</span>, <span class="va">backend_1</span>,</span>
-<span>                    gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span>, </span>
+<span>                    dquants <span class="op">=</span> <span class="va">log_lik_dq</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model3"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'model3'</span></span></code></pre>
 <pre><code><span><span class="co">##  - 15 (15%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 73 (73%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
+<pre><code><span><span class="co">##  - 72 (72%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
 <span><span class="co">## the rank statistics. The lowest tail ESS was NA.</span></span>
 <span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
 <span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 7 (7%) fits had divergent transitions. Maximum number of divergences was 20.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 9 (9%) fits had divergent transitions. Maximum number of divergences was 25.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -424,7 +424,7 @@ model behaves well.</p>
 <p><img src="discrete_vars_files/figure-html/results_2_all_plots-2.png" width="700"></p>
 <p>Now - as far as this amount of SBC steps can see, the model is good
 and we get good behaviour for both the continuous and the discrete
-parameters and the <code>log_lik</code> generated quantity. Hooray!</p>
+parameters and the <code>log_lik</code> derived quantity. Hooray!</p>
 </div>
 <div class="section level2">
 <h2 id="jags-version">JAGS version<a class="anchor" aria-label="anchor" href="#jags-version"></a>
@@ -469,12 +469,12 @@ the datasets without any change):</p>
 <div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">datasets_2_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_datasets.html">bind_datasets</a></span><span class="op">(</span><span class="va">datasets_2</span>, <span class="va">datasets_2_more</span><span class="op">)</span></span>
 <span><span class="va">results_jags</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2_all</span>, <span class="va">backend_jags</span>,</span>
-<span>                            gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span>,</span>
+<span>                            dquants <span class="op">=</span> <span class="va">log_lik_dq</span>,</span>
 <span>                        cache_mode <span class="op">=</span> <span class="st">"results"</span>,</span>
 <span>                        cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir_jags</span>, <span class="st">"rjags"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'rjags'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 21 (16%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 95 (73%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
+<pre><code><span><span class="co">##  - 20 (15%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 93 (72%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
 <span><span class="co">## the rank statistics. The lowest tail ESS was NA.</span></span>
 <span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
 <span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
@@ -550,12 +550,12 @@ representation:</p>
 <p>Then we run the actual SBC:</p>
 <div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_jags_marginalized</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2_all</span>, <span class="va">backend_jags_marginalized</span>,</span>
-<span>                                         gen_quants <span class="op">=</span> <span class="va">log_lik_gq</span>,</span>
+<span>                                         dquants <span class="op">=</span> <span class="va">log_lik_dq</span>,</span>
 <span>                        cache_mode <span class="op">=</span> <span class="st">"results"</span>,</span>
 <span>                        cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir_jags</span>, <span class="st">"rjags_marginalized"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'rjags_marginalized'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 24 (18%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 89 (68%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
+<pre><code><span><span class="co">##  - 26 (20%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 93 (72%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
 <span><span class="co">## the rank statistics. The lowest tail ESS was NA.</span></span>
 <span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
 <span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
@@ -590,7 +590,7 @@ correctly marginalizing the <code>s</code> parameter!</p>
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer>

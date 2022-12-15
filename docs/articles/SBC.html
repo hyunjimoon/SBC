@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
       </span>
     </div>
 
@@ -127,7 +127,7 @@
                         <h4 data-toc-skip class="author">Hyunji Moon,
 Martin Modrák, Shinyoung Kim</h4>
             
-            <h4 data-toc-skip class="date">2022-07-04</h4>
+            <h4 data-toc-skip class="date">2022-12-15</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/SBC.Rmd" class="external-link"><code>vignettes/SBC.Rmd</code></a></small>
       <div class="hidden name"><code>SBC.Rmd</code></div>
@@ -164,8 +164,8 @@ should be uniformly distributed between <span class="math inline">\(0\)</span> a
 claims like “the posterior 84% credible interval should contain the
 simulated value in 84% of simulations”, the rank uniformity represents
 this claim for all interval widths at once. The theory of SBC is fully
-described in <a href="https://arxiv.org/abs/1804.06788" class="external-link">Talts et
-al.</a></p>
+described in <a href="https://arxiv.org/abs/2211.02383v1" class="external-link">Modrák et
+al.</a> which builds upon <a href="https://arxiv.org/abs/1804.06788" class="external-link">Talts et al.</a></p>
 <p>This opens two principal use-cases of SBC:</p>
 <ol style="list-style-type: lower-alpha">
 <li>We have an algorithm that we trust is correct and a generator and
@@ -426,7 +426,9 @@ the backend:</p>
 <code class="sourceCode R"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">poisson_dataset</span>, <span class="va">poisson_backend</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"results"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Results loaded from cache file 'results'</span></span></code></pre>
 <pre><code><span><span class="co">##  - 1 (1%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.015.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 94 (94%) fits had some steps rejected. Maximum number of rejections was 2.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -439,7 +441,7 @@ but is often useful.</p>
 </h3>
 <p>We can now inspect the results to see if there were any errors and
 check individual stats:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results</span><span class="op">$</span><span class="va">stats</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 100 × 15</span></span></span>
 <span><span class="co">##    sim_id variable simulated_value  rank z_score  mean median    sd   mad    q5</span></span>
@@ -464,13 +466,13 @@ check individual stats:</p>
 are uniformly distributed. We can check the rank histogram and ECDF
 plots (see <code><a href="../articles/rank_visualizations.html">vignette("rank_visualizations")</a></code> for description
 of the plots):</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
 <p><img src="SBC_files/figure-html/rank_hist-1.png" width="700"></p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
 <p><img src="SBC_files/figure-html/ecdf-1.png" width="700"></p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
 <p><img src="SBC_files/figure-html/ecdf_diff-1.png" width="700"></p>
 <p>Since our simulator and model do match and Stan works well, we see
@@ -550,7 +552,7 @@ storage facilities.</p>
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer>

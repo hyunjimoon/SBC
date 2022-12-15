@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
       </span>
     </div>
 
@@ -127,7 +127,7 @@
                         <h4 data-toc-skip class="author">Hyunji Moon,
 Martin Modrák</h4>
             
-            <h4 data-toc-skip class="date">2022-07-04</h4>
+            <h4 data-toc-skip class="date">2022-12-15</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/computational_algorithm1.Rmd" class="external-link"><code>vignettes/computational_algorithm1.Rmd</code></a></small>
       <div class="hidden name"><code>computational_algorithm1.Rmd</code></div>
@@ -288,8 +288,8 @@ for 50% and 80% intervals is a bit lower than expected.</p>
 <span><span class="co">##   variable width width_represented ci_low estimate ci_high</span></span>
 <span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">1</span> lambda    0.5               0.5   0.418    0.449   0.480</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">2</span> lambda    0.8               0.8   0.751    0.778   0.803</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">3</span> lambda    0.95              0.95  0.934    0.949   0.961</span></span></code></pre>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> lambda    0.8               0.8   0.752    0.779   0.804</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> lambda    0.95              0.95  0.932    0.948   0.960</span></span></code></pre>
 <div class="section level3">
 <h3 id="is-more-data-better">Is more data better?<a class="anchor" aria-label="anchor" href="#is-more-data-better"></a>
 </h3>
@@ -319,7 +319,7 @@ necessarily true - let’s run the same model, but increase <code>N</code>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 3 × 6</span></span></span>
 <span><span class="co">##   variable width width_represented ci_low estimate ci_high</span></span>
 <span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">1</span> lambda    0.5               0.5   0.412    0.443   0.474</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span> lambda    0.5               0.5   0.414    0.445   0.476</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">2</span> lambda    0.8               0.8   0.682    0.711   0.738</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">3</span> lambda    0.95              0.95  0.883    0.903   0.920</span></span></code></pre>
 </div>
@@ -566,14 +566,14 @@ interval:</p>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 8 × 3</span></span></span>
 <span><span class="co">##   variable      ci_low ci_high</span></span>
 <span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.820   0.882</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.746   0.818</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.864   0.918</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.864   0.918</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.805   0.869</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.805   0.869</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.831   0.891</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.831   0.891</span></span></code></pre>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.818   0.880</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.752   0.823</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.860   0.914</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.860   0.914</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.814   0.877</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.814   0.877</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.835   0.895</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.835   0.895</span></span></code></pre>
 <p>So the 90% central credible interval for <code>mu_signal</code>
 likely contains less than 82% of true values.</p>
 <p>For a crude result, the default ADVI setup we just tested is not
@@ -630,13 +630,13 @@ central 90% interval</p>
 <span><span class="co">##   variable      ci_low ci_high</span></span>
 <span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.849   0.906</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.888   0.937</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.875   0.927</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.875   0.927</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.893   0.941</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.873   0.925</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.873   0.925</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.866   0.920</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.866   0.920</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.879   0.930</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.879   0.930</span></span></code></pre>
+<span><span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.877   0.929</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.877   0.929</span></span></code></pre>
 <p>This pattern where the default meanfield approximation is
 overconfident and the fullrank approximation is underconfident is in
 fact quite frequently seen, which motivated some experiments with a low
@@ -692,11 +692,11 @@ interval.</p>
 <span><span class="co">##   variable      ci_low ci_high</span></span>
 <span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.827   0.888</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.833   0.893</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.835   0.895</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.879   0.930</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.879   0.930</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.816   0.879</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.816   0.879</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.814   0.877</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.814   0.877</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.844   0.902</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.844   0.902</span></span></code></pre>
 <p>This variant has somewhat lower overall mismatch, but tends to be
@@ -752,27 +752,22 @@ comparison, we run full MCMC with Stan for the same datasets.</p>
 <span>  keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_sample"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'hmm_sample'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (2%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.019.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (2%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
-<span><span class="co">## the rank statistics. The lowest tail ESS was 154.</span></span>
-<span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
-<span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (2%) fits had divergent transitions. Maximum number of divergences was 51.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 2 (4%) fits had divergent transitions. Maximum number of divergences was 70.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>We get a small number of problematic fits, which we will ignore for
 now. We check that there are no obvious calibration problems:</p>
-<div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_sample</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_sample_ecdf_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb74"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb72"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_sample</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_sample_ecdf_ranks-2.png" width="700"></p>
 <p>For the machine we built the vignette on, here are the distributions
 of times (for ADVI and optimizing) and time of longest chain (for
 HMC):</p>
-<div class="sourceCode" id="cb75"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hmm_time</span> <span class="op">&lt;-</span> </span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
 <span>      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>alg <span class="op">=</span> <span class="st">"Optimizing"</span>, </span>
@@ -807,7 +802,7 @@ performance advantage variational inference had over sampling for this
 model. However, both the fullrank and meanfield approximations provide
 not-terrible estimates and are noticeably faster than sampling.
 Optimizing is by far the fastest as the longest time observed is just
-0.17 seconds.</p>
+0.16 seconds.</p>
 </div>
 </div>
 <div class="section level2">
@@ -820,7 +815,7 @@ directly (the previous version modelled the background state and the
 difference between the two states) and move to the log scale. So instead
 of <code>mu_background</code> and <code>mu_signal</code> we have an
 <code>ordered</code> vector <code>log_mu</code>:</p>
-<div class="sourceCode" id="cb76"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb74"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson_ordered.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data {
   int N; // Number of observations
@@ -875,7 +870,7 @@ generated quantities {
 that it implies a slightly different prior on the active (higher mean)
 state. Here is how we can generate data with this mildly different prior
 (we need rejection sampling to fulfill the ordering constraint):</p>
-<div class="sourceCode" id="cb78"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb76"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">generator_HMM_ordered</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  </span>
 <span>  <span class="co"># Rejection sampling for ordered mu with the correct priors</span></span>
@@ -922,10 +917,10 @@ state. Here is how we can generate data with this mildly different prior
 <span><span class="op">}</span></span></code></pre></div>
 <p>So let us build a default variational backend and fit it to just 20
 simulations.</p>
-<div class="sourceCode" id="cb79"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb77"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model_HMM_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson_ordered.stan"</span><span class="op">)</span></span>
 <span><span class="va">backend_HMM_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM_ordered</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb80"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb78"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">12333654</span><span class="op">)</span></span>
 <span><span class="va">ds_hmm_ordered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generator_HMM_ordered</span>, N <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>, </span>
@@ -937,10 +932,10 @@ simulations.</p>
 <pre><code><span><span class="co">## Results loaded from cache file 'hmm_ordered'</span></span></code></pre>
 <p>Immediately we see that the <code>log_mu[1]</code> variable is
 heavily miscalibrated.</p>
-<div class="sourceCode" id="cb82"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb80"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_ordered</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_ecdf_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb81"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_ordered</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_ecdf_ranks-2.png" width="700"></p>
 <p>What changed? To understand that we need to remember how Stan <a href="https://mc-stan.org/docs/2_28/reference-manual/variable-transforms.html" class="external-link">represents
@@ -956,7 +951,7 @@ the active component is actually
 complex correlation structure between the unconstrained parameters that
 the ADVI algorithm is unable to handle well.</p>
 <p>Even trying the fullrank variant does not help:</p>
-<div class="sourceCode" id="cb84"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb82"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">backend_HMM_ordered_fullrank</span> <span class="op">&lt;-</span> </span>
 <span>  <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM_ordered</span>,</span>
 <span>                                  algorithm <span class="op">=</span> <span class="st">"fullrank"</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
@@ -966,14 +961,14 @@ the ADVI algorithm is unable to handle well.</p>
 <span>                  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_ordered_fullrank"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'hmm_ordered_fullrank'</span></span></code></pre>
 <p>The results are still strongly miscalibrated.</p>
-<div class="sourceCode" id="cb86"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb84"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_ordered_fullrank</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_fullrank_ecdf_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb87"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb85"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_ordered_fullrank</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_fullrank_ecdf_ranks-2.png" width="700"></p>
 <p>To have a complete overview we may also try the optimizing fit:</p>
-<div class="sourceCode" id="cb88"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb86"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model_HMM_ordered_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson_ordered.stan"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">res_hmm_ordered_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span></span>
@@ -984,10 +979,10 @@ the ADVI algorithm is unable to handle well.</p>
 <p>in this case, optimizing has better calibration for
 <code>log_mu</code>, but worse calibration for <code>rho</code> than
 ADVI.</p>
-<div class="sourceCode" id="cb90"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb88"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_hmm_ordered_optimizing</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_optimizing_ecdf_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb91"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_hmm_ordered_optimizing</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_optimizing_ecdf_ranks-2.png" width="700"></p>
 </div>
@@ -1048,7 +1043,7 @@ Inference <a href="http://proceedings.mlr.press/v80/yao18a/yao18a.pdf" class="ex
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer>

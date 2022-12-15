@@ -20,7 +20,7 @@ available at help("&amp;lt;function&amp;gt;-deprecated").'><!-- mathjax --><scri
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
       </span>
     </div>
 
@@ -102,7 +102,7 @@ available at help("&amp;lt;function&amp;gt;-deprecated").'><!-- mathjax --><scri
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Deprecated functions in package <span class="pkg">SBC</span>.</h1>
-    <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/R/SBC-deprecated.R" class="external-link"><code>R/SBC-deprecated.R</code></a>, <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/R/results.R" class="external-link"><code>R/results.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/R/SBC-deprecated.R" class="external-link"><code>R/SBC-deprecated.R</code></a>, <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/R/derived-quantities.R" class="external-link"><code>R/derived-quantities.R</code></a>, <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/R/results.R" class="external-link"><code>R/results.R</code></a></small>
     <div class="hidden name"><code>SBC-deprecated.Rd</code></div>
     </div>
 
@@ -114,11 +114,43 @@ available at <code>help("&lt;function&gt;-deprecated")</code>.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">compute_results</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">generated_quantities</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">validate_generated_quantities</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">bind_generated_quantities</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">compute_gen_quants</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">compute_results</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">recompute_statistics</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
+    <div id="generated-quantities">
+    <h2><code>generated_quantities</code></h2>
+    
+
+<p>Instead of <code>generated_quantities</code>, use <code><a href="derived_quantities.html">derived_quantities</a></code>.</p>
+    </div>
+    <div id="validate-generated-quantities">
+    <h2><code>validate_generated_quantities</code></h2>
+    
+
+<p>Instead of <code>validate_generated_quantities</code>, use <code><a href="validate_derived_quantities.html">validate_derived_quantities</a></code>.</p>
+    </div>
+    <div id="bind-generated-quantities">
+    <h2><code>bind_generated_quantities</code></h2>
+    
+
+<p>Instead of <code>bind_generated_quantities</code>, use <code><a href="bind_derived_quantities.html">bind_derived_quantities</a></code>.</p>
+    </div>
+    <div id="compute-gen-quants">
+    <h2><code>compute_gen_quants</code></h2>
+    
+
+<p>Instead of <code>compute_gen_quants</code>, use <code><a href="compute_dquants.html">compute_dquants</a></code>.</p>
+    </div>
     <div id="compute-results">
     <h2><code>compute_results</code></h2>
     
@@ -144,7 +176,7 @@ available at <code>help("&lt;function&gt;-deprecated")</code>.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>
