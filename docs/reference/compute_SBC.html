@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
       </span>
     </div>
 
@@ -116,10 +116,11 @@
 <span>  thin_ranks <span class="op">=</span> <span class="fu"><a href="SBC_backend_default_thin_ranks.html">SBC_backend_default_thin_ranks</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span>,</span>
 <span>  ensure_num_ranks_divisor <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  chunk_size <span class="op">=</span> <span class="fu"><a href="default_chunk_size.html">default_chunk_size</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">datasets</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  gen_quants <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  dquants <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cache_mode <span class="op">=</span> <span class="st">"none"</span>,</span>
 <span>  cache_location <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  globals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  globals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  gen_quants <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -174,6 +175,10 @@ You can use <code>options(SBC.min_chunk_size = value)</code> to set a minimum ch
 See documentation of <code>future.chunk.size</code> argument for <code><a href="https://future.apply.futureverse.org/reference/future_lapply.html" class="external-link">future.apply::future_lapply()</a></code> for more details.</p></dd>
 
 
+<dt>dquants</dt>
+<dd><p>Derived quantities to include in SBC. Use <code><a href="derived_quantities.html">derived_quantities()</a></code> to construct them.</p></dd>
+
+
 <dt>cache_mode</dt>
 <dd><p>Type of caching of results, currently the only supported modes are
 <code>"none"</code> (do not cache) and <code>"results"</code> where the whole results object is stored
@@ -192,6 +197,10 @@ in the global environment and need to present for the backend to work (
 if they are not already available in package).
 It is added to the <code>globals</code> argument to <code><a href="https://future.futureverse.org/reference/future.html" class="external-link">future::future()</a></code>, to make those
 objects available on all workers.</p></dd>
+
+
+<dt>gen_quants</dt>
+<dd><p>Deprecated, use dquants instead</p></dd>
 
 </dl></div>
     <div id="value">
@@ -253,7 +262,7 @@ pathologies while discarding at most a single sample.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
       </span>
     </div>
 
@@ -127,7 +127,7 @@
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2022-07-04</h4>
+            <h4 data-toc-skip class="date">2022-12-15</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/rejection_sampling.Rmd" class="external-link"><code>vignettes/rejection_sampling.Rmd</code></a></small>
       <div class="hidden name"><code>rejection_sampling.Rmd</code></div>
@@ -151,61 +151,38 @@ repeatedly generate a simulation and only accept it when it passes a
 certain condition we impose (e.g. that no observed count is larger than
 <span class="math inline">\(10^8\)</span>). But does rejection sampling
 when generating simulations affect the validity of SBC?</p>
-<p>Thanks to forum user Niko Huurre who derived the necessary math at <a href="https://discourse.mc-stan.org/t/using-narrower-priors-for-sbc/21709/6?u=martinmodrak" class="external-link">Stan
-Discourse discussion of the topic</a> we know exactly when it is OK.
-Briefly: for algorithms that only need to know the posterior density up
-to a constant (which includes Stan and many others), it is OK as long as
-the rejection criterion only uses observed data and not the unobserved
-variables.</p>
+<p>It turns out that it does not as long as the rejection criterion only
+uses observed data and not the unobserved variables.</p>
 <p>We’ll first walk through the math and then show examples of both OK
 and problematic rejection sampling.</p>
 <div class="section level2">
 <h2 id="the-math">The math<a class="anchor" aria-label="anchor" href="#the-math"></a>
 </h2>
-<p>Let <span class="math inline">\(f\left(y\right)\)</span> be the
-probability that the simulated data <span class="math inline">\(y\)</span> is rejected (usually a 0-1 function if
-you have a clear idea what a “bad” dataset looks like, but could be
-probabilistic if you’re relying on finicky diagnostics). The important
-numbers are the probability of rejection for variable <span class="math inline">\(\theta\)</span></p>
+<p>Let <span class="math inline">\(\mathtt{accept}(y)\)</span> be the
+probability the the simulated data <span class="math inline">\(y\)</span> is accepted. Note that <span class="math inline">\(\mathtt{accept}\)</span> uses only data as input
+and would usually be a 0-1 function if you have a clear idea what a
+“bad” dataset looks like, but could be probabilistic if you’re relying
+on finicky diagnostics.</p>
+<p>We define a variable <span class="math inline">\(a \sim
+\text{Bernoulli}(\mathtt{accept}(y))\)</span>. Given the parameter space
+<span class="math inline">\(\Theta\)</span> and a specific <span class="math inline">\(\theta \in \Theta\)</span>, this implies a joint
+distribution <span class="math inline">\(\pi(\theta, y, a)\)</span> that
+factorizes as <span class="math inline">\(\pi(\theta, y, a) =
+\pi(a|y)\pi(y | \theta)\pi(\theta)\)</span>. We can then look at the
+posterior conditional on accepting a dataset to see the claimed
+invariance:</p>
 <p><span class="math display">\[
-L\left(\theta\right)=\int
-f\left(y\right)\pi\left(y|\theta\right)\mathrm{d}y
+\begin{equation}
+\pi(\theta | y, a = 1) = \frac{\pi(a = 1 | y) \pi(y |
+\theta)\pi(\theta)}{\int_\Theta \mathrm{d}\tilde\theta \: \pi(a = 1 | y)
+\pi(y | \tilde\theta)\pi(\tilde\theta)} =
+\frac{\pi(y | \theta)\pi(\theta)}{\int_\Theta \mathrm{d}\tilde\theta \:
+\pi(y | \tilde\theta)\pi(\tilde\theta)} = \pi(\theta | y)
+\end{equation}
 \]</span></p>
-<p>and the total rate of rejections from the prior</p>
-<p><span class="math display">\[
-R=\iint
-f\left(y\right)\pi\left(y|\theta\right)\pi\left(\theta\right)\mathrm{d}y\mathrm{d}\theta=\int
-L\left(\theta\right)\pi\left(\theta\right)\mathrm{d}\theta
-\]</span></p>
-<p>Rejecting the simulation when it generates “bad” data effectively
-distorts the prior</p>
-<p><span class="math display">\[
-\pi\left(\theta\right)\to\frac{L\left(\theta\right)}{R}\pi\left(\theta\right)
-\]</span></p>
-<p>and of course rejections change the generating distribution</p>
-<p><span class="math display">\[
-\pi\left(y|\theta\right)\to\frac{f\left(y\right)}{L\left(\theta\right)}\pi\left(y|\theta\right)
-\]</span></p>
-<p>but crucially these changes cancel out when computing the posterior.
-Before rejections we have:</p>
-<p><span class="math display">\[
-\pi(\theta | y) \propto \pi(y | \theta) \pi(\theta)
-\]</span></p>
-<p>After rejections we have</p>
-<p><span class="math display">\[
-\pi(\theta | y) \propto \frac{L(\theta)}{R} \pi(y | \theta)
-\frac{f(y)}{L(\theta)} \pi(\theta) = \frac{f(y)}{R} \pi(y | \theta)
-\pi(\theta)
-\]</span></p>
-<p>And since <span class="math inline">\(\frac{f(y)}{R}\)</span> is a
-constant for any given simulation (and hence the fit), the overall
-posterior for Stan (and most other MCMC algorithms) is the same, because
-Stan only needs the posterior density up to a constant. So whether we
-take rejection into account or not, the model will match the generating
-process. However, if <span class="math inline">\(f\)</span> also
-depended on <span class="math inline">\(\theta\)</span>, it would no
-longer contribute a constant and we’ll get a mismatch between the
-generator and model.</p>
+<p>So whether we take rejection into account or not, the model will
+match the generating process. However, if <span class="math inline">\(\mathtt{accept}\)</span> also depended on <span class="math inline">\(\theta\)</span>, it would no longer contribute a
+constant and we’ll get a mismatch between the generator and model.</p>
 </div>
 <div class="section level2">
 <h2 id="practical-examples">Practical examples<a class="anchor" aria-label="anchor" href="#practical-examples"></a>
@@ -408,7 +385,7 @@ not be rejected by the same criteria.</p>
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer>

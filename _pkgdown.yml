@@ -90,7 +90,9 @@ reference:
 - contents:
   - compute_SBC
   - contains("SBC_results")
-  - generated_quantities
+  - contains("derived_quantities")
+  - contains("dquants")
+  - bind_globals
   - SBC_statistics_from_single_fit
   - recompute_SBC_statistics
   - bind_results

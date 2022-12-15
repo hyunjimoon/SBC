@@ -12,10 +12,11 @@ compute_SBC(
   thin_ranks = SBC_backend_default_thin_ranks(backend),
   ensure_num_ranks_divisor = 2,
   chunk_size = default_chunk_size(length(datasets)),
-  gen_quants = NULL,
+  dquants = NULL,
   cache_mode = "none",
   cache_location = NULL,
-  globals = list()
+  globals = list(),
+  gen_quants = NULL
 )
 }
 \arguments{
@@ -54,6 +55,8 @@ you can often reduce computation time noticeably by increasing this value.
 You can use \code{options(SBC.min_chunk_size = value)} to set a minimum chunk size globally.
 See documentation of \code{future.chunk.size} argument for \code{\link[future.apply:future_lapply]{future.apply::future_lapply()}} for more details.}
 
+\item{dquants}{Derived quantities to include in SBC. Use \code{\link[=derived_quantities]{derived_quantities()}} to construct them.}
+
 \item{cache_mode}{Type of caching of results, currently the only supported modes are
 \code{"none"} (do not cache) and \code{"results"} where the whole results object is stored
 and recomputed only when the hash of the backend or dataset changes.}
@@ -67,6 +70,8 @@ in the global environment and need to present for the backend to work (
 if they are not already available in package).
 It is added to the \code{globals} argument to \code{\link[future:future]{future::future()}}, to make those
 objects available on all workers.}
+
+\item{gen_quants}{Deprecated, use dquants instead}
 }
 \value{
 An object of class \code{\link[=SBC_results]{SBC_results()}}.

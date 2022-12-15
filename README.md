@@ -65,7 +65,7 @@ plot_ecdf_diff(results_sd)
 The diagnostic plots show no problems in this case. As with any other
 software test, we can observe clear failures, but absence of failures does not imply
 correctness. We can however make the SBC check more thorough by using a lot of
-simulations and including suitable generated quantities to guard against
+simulations and including suitable derived quantities to guard against
 [known limitations of vanilla SBC](https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html).
 
 ## Paralellization
@@ -99,7 +99,8 @@ With a little additional work, you can integrate SBC with any exact or approxima
 ## References
 
 * Theoretical support
-   * [Validating Bayesian Inference Algorithms with Simulation-Based Calibration](https://arxiv.org/pdf/1804.06788.pdf) Talts, Betancourt, Simpson, Vehtari, Gelman, 2018
+   * [Simulation-Based Calibration Checking for Bayesian Computation: The Choice of Test Quantities Shapes Sensitivity](https://arxiv.org/abs/2211.02383v1) Modrák, Moon, Kim, Bürkner, Huurre, Faltejsková, Gelman, Vehtari, 2022
+   * [Validating Bayesian Inference Algorithms with Simulation-Based Calibration](http://www.stat.columbia.edu/~gelman/research/unpublished/sbc.pdf) Talts, Betancourt, Simpson, Vehtari, Gelman, 2018
    * [Graphical Test for Discrete Uniformity and its Applications in Goodness of Fit Evaluation and Multiple Sample Comparison](https://arxiv.org/abs/2103.10522)  Säilynoja, Bürkner, Vehtari, 2021
    * [Bayesian Workflow](https://arxiv.org/abs/2011.01808), Gelman et al., 2020
    * [Toward a principled Bayesian workflow in cognitive science](https://psycnet.apa.org/record/2020-43606-001) Schad, Betancourt, Vasishth, 2021

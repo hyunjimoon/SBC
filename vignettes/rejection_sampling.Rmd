@@ -27,13 +27,8 @@ simulation and only accept it when it passes a certain condition we impose
 (e.g. that no observed count is larger than $10^8$).
 But does rejection sampling when generating simulations affect the validity of SBC?
 
-Thanks to forum user Niko Huurre who derived the necessary math
-at [Stan Discourse discussion of the topic](https://discourse.mc-stan.org/t/using-narrower-priors-for-sbc/21709/6?u=martinmodrak)
-we know exactly when it is OK. Briefly: for algorithms
-that only need to know the posterior density up to a constant (which includes Stan
-and many others),
-it is OK as long as the rejection criterion only
-uses observed data and not the unobserved variables.
+It turns out that it does not as long as the rejection criterion only
+uses observed data and not the unobserved variables. 
 
 We'll first walk through the math and then show examples of both OK and problematic
 rejection sampling.
@@ -41,47 +36,20 @@ rejection sampling.
 
 ## The math
 
-Let $f\left(y\right)$ be the probability that the simulated data $y$ is rejected (usually a 0-1 function if you have a clear idea what a "bad" dataset looks like, but could be probabilistic if you're relying on finicky diagnostics). The important numbers are the probability of rejection for variable $\theta$
+Let $\mathtt{accept}(y)$ be the probability the the simulated data $y$ is accepted. Note that $\mathtt{accept}$  uses only data as input and would usually be a 0-1 function if you have a clear idea what a "bad" dataset looks like, but could be probabilistic if you're relying on finicky diagnostics. 
+
+We define a variable $a \sim \text{Bernoulli}(\mathtt{accept}(y))$. Given the parameter space $\Theta$ and a specific $\theta \in \Theta$, this implies a joint distribution $\pi(\theta, y, a)$ that factorizes as $\pi(\theta, y, a) = \pi(a|y)\pi(y | \theta)\pi(\theta)$. We can then look at the posterior conditional on accepting a dataset to see the claimed invariance:
 
 $$
-L\left(\theta\right)=\int f\left(y\right)\pi\left(y|\theta\right)\mathrm{d}y
+\begin{equation}
+\pi(\theta | y, a = 1) = \frac{\pi(a = 1 | y) \pi(y | \theta)\pi(\theta)}{\int_\Theta \mathrm{d}\tilde\theta \: \pi(a = 1 | y) \pi(y | \tilde\theta)\pi(\tilde\theta)} = 
+\frac{\pi(y | \theta)\pi(\theta)}{\int_\Theta \mathrm{d}\tilde\theta \: \pi(y | \tilde\theta)\pi(\tilde\theta)} = \pi(\theta | y)
+\end{equation}
 $$
 
-and the total rate of rejections from the prior
 
-$$
-R=\iint f\left(y\right)\pi\left(y|\theta\right)\pi\left(\theta\right)\mathrm{d}y\mathrm{d}\theta=\int L\left(\theta\right)\pi\left(\theta\right)\mathrm{d}\theta
-$$
-
-Rejecting the simulation when it generates “bad” data effectively distorts the prior
-
-$$
-\pi\left(\theta\right)\to\frac{L\left(\theta\right)}{R}\pi\left(\theta\right)
-$$
-
-and of course rejections change the generating distribution
-
-$$
-\pi\left(y|\theta\right)\to\frac{f\left(y\right)}{L\left(\theta\right)}\pi\left(y|\theta\right)
-$$
-
-but crucially these changes cancel out when computing the posterior. Before rejections we have:
-
-$$
-\pi(\theta | y) \propto \pi(y | \theta) \pi(\theta)
-$$
-
-After rejections we have
-
-$$
-\pi(\theta | y) \propto \frac{L(\theta)}{R} \pi(y | \theta) \frac{f(y)}{L(\theta)} \pi(\theta) = \frac{f(y)}{R} \pi(y | \theta) \pi(\theta)
-$$
-
-And since $\frac{f(y)}{R}$ is a constant for any given simulation (and hence the fit), 
-the overall posterior for Stan (and most other MCMC algorithms) is the same, 
-because Stan only needs the posterior density up to a constant. 
 So whether we take rejection into account or not, the model will match the generating process. 
-However, if $f$ also depended on $\theta$, it would no longer contribute a constant
+However, if $\mathtt{accept}$ also depended on $\theta$, it would no longer contribute a constant
 and we'll get a mismatch between the generator and model.
 
 ## Practical examples

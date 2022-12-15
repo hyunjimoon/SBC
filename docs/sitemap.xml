@@ -55,6 +55,15 @@
     <loc>https://hyunjimoon.github.io/SBC/reference/bind_datasets.html</loc>
   </url>
   <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/bind_derived_quantities.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/bind_generated_quantities-deprecated.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/bind_globals.html</loc>
+  </url>
+  <url>
     <loc>https://hyunjimoon.github.io/SBC/reference/bind_results.html</loc>
   </url>
   <url>
@@ -73,6 +82,12 @@
     <loc>https://hyunjimoon.github.io/SBC/reference/combine_args.html</loc>
   </url>
   <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/compute_dquants.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/compute_gen_quants-deprecated.html</loc>
+  </url>
+  <url>
     <loc>https://hyunjimoon.github.io/SBC/reference/compute_results-deprecated.html</loc>
   </url>
   <url>
@@ -88,10 +103,16 @@
     <loc>https://hyunjimoon.github.io/SBC/reference/default_cores_per_fit.html</loc>
   </url>
   <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/derived_quantities.html</loc>
+  </url>
+  <url>
     <loc>https://hyunjimoon.github.io/SBC/reference/ECDF-plots.html</loc>
   </url>
   <url>
     <loc>https://hyunjimoon.github.io/SBC/reference/empirical_coverage.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/generated_quantities-deprecated.html</loc>
   </url>
   <url>
     <loc>https://hyunjimoon.github.io/SBC/reference/generated_quantities.html</loc>
@@ -218,6 +239,9 @@
   </url>
   <url>
     <loc>https://hyunjimoon.github.io/SBC/reference/sub-.SBC_results.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/validate_derived_quantities.html</loc>
   </url>
   <url>
     <loc>https://hyunjimoon.github.io/SBC/reference/wasserstein.html</loc>

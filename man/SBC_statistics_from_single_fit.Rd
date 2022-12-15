@@ -10,8 +10,9 @@ SBC_statistics_from_single_fit(
   generated,
   thin_ranks,
   ensure_num_ranks_divisor,
-  gen_quants,
-  backend
+  dquants,
+  backend,
+  gen_quants = NULL
 )
 }
 \arguments{
@@ -22,11 +23,15 @@ thinned draws See details below.}
 \item{ensure_num_ranks_divisor}{Potentially drop some posterior samples to
 ensure that this number divides the total number of SBC ranks (see Details).}
 
+\item{dquants}{Derived quantities to include in SBC. Use \code{\link[=derived_quantities]{derived_quantities()}} to construct them.}
+
 \item{backend}{the model + sampling algorithm. The built-in backends can be constructed
 using \code{\link[=SBC_backend_cmdstan_sample]{SBC_backend_cmdstan_sample()}}, \code{\link[=SBC_backend_cmdstan_variational]{SBC_backend_cmdstan_variational()}},
 \code{\link[=SBC_backend_rstan_sample]{SBC_backend_rstan_sample()}}, \code{\link[=SBC_backend_rstan_optimizing]{SBC_backend_rstan_optimizing()}} and \code{\link[=SBC_backend_brms]{SBC_backend_brms()}}.
 (more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the \code{\link[=SBC_fit]{SBC_fit()}},
 \code{\link[=SBC_fit_to_draws_matrix]{SBC_fit_to_draws_matrix()}} methods.}
+
+\item{gen_quants}{Deprecated, use dquants instead}
 }
 \description{
 Potentially useful for doing some advanced stuff, but should not

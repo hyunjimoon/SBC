@@ -19,7 +19,7 @@ an [SBC_results] objects with different thin_ranks or other settings."><!-- math
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
       </span>
     </div>
 
@@ -118,8 +118,9 @@ an <code>[SBC_results]</code> objects with different <code>thin_ranks</code> or 
 <span>  <span class="va">generated</span>,</span>
 <span>  <span class="va">thin_ranks</span>,</span>
 <span>  <span class="va">ensure_num_ranks_divisor</span>,</span>
-<span>  <span class="va">gen_quants</span>,</span>
-<span>  <span class="va">backend</span></span>
+<span>  <span class="va">dquants</span>,</span>
+<span>  <span class="va">backend</span>,</span>
+<span>  gen_quants <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -136,12 +137,20 @@ thinned draws See details below.</p></dd>
 ensure that this number divides the total number of SBC ranks (see Details).</p></dd>
 
 
+<dt>dquants</dt>
+<dd><p>Derived quantities to include in SBC. Use <code><a href="derived_quantities.html">derived_quantities()</a></code> to construct them.</p></dd>
+
+
 <dt>backend</dt>
 <dd><p>the model + sampling algorithm. The built-in backends can be constructed
 using <code><a href="SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample()</a></code>, <code><a href="SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational()</a></code>,
 <code><a href="SBC_backend_rstan_sample.html">SBC_backend_rstan_sample()</a></code>, <code><a href="SBC_backend_rstan_optimizing.html">SBC_backend_rstan_optimizing()</a></code> and <code><a href="SBC_backend_brms.html">SBC_backend_brms()</a></code>.
 (more to come: issue 31, 38, 39). The backend is an S3 class supporting at least the <code><a href="SBC_fit.html">SBC_fit()</a></code>,
 <code><a href="SBC_fit_to_draws_matrix.html">SBC_fit_to_draws_matrix()</a></code> methods.</p></dd>
+
+
+<dt>gen_quants</dt>
+<dd><p>Deprecated, use dquants instead</p></dd>
 
 </dl></div>
     <div id="see-also">
@@ -161,7 +170,7 @@ using <code><a href="SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

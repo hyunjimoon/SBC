@@ -2,10 +2,13 @@
 % Please edit documentation in R/results.R
 \name{bind_globals}
 \alias{bind_globals}
-\title{Bind globals used in gen quants or backend}
+\title{Combine two sets globals for use in derived quantities or backend}
 \usage{
 bind_globals(globals1, globals2)
 }
 \description{
-Bind globals used in gen quants or backend
+Combine two sets globals for use in derived quantities or backend
+}
+\seealso{
+\code{\link[=compute_SBC]{compute_SBC()}}, \code{\link[=derived_quantities]{derived_quantities()}}
 }

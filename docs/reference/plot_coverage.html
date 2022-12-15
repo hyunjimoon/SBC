@@ -23,7 +23,7 @@ more details.'><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/li
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
       </span>
     </div>
 
@@ -125,7 +125,8 @@ more details.</p>
 <span>  variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  prob <span class="op">=</span> <span class="fl">0.95</span>,</span>
 <span>  interval_type <span class="op">=</span> <span class="st">"central"</span>,</span>
-<span>  parameters <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  parameters <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  max_points <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">plot_coverage_diff</span><span class="op">(</span></span>
@@ -133,7 +134,8 @@ more details.</p>
 <span>  variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  prob <span class="op">=</span> <span class="fl">0.95</span>,</span>
 <span>  interval_type <span class="op">=</span> <span class="st">"central"</span>,</span>
-<span>  parameters <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  parameters <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  max_points <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -153,6 +155,12 @@ more details.</p>
 
 <dt>parameters</dt>
 <dd><p>DEPRECATED. Use <code>variables</code> instead.</p></dd>
+
+
+<dt>max_points</dt>
+<dd><p>maximum number of points where to evaluate the coverage.
+If set to <code>NULL</code>, coverage is evaluated across the whole range of ranks.
+Setting to some smaller number may reduce memory footprint and increase speed.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -178,7 +186,7 @@ more details.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

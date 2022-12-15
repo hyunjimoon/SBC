@@ -30,7 +30,7 @@ then for each variable, the ranks obtained in SBC should be uniformly distribute
 This corresponds quite directly to claims like 
 "the posterior 84% credible interval should contain the simulated value in 84% of simulations",
 the rank uniformity represents this claim for all interval widths at once. The theory of SBC is fully
-described in [Talts et al.](https://arxiv.org/abs/1804.06788)
+described in [Modrák et al.](https://arxiv.org/abs/2211.02383v1) which builds upon [Talts et al.](https://arxiv.org/abs/1804.06788)
 
 This opens two principal use-cases of SBC:
 
