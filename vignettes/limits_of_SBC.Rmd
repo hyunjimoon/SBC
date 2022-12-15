@@ -11,11 +11,13 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
-Here, we'll walk through some problems that are hard/impossible to diagnose with SBC.
+Here, we'll walk through some problems that are hard to diagnose with SBC in its default settings.
 As usual the focus is on problems with models, assuming our inference algorithm 
 is correct. But for each of those problems, one can imagine a corresponding
 failure in an algorithm --- although some of those failures are quite unlikely for
 actual algorithms.
+
+A more extensive theoretical discussion of those limits can be found in the [Simulation-Based Calibration Checking for Bayesian Computation: The Choice of Test Quantities Shapes Sensitivity](https://arxiv.org/abs/2211.02383v1) preprint, additional examples at https://martinmodrak.github.io/sbc_test_quantities_paper/
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)

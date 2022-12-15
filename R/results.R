@@ -366,7 +366,7 @@ compute_results <- function(...) {
 #'    this should be a name of a single file. If the file name does not end with
 #'    `.rds`, this extension is appended.
 #' @param dquants Derived quantities to include in SBC. Use [derived_quantities()] to construct them.
-#' @parem gen_quants Deprecated, use dquants instead
+#' @param gen_quants Deprecated, use dquants instead
 #' @param globals A list of names of objects that are defined
 #' in the global environment and need to present for the backend to work (
 #' if they are not already available in package).

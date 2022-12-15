@@ -99,7 +99,8 @@ With a little additional work, you can integrate SBC with any exact or approxima
 ## References
 
 * Theoretical support
-   * [Validating Bayesian Inference Algorithms with Simulation-Based Calibration](https://arxiv.org/pdf/1804.06788.pdf) Talts, Betancourt, Simpson, Vehtari, Gelman, 2018
+   * [Simulation-Based Calibration Checking for Bayesian Computation: The Choice of Test Quantities Shapes Sensitivity](https://arxiv.org/abs/2211.02383v1) Modrák, Moon, Kim, Bürkner, Huurre, Faltejsková, Gelman, Vehtari, 2022
+   * [Validating Bayesian Inference Algorithms with Simulation-Based Calibration](http://www.stat.columbia.edu/~gelman/research/unpublished/sbc.pdf) Talts, Betancourt, Simpson, Vehtari, Gelman, 2018
    * [Graphical Test for Discrete Uniformity and its Applications in Goodness of Fit Evaluation and Multiple Sample Comparison](https://arxiv.org/abs/2103.10522)  Säilynoja, Bürkner, Vehtari, 2021
    * [Bayesian Workflow](https://arxiv.org/abs/2011.01808), Gelman et al., 2020
    * [Toward a principled Bayesian workflow in cognitive science](https://psycnet.apa.org/record/2020-43606-001) Schad, Betancourt, Vasishth, 2021
