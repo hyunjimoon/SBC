@@ -21,3 +21,16 @@ named in the \code{.globals} parameter (hopefully we'll be able to detect those
 automatically in the future). Note that \code{\link[=recompute_SBC_statistics]{recompute_SBC_statistics()}} currently
 does not use parallel processing, so \code{.globals} don't need to be set.
 }
+\examples{
+# Derived quantity computing the total log likelihood of a normal distribution
+# with known sd = 1
+normal_lpdf <- function(y, mu, sigma) {
+ sum(dnorm(y, mean = mu, sd = sigma, log = TRUE))
+}
+
+# Note the use of .globals to make the normal_lpdf function available
+# within the expression
+log_lik_dq <- derived_quantities(log_lik = normal_lpdf(y, mu, 1),
+                                .globals = "normal_lpdf" )
+
+}

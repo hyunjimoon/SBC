@@ -254,7 +254,8 @@ length.SBC_results <- function(x) {
               errors = x$errors[indices])
 }
 
-#' Bind globals used in gen quants or backend
+#' Combine two sets globals for use in derived quantities or backend
+#' @seealso [compute_SBC()], [derived_quantities()]
 bind_globals <- function(globals1, globals2) {
     if(length(globals1) > 0 && length(globals2)  > 0) {
       if(is.list(globals1) != is.list(globals2)) {

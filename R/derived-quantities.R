@@ -11,6 +11,18 @@
 #' in the global environment and need to present for the gen. quants. to evaluate.
 #' It is added to the `globals` argument to [future::future()], to make those
 #' objects available on all workers.
+#' @examples
+#'# Derived quantity computing the total log likelihood of a normal distribution
+#'# with known sd = 1
+#'normal_lpdf <- function(y, mu, sigma) {
+#'  sum(dnorm(y, mean = mu, sd = sigma, log = TRUE))
+#'}
+#'
+#'# Note the use of .globals to make the normal_lpdf function available
+#'# within the expression
+#'log_lik_dq <- derived_quantities(log_lik = normal_lpdf(y, mu, 1),
+#'                                 .globals = "normal_lpdf" )
+#'
 #' @export
 derived_quantities <- function(..., .globals = list()) {
   structure(rlang::enquos(..., .named = TRUE),
