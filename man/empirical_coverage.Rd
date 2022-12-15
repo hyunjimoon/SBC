@@ -8,7 +8,7 @@ empirical_coverage(stats, width, prob = 0.95, interval_type = "central")
 }
 \arguments{
 \item{stats}{a data.frame of rank statistics (e.g. as returned in the \verb{$stats} component of \link{SBC_results}),
-at minimum should have at least \code{parameter}, \code{rank} and \code{max_rank} columns)}
+at minimum should have at least \code{variable}, \code{rank} and \code{max_rank} columns)}
 
 \item{width}{a vector of values between 0 and 1 representing widths of credible intervals for
 which we compute coverage.}
@@ -19,7 +19,7 @@ which we compute coverage.}
 or \code{"leftmost"} to show coverage of leftmost credible intervals (i.e. the observed CDF).}
 }
 \value{
-A \code{data.frame} with columns \code{parameter}, \code{width} (width of the interval as given
+A \code{data.frame} with columns \code{variable}, \code{width} (width of the interval as given
 in the \code{width} parameter), \code{width_represented} the closest width that can be represented by
 the ranks in the input (any discrepancy needs to be judged against this rather than \code{width}),
 \code{estimate} - observed coverage for the interval, \code{ci_low}, \code{ci_high} the uncertainty

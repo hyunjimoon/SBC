@@ -4,12 +4,34 @@
 \alias{plot_rank_hist}
 \title{Plot rank histogram of an SBC results.}
 \usage{
-plot_rank_hist(x, parameters = NULL, bins = NULL, prob = 0.95, ...)
+plot_rank_hist(
+  x,
+  variables = NULL,
+  bins = NULL,
+  prob = 0.95,
+  ...,
+  parameters = NULL
+)
 }
 \arguments{
 \item{x}{Object supporting the plotting method.}
+
+\item{variables}{Names of variables to show}
+
+\item{bins}{number of bins to be used in the histogram, if left unspecified,
+it is determined by \code{\link[=guess_rank_hist_bins]{guess_rank_hist_bins()}}.}
+
+\item{prob}{The width of the approximate confidence interval shown.}
 }
 \description{
+The expected uniform distribution and an approximate confidence interval
+is also shown. The confidence interval cannot be taken too seriously
+as it is derived assuming the bins are independent (which they are not).
+The \code{\link[=plot_ecdf]{plot_ecdf()}} and \code{\link[=plot_ecdf_diff]{plot_ecdf_diff()}} plots provide better confidence interval
+but are somewhat less interpretable. See \code{vignette("rank_visualizations")} for
+more details.
+}
+\details{
 By default the support is for \code{SBC_results} objects and data frames in the same
 format as the \verb{$stats} element of \code{SBC_results}.
 }

@@ -4,7 +4,7 @@ data {
 }
 
 transformed data {
-  int N2 = N / 2 + 1;
+  int N2 = N %/% 2 + 1;
 }
 
 parameters {

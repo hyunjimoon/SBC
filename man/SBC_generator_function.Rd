@@ -7,7 +7,7 @@
 SBC_generator_function(f, ...)
 }
 \arguments{
-\item{f}{function returning a list with elements \code{parameters}
+\item{f}{function returning a list with elements \code{variables}
 (prior draws, a list or anything that can be converted to \code{draws_rvars}) and
 \code{generated} (observed dataset, ready to be passed to backend)}
 

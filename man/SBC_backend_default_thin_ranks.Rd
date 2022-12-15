@@ -11,5 +11,5 @@ SBC_backend_default_thin_ranks(backend)
 }
 \description{
 The default implementation plays it relatively safe and returns 10, unless
-\code{\link[=SBC_backend_iid_samples]{SBC_backend_iid_samples()}} returns \code{TRUE} in which case it returns 1.
+\code{\link[=SBC_backend_iid_draws]{SBC_backend_iid_draws()}} returns \code{TRUE} in which case it returns 1.
 }

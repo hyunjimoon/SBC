@@ -1,4 +1,5 @@
 
+# Note that this function is memoized in .onLoad
 adjust_gamma <- function(N, L, K=N, conf_level=0.95) {
   if (any(c(K, N, L) < 1)) {
     abort("Parameters 'N', 'L' and 'K' must be positive integers.")
@@ -81,7 +82,7 @@ adjust_gamma_simulate <-function(N, L, K, conf_level=0.95, M=5000) {
       scaled_ecdf <- colSums(outer(u, z, "<="))
       gamma[m] <- 2 * min(
         pbinom(scaled_ecdf, N, z),
-        pbinom(scaled_ecdfs - 1, N, z, lower.tail = FALSE)
+        pbinom(scaled_ecdf - 1, N, z, lower.tail = FALSE)
       )
     }
   }
@@ -174,13 +175,13 @@ ranks_to_empirical_pit <- function(ranks, n_posterior_samples){
 #' then all intervals are well calibrated.
 #'
 #' @param stats a data.frame of rank statistics (e.g. as returned in the `$stats` component of [SBC_results]),
-#'   at minimum should have at least `parameter`, `rank` and `max_rank` columns)
+#'   at minimum should have at least `variable`, `rank` and `max_rank` columns)
 #' @param width a vector of values between 0 and 1 representing widths of credible intervals for
 #'   which we compute coverage.
 #' @param prob determines width of the uncertainty interval around the observed coverage
 #' @param inteval_type `"central"` to show coverage of central credible intervals
 #'   or `"leftmost"` to show coverage of leftmost credible intervals (i.e. the observed CDF).
-#' @return A `data.frame` with columns `parameter`, `width` (width of the interval as given
+#' @return A `data.frame` with columns `variable`, `width` (width of the interval as given
 #'   in the `width` parameter), `width_represented` the closest width that can be represented by
 #'   the ranks in the input (any discrepancy needs to be judged against this rather than `width`),
 #'   `estimate` - observed coverage for the interval, `ci_low`, `ci_high` the uncertainty
@@ -188,9 +189,18 @@ ranks_to_empirical_pit <- function(ranks, n_posterior_samples){
 #' @seealso [plot_coverage()]
 #' @export
 empirical_coverage <- function(stats, width, prob = 0.95, interval_type = "central") {
-  if(!all(c("parameter", "rank", "max_rank") %in% names(stats))) {
+  stopifnot(is.data.frame(stats))
+  # Ensuring backwards compatibility
+  if("parameter" %in% names(stats)) {
+    if(!("variable" %in% names(stats))) {
+      warning("The stats parameter contains a `parameter` column, which is deprecated, use `variable` instead.")
+      stats$variable <- stats$parameter
+    }
+  }
+
+  if(!all(c("variable", "rank", "max_rank") %in% names(stats))) {
     stop(SBC_error("SBC_invalid_argument_error",
-                   "The stats data.frame needs a 'parameter', 'rank' and 'max_rank' columns"))
+                   "The stats data.frame needs a 'variable', 'rank' and 'max_rank' columns"))
   }
 
   stopifnot(is.numeric(width))
@@ -208,31 +218,45 @@ empirical_coverage <- function(stats, width, prob = 0.95, interval_type = "centr
     }
   }
 
-  long <- tidyr::crossing(stats, data.frame(width = width))
+  # Some juggling to reduce memory footprint
+  stats_trimmed <- dplyr::select(stats, variable, rank, max_rank)
+
+  variable_was_character <- is.character(stats_trimmed$variable)
+  if(variable_was_character) {
+    stats_trimmed <- dplyr::mutate(stats_trimmed, variable = factor(variable))
+  }
+
+
+  long <- dplyr::full_join(stats_trimmed, data.frame(width = width), by = character())
   long <- dplyr::mutate(long,
-                       n_ranks_covered = round((max_rank + 1) * width),
-                       low_rank = get_low_rank(max_rank, n_ranks_covered),
-                       high_rank = low_rank + n_ranks_covered - 1,
-                       width_represented =  (high_rank - low_rank + 1) / (max_rank + 1),
-                       is_covered = rank >= low_rank & rank <= high_rank)
+                        n_ranks_covered = round((max_rank + 1) * width),
+                        low_rank = get_low_rank(max_rank, n_ranks_covered),
+                        high_rank = low_rank + n_ranks_covered - 1,
+                        width_represented =  (high_rank - low_rank + 1) / (max_rank + 1),
+                        is_covered = rank >= low_rank & rank <= high_rank)
 
-   summ <- dplyr::summarise(
-     dplyr::group_by(long, parameter, width),
-     post_alpha = sum(is_covered) + 1,
-     post_beta = dplyr::n() - sum(is_covered) + 1,
-     width_represented = unique(width_represented),
-     # Special handling if width_represented is either 0 or 1 as in such case,
-     # the result can never be different from 0 / 1 and so the CI should collapse to a point
-     representable = width_represented > 0 & width_represented < 1,
-     ci_low =  dplyr::if_else(representable,
-                              qbeta(0.5 - prob / 2, post_alpha, post_beta),
-                              width_represented),
-     estimate = sum(is_covered) / dplyr::n(),
-     ci_high = dplyr::if_else(representable,
-                              qbeta(0.5 + prob / 2, post_alpha, post_beta),
-                              width_represented),
-     .groups = "drop"
-   )
+  summ <- dplyr::summarise(
+    dplyr::group_by(long, variable, width),
+    post_alpha = sum(is_covered) + 1,
+    post_beta = dplyr::n() - sum(is_covered) + 1,
+    width_represented = unique(width_represented),
+    # Special handling if width_represented is either 0 or 1 as in such case,
+    # the result can never be different from 0 / 1 and so the CI should collapse to a point
+    representable = width_represented > 0 & width_represented < 1,
+    ci_low =  dplyr::if_else(representable,
+                             qbeta(0.5 - prob / 2, post_alpha, post_beta),
+                             width_represented),
+    estimate = mean(is_covered),
+    ci_high = dplyr::if_else(representable,
+                             qbeta(0.5 + prob / 2, post_alpha, post_beta),
+                             width_represented),
+    .groups = "drop"
+  )
 
-   dplyr::select(summ, -post_alpha, -post_beta, -representable)
+  if(variable_was_character) {
+    summ <- dplyr::mutate(summ, variable = as.character(variable))
+  }
+
+
+  dplyr::select(summ, -post_alpha, -post_beta, -representable)
 }

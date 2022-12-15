@@ -1,11 +1,14 @@
+url: https://hyunjimoon.github.io/SBC/
 
 template:
   params:
     bootswatch: cosmo
 
 navbar:
-  title: "brms"
+  title: "SBC"
   left:
+    - text: "Get Started"
+      href: articles/SBC.html
     - text: "Vignettes"
       href: articles/index.html
     - text: "Functions"
@@ -52,7 +55,8 @@ articles:
     desc: >
       Understanding the basic usage and philosophy of the package
     contents:
-      - basic_usage
+      - SBC
+      - rank_visualizations
   - title: "Using SBC for debugging/validating Stan models"
     desc: >
       Case studies showing how problems in a Stan model can be discovered with SBC.
@@ -63,9 +67,10 @@ articles:
   - title: "Additional use cases and advanced topics"
     contents:
       - limits_of_SBC
+      - computational_algorithm1
       - implementing_backends
       - brms
-      - discrete_params
+      - discrete_vars
       - rejection_sampling
 
 reference:
@@ -83,20 +88,28 @@ reference:
 - title: Computation & results
   desc: Functions related to running the SBC computation and handling the results.
 - contents:
-  - compute_results
-  - generated_quantities
-  - statistics_from_single_fit
-  - recompute_statistics
-  - contains("results")
+  - compute_SBC
+  - contains("SBC_results")
+  - contains("derived_quantities")
+  - contains("dquants")
+  - bind_globals
+  - SBC_statistics_from_single_fit
+  - recompute_SBC_statistics
+  - bind_results
   - calculate_ranks_draws_matrix
   - contains("diagnostic")
-  - starts_with("default_")
+  - default_chunk_size
+  - default_cores_per_fit
 - title: Plotting & Summarising
   desc: Plotting and summarising results
 - contents:
   - contains("plot")
-  - guess_bins
+  - guess_rank_hist_bins
   - empirical_coverage
+- title: Examples
+  desc: Functions to let you easily test the pacakge
+- contents:
+  - contains("example")
 - title: Miscellaneous
 - contents:
   - wasserstein

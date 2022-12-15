@@ -1,7 +1,12 @@
-new_SBC_datasets <- function(parameters, generated) {
+new_SBC_datasets <- function(variables, generated, parameters = NULL) {
+  if(!is.null(parameters)) {
+    warning("The `parameters` argument is deprecated use `variables` instead.")
+    if(missing(variables)) {
+      variables <- parameters
+    }
+  }
 
-
-  structure(list(parameters = parameters,
+  structure(list(variables = variables,
                  generated = generated),
             class = "SBC_datasets")
 }
@@ -10,20 +15,26 @@ new_SBC_datasets <- function(parameters, generated) {
 validate_SBC_datasets <- function(x) {
   stopifnot(is.list(x))
   stopifnot(inherits(x, "SBC_datasets"))
-  if(!posterior::is_draws_matrix(x$parameters)) {
-    stop("SBC_datasets object has to have a 'parameters' field of type draws_matrix")
+  if(!is.null(x$parameters)) {
+    warning("Encountered old version of datasets using `parameters`, which is deprecated, will rename to `variables`.")
+    if(is.null(x$variables)) {
+      x$variables <- x$parameters
+    }
+  }
+  if(!posterior::is_draws_matrix(x$variables)) {
+    stop("SBC_datasets object has to have a 'variables' field of type draws_matrix")
   }
 
   if(!is.list(x$generated)) {
     stop("SBC_datasets object has to have a 'generated' field of type list")
   }
 
-  if(posterior::nchains(x$parameters) != 1) {
-    stop("Needs one chain")
+  if(posterior::nchains(x$variables) != 1) {
+    stop("The `variables` draws_matrix needs exactly one chain.")
   }
 
-  if(posterior::ndraws(x$parameters) != length(x$generated)) {
-    stop("Needs equal no. of draws for parameters and length of generated")
+  if(posterior::ndraws(x$variables) != length(x$generated)) {
+    stop("Needs equal no. of draws for variables and length of generated")
   }
 
   x
@@ -34,13 +45,20 @@ validate_SBC_datasets <- function(x) {
 #' In most cases, you may want to use `generate_datasets` to build the object, but
 #' for full control, you can also create datasets directly via this function.
 #'
-#' @param parameters samples of "true" values of unobserved parameters.
+#' @param variables draws of "true" values of unobserved parameters or other derived variables.
 #' An object of class `draws_matrix` (from the `posterior` package)
 #' @param generated a list of objects that can be passed as data to the backend you plan to use.
 #' (e.g. list of values for Stan-based backends, a data frame for `SBC_backend_brms`)
+#' @param parameters DEPRECATED. Use variables instead.
 #' @export
-SBC_datasets <- function(parameters, generated) {
-  x <-  new_SBC_datasets(parameters, generated)
+SBC_datasets <- function(variables, generated, parameters = NULL) {
+  if(!is.null(parameters)) {
+    warning("The `parameters` argument is deprecated use `variables` instead.")
+    if(missing(variables)) {
+      variables <- parameters
+    }
+  }
+  x <-  new_SBC_datasets(variables, generated)
   validate_SBC_datasets(x)
   x
 }
@@ -48,7 +66,7 @@ SBC_datasets <- function(parameters, generated) {
 #' @export
 length.SBC_datasets <- function(x) {
   validate_SBC_datasets(x)
-  posterior::ndraws(x$parameters)
+  posterior::ndraws(x$variables)
 }
 
 #' Subset an `SBC_datasets` object.
@@ -56,7 +74,7 @@ length.SBC_datasets <- function(x) {
 #' @export
 `[.SBC_datasets` <- function(x, indices) {
   validate_SBC_datasets(x)
-  new_SBC_datasets(posterior::subset_draws(x$parameters, draw = indices, unique = FALSE),
+  new_SBC_datasets(posterior::subset_draws(x$variables, draw = indices, unique = FALSE),
                    x$generated[indices])
 }
 
@@ -69,10 +87,10 @@ bind_datasets <- function(...) {
   purrr::walk(args, validate_SBC_datasets)
   #TODO check identical par names
 
-  parameters_list <- purrr::map(args, function(x) x$parameters)
+  variables_list <- purrr::map(args, function(x) x$variables)
   generated_list <- purrr::map(args, function(x) x$generated)
 
-  new_SBC_datasets(do.call(posterior::bind_draws, c(parameters_list, list(along = "draw"))),
+  new_SBC_datasets(do.call(posterior::bind_draws, c(variables_list, list(along = "draw"))),
                    do.call(c, generated_list))
 }
 
@@ -80,16 +98,18 @@ bind_datasets <- function(...) {
 #'
 #' @param generator a generator object - build e.g. via `SBC_generator_function` or
 #'  `SBC_generator_brms`.
+#' @param n_sims the number of simulated datasets to use
+#' @param n_datasets DEPRECATED, use `n_sims` instead.
 #' @return object of class `SBC_datasets`
 #' TODO: seed
 #' @export
-generate_datasets <- function(generator, n_datasets) {
+generate_datasets <- function(generator, n_sims, n_datasets = NULL) {
   UseMethod("generate_datasets")
 }
 
 #' Generate datasets via a function that creates a single dataset.
 #'
-#' @param f function returning a list with elements `parameters`
+#' @param f function returning a list with elements `variables`
 #' (prior draws, a list or anything that can be converted to `draws_rvars`) and
 #' `generated` (observed dataset, ready to be passed to backend)
 #' @param ... Additional arguments passed to `f`
@@ -101,23 +121,41 @@ SBC_generator_function <- function(f, ...) {
 
 
 #' @export
-generate_datasets.SBC_generator_function <- function(generator, n_datasets) {
-  parameters_list <- list()
+generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datasets = NULL) {
+  if(!is.null(n_datasets)) {
+    warning("n_datasets argument is deprecated, use n_sims instead")
+    if(missing(n_sims)) {
+      n_sims <- n_datasets
+    }
+  }
+  variables_list <- list()
   generated <- list()
-  for(iter in 1:n_datasets){
+  warned_parameters <- FALSE
+  for(iter in 1:n_sims){
     generator_output <- do.call(generator$f, generator$args)
-    if(!is.list(generator_output) ||
-       is.null(generator_output$parameters) ||
-       is.null(generator_output$generated)) {
-      stop(SBC_error("SBC_datasets_error",
-      "The generating function has to return a list with elements `parameters`
-      (that can be converted to `draws_rvars`) `generated`"))
+    # Ensuring backwards compatibility
+    if(!is.null(generator_output$parameters)) {
+      if(!warned_parameters) {
+        warning("Generator function returns a list with element `parameters`, which is deprecated. Return `variables` instead.")
+        warned_parameters <- TRUE
+      }
+      if(is.null(generator_output$variables)) {
+        generator_output$variables <- generator_output$parameters
+      }
     }
 
-    parnames <- names(generator_output$parameters)
-    if(is.null(parnames) || any(is.na(parnames)) ||
-       any(parnames == "") || length(unique(parnames)) != length(parnames)) {
-      stop(SBC_error("SBC_datasets_error", "All elements of $parameters must have a unique name"))
+    if(!is.list(generator_output) ||
+       is.null(generator_output$variables) ||
+       is.null(generator_output$generated)) {
+      stop(SBC_error("SBC_datasets_error",
+      "The generating function has to return a list with elements `variables`
+      (that can be converted to `draws_rvars`) and `generated`"))
+    }
+
+    varnames <- names(generator_output$variables)
+    if(is.null(varnames) || any(is.na(varnames)) ||
+       any(varnames == "") || length(unique(varnames)) != length(varnames)) {
+      stop(SBC_error("SBC_datasets_error", "All elements of $variables must have a unique name"))
     }
     # TODO add a validate_input generic that would let backends impose additional checks
     # on generated data.
@@ -145,24 +183,24 @@ generate_datasets.SBC_generator_function <- function(generator, n_datasets) {
       }
     }
 
-    params_rvars <-
+    vars_rvars <-
       do.call(
       posterior::draws_rvars,
-      purrr::map(generator_output$parameters,
+      purrr::map(generator_output$variables,
                  ~ posterior::rvar(array(.x, dim = c(1, guess_dims(.x))), dimnames = guess_dimnames(.x))
                  )
       )
-    parameters_list[[iter]] <- posterior::as_draws_matrix(params_rvars)
-    if(posterior::ndraws(parameters_list[[iter]]) != 1) {
-      stop("The `parameters` element of the generated data must contain only
+    variables_list[[iter]] <- posterior::as_draws_matrix(vars_rvars)
+    if(posterior::ndraws(variables_list[[iter]]) != 1) {
+      stop("The `variables` element of the generator output must contain only
       a single draw")
     }
     generated[[iter]] <- generator_output$generated
   }
 
-  parameters <- do.call(posterior::bind_draws, args = c(parameters_list, list(along = "draw")))
+  variables <- do.call(posterior::bind_draws, args = c(variables_list, list(along = "draw")))
 
-  SBC_datasets(parameters, generated)
+  SBC_datasets(variables, generated)
 }
 
 #' Wrap a function the creates a complete dataset.
@@ -174,13 +212,13 @@ generate_datasets.SBC_generator_function <- function(generator, n_datasets) {
 #'
 #' ```r
 #' gen <- SBC_generator_custom(f, <<some other args>>)
-#' datasets <- generate_datasets(gen, n_datasets = my_n_datasets)
+#' datasets <- generate_datasets(gen, n_sims = my_n_sims)
 #' ```
 #'
 #' is equivalent to just running
 #'
 #' ```r
-#' datasets <- f(<<some other args>>, n_datasets = my_n_datasets)
+#' datasets <- f(<<some other args>>, n_sims = my_n_sims)
 #' ```
 #'
 #' So whenever you control the code calling `generate_datasets`,
@@ -191,7 +229,7 @@ generate_datasets.SBC_generator_function <- function(generator, n_datasets) {
 #' built-in generators do not provide you with enough flexibility.
 #'
 #'
-#' @param f function accepting at least an `n_datasets` argument and returning
+#' @param f function accepting at least an `n_sims` argument and returning
 #' and `SBC_datasets` object
 #' @param ... Additional arguments passed to `f`
 #' @export
@@ -201,8 +239,14 @@ SBC_generator_custom <- function(f, ...) {
 }
 
 #'@export
-generate_datasets.SBC_generator_custom <- function(generator, n_datasets) {
-  res <- do.call(generator$f, combine_args(generator$args, list(n_datasets = n_datasets)))
+generate_datasets.SBC_generator_custom <- function(generator, n_sims, n_datasets = NULL) {
+  if(!is.null(n_datasets)) {
+    warning("n_datasets argument is deprecated, use n_sims instead")
+    if(missing(n_sims)) {
+      n_sims <- n_datasets
+    }
+  }
+  res <- do.call(generator$f, combine_args(generator$args, list(n_sims = n_sims)))
   res <- validate_SBC_datasets(res)
   res
 }
@@ -214,7 +258,7 @@ generate_datasets.SBC_generator_custom <- function(generator, n_datasets) {
 #'
 #' @param ... arguments passed to `brms::brm`
 #' @param generate_lp whether to compute the overall log-likelihood of the model
-#' as an additional parameter. This can be somewhat computationally expensive,
+#' as an additional variable. This can be somewhat computationally expensive,
 #' but improves sensitivity of the SBC process.
 #' @export
 SBC_generator_brms <- function(..., generate_lp = TRUE) {
@@ -242,7 +286,14 @@ SBC_generator_brms <- function(..., generate_lp = TRUE) {
 }
 
 #' @export
-generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
+generate_datasets.SBC_generator_brms <- function(generator, n_sims, n_datasets = NULL) {
+  if(!is.null(n_datasets)) {
+    warning("n_datasets argument is deprecated, use n_sims instead")
+    if(missing(n_sims)) {
+      n_sims <- n_datasets
+    }
+  }
+
   #TODO pass args for control, warmup, .... to sampling
   if(inherits(generator$compiled_model, "CmdStanModel")) {
       args_for_fitting <- translate_rstan_args_to_cmdstan(generator$args, include_unrecognized = FALSE)
@@ -256,7 +307,7 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
       }
 
 
-      args_for_fitting$iter_sampling <- ceiling(n_datasets / args_for_fitting$chains) * args_for_fitting$thin
+      args_for_fitting$iter_sampling <- ceiling(n_sims / args_for_fitting$chains) * args_for_fitting$thin
 
       args_for_fitting
       prior_fit <- do.call(generator$compiled_model$sample,
@@ -269,13 +320,13 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
       max_rhat <- max(summ$rhat)
       if(max_rhat > 1.01) {
         message("Warning: Some rhats are > 1.01 indicating the prior was not explored well.\n",
-                "The highest rhat is ", round(max_rhat, 2)," for ", summ$parameter[which.max(summ$rhat)],
+                "The highest rhat is ", round(max_rhat, 2)," for ", summ$variable[which.max(summ$rhat)],
                 "\nConsider adding warmup iterations (via 'warmup' argument).")
       }
       min_ess <- min(summ$ess_bulk)
-      if(min_ess < n_datasets / 2) {
-        message("Warning: Bulk effective sample size for some parameters is less than half the number of datasets.\n",
-                "The lowest ESS_bulk/n_datasets is ", round(min_ess / n_datasets, 2)," for ", summ$parameter[which.min(summ$ess_bulk)],
+      if(min_ess < n_sims / 2) {
+        message("Warning: Bulk effective sample size for some parameters is less than half the number of simulations.\n",
+                "The lowest ESS_bulk/n_sims is ", round(min_ess / n_sims, 2)," for ", summ$parameter[which.min(summ$ess_bulk)],
                 "\nConsider increased thinning  (via 'thin' argument) .")
       }
 
@@ -299,7 +350,7 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
       args_for_fitting$thin <- 1
     }
 
-    args_for_fitting$iter <- args_for_fitting$warmup + ceiling(n_datasets / args_for_fitting$chains) * args_for_fitting$thin
+    args_for_fitting$iter <- args_for_fitting$warmup + ceiling(n_sims / args_for_fitting$chains) * args_for_fitting$thin
 
     prior_fit <- do.call(rstan::sampling, args_for_fitting)
 
@@ -315,8 +366,8 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
   processed_formula <- prior_fit_brms$formula
 
   generated <- list()
-  log_likelihoods <- numeric(n_datasets)
-  for(i in 1:n_datasets) {
+  log_likelihoods <- numeric(n_sims)
+  for(i in 1:n_sims) {
 
     new_dataset <- original_data
     if(inherits(processed_formula, "brmsformula")) {
@@ -343,8 +394,8 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
   #       ll <- brms::log_lik(prior_fit_brms, newdata = new_dataset, subset = i, cores = 1)
   #       sum(ll)
   #       },
-  #     generated, 1:n_datasets,
-  #     future.chunk.size = default_chunk_size(n_datasets))
+  #     generated, 1:n_sims,
+  #     future.chunk.size = default_chunk_size(n_sims))
   # }
 
 
@@ -366,6 +417,7 @@ generate_datasets.SBC_generator_brms <- function(generator, n_datasets) {
 draws_rvars_to_standata <- function(x) {
   res <- list()
   for(i in 1:posterior::ndraws(x)) {
+    # TODO use direct indexing - subset_draws is unnecessarily slow
     res[[i]] <- draws_rvars_to_standata_single(posterior::subset_draws(x, draw = i))
   }
   res
@@ -395,14 +447,14 @@ calculate_prior_sd <- function(datasets) {
   # TODO this is a hack - there has to be a better diagnostic to get whether
   # our sd estimate is good (probably via MCSE?)
   if(length(datasets) < 50) {
-    warning("Cannot reliably estimate prior_sd with less than 50 datasets.\n",
-            "Note that you can generate extra datasets that you don't actually fit and use those to estimate prior sd.")
+    warning("Cannot reliably estimate prior_sd with less than 50 simulations.\n",
+            "Note that you can generate extra simulations that you don't actually fit and use those to estimate prior sd.")
   }
   if(length(datasets) < 2) {
-    stop("Cannot estimate prior sd with less than 2 datasets")
+    stop("Cannot estimate prior sd with less than 2 simulations")
   }
 
-  sds_df <- posterior::summarise_draws(datasets$parameters, sd)
+  sds_df <- posterior::summarise_draws(datasets$variables, sd)
   sds_vec <- sds_df$sd
   names(sds_vec) <- sds_df$variable
 
