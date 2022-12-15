@@ -65,7 +65,7 @@ plot_ecdf_diff(results_sd)
 The diagnostic plots show no problems in this case. As with any other
 software test, we can observe clear failures, but absence of failures does not imply
 correctness. We can however make the SBC check more thorough by using a lot of
-simulations and including suitable generated quantities to guard against
+simulations and including suitable derived quantities to guard against
 [known limitations of vanilla SBC](https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html).
 
 ## Paralellization

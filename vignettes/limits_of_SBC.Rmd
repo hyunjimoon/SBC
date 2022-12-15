@@ -306,7 +306,7 @@ plot_sim_estimated(results_missing, alpha = 0.5)
 
 
 There is however even more powerful method - and that is to include the likelihood in the SBC.
-This is most easily done by adding a "generated quantity" to the SBC results - this is a function
+This is most easily done by adding a "derived quantity" to the SBC results - this is a function
 that is evaluated within the context of the variables AND data. 
 And it can be added without recomputing the fits!
 
@@ -315,19 +315,19 @@ normal_lpdf <- function(y, mu, sigma) {
   sum(dnorm(y, mean = mu, sd = sigma, log = TRUE))
 }
 
-log_lik_gq <- generated_quantities(log_lik = normal_lpdf(y, mu, 1), 
+log_lik_dq <- derived_quantities(log_lik = normal_lpdf(y, mu, 1), 
                                    .globals = "normal_lpdf" )
 
-results_missing_gq <- recompute_SBC_statistics(
+results_missing_dq <- recompute_SBC_statistics(
   results_missing, datasets_missing, 
-  backend = backend_missing, gen_quants = log_lik_gq)
+  backend = backend_missing, dquants = log_lik_dq)
 ```
 
 The rank plots for the `log_lik` quantity immediately shows a severe problem:
 
-```{r results_missing_gq_plots}
-plot_ecdf_diff(results_missing_gq)
-plot_rank_hist(results_missing_gq)
+```{r results_missing_dq_plots}
+plot_ecdf_diff(results_missing_dq)
+plot_rank_hist(results_missing_dq)
 ```
 
 
@@ -359,7 +359,7 @@ if(use_cmdstanr) {
 Let us use this model for the same set of simulations.
 
 ```{r}
-results_missing_2 <- compute_SBC(datasets_missing, backend_missing_2, gen_quants = log_lik_gq, 
+results_missing_2 <- compute_SBC(datasets_missing, backend_missing_2, dquants = log_lik_dq, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "missing_2"))
 ```
@@ -377,7 +377,7 @@ plot_sim_estimated(results_missing_2, variables = "mu", alpha = 0.5)
 ```
 
 
-Now contraction is pretty high, and `mu` is behaving well, but our `log_lik` generated quantity shows a clear problem
+Now contraction is pretty high, and `mu` is behaving well, but our `log_lik` derived quantity shows a clear problem
 
 ```{r results_missing_2_plots}
 plot_ecdf_diff(results_missing_2)
@@ -470,17 +470,17 @@ We can however add derived quantities that depend on both elements of mu. We'll
 try their sum, difference, product and the multivarite normal log likelihood
 
 ```{r}
-gq_corr <- generated_quantities(sum = mu[1] + mu[2], 
+dq_corr <- derived_quantities(sum = mu[1] + mu[2], 
                                 diff = mu[1] - mu[2],
                                 prod = mu[1] * mu[2],
                                 mvn_log_lik = sum(mvtnorm::dmvnorm(y, mean = mu, sigma = mvn_sigma, log = TRUE)))
 
 
-res_corr_gq  <- compute_SBC(datasets_correlated, backend_uncorr, keep_fits = FALSE,
+res_corr_dq  <- compute_SBC(datasets_correlated, backend_uncorr, keep_fits = FALSE,
                         globals = analytic_backend_uncorr_globals,
-                        gen_quants = gq_corr,
+                        dquants = dq_corr,
                         cache_mode = "results", 
-                        cache_location = file.path(cache_dir, "corr_gq"))
+                        cache_location = file.path(cache_dir, "corr_dq"))
 
 ```
 
@@ -488,7 +488,7 @@ We see that all of the derived quantities show problems, but with different stre
 of signal. We'll especially note that the log likelihood is once again a very good
 choice, while sum is probably the worst of those tested.
 
-```{r results_corr_gq}
-plot_rank_hist(res_corr_gq)
-plot_ecdf_diff(res_corr_gq)
+```{r results_corr_dq}
+plot_rank_hist(res_corr_dq)
+plot_ecdf_diff(res_corr_dq)
 ```

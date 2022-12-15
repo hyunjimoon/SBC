@@ -166,7 +166,7 @@ test_that("SBC_statistics_from_single_fit", {
     # testing that no error is thrown and structure is OK
     test_draws <- posterior::example_draws(example = "eight_schools")
     res <- SBC_statistics_from_single_fit(test_draws,
-                               variables = vars, thin_ranks = 1, gen_quants = NULL,
+                               variables = vars, thin_ranks = 1, dquants = NULL,
                                ensure_num_ranks_divisor = 1,
                                backend = SBC_backend_mock())
 
@@ -181,7 +181,7 @@ test_that("SBC_statistics_from_single_fit", {
     # Make sure the test draws have the expected size before proceeding
     expect_equal(posterior::ndraws(test_draws), 400)
     res_ensure2 <- SBC_statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
-                                      variables = vars, thin_ranks = 1, gen_quants = NULL,
+                                      variables = vars, thin_ranks = 1, dquants = NULL,
                                       ensure_num_ranks_divisor = 2,
                                       backend = SBC_backend_mock())
     # Number of ranks = max_rank + 1 (as 0 is a valid rank)
@@ -190,7 +190,7 @@ test_that("SBC_statistics_from_single_fit", {
 
     # Test ensure_num_ranks_divisor, combined with thin_ranks
     res_ensure7 <- SBC_statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
-                                              variables = vars, thin_ranks = 4, gen_quants = NULL,
+                                              variables = vars, thin_ranks = 4, dquants = NULL,
                                               ensure_num_ranks_divisor = 7,
                                               backend = SBC_backend_mock())
     expect_equal(unique(res_ensure7$max_rank), 97)

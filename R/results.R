@@ -365,6 +365,8 @@ compute_results <- function(...) {
 #' @param cache_location The filesystem location of cache. For `cache_mode = "results"`
 #'    this should be a name of a single file. If the file name does not end with
 #'    `.rds`, this extension is appended.
+#' @param dquants Derived quantities to include in SBC. Use [derived_quantities()] to construct them.
+#' @parem gen_quants Deprecated, use dquants instead
 #' @param globals A list of names of objects that are defined
 #' in the global environment and need to present for the backend to work (
 #' if they are not already available in package).
@@ -378,15 +380,23 @@ compute_SBC <- function(datasets, backend,
                             thin_ranks = SBC_backend_default_thin_ranks(backend),
                             ensure_num_ranks_divisor = 2,
                             chunk_size = default_chunk_size(length(datasets)),
-                            gen_quants = NULL,
+                            dquants = NULL,
                             cache_mode = "none",
                             cache_location = NULL,
-                            globals = list()) {
+                            globals = list(),
+                            gen_quants = NULL) {
   stopifnot(length(datasets) > 0)
 
-  datasets <- validate_SBC_datasets(datasets)
   if(!is.null(gen_quants)) {
-    gen_quants <- validate_generated_quantities(gen_quants)
+    warning("gen_quants argument is deprecated, use dquants")
+    if(is.null(dquants)) {
+      dquants <- gen_quants
+    }
+  }
+
+  datasets <- validate_SBC_datasets(datasets)
+  if(!is.null(dquants)) {
+    dquants <- validate_derived_quantities(dquants)
   }
 
   ## Handle caching
@@ -410,9 +420,14 @@ compute_SBC <- function(datasets, backend,
 
     if(file.exists(cache_location)) {
       results_from_cache <- readRDS(cache_location)
+      # Ensure backwards compatibility of cache
+      if(!("dquants" %in% names(results_from_cache)) && ("gen_quants" %in% names(results_from_cache))) {
+        # This type of assignment necessary to preserve NULL values
+        results_from_cache["dquants"] <- list(results_from_cache$gen_quants)
+      }
       if(!is.list(results_from_cache) ||
          !all(
-           c("result", "backend_hash", "data_hash", "thin_ranks", "gen_quants","keep_fits")
+           c("result", "backend_hash", "data_hash", "thin_ranks", "dquants","keep_fits")
            %in% names(results_from_cache))) {
         warning("Cache file exists but is in invalid format. Will recompute.")
       } else if(results_from_cache$backend_hash != backend_hash) {
@@ -427,21 +442,31 @@ compute_SBC <- function(datasets, backend,
         result <- tryCatch(validate_SBC_results(results_from_cache$result),
                            error = function(e) { NULL })
 
+        error_dquants <- "error dquants"
+        if(!is.null(results_from_cache$dquants)) {
+          results_from_cache$dquants <-
+            tryCatch(validate_derived_quantities(results_from_cache$dquants),
+                           error = function(e) { error_dquants })
+
+        }
         if(is.null(result)) {
           warning("Cache file contains invalid SBC_results object. Will recompute.")
         } else if(results_from_cache$thin_ranks != thin_ranks ||
-                  !identical(results_from_cache$gen_quants, gen_quants) ||
+                  !identical(results_from_cache$dquants, dquants) ||
                   results_from_cache$ensure_num_ranks_divisor != ensure_num_ranks_divisor)  {
+          if(identical(results_from_cache$dquants, error_dquants)) {
+            warning("dquants loaded from cache are invalid")
+          }
           if(!results_from_cache$keep_fits) {
-            message("Cache file exists, but was computed with different thin_ranks/gen_quants/ensure_num_ranks_divisor and keep_fits == FALSE. Will recompute.")
+            message("Cache file exists, but was computed with different thin_ranks/dquants/ensure_num_ranks_divisor and keep_fits == FALSE. Will recompute.")
           } else {
             message(paste0("Results loaded from cache file '", cache_basename,
-                           "' but it was computed with different thin_ranks/gen_quants/ensure_num_ranks_divisor.\n",
+                           "' but it was computed with different thin_ranks/dquants/ensure_num_ranks_divisor.\n",
                            "Calling recompute_SBC_statistics."))
             return(recompute_SBC_statistics(old_results = result, datasets = datasets,
                                         thin_ranks = thin_ranks,
                                         ensure_num_ranks_divisor = ensure_num_ranks_divisor,
-                                        gen_quants = gen_quants,
+                                        dquants = dquants,
                                         backend = backend))
           }
         } else {
@@ -470,11 +495,11 @@ compute_SBC <- function(datasets, backend,
       generated = datasets$generated[[i]]
     )
   }
-  if(is.null(gen_quants)) {
+  if(is.null(dquants)) {
     future.globals <- globals
   } else {
-    gq_globals <- attr(gen_quants, "globals")
-    future.globals <- bind_globals(globals, gq_globals)
+    dq_globals <- attr(dquants, "globals")
+    future.globals <- bind_globals(globals, dq_globals)
   }
 
   results_raw <- future.apply::future_lapply(
@@ -482,7 +507,7 @@ compute_SBC <- function(datasets, backend,
     backend = backend, cores = cores_per_fit,
     keep_fit = keep_fits, thin_ranks = thin_ranks,
     ensure_num_ranks_divisor = ensure_num_ranks_divisor,
-    gen_quants = gen_quants,
+    dquants = dquants,
     future.seed = TRUE,
     future.globals = future.globals,
     future.chunk.size = chunk_size)
@@ -591,7 +616,7 @@ compute_SBC <- function(datasets, backend,
     results_for_cache <- list(result = res, backend_hash = backend_hash,
                               data_hash = data_hash, thin_ranks = thin_ranks,
                               ensure_num_ranks_divisor = ensure_num_ranks_divisor,
-                              gen_quants = gen_quants, keep_fits = keep_fits)
+                              dquants = dquants, keep_fits = keep_fits)
     tryCatch(saveRDS(results_for_cache, file = cache_location),
              error = function(e) { warning("Error when saving cache file: ", e) })
   }
@@ -679,7 +704,7 @@ reemit_captured <- function(captured) {
 compute_SBC_single <- function(vars_and_generated, backend, cores,
                                keep_fit, thin_ranks,
                                ensure_num_ranks_divisor,
-                               gen_quants) {
+                               dquants) {
 
   variables <- vars_and_generated$variables
   generated <- vars_and_generated$generated
@@ -706,7 +731,7 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
         res$stats <- SBC::SBC_statistics_from_single_fit(
           res$fit, variables = variables, thin_ranks = thin_ranks,
           ensure_num_ranks_divisor = ensure_num_ranks_divisor,
-          generated = generated, gen_quants = gen_quants,
+          generated = generated, dquants = dquants,
           backend = backend)
 
         res$backend_diagnostics <- SBC::SBC_fit_to_diagnostics(
@@ -752,18 +777,26 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
 SBC_statistics_from_single_fit <- function(fit, variables, generated,
                                        thin_ranks,
                                        ensure_num_ranks_divisor,
-                                       gen_quants,
-                                       backend) {
+                                       dquants,
+                                       backend,
+                                       gen_quants = NULL) {
+
+  if(!is.null(gen_quants)) {
+    warning("gen_quants argument is deprecated, use dquants")
+    if(rlang::is_missing(dquants)) {
+      dquants <- gen_quants
+    }
+  }
 
   fit_matrix <- SBC_fit_to_draws_matrix(fit)
 
-  if(!is.null(gen_quants)){
-    gen_quants <- validate_generated_quantities(gen_quants)
-    gq_fit <- compute_gen_quants(fit_matrix, generated, gen_quants)
-    fit_matrix <- posterior::bind_draws(fit_matrix, gq_fit, along = "variable")
+  if(!is.null(dquants)){
+    dquants <- validate_derived_quantities(dquants)
+    dq_fit <- compute_dquants(fit_matrix, generated, dquants)
+    fit_matrix <- posterior::bind_draws(fit_matrix, dq_fit, along = "variable")
 
-    gq_variable <- compute_gen_quants(variables, generated, gen_quants)
-    variables <- posterior::bind_draws(variables, gq_variable, along = "variable")
+    dq_variable <- compute_dquants(variables, generated, dquants)
+    variables <- posterior::bind_draws(variables, dq_variable, along = "variable")
   }
 
   shared_vars <- intersect(posterior::variables(variables),
@@ -857,68 +890,6 @@ check_stats <- function(stats, datasets, thin_ranks,
   }
 }
 
-#' Create a definition of generated quantities evaluated in R.
-#'
-#' When the expression contains non-library functions/objects, and parallel processing
-#' is enabled, those must be
-#' named in the `.globals` parameter (hopefully we'll be able to detect those
-#' automatically in the future). Note that [recompute_SBC_statistics()] currently
-#' does not use parallel processing, so `.globals` don't need to be set.
-#'
-#' @param ... named expressions representing the quantitites
-#' @param .globals A list of names of objects that are defined
-#' in the global environment and need to present for the gen. quants. to evaluate.
-#' It is added to the `globals` argument to [future::future()], to make those
-#' objects available on all workers.
-#' @export
-generated_quantities <- function(..., .globals = list()) {
-  structure(rlang::enquos(..., .named = TRUE),
-            class = "SBC_generated_quantities",
-            globals = .globals
-            )
-}
-
-#' @export
-validate_generated_quantities <- function(x) {
-  stopifnot(inherits(x, "SBC_generated_quantities"))
-  invisible(x)
-}
-
-#' @export
-bind_generated_quantities <- function(gq1, gq2) {
-  validate_generated_quantities(gq1)
-  validate_generated_quantities(gq2)
-  structure(c(gq1, gq2),
-            class = "SBC_generated_quantities",
-            globals = bind_globals(attr(gq1, "globals"), attr(gq2, "globals")))
-}
-
-#'@export
-compute_gen_quants <- function(draws, generated, gen_quants) {
-  gen_quants <- validate_generated_quantities(gen_quants)
-  draws_rv <- posterior::as_draws_rvars(draws)
-
-  draws_env <- list2env(draws_rv)
-  if(!is.null(generated)) {
-    if(!is.list(generated)) {
-      stop("compute_gen_quants assumes that generated is a list, but this is not the case")
-    }
-    generated_env <- list2env(generated, parent = draws_env)
-
-    data_mask <- rlang::new_data_mask(bottom = generated_env, top = draws_env)
-  } else {
-    data_mask <- rlang::new_data_mask(bottom = draws_env)
-  }
-
-  eval_func <- function(gq) {
-    # Wrap the expression in `rdo` which will mostly do what we need
-    # all the tricks are just to have the correct environment when we need it
-    wrapped_gq <- rlang::new_quosure(rlang::expr(posterior::rdo(!!rlang::get_expr(gq))), rlang::get_env(gq))
-    rlang::eval_tidy(wrapped_gq, data = data_mask)
-  }
-  rvars <- lapply(gen_quants, FUN = eval_func)
-  do.call(posterior::draws_rvars, rvars)
-}
 
 #' @title Recompute SBC statistics without refitting models.
 #' @description Delegates directly to `recompute_SBC_statistics()`.
@@ -941,7 +912,7 @@ recompute_statistics <- function(...) {
 #' Recompute SBC statistics without refitting models.
 #'
 #' Useful for example to recompute SBC ranks with a different choice of `thin_ranks`
-#' or added generated quantities.
+#' or added derived quantities.
 #' @return An S3 object of class `SBC_results` with updated `$stats` and `$default_diagnostics` fields.
 #' @param backend backend used to fit the results. Used to pull various defaults
 #'   and other setting influencing the computation of statistics.
@@ -950,9 +921,17 @@ recompute_statistics <- function(...) {
 recompute_SBC_statistics <- function(old_results, datasets, backend,
                                  thin_ranks = SBC_backend_default_thin_ranks(backend),
                                  ensure_num_ranks_divisor = 2,
-                                 gen_quants = NULL) {
+                                 dquants = NULL, gen_quants = NULL) {
   validate_SBC_results(old_results)
   validate_SBC_datasets(datasets)
+
+  if(!is.null(gen_quants)) {
+    warning("gen_quants argument is deprecated, use dquants")
+    if(is.null(dquants)) {
+      dquants <- gen_quants
+    }
+  }
+
 
   if(length(old_results) != length(datasets)) {
     stop("The number of fits in old_results does not match the number of simulations")
@@ -976,7 +955,7 @@ recompute_SBC_statistics <- function(old_results, datasets, backend,
                                                         generated = datasets$generated[[i]],
                                                         thin_ranks = thin_ranks,
                                                         ensure_num_ranks_divisor = ensure_num_ranks_divisor,
-                                                        gen_quants = gen_quants,
+                                                        dquants = dquants,
                                                         backend = backend)
       new_stats_list[[i]]$sim_id <- i
       new_stats_list[[i]] <- dplyr::select(new_stats_list[[i]], sim_id, tidyselect::everything())

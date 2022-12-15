@@ -180,11 +180,11 @@ n_sims_generator <- SBC_generator_function(one_sim_generator, N = 18, K = 5)
 ```
 
 For increased sensitivity, we also add the log likelihood of the data given parameters
-as a generated quantity that we'll also monitor (see the [`limits_of_SBC`](https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html) 
+as a derived quantity that we'll also monitor (see the [`limits_of_SBC`](https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html) 
 vignette for discussion on why this is useful).
 
 ```{r}
-log_lik_gq_func <- generated_quantities(
+log_lik_dq_func <- derived_quantities(
   log_lik = sum(dnorm(y, b_Intercept + x * b_x + r_group[group], sigma, log = TRUE))
   # Testing CRPS, probably not worth it
   #, CRPS = mean(scoringRules::crps_norm(y, b_Intercept + x * b_x + r_group[group], sigma))
@@ -218,7 +218,7 @@ So we can happily compute:
 
 ```{r}
 results_func <- compute_SBC(datasets_func, backend_func, 
-                                gen_quants = log_lik_gq_func, 
+                                dquants = log_lik_dq_func, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "func"))
 ```
@@ -262,7 +262,7 @@ Let's fit the same simulations with the new backend.
 
 ```{r}
 results_func2 <- compute_SBC(datasets_func, backend_func2, 
-                                 gen_quants = log_lik_gq_func, 
+                                 dquants = log_lik_dq_func, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "func2"))
 ```
