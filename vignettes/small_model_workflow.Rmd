@@ -45,6 +45,20 @@ We observe the number of droppings at multiple locations and record some environ
 (e.g. temperature, altitude) and want to learn something about the association between
 those covariates and the prevalence of either subspecie.
 
+A mathematical description would be:
+
+$$
+\begin{align*}
+    y_i &\sim \mathrm{Poisson}(\mu_{z_i}) \\
+    z_i &\sim \mathrm{Bernoulli}(\mathrm{logit}^{-1}(\theta_i)) \\
+    \theta_i &= \alpha + \sum_k \beta_k \mathbf{X}_{i,k} \\
+    \log \mu_{\{1,2\}} &\sim \mathrm{N(3, 1)} \\
+    \alpha &\sim N(0, 2) \\
+    \beta_k &\sim N(0, 1) 
+\end{align*}
+$$
+
+
 ## Big picture
 
 This model naturally decomposes into two submodels: 
@@ -160,7 +174,7 @@ generator_first <- SBC_generator_function(generator_func_first, N = 50)
 Let's start with just a single simulation:
 
 ```{r}
-set.seed(68455554)
+set.seed(4456654)
 datasets_first <- generate_datasets(generator_first, 1)
 ```
 
@@ -987,6 +1001,7 @@ results_combined_reject_more <- bind_results(
                     cache_location = file.path(cache_dir, "combined_reject_more"))
 )
 ```
+
 We get some very small number of problematic fits, which we can ignore in this volume (but probably more aggresive rejection sampling would remove those as well).
 
 Our plots and coverage are now pretty decent:

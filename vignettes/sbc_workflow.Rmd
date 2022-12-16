@@ -25,7 +25,7 @@ The workflow described here focuses on small models.
 "Small" means that the model is relatively fast to fit and we don't have to worry about computation too much.
 Once running ~100 fits of the model becomes too costly, there are additional tricks and considerations
 that we hope to delve into in a "Building a complex model" vignette (which currently doesn't exist).
-Still many of the approaches here also apply to complex models (especially starting small and building each component separately), and with proper separation of the model into components,
+Still many of the approaches here also apply to complex models (especially starting small and building smaller submodels separately), and with proper separation of the model into submodels,
 one can validate big chunks of Stan code while working with small models only.
 
 We expect the reader to be familiar with basics of the package. If not,
@@ -45,6 +45,8 @@ We observe the number of droppings at multiple locations and record some environ
 (e.g. temperature, altitude) and want to learn something about the association between
 those covariates and the prevalence of either subspecie.
 
+A mathematical description would be:
+
 $$
 \begin{align*}
     y_i &\sim \mathrm{Poisson}(\mu_{z_i}) \\
@@ -54,21 +56,21 @@ $$
     \alpha &\sim N(0, 2) \\
     \beta_k &\sim N(0, 1) 
 \end{align*}
-
 $$
+
 
 ## Big picture
 
-This model naturally decomposes into two components: 
+This model naturally decomposes into two submodels: 
 
-1) the mixture component where the mixing ratio is the same
-for all variables
+1) the mixture submodel where the mixing ratio is the same
+for all observations
 
 2) a beta regression where we take covariates and make a prediction of a probability,
 assuming we (noisily) observe the probability.
 
 It is good practice to start small and implement and validate each of those 
-components separately and then put them together and validate the bigger model.
+submodels separately and then put them together and validate the bigger model.
 This makes is substantially easier to locate bugs. 
 You'll notice that the process ends up involving a lot of steps, 
 but the fact is that we still ignore all the completely invalid models I
@@ -85,12 +87,13 @@ library(SBC)
 
 use_cmdstanr <- TRUE # Set to false to use rstan instead
 
-# if(use_cmdstanr) {
-#   library(cmdstanr)
-# } else {
-#   library(rstan)
-# }
-library(cmdstanr)
+if(use_cmdstanr) {
+  library(cmdstanr)
+} else {
+  library(rstan)
+  rstan_options(auto_write = TRUE)
+}
+
 library(bayesplot)
 library(posterior)
 library(ggplot2)
@@ -104,20 +107,24 @@ theme_set(bayesplot::theme_default(base_family = "sans"))
 options(SBC.min_chunk_size = 5)
 
 # Setup caching of results
-cache_dir <- "./small_model_worklow_SBC_cache"
+if(use_cmdstanr) {
+  cache_dir <- "./_small_model_worklow_SBC_cache"
+} else {
+  cache_dir <- "./_small_model_worklow_rstan_SBC_cache"
+}
 if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
 
 ```
 
-## Mixture component
+## Mixture submodel
 
 There is a good [guide to mixtures](https://mc-stan.org/docs/2_27/stan-users-guide/mixture-modeling-chapter.html) in the Stan user's guide.
 Following the user's guide would save us from a lot of mistakes, but for the sake of example, we will pretend we didn't really read it - and we'll see the problems can be discovered 
 via simulations.
 
-So this is our first try at implementing the mixture component:
+So this is our first try at implementing the mixture submodel:
 
 
 ```{r, comment = ""}
@@ -126,8 +133,13 @@ cat(readLines("small_model_workflow/mixture_first.stan"), sep = "\n")
 
 
 ```{r}
-model_first <- cmdstan_model("small_model_workflow/mixture_first.stan")
-backend_first <- SBC_backend_cmdstan_sample(model_first) 
+if(use_cmdstanr) {
+  model_first <- cmdstan_model("small_model_workflow/mixture_first.stan")
+  backend_first <- SBC_backend_cmdstan_sample(model_first) 
+} else {
+  model_first <- stan_model("small_model_workflow/mixture_first.stan")
+  backend_first <- SBC_backend_rstan_sample(model_first) 
+}
 ```
 
 And this is our code to simulate data for this model:
@@ -148,7 +160,7 @@ generator_func_first <- function(N) {
   }
   
   list(
-    parameters = list(
+    variables = list(
       mu1 = mu1,
       mu2 = mu2,
       theta = theta
@@ -163,15 +175,15 @@ generator_func_first <- function(N) {
 generator_first <- SBC_generator_function(generator_func_first, N = 50)
 ```
 
-Let's start with just a single dataset:
+Let's start with just a single simulation:
 
 ```{r}
-set.seed(4456654)
+set.seed(68455554)
 datasets_first <- generate_datasets(generator_first, 1)
 ```
 
 ```{r}
-results_first <- compute_results(datasets_first, backend_first, 
+results_first <- compute_SBC(datasets_first, backend_first, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "mixture_first"))
 ```
@@ -179,7 +191,16 @@ results_first <- compute_results(datasets_first, backend_first,
 Oh, we have convergence problems, let us examine the pairs plots
 
 ```{r mixture_first_convergence}
-mixture_first_pairs <- mcmc_pairs(results_first$fits[[1]]$draws(), np = nuts_params(results_first$fits[[1]]))
+# Fixing the condition for above/over diagonal chains, in a minority
+# of runs the plot shows the problem less clearly, as discussed at
+# https://github.com/stan-dev/bayesplot/issues/132
+p_cond <- pairs_condition(chains = list(c(1,3), c(2,4)))
+if(use_cmdstanr) {
+  mixture_first_pairs <- mcmc_pairs(results_first$fits[[1]]$draws(), condition = p_cond, np = nuts_params(results_first$fits[[1]]))
+} else {
+  mixture_first_pairs <- mcmc_pairs(results_first$fits[[1]], condition = p_cond, np = nuts_params(results_first$fits[[1]]))  
+}
+
 mixture_first_pairs
 ggsave(file.path(cache_dir, "sbcworkflow_mixture_first_pairs.pdf"), plot = mixture_first_pairs)
 ```
@@ -199,14 +220,20 @@ cat(readLines("small_model_workflow/mixture_fixed_log_mix.stan"), sep = "\n")
 ```
 
 ```{r}
-model_fixed_log_mix <- cmdstan_model("small_model_workflow/mixture_fixed_log_mix.stan")
-backend_fixed_log_mix <- SBC_backend_cmdstan_sample(model_fixed_log_mix)
+if(use_cmdstanr) {
+  model_fixed_log_mix <- cmdstan_model("small_model_workflow/mixture_fixed_log_mix.stan")
+  backend_fixed_log_mix <- SBC_backend_cmdstan_sample(model_fixed_log_mix)
+} else {
+  model_fixed_log_mix <- stan_model("small_model_workflow/mixture_fixed_log_mix.stan")
+  backend_fixed_log_mix <- SBC_backend_rstan_sample(model_fixed_log_mix)
+  
+}
 ```
 
-So let's try once again with the same single dataset:
+So let's try once again with the same single simulation:
 
 ```{r}
-results_fixed_log_mix <- compute_results(datasets_first, backend_fixed_log_mix, 
+results_fixed_log_mix <- compute_SBC(datasets_first, backend_fixed_log_mix, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "mixture_fixed_log_mix"))
 ```
@@ -217,7 +244,7 @@ No warnings this time. We look at the stats:
 results_fixed_log_mix$stats
 ```
 
-We see nothing obviously wrong, the posterior means are relatively close to simulated values (as summarised by the z-scores) - no parameter is clearly ridiculously misfit. So let's run a few more iterations.
+We see nothing obviously wrong, the posterior means are relatively close to simulated values (as summarised by the z-scores) - no variable is clearly ridiculously misfit. So let's run a few more iterations.
 
 ```{r}
 set.seed(8314566)
@@ -225,7 +252,7 @@ datasets_first_10 <- generate_datasets(generator_first, 10)
 ```
 
 ```{r}
-results_fixed_log_mix_2 <- compute_results(datasets_first_10, backend_fixed_log_mix, 
+results_fixed_log_mix_2 <- compute_SBC(datasets_first_10, backend_fixed_log_mix, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "mixture_fixed_log_mix_2"))
 ```
@@ -240,7 +267,11 @@ hist(results_fixed_log_mix_2$stats$rhat)
 Let's examine a single pairs plot:
 
 ```{r mixture_fixed_log_mix_pairs}
-mixture_fixed_log_mix_pairs <- mcmc_pairs(results_fixed_log_mix_2$fits[[1]]$draws())
+if(use_cmdstanr) {
+  mixture_fixed_log_mix_pairs <- mcmc_pairs(results_fixed_log_mix_2$fits[[1]]$draws())
+} else {
+  mixture_fixed_log_mix_pairs <- mcmc_pairs(results_fixed_log_mix_2$fits[[1]])  
+}
 mixture_fixed_log_mix_pairs
 ggsave(file.path(cache_dir, "sbcworkflow_mixture_fixed_log_mix_pairs.pdf"), mixture_fixed_log_mix_pairs)
 ```
@@ -257,8 +288,13 @@ cat(readLines("small_model_workflow/mixture_fixed_ordered.stan"), sep = "\n")
 
 
 ```{r}
-model_fixed_ordered <- cmdstan_model("small_model_workflow/mixture_fixed_ordered.stan")
-backend_fixed_ordered <- SBC_backend_cmdstan_sample(model_fixed_ordered) 
+if(use_cmdstanr) {
+  model_fixed_ordered <- cmdstan_model("small_model_workflow/mixture_fixed_ordered.stan")
+  backend_fixed_ordered <- SBC_backend_cmdstan_sample(model_fixed_ordered) 
+} else {
+  model_fixed_ordered <- stan_model("small_model_workflow/mixture_fixed_ordered.stan")
+  backend_fixed_ordered <- SBC_backend_rstan_sample(model_fixed_ordered)   
+}
 ```
 We also need to update the generator to match the new names and ordering constant:
 
@@ -266,7 +302,7 @@ We also need to update the generator to match the new names and ordering constan
 generator_func_ordered <- function(N) {
   # If the priors for all components of an ordered vector are the same
   # then just sorting the result of a generator is enough to create
-  # a valid sample from the ordered vector
+  # a valid draw from the ordered vector prior
   mu <- sort(rnorm(2, 3, 1)) 
   theta <- runif(1)
   
@@ -280,7 +316,7 @@ generator_func_ordered <- function(N) {
   }
   
   list(
-    parameters = list(
+    variables = list(
       mu = mu,
       theta = theta
     ),
@@ -294,7 +330,7 @@ generator_func_ordered <- function(N) {
 generator_ordered <- SBC_generator_function(generator_func_ordered, N = 50)
 ```
 
-We are kind of confident (and the model fits quickly), so we'll already start with 10 datasets.
+We are kind of confident (and the model fits quickly), so we'll already start with 10 simulations.
 
 ```{r}
 set.seed(3785432)
@@ -303,12 +339,12 @@ datasets_ordered_10 <- generate_datasets(generator_ordered, 10)
 
 
 ```{r}
-results_fixed_ordered <- compute_results(datasets_ordered_10, backend_fixed_ordered, 
+results_fixed_ordered <- compute_SBC(datasets_ordered_10, backend_fixed_ordered, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "mixture_fixed_ordered"))
 ```
 
-Now some fits still produce problematic Rhats or divergent transitions, let's browse the `$backend_diagnostics` (which contain Stan-specific diagnostic values) to see which datasets are causing problems:
+Now some fits still produce problematic Rhats or divergent transitions, let's browse the `$backend_diagnostics` (which contain Stan-specific diagnostic values) to see which simulations are causing problems:
 
 ```{r}
 results_fixed_ordered$backend_diagnostics
@@ -319,7 +355,11 @@ One of the fits has quite a lot of divergent transitions. Let's look at the pair
 ```{r mixture_fixed_ordered_pairs}
 problematic_fit_id <- 2
 problematic_fit <- results_fixed_ordered$fits[[problematic_fit_id]]
-mixture_fixed_ordered_pairs <- mcmc_pairs(problematic_fit$draws(), np = nuts_params(problematic_fit), max_treedepth = 10)
+if(use_cmdstanr) {
+  mixture_fixed_ordered_pairs <- mcmc_pairs(problematic_fit$draws(), np = nuts_params(problematic_fit))
+} else {
+  mixture_fixed_ordered_pairs <- mcmc_pairs(problematic_fit, np = nuts_params(problematic_fit))
+}
 mixture_fixed_ordered_pairs
 ggsave(file.path(cache_dir, "sbcworkflow_mixture_fixed_ordered_pairs.pdf"), mixture_fixed_ordered_pairs)
 ```
@@ -328,33 +368,33 @@ There is a lot of ugly stuff going on. Notably, one can notice that the posterio
 Why does that happen? The key to the answer is in the simulated values for the component means:
 
 ```{r}
-subset_draws(datasets_ordered_10$parameters, draw = problematic_fit_id)
+subset_draws(datasets_ordered_10$variables, draw = problematic_fit_id)
 ```
 
-We were unlucky enough to simulate a dataset where both components have almost the same mean and thus we are actually looking at a dataset that is not really a mixture. Mixture models can misbehave badly in such cases (see once again the [case study by Mike Betancourt](https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html#5_singular_components_and_computational_issues) for a bit more detailed dive into this particular problem).
+We were unlucky enough to simulate data where both components have almost the same mean and thus we are actually looking at data that is not really a mixture. Mixture models can misbehave badly in such cases (see once again the [case study by Mike Betancourt](https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html#5_singular_components_and_computational_issues) for a bit more detailed dive into this particular problem).
 
 ### Fixing degenerate components?
 
 What to do about this? Fixing the model to handle such cases gracefully is hard. But the problem is basically our prior - we want to express that (since we are fitting a two component model), we don't expect the means to be too similar. So if we can change our simulation to avoid this, we'll be able to proceed with SBC. If such a pattern appeared in real data, we would still have a problem, but we would notice thanks to the diagnostics.
 
-This can definitely be done. But another way is to just ignore the datasets that had divergences for SBC calculations. It turns out that if we remove datasets in a way that only depends on the observed data (and not on unobserved parameters), the SBC identity is preserved and we can use SBC without modifications. The resulting check is however telling us something only for datasets that were not rejected. In this case this is not a big issue: if a fit had divergent transitions, we would not trust it anyway, so removing fits with divergent transitions is not such a big deal.
+This can definitely be done. But another way is to just ignore the simulations that had divergences for SBC calculations. It turns out that if we remove simulations in a way that only depends on the observed data (and not on unobserved variables), the SBC identity is preserved and we can use SBC without modifications. The resulting check is however telling us something only for data that were not rejected. In this case this is not a big issue: if a fit had divergent transitions, we would not trust it anyway, so removing fits with divergent transitions is not such a big deal.
 
 For more details see the [`rejection_sampling`](https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html) vignette.
 
 So let us subset the results to avoid divergences:
 
 ```{r}
-dataset_ids_to_keep <- 
-  results_fixed_ordered$backend_diagnostics$dataset_id[
+sim_ids_to_keep <- 
+  results_fixed_ordered$backend_diagnostics$sim_id[
     results_fixed_ordered$backend_diagnostics$n_divergent == 0]
 
 # Equivalent tidy version if you prefer
-# dataset_ids_to_keep <- results_fixed_ordered$backend_diagnostics %>% 
+# sim_ids_to_keep <- results_fixed_ordered$backend_diagnostics %>% 
 #   dplyr::filter(n_divergent == 0) %>%
-#   dplyr::pull(dataset_id)
+#   dplyr::pull(sim_id)
 
 
-results_fixed_ordered_subset <- results_fixed_ordered[dataset_ids_to_keep]
+results_fixed_ordered_subset <- results_fixed_ordered[sim_ids_to_keep]
 summary(results_fixed_ordered_subset)
 ```
 
@@ -382,7 +422,7 @@ coverage
 
 ```{r, echo=FALSE}
 theta_90_coverage_string <- paste0(round(100 * as.numeric(
-  coverage[coverage$parameter == "theta" & coverage$width == 0.9, c("ci_low","ci_high")])),
+  coverage[coverage$variable == "theta" & coverage$width == 0.9, c("ci_low","ci_high")])),
   "%",
   collapse = " - ")
 ```
@@ -400,7 +440,7 @@ You generally don't want to do this unless you are really short on memory, as it
 ```{r}
 set.seed(54987622)
 datasets_ordered_100 <- generate_datasets(generator_ordered, 100)
-results_fixed_ordered_100 <- compute_results(datasets_ordered_100, backend_fixed_ordered, 
+results_fixed_ordered_100 <- compute_SBC(datasets_ordered_100, backend_fixed_ordered, 
                     keep_fits = FALSE, cache_mode = "results", 
                     cache_location = file.path(cache_dir, "mixture_fixed_ordered_100"))
 ```
@@ -408,17 +448,17 @@ results_fixed_ordered_100 <- compute_results(datasets_ordered_100, backend_fixed
 Once again we subset to keep only non-divergent fits - this also removes all the problematic Rhats and ESS.
 
 ```{r}
-dataset_ids_to_keep <- 
-  results_fixed_ordered_100$backend_diagnostics$dataset_id[
+sim_ids_to_keep <- 
+  results_fixed_ordered_100$backend_diagnostics$sim_id[
     results_fixed_ordered_100$backend_diagnostics$n_divergent == 0]
 
 # Equivalent tidy version
-# dataset_ids_to_keep <- results_fixed_ordered_100$backend_diagnostics %>% 
+# sim_ids_to_keep <- results_fixed_ordered_100$backend_diagnostics %>% 
 #   dplyr::filter(n_divergent == 0) %>%
-#   dplyr::pull(dataset_id)
+#   dplyr::pull(sim_id)
 
 
-results_fixed_ordered_100_subset <- results_fixed_ordered_100[dataset_ids_to_keep]
+results_fixed_ordered_100_subset <- results_fixed_ordered_100[sim_ids_to_keep]
 summary(results_fixed_ordered_100_subset)
 ```
 
@@ -448,20 +488,29 @@ plot_coverage(results_fixed_ordered_combined)
 
 Note: it turns out that extending the model to more components becomes somewhat tricky as the model can become sensitive to initialization. Also the problems with data that can be explained by fewer components than the model assumes become more prevalent.
 
-## Logistic regression component
+## Logistic regression submodel
 
-
+Let's move to the logistic regression submodel of our model. 
 
 ```{r, comment = ""}
 cat(readLines("small_model_workflow/logistic_first.stan"), sep = "\n")
 ```
 
 ```{r}
-model_logistic_first <- cmdstan_model("small_model_workflow/logistic_first.stan")
-backend_logistic_first <- SBC_backend_cmdstan_sample(model_logistic_first, chains = 2) 
+if(use_cmdstanr) {
+  model_logistic_first <- cmdstan_model("small_model_workflow/logistic_first.stan")
+  backend_logistic_first <- SBC_backend_cmdstan_sample(model_logistic_first) 
+} else {
+  model_logistic_first <- stan_model("small_model_workflow/logistic_first.stan")
+  backend_logistic_first <- SBC_backend_rstan_sample(model_logistic_first)   
+}
 ```
 
-We also write a matching generator (microoptimization tip: I usually write Stan models first so that I can work on the generator code while the Stan model compiles):
+
+If you are good at reading code, you may notice there is a fatal bug and fix it, if you do not, we
+can use simulations to discover the bug.
+
+We also write a matching generator (microoptimization tip: I usually write Stan models first so that I can work on the generator code while the Stan model compiles). Since I am not very good with matrix algebra, I fear I might have gotten the matrix multiplication in the model wrong. To check against that issue, I am having the R code explicitly loop over predictors
 
 ```{r}
 generator_func_logistic_first <- function(N_obs, N_predictors) {
@@ -479,7 +528,7 @@ generator_func_logistic_first <- function(N_obs, N_predictors) {
   y <- rbinom(N_obs, size = 1, prob = plogis(linpred))
 
   list(
-    parameters = list(
+    variables = list(
       alpha = alpha,
       beta = beta
     ),
@@ -495,8 +544,7 @@ generator_func_logistic_first <- function(N_obs, N_predictors) {
 generator_logistic_first <- SBC_generator_function(generator_func_logistic_first, N_obs = 50, N_predictors = 2)
 ```
 
-
-We'll start with 10 datasets once again.
+We'll start with 10 simulations once again.
 
 ```{r}
 set.seed(2345688)
@@ -506,12 +554,12 @@ datasets_logistic_first <- generate_datasets(generator_logistic_first, 10)
 
 
 ```{r}
-results_logistic_first_10 <- compute_results(datasets_logistic_first, backend_logistic_first, 
+results_logistic_first_10 <- compute_SBC(datasets_logistic_first, backend_logistic_first, 
                     cache_mode = "results", 
                     cache_location = file.path(cache_dir, "logistic_first_10"))
 ```
 
-We get a single fit with divergent transitions and the ranks look mostly OK:
+Already with 10 datasets we are likely to see suspicious rank/ECDF plots:
 
 ```{r logistic_first_results}
 logistic_first_ranks <- plot_rank_hist(results_logistic_first_10)
@@ -523,44 +571,79 @@ combined <- logistic_first_ranks / logistic_first_ecdf
 ggsave(file.path(cache_dir, "sbcworkflow_logistic_first_results.pdf"), combined)
 ```
 
+At this point, we could use more simulations to see if the discrepancy is real. But this is also a good opportunity to introduce additional ways to diagnose mismatches between the Stan code and the simulator. A simple diagnostic is to plot the simulated values against posterior estimates, which can be done via the [plot_sim_estimated()] function.
+
 ```{r logistic_first_sim_estimated}
-logistic_first_sim_estimated <- plot_sim_estimated(results_logistic_first_10)
+logistic_first_sim_estimated <- plot_sim_estimated(results_logistic_first_10) + labs(x = "Simulated value", y = "Mean, 95% CI")
 logistic_first_sim_estimated
-ggsave(file.path(cache_dir, "sbcworkflow_logistic_first_sim_estimated.pdf"), logistic_first_sim_estimated)
+ggsave(file.path(cache_dir, "sbcworkflow_logistic_first_sim_estimated.pdf"), logistic_first_sim_estimated, width = 6, height = 1.8)
 ```
+
+One thing that immediately stands out is that the posterior inferences for `alpha` seem to be independent of the simulated value.  Indeed, in our Stan code, `alpha` never enters the likelihood part of the model: where we have ``X * beta` we should have had `alpha + X * beta`.
+
+This problem manifests as suspicious rank/ECDF plots for the `beta` parameters. In fact, using this model, SBC will never show a failure for `alpha`, as just sampling from the prior (and ignoring likelihood) will always satisfy the SBC equality.
+
+An additional useful diagnostic in this case is running SBC for a derived quantity: the SBC equality has to be satisfied not only for parameters of the model, but also for all quantities derived from parameters and data. Quite often, adding the model likelihood as an additional quantity increases sensitivity of SBC checks, as the likelihood is a complex function of all parameters. So lets do just that. We don't need to refit the model, we just call `recompute_SBC_statistics` to compute the derived quantities.
 
 ```{r}
-#datasets_logistic_first$generated[[1]]$X %*% datasets_logistic_first$generated[[1]]$beta
+logistic_loglik_dq <- derived_quantities(
+  log_lik =  sum(dbinom(
+               y,
+               size = 1,
+               prob = plogis(alpha + X %*% beta),
+               log = TRUE
+             )))
 
-logistic_loglik_gq <- generated_quantities(log_lik = sum(dbinom(y, size = 1, prob = plogis(alpha + X %*% beta), log = TRUE)))
-results_logistic_first_10_gq <- 
-  recompute_statistics(results_logistic_first_10, datasets_logistic_first,
-                       backend_logistic_first,
-                       gen_quants = logistic_loglik_gq)
+results_logistic_first_10_dq <-
+  recompute_SBC_statistics(
+    results_logistic_first_10,
+    datasets_logistic_first,
+    backend_logistic_first,
+    dquants = logistic_loglik_dq
+  )
 ```
 
-```{r logistic_first_gq_results}
-plot_rank_hist(results_logistic_first_10_gq)
-plot_ecdf_diff(results_logistic_first_10_gq)
+The rank and ECDF plots are shown below. 
+
+```{r logistic_first_dq_results}
+plot_rank_hist(results_logistic_first_10_dq)
+plot_ecdf_diff(results_logistic_first_10_dq)
 ```
+
+While the failures for the `beta` parameters are barely visible with 10 simulations, `log_lik` signals a clear failure.
 
 ```{r}
-results_gq_loglik_only <- plot_rank_hist(results_logistic_first_10_gq, parameters = "log_lik") | plot_ecdf_diff(results_logistic_first_10_gq, parameters = "log_lik")
+results_dq_loglik_only <- plot_rank_hist(results_logistic_first_10_dq, variables = "log_lik") | plot_ecdf_diff(results_logistic_first_10_dq, variables = "log_lik")
 
-ggsave(file.path(cache_dir, "sbcworkflow_results_gq_loglik_only.pdf"), results_gq_loglik_only, width = 6, height = 1.8)
+ggsave(file.path(cache_dir, "sbcworkflow_results_dq_loglik_only.pdf"), results_dq_loglik_only, width = 6, height = 1.8)
 
 
 ```
 
+### Merging the intercept with predictors
 
+One way to resolve the problem -- and simplify our Stan code --- is by treating the intercept as just another predictor which happens to have all 1's in its column of \texttt{X} and has a different prior. This is also how most common regression modelling packages handle the situation. We thus modify our Stan code to:
 
-```{r}
-model_logistic_matrix <- cmdstan_model("small_model_workflow/logistic_matrix.stan")
-backend_logistic_matrix <- SBC_backend_cmdstan_sample(model_logistic_matrix, chains = 2) 
+```{r, comment = ""}
+cat(readLines("small_model_workflow/logistic_merged_intercept.stan"), sep = "\n")
 ```
 
+This looks cleaner, but you may notice one additional issue that we created during the rewrite. We will see that it will quickly manifest if we use SBC.
+We also need to modify our simulation code in R to include intercept in the design matrix, but in R we will keep the explicit loop to decrease chances of having the same problem in both R and Stan.
+
 ```{r}
-generator_func_logistic_matrix <- function(N_obs, N_predictors) {
+if(use_cmdstanr) {
+  model_logistic_merged_intercept <- cmdstan_model("small_model_workflow/logistic_merged_intercept.stan")
+  backend_logistic_merged_intercept <- SBC_backend_cmdstan_sample(model_logistic_merged_intercept, chains = 2) 
+} else {
+  model_logistic_merged_intercept <- stan_model("small_model_workflow/logistic_merged_intercept.stan")
+  backend_logistic_merged_intercept <- SBC_backend_rstan_sample(model_logistic_merged_intercept, chains = 2) 
+}
+```
+We now update the generator code to match:
+
+```{r}
+generator_func_logistic_merged_intercept <- function(N_obs, N_predictors) {
   beta <- c(rnorm(1, 0, 2), rnorm(N_predictors - 1 , 0, 1))
 
   X <- matrix(rnorm(N_predictors * N_obs, 0, 1), nrow = N_obs, ncol = N_predictors)
@@ -577,7 +660,7 @@ generator_func_logistic_matrix <- function(N_obs, N_predictors) {
   y <- rbinom(N_obs, size = 1, prob = plogis(linpred))
 
   list(
-    parameters = list(
+    variables = list(
       beta = beta
     ),
     generated = list(
@@ -589,47 +672,74 @@ generator_func_logistic_matrix <- function(N_obs, N_predictors) {
   )
 }
 
-generator_logistic_matrix <- SBC_generator_function(generator_func_logistic_matrix, N_obs = 50, N_predictors = 3)
+generator_logistic_merged_intercept <- SBC_generator_function(generator_func_logistic_merged_intercept, N_obs = 50, N_predictors = 3)
 ```
 
 ```{r}
 set.seed(125488)
-datasets_logistic_matrix_10 <- generate_datasets(generator_logistic_matrix, 10)
+datasets_logistic_merged_intercept_10 <- generate_datasets(generator_logistic_merged_intercept, 10)
 ```
 
-
+And we also need to update the definition of our derived quantity to reflect the renaming.
 
 ```{r}
-logistic_matrix_loglik_gq <- generated_quantities(log_lik = sum(dbinom(y, size = 1, prob = plogis(X %*% beta), log = TRUE)))
+logistic_merged_intercept_loglik_dq <- derived_quantities(log_lik = sum(dbinom(y, size = 1, prob = plogis(X %*% beta), log = TRUE)))
 
 
-results_logistic_matrix_10 <- compute_results(
-  datasets_logistic_matrix_10, backend_logistic_matrix,
-  gen_quants = logistic_matrix_loglik_gq,
+results_logistic_merged_intercept_10 <- compute_SBC(
+  datasets_logistic_merged_intercept_10, backend_logistic_merged_intercept,
+  dquants = logistic_merged_intercept_loglik_dq,
   cache_mode = "results",
-  cache_location = file.path(cache_dir, "logistic_matrix_10"))
+  cache_location = file.path(cache_dir, "logistic_merged_intercept_10"))
 ```
 
-```{r logistic_matrix_results}
-logistic_matrix_ranks <-  plot_rank_hist(results_logistic_matrix_10)
-logistic_matrix_ranks
-logistic_matrix_ecdf <- plot_ecdf_diff(results_logistic_matrix_10)
-logistic_matrix_ecdf
+The results for 10 simulations are:
 
-combined <- logistic_matrix_ranks | logistic_matrix_ecdf
-ggsave(file.path(cache_dir, "sbcworkflow_logistic_matrix_results.pdf"), combined)
+```{r logistic_merged_intercept_results}
+logistic_merged_intercept_ranks <-  plot_rank_hist(results_logistic_merged_intercept_10)
+logistic_merged_intercept_ranks
+logistic_merged_intercept_ecdf <- plot_ecdf_diff(results_logistic_merged_intercept_10)
+logistic_merged_intercept_ecdf
+
+combined <- logistic_merged_intercept_ranks | logistic_merged_intercept_ecdf
+ggsave(file.path(cache_dir, "sbcworkflow_logistic_merged_intercept_results.pdf"), combined)
+```
+
+This signals a potential problem with `beta[1]` (the intercept). The reason for the failure is that  we have included two separate statements for prior for \texttt{beta[1]}. 
+
+This example also shows that the `log_lik` term is not magic, as it does not signal this failure earlier than `beta[1]`. 
+
+
+### Fixing prior definition
+
+To avoid declaring two priors for `beta[1]`  we need to modify the last line of the \texttt{model} block to
+
+```
+target += normal_lpdf(beta[2:N_predictors] | 0, 1);    
+```
+
+so the full model now is:
+
+```{r, comment = ""}
+cat(readLines("small_model_workflow/logistic_fixed_prior.stan"), sep = "\n")
 ```
 
 ```{r}
-model_logistic_fixed_prior <- cmdstan_model("small_model_workflow/logistic_fixed_prior.stan")
-backend_logistic_fixed_prior <- SBC_backend_cmdstan_sample(model_logistic_fixed_prior, chains = 2) 
+if(use_cmdstanr) {
+  model_logistic_fixed_prior <- cmdstan_model("small_model_workflow/logistic_fixed_prior.stan")
+  backend_logistic_fixed_prior <- SBC_backend_cmdstan_sample(model_logistic_fixed_prior, chains = 2) 
+} else {
+  model_logistic_fixed_prior <- stan_model("small_model_workflow/logistic_fixed_prior.stan")
+  backend_logistic_fixed_prior <- SBC_backend_rstan_sample(model_logistic_fixed_prior, chains = 2) 
+}
 ```
 
+The results for ten simulations are:
 
 ```{r}
-results_logistic_fixed_prior_10 <- compute_results(
-  datasets_logistic_matrix_10, backend_logistic_fixed_prior,
-  gen_quants = logistic_matrix_loglik_gq,
+results_logistic_fixed_prior_10 <- compute_SBC(
+  datasets_logistic_merged_intercept_10, backend_logistic_fixed_prior,
+  dquants = logistic_merged_intercept_loglik_dq,
   cache_mode = "results",
   cache_location = file.path(cache_dir, "logistic_fixed_prior_10"))
 ```
@@ -639,14 +749,16 @@ plot_rank_hist(results_logistic_fixed_prior_10)
 plot_ecdf_diff(results_logistic_fixed_prior_10)
 ```
 
+No obvious problem, so let's add 200 additional simulations:
+
 ```{r}
 set.seed(32464655)
-datasets_logistic_matrix_200 <- generate_datasets(generator_logistic_matrix, 200)
+datasets_logistic_merged_intercept_200 <- generate_datasets(generator_logistic_merged_intercept, 200)
 
-results_logistic_fixed_prior_200 <- compute_results(
-  datasets_logistic_matrix_200, backend_logistic_fixed_prior,
+results_logistic_fixed_prior_200 <- compute_SBC(
+  datasets_logistic_merged_intercept_200, backend_logistic_fixed_prior,
   keep_fits = FALSE,
-  gen_quants = logistic_matrix_loglik_gq,
+  dquants = logistic_merged_intercept_loglik_dq,
   cache_mode = "results",
   cache_location = file.path(cache_dir, "logistic_fixed_prior_200"))
 ```
@@ -656,10 +768,12 @@ plot_rank_hist(results_logistic_fixed_prior_200)
 plot_ecdf_diff(results_logistic_fixed_prior_200)
 ```
 
+Looking good! We can also check that we are indeed able to learn the model parameters with reasonable precision from the data.
 
 ```{r}
 plot_sim_estimated(results_logistic_fixed_prior_200)
 ```
+
 
 
 ## Putting it together
@@ -671,8 +785,13 @@ cat(readLines("small_model_workflow/combined_first.stan"), sep = "\n")
 ```
 
 ```{r}
-model_combined <- cmdstan_model("small_model_workflow/combined_first.stan")
-backend_combined <- SBC_backend_cmdstan_sample(model_combined)
+if(use_cmdstanr) {
+  model_combined <- cmdstan_model("small_model_workflow/combined_first.stan")
+  backend_combined <- SBC_backend_cmdstan_sample(model_combined)
+} else {
+  model_combined <- stan_model("small_model_workflow/combined_first.stan")
+  backend_combined <- SBC_backend_rstan_sample(model_combined)  
+}
 ```
 
 And this is our generator for the full model:
@@ -681,10 +800,10 @@ And this is our generator for the full model:
 generator_func_combined <- function(N_obs, N_predictors) {
   # If the priors for all components of an ordered vector are the same
   # then just sorting the result of a generator is enough to create
-  # a valid sample from the ordered vector
+  # a valid draw from the ordered vector prior
   mu <- sort(rnorm(2, 3, 1)) 
   
-  beta <- c(rnorm(1, 0, 2), rnorm(N_predictors - 1 , 0, 1))
+  beta <- beta <- c(rnorm(1, 0, 2), rnorm(N_predictors - 1 , 0, 1))
 
   X <- matrix(rnorm(N_predictors * N_obs, 0, 1), nrow = N_obs, ncol = N_predictors)
   X[, 1] <- 1 # Intercept
@@ -708,7 +827,7 @@ generator_func_combined <- function(N_obs, N_predictors) {
 
 
   list(
-    parameters = list(
+    variables = list(
       beta = beta,
       mu = mu
     ),
@@ -732,10 +851,11 @@ dataset_combined <- generate_datasets(generator_combined, 200)
 ```
 
 ```{r}
-results_combined <- compute_results(dataset_combined, backend_combined, 
+results_combined <- compute_SBC(dataset_combined, backend_combined, 
                     keep_fits = FALSE, cache_mode = "results", 
                     cache_location = file.path(cache_dir, "combined"))
 ```
+
 We get some amount of divergent transitions, but the ranks look pretty good:
 
 ```{r results_combined_plots}
@@ -751,13 +871,12 @@ As done previously, we could just exclude the fits that had divergences, but jus
 
 The general idea is that although we might not want to/be able to express our prior belief about the model (here that the two mixture components are distinct) by priors on model parameters, we still may be able to express our prior belief about the data itself.
 
-And it turns out that if we remove datasets that don't meet a certain condition imposed on the observed data, the implied prior on parameters becomes an additive constant and we can use exactly the same model to fit only the non-rejected datasets. Note that this does not hold if we rejected datasets based on their parameter values - for more details see the [`rejection_sampling`](https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html) vignette.
+And it turns out that if we remove simulations that don't meet a certain condition imposed on the observed data, the implied prior on parameters becomes an additive constant and we can use exactly the same model to fit only the non-rejected simulations. Note that this does not hold if we rejected simulations based on some unobserved variables - for more details see the [`rejection_sampling`](https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html) vignette.
 
-The main advantage is that if we can do this, we can avoid wasting computation on fitting datasets that would likely produce divergences anyway. The downside is that it means we no longer have a guarantee the model works for non-rejected datasets, so we need to check if the data we want to analyze would not be rejected by our criterion.
+The main advantage is that if we can do this, we can avoid wasting computation on fitting data that would likely produce divergences anyway. The downside is that it means we no longer have a guarantee the model works for non-rejected data, so we need to check if the data we want to analyze would not be rejected by our criterion.
 
 How to build such a criterion here? We'll note that for Poisson-distributed variables the ratio of mean to variance (a.k.a the Fano factor) is always 1. So if the components are too similar, the data should resemble a Poisson distribution and have Fano factor of 1, while if the components are distinct the Fano factor will be larger. 
 
-Below is a plot of fano factors versus the number of divergences we've seen:
 All the divergence are for low fano factors - this is the histogram of Fano factor for diverging fits:
 
 ```{r combined_fanos}
@@ -768,16 +887,19 @@ fanos_df <- data.frame(fano = fanos,
                        type = ifelse(results_combined$backend_diagnostics$n_divergent > 0,
                                       "Has divergent transitions", "No divergent transitions"))
 
+fano_threshold <- 1.8
 fanos_plot <-  ggplot(fanos_df, aes(x = fano)) + 
   geom_histogram(binwidth = 0.1) + 
-  geom_vline(xintercept = 1.5, color = "blue", size = 2) +
+  geom_vline(xintercept = fano_threshold, color = "blue", size = 2) +
   scale_x_log10("Fano factor") + facet_wrap(~type, ncol = 1)
 fanos_plot
 ggsave(file.path(cache_dir, "sbcworkflow_fanos.pdf"), fanos_plot)
+
+
 ```
 
 
-So what we'll do is that we'll reject any dataset with Fano factor < 1.5. In practice a simple way to implement this is to wrap our generator code in a loop and break from the loop only when the generated dataset meets our criteria (i.e. is not rejected). This is our code:
+So what we'll do is that we'll reject any simulation where the observed data have Fano factor < `r fano_threshold`. In practice a simple way to implement this is to wrap our generator code in a loop and break from the loop only when the generated data meet our criteria (i.e. is not rejected). This is our code:
 
 ```{r}
 generator_func_combined_reject <- function(N_obs, N_predictors) {
@@ -787,14 +909,14 @@ generator_func_combined_reject <- function(N_obs, N_predictors) {
   repeat {
     # If the priors for all components of an ordered vector are the same
     # then just sorting the result of a generator is enough to create
-    # a valid sample from the ordered vector
+    # a valid draw from the ordered vector prior
     mu <- sort(rnorm(2, 3, 1)) 
     
     beta <- c(rnorm(1, 0, 2), rnorm(N_predictors - 1 , 0, 1))
-  
+
     X <- matrix(rnorm(N_predictors * N_obs, 0, 1), nrow = N_obs, ncol = N_predictors)
     X[, 1] <- 1 # Intercept
-  
+    
     y <- array(NA_real_, N_obs)
 
     for(n in 1:N_obs) {
@@ -811,13 +933,13 @@ generator_func_combined_reject <- function(N_obs, N_predictors) {
       }
       
     }
-    if(var(y) / mean(y) > 1.5) {
+    if(var(y) / mean(y) > fano_threshold) {
       break;
     }
   }
     
   list(
-    parameters = list(
+    variables = list(
       beta = beta,
       mu = mu
     ),
@@ -834,7 +956,7 @@ generator_combined_reject <-
   SBC_generator_function(generator_func_combined_reject, N_obs = 50, N_predictors = 3)
 ```
 
-We'll once again fit our model to 200 datasets:
+We'll once again fit our model to 200 simulations:
 
 ```{r}
 set.seed(44685226)
@@ -844,7 +966,7 @@ dataset_combined_reject <- generate_datasets(generator_combined_reject, 200)
 
 
 ```{r}
-results_combined_reject <- compute_results(dataset_combined_reject, backend_combined, 
+results_combined_reject <- compute_SBC(dataset_combined_reject, backend_combined, 
                     keep_fits = FALSE, cache_mode = "results", 
                     cache_location = file.path(cache_dir, "combined_reject"))
 ```
@@ -862,11 +984,11 @@ And our coverage is pretty tight:
 plot_coverage(results_combined_reject)
 ```
 
-Below we show the uncertainty for two parameters and some widths of central posterior intervals numerically:
+Below we show the uncertainty for two variables and some widths of central posterior intervals numerically:
 
 ```{r results_combined_reject_coverage}
 stats_subset <- results_combined_reject$stats[
-  results_combined_reject$stats$parameter %in% c("beta[1]", "mu[1]"),]
+  results_combined_reject$stats$variable %in% c("beta[1]", "mu[1]"),]
 
 empirical_coverage(stats_subset, c(0.25,0.5,0.9,0.95))
 ```
@@ -878,7 +1000,7 @@ set.seed(1395367854)
 dataset_combined_reject_more <- generate_datasets(generator_combined_reject, 300) 
 results_combined_reject_more <- bind_results(
   results_combined_reject,
-  compute_results(dataset_combined_reject_more, backend_combined, 
+  compute_SBC(dataset_combined_reject_more, backend_combined, 
                     keep_fits = FALSE, cache_mode = "results", 
                     cache_location = file.path(cache_dir, "combined_reject_more"))
 )
@@ -894,18 +1016,18 @@ plot_ecdf_diff(results_combined_reject_more)
 ```
 
 ```{r results_combined_reject_more_coverage}
-combined_reject_coverage <- plot_coverage(results_combined_reject_more)
+combined_reject_coverage <- plot_coverage_diff(results_combined_reject_more)
 combined_reject_coverage
 ggsave(file.path(cache_dir, "sbcworkflow_combined_reject_coverage.pdf"), combined_reject_coverage)
 ```
 
 ```{r}
 stats_subset <- results_combined_reject_more$stats[
-  results_combined_reject_more$stats$parameter %in% c("beta[1]", "mu[2]"),]
+  results_combined_reject_more$stats$variable %in% c("beta[1]", "mu[2]"),]
 empirical_coverage(stats_subset, c(0.25,0.5,0.9,0.95))
 ```
 
-This actually shows a limitation of the coverage results - for `mu[2]` the approximate CI for coverage excludes exact calibration for a bunch of intervals, but above we see that the more trustworthy `plot_ecdf_diff` is not showing a problem (although there is some tendency towards slight underdispersion).
+This actually shows a limitation of the coverage results - for `mu[1]` the approximate CI for coverage excludes exact calibration for a bunch of intervals, but above we see that the more trustworthy `plot_ecdf_diff` is not showing a problem (although there is some tendency towards slight underdispersion).
 
 Still, this might warrant further investigation if small discrepancies in `mu` are considered important, if we are interested only in the `beta` coefficients, we can stay assured that their calibration is pretty good. We give you our word that we ran additional simulations and the discrepancy disappears.
 
@@ -918,13 +1040,12 @@ ggsave(file.path(cache_dir, "sbcworkflow_sim_estimated_final.pdf"), sim_estimate
 ```
 
 We see that we get very precise information about `mu` and a decent picture about all `beta` elements, but the reamining uncertainty is large. We could for example compute the probability
-that the posterior 90% interval for `beta[2]` excludes zero, i.e. that we learn something about the sign of the association
-with a continuous predictor: 
+that the posterior 90% interval for `beta[2]` excludes zero, i.e. that we learn something about the sign of the association with a continuous predictor:
 
 ```{r}
 stats_beta2 <- 
   results_combined_reject_more$stats[
-    results_combined_reject_more$stats$parameter == "beta[2]",]
+    results_combined_reject_more$stats$variable == "beta[2]",]
 
 mean(sign(stats_beta2$q5) == sign(stats_beta2$q95))
 ```

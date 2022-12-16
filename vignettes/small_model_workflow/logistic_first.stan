@@ -12,13 +12,7 @@ parameters {
 }
 
 model {
-  for(n in 1:N_obs) {
-    real mu = 0;
-    for(p in 1:N_predictors) {
-      mu = mu + beta[p] * X[n, p];
-    }
-    target += bernoulli_lpmf(y[n] | inv_logit(mu));
-  }
+  target += bernoulli_logit_lpmf(y | X * beta);
   target += normal_lpdf(alpha | 0, 2);
   target += normal_lpdf(beta | 0, 1);
 }

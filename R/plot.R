@@ -617,7 +617,7 @@ plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean"
   ggplot2::ggplot(x, all_aes) +
     geom_abline(intercept = 0, slope = 1, color = "skyblue1", size = 2) +
     main_geom +
-    scale_y_continuous(estimate) +
+    labs(y = estimate) +
     facet_wrap(~variable, scales = "free")
 }
 

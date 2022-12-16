@@ -11,7 +11,7 @@ parameters {
 }
 
 model {
-  target += bernoulli_lpmf(y | inv_logit(X * beta));
+  target += bernoulli_logit_lpmf(y | X * beta);
   target += normal_lpdf(beta[1] | 0, 2);
   target += normal_lpdf(beta[2:N_predictors] | 0, 1);
 }
