@@ -92,7 +92,7 @@ plot_rank_hist.data.frame <- function(x, variables = NULL, bins = NULL, prob = 0
           geom_segment(aes(x=0,y=ci_mean,xend=max_rank,yend=ci_mean),colour="grey25") +
           geom_polygon(data=data.frame(x= CI_polygon_x,y= CI_polygon_y),aes(x=x,y=y),fill="skyblue",color="skyblue1",alpha=0.33) +
           geom_histogram(breaks =  seq(0, max_rank, length.out = bins + 1), closed = "left" ,fill="#808080",colour="black") +
-          scale_y_continuous("count") +
+          labs(y = "count") +
           facet_wrap(~variable, scales = "free_y")
 
 }
@@ -617,7 +617,7 @@ plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean"
   ggplot2::ggplot(x, all_aes) +
     geom_abline(intercept = 0, slope = 1, color = "skyblue1", size = 2) +
     main_geom +
-    scale_y_continuous(estimate) +
+    labs(y = estimate) +
     facet_wrap(~variable, scales = "free")
 }
 
