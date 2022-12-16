@@ -202,7 +202,10 @@ if(use_cmdstanr) {
 }
 
 mixture_first_pairs
-ggsave(file.path(cache_dir, "sbcworkflow_mixture_first_pairs.pdf"), plot = mixture_first_pairs)
+
+pairs_width <- 9.5
+pairs_height <- 6
+ggsave(file.path(cache_dir, "sbcworkflow_mixture_first_pairs.pdf"), plot = mixture_first_pairs, width = pairs_width, height = pairs_height)
 ```
 
 One thing that stands out is that either `mu1` is tightly determined and `mu2` is allowed the full prior range or the other way around. We also don't learn anything about theta.
@@ -273,7 +276,7 @@ if(use_cmdstanr) {
   mixture_fixed_log_mix_pairs <- mcmc_pairs(results_fixed_log_mix_2$fits[[1]])  
 }
 mixture_fixed_log_mix_pairs
-ggsave(file.path(cache_dir, "sbcworkflow_mixture_fixed_log_mix_pairs.pdf"), mixture_fixed_log_mix_pairs)
+ggsave(file.path(cache_dir, "sbcworkflow_mixture_fixed_log_mix_pairs.pdf"), mixture_fixed_log_mix_pairs, width = pairs_width, height = pairs_height)
 ```
 
 We clearly see two modes in the posterior. And upon reflection, we can see why: swapping `mu1` with `mu2` while also changing `theta` for `1 - theta` gives _exactly_ the same likelihood - because the ordering does not matter. A more detailed explanation of this type of problem is at https://betanalpha.github.io/assets/case_studies/identifying_mixture_models.html
@@ -361,7 +364,7 @@ if(use_cmdstanr) {
   mixture_fixed_ordered_pairs <- mcmc_pairs(problematic_fit, np = nuts_params(problematic_fit))
 }
 mixture_fixed_ordered_pairs
-ggsave(file.path(cache_dir, "sbcworkflow_mixture_fixed_ordered_pairs.pdf"), mixture_fixed_ordered_pairs)
+ggsave(file.path(cache_dir, "sbcworkflow_mixture_fixed_ordered_pairs.pdf"), mixture_fixed_ordered_pairs, width = pairs_width, height = pairs_height)
 ```
 
 There is a lot of ugly stuff going on. Notably, one can notice that the posterior of theta is bimodal, preferring either almost 0 or almost 1 - and when that happens, the mean of one of the components is almost unconstrained. 
@@ -474,8 +477,10 @@ ordered_combined_rank_hist
 ordered_combined_ecdf_diff <- plot_ecdf_diff(results_fixed_ordered_combined)
 ordered_combined_ecdf_diff
 
+combined_width <- 8
+combined_height <- 4
 combined <- ordered_combined_rank_hist / ordered_combined_ecdf_diff
-ggsave(file.path(cache_dir, "sbcworkflow_results_fixed_ordered_combined_results.pdf"), combined)
+ggsave(file.path(cache_dir, "sbcworkflow_results_fixed_ordered_combined_results.pdf"), combined, width = combined_width, height = combined_height)
 ```
 
 Seems fairly well within the expected bounds. We could definitely run more iterations if we wanted to have a more strict check, but for now, we are happy and the remaining uncertainty about the coverage of our posterior intervals is no longer huge, so it is highly unlikely there is some big bug lurking down there. While we see a potential problem where the coverage for `mu[1]` and `mu[2]` is no longer consistent with perfect calibration, the `ecdf_diff` plot takes precedence as the uncertainty in the coverage plot is only approximate and we thus cannot take it too seriously (see `help("empirical_coverage")` for some more details).
@@ -568,7 +573,7 @@ logistic_first_ecdf <- plot_ecdf_diff(results_logistic_first_10)
 logistic_first_ecdf
 
 combined <- logistic_first_ranks / logistic_first_ecdf
-ggsave(file.path(cache_dir, "sbcworkflow_logistic_first_results.pdf"), combined)
+ggsave(file.path(cache_dir, "sbcworkflow_logistic_first_results.pdf"), combined, width = combined_width, height = combined_height)
 ```
 
 At this point, we could use more simulations to see if the discrepancy is real. But this is also a good opportunity to introduce additional ways to diagnose mismatches between the Stan code and the simulator. A simple diagnostic is to plot the simulated values against posterior estimates, which can be done via the [plot_sim_estimated()] function.
@@ -701,8 +706,8 @@ logistic_merged_intercept_ranks
 logistic_merged_intercept_ecdf <- plot_ecdf_diff(results_logistic_merged_intercept_10)
 logistic_merged_intercept_ecdf
 
-combined <- logistic_merged_intercept_ranks | logistic_merged_intercept_ecdf
-ggsave(file.path(cache_dir, "sbcworkflow_logistic_merged_intercept_results.pdf"), combined)
+combined <- logistic_merged_intercept_ranks | (logistic_merged_intercept_ecdf + theme(legend.position = "bottom", legend.direction = "horizontal"))
+ggsave(file.path(cache_dir, "sbcworkflow_logistic_merged_intercept_results.pdf"), combined, width = combined_width, height = combined_height)
 ```
 
 This signals a potential problem with `beta[1]` (the intercept). The reason for the failure is that  we have included two separate statements for prior for \texttt{beta[1]}. 
