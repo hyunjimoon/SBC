@@ -16,7 +16,7 @@
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-<![endif]-->
+<![endif]--><script defer data-domain="hyunjimoon.github.io" src="https://plausible.io/js/script.js"></script>
 </head>
 <body data-spy="scroll" data-target="#toc">
     
@@ -127,7 +127,7 @@
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2022-12-15</h4>
+            <h4 data-toc-skip class="date">2023-01-05</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/small_model_workflow.Rmd" class="external-link"><code>vignettes/small_model_workflow.Rmd</code></a></small>
       <div class="hidden name"><code>small_model_workflow.Rmd</code></div>
@@ -380,9 +380,9 @@ model {
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"mixture_fixed_log_mix"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'mixture_fixed_log_mix'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (100%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.735.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (100%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.53.</span></span></code></pre>
 <pre><code><span><span class="co">##  - 1 (100%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
-<span><span class="co">## the rank statistics. The lowest tail ESS was 142.</span></span>
+<span><span class="co">## the rank statistics. The lowest tail ESS was 28.</span></span>
 <span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
 <span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
@@ -392,12 +392,12 @@ model {
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_fixed_log_mix</span><span class="op">$</span><span class="va">stats</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 3 × 15</span></span></span>
-<span><span class="co">##   sim_id variable simulated_value  rank z_score  mean median    sd   mad     q5</span></span>
-<span><span class="co">##    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">1</span>      1 mu1               3.13     195  -<span style="color: #BB0000;">0.333</span> 3.41   3.81  0.864 0.744 2.23  </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">2</span>      1 mu2               4.27     364   0.993 3.41   3.71  0.862 0.867 2.24  </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">3</span>      1 theta             0.052<span style="text-decoration: underline;">8</span>   153  -<span style="color: #BB0000;">0.966</span> 0.500  0.511 0.462 0.692 0.010<span style="text-decoration: underline;">0</span></span></span>
-<span><span class="co">## <span style="color: #949494;"># … with 5 more variables: q95 &lt;dbl&gt;, rhat &lt;dbl&gt;, ess_bulk &lt;dbl&gt;,</span></span></span>
+<span><span class="co">##   sim_id variable simulated_value  rank z_score  mean median    sd    mad</span></span>
+<span><span class="co">##    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span>      1 mu1               3.13     293   0.186 2.98  2.68   0.769 0.398 </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span>      1 mu2               4.27     344   0.587 3.83  4.25   0.743 0.026<span style="text-decoration: underline;">6</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span>      1 theta             0.052<span style="text-decoration: underline;">8</span>   223  -<span style="color: #BB0000;">0.542</span> 0.270 0.044<span style="text-decoration: underline;">9</span> 0.400 0.040<span style="text-decoration: underline;">8</span></span></span>
+<span><span class="co">## <span style="color: #949494;"># … with 6 more variables: q5 &lt;dbl&gt;, q95 &lt;dbl&gt;, rhat &lt;dbl&gt;, ess_bulk &lt;dbl&gt;,</span></span></span>
 <span><span class="co">## <span style="color: #949494;">#   ess_tail &lt;dbl&gt;, max_rank &lt;int&gt;</span></span></span></code></pre>
 <p>We see nothing obviously wrong, the posterior means are relatively
 close to simulated values (as summarised by the z-scores) - no variable
