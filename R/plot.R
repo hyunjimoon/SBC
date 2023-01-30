@@ -184,14 +184,14 @@ plot_ecdf <- function(x,
   )
 
   # construct figure
-  ggplot(ecdf_df) +
+  ggplot(ecdf_df, aes(color = type, fill = type)) +
     geom_ribbon(
       data = limits_df_trans,
-      aes(x = x, ymax = ymax, ymin = ymin, color = type, fill = type),
+      aes(x = x, ymax = ymax, ymin = ymin),
       alpha = alpha,
       size = size) +
     geom_step(
-      aes(x = z, y = ecdf, color = type)
+      aes(x = z, y = ecdf)
     ) +
     scale_y_continuous(breaks = c(0, 0.5, 1)) +
     scale_color_manual(
@@ -207,7 +207,7 @@ plot_ecdf <- function(x,
     scale_fill_manual(
       name = "",
       values = c("theoretical CDF" = "skyblue",
-                 "sample ECDF" = NA),
+                 "sample ECDF" = "transparent"),
       labels = c(
         "theoretical CDF" = expression(italic("theoretical CDF")),
         "sample ECDF" = expression(italic("sample ECDF"))
@@ -253,14 +253,14 @@ plot_ecdf_diff <- function(x,
     ymin = limits_df$lower / N - c(rep(z[1:K], each = 2), 1),
     type = "theoretical CDF"
   )
-  ggplot(ecdf_df) +
+  ggplot(ecdf_df, aes(color = type, fill = type)) +
     geom_ribbon(
       data = limits_df_trans,
-      aes(x = x, ymax = ymax, ymin = ymin, color = type, fill = type),
+      aes(x = x, ymax = ymax, ymin = ymin),
       alpha = alpha,
       size = size) +
     geom_step(
-      aes(x = z, y = z_diff, color = type)
+      aes(x = z, y = z_diff)
     ) +
     scale_color_manual(
       name = "",
@@ -275,7 +275,7 @@ plot_ecdf_diff <- function(x,
     scale_fill_manual(
       name = "",
       values = c("theoretical CDF" = "skyblue",
-                 "sample ECDF" = NA),
+                 "sample ECDF" = "transparent"),
       labels = c(
         "theoretical CDF" = expression(italic("theoretical CDF")),
         "sample ECDF" = expression(italic("sample ECDF"))
