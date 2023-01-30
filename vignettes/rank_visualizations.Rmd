@@ -26,6 +26,11 @@ library(bayesplot)
 library(SBC)
 library(ggplot2)
 library(patchwork)
+theme_set(bayesplot::theme_default(base_family = "sans"))
+fig.dir <- here::here("vignettes/_figures_SBC_cache")
+if(!dir.exists(fig.dir)) {
+  dir.create(fig.dir)
+}
 ```
 
 ## Simulation setup
@@ -103,7 +108,9 @@ With 1000 simulations, the patterns are clear and unmistakable.
 
 ```{r rank_hist_1000}
 res_1000 <- SBC_example_results("visualizations", n_sims = 1000)
-plot_rank_hist(res_1000)
+p <- plot_rank_hist(res_1000)
+p
+ggsave(file.path(fig.dir, "sbc_rank_hist_1000.pdf"), p, device = grDevices::pdf)
 ```
 
 We should also note that since we
@@ -121,7 +128,9 @@ plot_ecdf(res_50)
 A minor problem with this visualization is that the top-left and bottom-right parts of the plot are usually left unused and as the number of simulations grows, it may become hard to discern details in the center. Let us look at the same plot from 1000 simulations:
 
 ```{r ecdf_1000}
-plot_ecdf(res_1000)
+p <- plot_ecdf(res_1000) + theme(legend.position = "bottom")
+p
+ggsave(file.path(fig.dir, "sbc_ecdf_1000.pdf"), p)
 ```
 
 Now it gets a bit hard to see, whether the "Exact match" case is well within the ellipse or rather hitting the boundaries.
@@ -130,7 +139,9 @@ The ECDF diff plot shows exactly the same information as the ECDF plot, but look
 but rather on the _difference_ between the perfectly uniform CDF and the ECDF. In other words, it rotates the ECDF plot by 45 degrees to the right to make the uniform CDF a flat line:
 
 ```{r ecdf_diff_1000}
-plot_ecdf_diff(res_1000)
+p <- plot_ecdf_diff(res_1000) + theme(legend.position = "bottom")
+p
+ggsave(file.path(fig.dir, "sbc_ecdf_diff_1000.pdf"), p)
 ```
 
 Now, we get a much increased resolution for the "Exact match" case. Also note that
@@ -157,7 +168,9 @@ leftmost intervals implied in the ECDF plots. The coverage is accompanied by app
 
 
 ```{r coverage_50}
-plot_coverage(res_50)
+p <- plot_coverage(res_50) 
+p
+ggsave(file.path(fig.dir, "sbc_coverage_50.pdf"), p)
 ```
 
 This lets us neatly see that with 50 simulations, we still cannot rule even relatively large miscalibration in the "Exact match" case where e.g. the 50% central interval could still contain about 70% of the true values. A downside of the focus on central intervals is that underestimation and overestimation now produce the same overall shape in the plot. 
@@ -166,7 +179,9 @@ This lets us neatly see that with 50 simulations, we still cannot rule even rela
 For similar reasons as with the ECDF plot, there is also "difference" version of the plot that takes the _differences_ in coverage into focus.
 
 ```{r coverage_diff_50}
-plot_coverage_diff(res_50)
+p <- plot_coverage_diff(res_50)
+p
+ggsave(file.path(fig.dir, "sbc_coverage_diff_50.pdf"), p)
 ```
 
 In the example here, all the problematic scenarios manifest also as problems on the empirical coverage plot. However, empirical coverage, especially for the central intervals has some notable limitations as a diagnostic and thus should always be complemented by a rank histogram / ECDF plot - see `help(empirical_coverage)` for some additional details.
