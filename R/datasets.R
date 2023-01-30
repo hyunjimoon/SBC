@@ -317,13 +317,17 @@ generate_datasets.SBC_generator_brms <- function(generator, n_sims, n_datasets =
       # Change once https://github.com/stan-dev/cmdstanr/issues/205
       # is resolved
       summ <- prior_fit$summary() # Can trigger warnings for treedepth/divergent ...
-      max_rhat <- max(summ$rhat)
+      if(any(is.na(summ$rhat)) || any(is.na(summ$ess_bulk))) {
+        message("Some rhats / bulk effective sample sizes are NA.\n",
+                "This is not a problem if you have constant elements in your model or you generated very few datasets and/or used little thinning.")
+      }
+      max_rhat <- max(c(-Inf, summ$rhat), na.rm = TRUE)
       if(max_rhat > 1.01) {
         message("Warning: Some rhats are > 1.01 indicating the prior was not explored well.\n",
                 "The highest rhat is ", round(max_rhat, 2)," for ", summ$variable[which.max(summ$rhat)],
                 "\nConsider adding warmup iterations (via 'warmup' argument).")
       }
-      min_ess <- min(summ$ess_bulk)
+      min_ess <- min(c(Inf, summ$ess_bulk), na.rm = TRUE)
       if(min_ess < n_sims / 2) {
         message("Warning: Bulk effective sample size for some parameters is less than half the number of simulations.\n",
                 "The lowest ESS_bulk/n_sims is ", round(min_ess / n_sims, 2)," for ", summ$parameter[which.min(summ$ess_bulk)],

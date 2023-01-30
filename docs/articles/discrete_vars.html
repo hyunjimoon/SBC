@@ -16,7 +16,7 @@
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-<![endif]-->
+<![endif]--><script defer data-domain="hyunjimoon.github.io" src="https://plausible.io/js/script.js"></script>
 </head>
 <body data-spy="scroll" data-target="#toc">
     
@@ -128,7 +128,7 @@ JAGS</h1>
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2022-12-15</h4>
+            <h4 data-toc-skip class="date">2023-01-05</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/discrete_vars.Rmd" class="external-link"><code>vignettes/discrete_vars.Rmd</code></a></small>
       <div class="hidden name"><code>discrete_vars.Rmd</code></div>
@@ -223,8 +223,13 @@ generated quantities {
 <span>  <span class="va">model_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/discrete_vars1.stan"</span><span class="op">)</span></span>
 <span>  <span class="va">backend_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span><span class="va">model_1</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
+<pre><code><span><span class="co">## Warning in 'C:/Users/modrak_m/AppData/Local/Temp/RtmpAx6pOy/model-59dc3e776438.stan', line 6, column 2: Declaration</span></span>
+<span><span class="co">##     of arrays by placing brackets after a variable name is deprecated and</span></span>
+<span><span class="co">##     will be removed in Stan 2.32.0. Instead use the array keyword before the</span></span>
+<span><span class="co">##     type. This can be changed automatically using the auto-format flag to</span></span>
+<span><span class="co">##     stanc</span></span></code></pre>
 <p>Now, let’s generate data from the model.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">generate_single_sim_1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">T</span>, <span class="va">r_e</span>, <span class="va">r_l</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">r_e</span><span class="op">)</span></span>
 <span>  <span class="va">l</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">r_l</span><span class="op">)</span></span>
@@ -253,7 +258,7 @@ generated quantities {
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">generator_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generate_single_sim_1</span>, T <span class="op">=</span> <span class="fl">5</span>, r_e <span class="op">=</span> <span class="fl">0.5</span>, r_l <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">85394672</span><span class="op">)</span></span>
 <span><span class="va">datasets_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_1</span>, <span class="fl">30</span><span class="op">)</span></span></code></pre></div>
 <p>Additionally, we’ll add a derived quantity expressing the total
@@ -264,10 +269,10 @@ checks. It turns out this type of derived quantities can increase the
 sensitivity of the SBC against some issues in the model. See
 <code><a href="../articles/limits_of_SBC.html">vignette("limits_of_SBC")</a></code> for a more detailed discussion of
 this.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">log_lik_dq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/derived_quantities.html">derived_quantities</a></span><span class="op">(</span>log_lik <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">dpois</a></span><span class="op">(</span><span class="va">y</span>, <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="cn">T</span> <span class="op">&lt;</span> <span class="va">s</span>, <span class="va">e</span>, <span class="va">l</span><span class="op">)</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>So finally, lets actually compute SBC:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_1</span>, <span class="va">backend_1</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model1"</span><span class="op">)</span>,</span>
@@ -292,7 +297,7 @@ how to handle this better.</p>
 parameter are extreme - many ranks of 0 and <em>extreme</em> z-scores,
 including -Infinity. Seing just one or two such fits should be enough to
 convince us that there is something fundamentally wrong.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">results_1</span><span class="op">$</span><span class="va">stats</span>, <span class="va">variable</span> <span class="op">==</span> <span class="st">"s"</span><span class="op">)</span> </span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 30 × 15</span></span></span>
 <span><span class="co">##    sim_id variable simulated_value  rank   z_score  mean median    sd   mad</span></span>
@@ -318,10 +323,10 @@ parameters do not show such bad behaviour. Note that the
 <code>log_lik</code> derived quantity shows even starker failure than
 <code>s</code>, so it indeed poses a stricter check in this
 scenario.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_1</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results1_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_1</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results1_plots-2.png" width="700"></p>
 <p>An important note: you may wonder, how we got such a wiggly line for
@@ -342,7 +347,7 @@ points <code>t &lt;=  s</code>, so there is effectively a shift by one
 time point between the simulator and the model. So let’s assume that we
 beleive that the Stan model is in fact right. We therefore updated the
 simulator to match the model:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">generate_single_sim_2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">T</span>, <span class="va">r_e</span>, <span class="va">r_l</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">r_e</span><span class="op">)</span></span>
 <span>  <span class="va">l</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">r_l</span><span class="op">)</span></span>
@@ -372,7 +377,7 @@ simulator to match the model:</p>
 <span></span>
 <span><span class="va">generator_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generate_single_sim_2</span>, T <span class="op">=</span> <span class="fl">5</span>, r_e <span class="op">=</span> <span class="fl">0.5</span>, r_l <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span></code></pre></div>
 <p>And we can recompute:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">5846502</span><span class="op">)</span></span>
 <span><span class="va">datasets_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_2</span>, <span class="fl">30</span><span class="op">)</span></span>
 <span><span class="va">results_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2</span>, <span class="va">backend_1</span>,</span>
@@ -389,15 +394,15 @@ simulator to match the model:</p>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results_2_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results_2_plots-2.png" width="700"></p>
 <p>Looks good, so let us add some more simulations to make sure the
 model behaves well.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">54321488</span><span class="op">)</span></span>
 <span><span class="va">datasets_2_more</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_2</span>, <span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">results_2_more</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2_more</span>, <span class="va">backend_1</span>,</span>
@@ -414,12 +419,12 @@ model behaves well.</p>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">results_2_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span><span class="va">results_2</span>, <span class="va">results_2_more</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">results_2_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span><span class="va">results_2</span>, <span class="va">results_2_more</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_2_all</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results_2_all_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_2_all</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results_2_all_plots-2.png" width="700"></p>
 <p>Now - as far as this amount of SBC steps can see, the model is good
@@ -431,7 +436,7 @@ parameters and the <code>log_lik</code> derived quantity. Hooray!</p>
 </h2>
 <p>We can now write the same model in JAGS. This becomes a bit easier as
 JAGS lets us represent discrete parameters directly:</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"other_models/changepoint.jags"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data {
   for(i in 1:T) {
@@ -449,14 +454,14 @@ model {
 }</code></pre>
 <p>We will use the <code>rjags</code> package, let us verify it is
 installed correctly.</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mcmc-jags.sourceforge.io" class="external-link">rjags</a></span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Loading required package: coda</span></span></code></pre>
 <pre><code><span><span class="co">## Linked to JAGS 4.3.1</span></span></code></pre>
 <pre><code><span><span class="co">## Loaded modules: basemod,bugs</span></span></code></pre>
 <p>We will also default to relatively large number of samples as we can
 expect some autocorrelation in the Gibbs sampler.</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">backend_jags</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rjags.html">SBC_backend_rjags</a></span><span class="op">(</span><span class="st">"other_models/changepoint.jags"</span>,</span>
 <span>                                  variable.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"e"</span>,<span class="st">"l"</span>,<span class="st">"s"</span><span class="op">)</span>,</span>
 <span>                                  n.iter <span class="op">=</span> <span class="fl">10000</span>,</span>
@@ -466,7 +471,7 @@ expect some autocorrelation in the Gibbs sampler.</p>
 <p>Running SBC with all the corrected datasets from before (rJAGS
 accepts input data in exactly the same format as Stan, so we can reuse
 the datasets without any change):</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">datasets_2_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_datasets.html">bind_datasets</a></span><span class="op">(</span><span class="va">datasets_2</span>, <span class="va">datasets_2_more</span><span class="op">)</span></span>
 <span><span class="va">results_jags</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2_all</span>, <span class="va">backend_jags</span>,</span>
 <span>                            dquants <span class="op">=</span> <span class="va">log_lik_dq</span>,</span>
@@ -485,17 +490,17 @@ the datasets without any change):</p>
 positives due to the <code>s</code> parameter, which we need to handle
 better.</p>
 <p>The rank plots show no problems.</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_jags</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/ranks_jags-1.png" width="700"></p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_jags</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/ranks_jags-2.png" width="700"></p>
 <p>As an exercise, we can also write the marginalized version of the
 model in JAGS. In some cases, marginalization improves performance even
 for JAGS models, however, for this model it is actually not an
 improvement, presumably because the model is very simple.</p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"other_models/changepoint_marginalized.jags"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data {
   for(i in 1:T) {
@@ -540,7 +545,7 @@ model {
 <p>The code got quite a bit more complex, se let’s check if we didn’t
 mess up the rewrite - first we build a backend with this new
 representation:</p>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">backend_jags_marginalized</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rjags.html">SBC_backend_rjags</a></span><span class="op">(</span><span class="st">"other_models/changepoint_marginalized.jags"</span>,</span>
 <span>                                  variable.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"e"</span>,<span class="st">"l"</span>,<span class="st">"s"</span><span class="op">)</span>,</span>
 <span>                                  n.iter <span class="op">=</span> <span class="fl">10000</span>,</span>
@@ -548,7 +553,7 @@ representation:</p>
 <span>                                  n.chains <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>                                  thin <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <p>Then we run the actual SBC:</p>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_jags_marginalized</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2_all</span>, <span class="va">backend_jags_marginalized</span>,</span>
 <span>                                         dquants <span class="op">=</span> <span class="va">log_lik_dq</span>,</span>
 <span>                        cache_mode <span class="op">=</span> <span class="st">"results"</span>,</span>
@@ -564,10 +569,10 @@ representation:</p>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>And the ranks plots look good, so we indeed probably did succeed in
 correctly marginalizing the <code>s</code> parameter!</p>
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_jags_marginalized</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/ranks_jags_marginalized-1.png" width="700"></p>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_jags_marginalized</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/ranks_jags_marginalized-2.png" width="700"></p>
 </div>
