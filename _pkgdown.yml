@@ -118,3 +118,14 @@ reference:
   - max_diff
   - rank2unif
   - set2set
+
+footer:
+  structure:
+    left: [developed_by, break, built_with]
+    right: analytics
+  components:
+    break : "\n\n"
+    analytics: |
+      This site uses [Plausible.io](https://plausible.io) for privacy-friendly web analytics (no cookies, no tracking).
+
+      Our stats are public at:  https://plausible.io/hyunjimoon.github.io
