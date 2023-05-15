@@ -123,6 +123,7 @@ test_that("calculate_ranks_draws_matrix works", {
         all_ranks[i,] <- last_ranks
 
     }
+    expect_true(!any(is.na(all_ranks)))
     expect_true(all(all_ranks[,1] == 3))
     expect_true(all(all_ranks[,2] == 0))
     expect_true(all(all_ranks[,3] == 10))
@@ -139,6 +140,39 @@ test_that("calculate_ranks_draws_matrix works", {
     expect_equal(attr(last_ranks, "max_rank"), 10)
 
     expect_equal(names(last_ranks), posterior::variables(dm))
+})
+
+test_that("calculate_ranks_draws_matrix infinity NA", {
+  dm <- matrix(NA_real_, nrow = 5, ncol = 5)
+  colnames(dm) <- c("a","b", "c","d", "e")
+  dm[,"a"] <- c(-Inf, -Inf, 1, 2, +Inf)
+  dm[,"b"] <- c(-Inf, -Inf, -Inf, 1, 2)
+  dm[,"c"] <- c(-Inf, NA_real_, -Inf, 1, 2)
+  dm[,"d"] <- rep(NA_real_, 5)
+  dm[,"e"] <- rep(-Inf, 5)
+
+  dm <- posterior::as_draws_matrix(dm)
+
+  vars <- matrix(c(-Inf, NA_real_, 14, NA_real_, -Inf), nrow = 1)
+  colnames(vars) <- c("a","b","c", "d", "e")
+
+  N_steps <- 200
+  all_ranks <- matrix(NA_real_, nrow = N_steps, ncol = 5)
+  for(i in 1:N_steps) {
+    last_ranks <- calculate_ranks_draws_matrix(vars, dm)
+    all_ranks[i,] <- last_ranks
+
+  }
+  expect_true(!any(is.na(all_ranks)))
+
+  # The final rank is stochastic due to presence of ties
+  expect_true(all(all_ranks[,1] <= 2))
+  expect_true(all(0:2 %in% all_ranks[,1]))
+  expect_true(all(0:5 %in% all_ranks[,2]))
+  expect_true(all(all_ranks[,3] <= 5 & all_ranks[,3] >= 4))
+  expect_true(all(4:5 %in% all_ranks[,3]))
+  expect_true(all(0:5 %in% all_ranks[,4]))
+  expect_true(all(0:5 %in% all_ranks[,5]))
 })
 
 test_that("calculate_sds_draws_matrix", {

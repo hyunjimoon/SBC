@@ -994,7 +994,7 @@ rdunif <- function(n, a, b) {
 #' Calculate ranks given variable values within a posterior distribution.
 #'
 #' When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
-#' among the ties.
+#' among the ties. NA is assumed to be potentially equal to any value (Issue #78)
 #' @param variables a vector of values to check
 #' @param dm draws_matrix of the fit (assumed to be already thinned if that was necessary)
 #' @param params DEPRECATED. Use `variables` instead.
@@ -1012,11 +1012,15 @@ calculate_ranks_draws_matrix <- function(variables, dm, params = NULL) {
   max_rank <- posterior::ndraws(dm)
 
   less_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = "<")
-  rank_min <- colSums(less_matrix)
+  rank_min <- colSums(less_matrix, na.rm = TRUE)
 
   # When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
   # among the ties
-  equal_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = "==")
+  # NA is assumed to be potentially equal to any value (Issue #78)
+  equal_or_NA <- function(a,b) {
+    is.na(a) | is.na(b) | a == b
+  }
+  equal_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = equal_or_NA)
   rank_range <- colSums(equal_matrix)
 
   ranks <- rank_min + rdunif(posterior::nvariables(dm), a = 0, b = rank_range)
