@@ -605,9 +605,11 @@ plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean"
     x$high__ <- x[[uncertainty[2]]]
     all_aes <- aes(x = simulated_value, y = estimate__, ymin = low__, ymax = high__)
     main_geom <- geom_pointrange(alpha = alpha, fatten = 1.5)
+    y_label <- paste0("posterior ", estimate, " (", uncertainty[1], " - ", uncertainty[2], ")")
   } else {
     main_geom <- geom_point(alpha = alpha)
     all_aes <- aes(x = simulated_value, y = estimate__)
+    y_label <- paste0("posterior ", estimate)
   }
 
   if(nrow(x) == 0) {
@@ -617,7 +619,7 @@ plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean"
   ggplot2::ggplot(x, all_aes) +
     geom_abline(intercept = 0, slope = 1, color = "skyblue1", size = 2) +
     main_geom +
-    labs(y = estimate) +
+    labs(y = y_label) +
     facet_wrap(~variable, scales = "free")
 }
 
