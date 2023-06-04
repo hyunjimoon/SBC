@@ -176,18 +176,13 @@ plot_ecdf <- function(x,
 
   ecdf_df <- dplyr::mutate(ecdf_data$ecdf_df, type = "sample ECDF")
   limits_df <- ecdf_data$limits_df
-  limits_df_trans <- data.frame(
-    x = c(0, rep(z[2:(K + 1)], each = 2)),
-    ymax = limits_df$upper / N,
-    ymin = limits_df$lower / N,
-    type = "theoretical CDF"
-  )
+  limits_df$type <- "theoretical CDF"
 
   # construct figure
   ggplot(ecdf_df, aes(color = type, fill = type)) +
     geom_ribbon(
-      data = limits_df_trans,
-      aes(x = x, ymax = ymax, ymin = ymin),
+      data = limits_df,
+      aes(x = x, ymax = upper, ymin = lower),
       alpha = alpha,
       size = size) +
     geom_step(
@@ -246,11 +241,9 @@ plot_ecdf_diff <- function(x,
   z <- ecdf_data$z
 
   ecdf_df <- dplyr::mutate(ecdf_data$ecdf_df, z_diff = ecdf - z, type = "sample ECDF")
-  limits_df <- ecdf_data$limits_df
-  limits_df_trans <- data.frame(
-    x = c(0, rep(z[2:(K + 1)], each = 2)),
-    ymax = limits_df$upper / N - c(rep(z[1:K], each = 2), 1),
-    ymin = limits_df$lower / N - c(rep(z[1:K], each = 2), 1),
+  limits_df_trans <- dplyr::mutate(ecdf_data$limits_df,
+    ymax = upper - uniform_val,
+    ymin = lower - uniform_val,
     type = "theoretical CDF"
   )
   ggplot(ecdf_df, aes(color = type, fill = type)) +
@@ -403,8 +396,7 @@ data_for_ecdf_plots.matrix <- function(x,
     ranks_matrix <- ranks_matrix[, variables]
   }
 
-  pit <- ranks_to_empirical_pit(ranks_matrix, max_rank)
-  N <- nrow(pit)
+  N <- nrow(ranks_matrix)
   if (is.null(K)) {
     K <- min(max_rank + 1, N)
   }
@@ -416,21 +408,40 @@ data_for_ecdf_plots.matrix <- function(x,
       conf_level = prob
     )
   }
+  z <- seq(0,1, length.out = K + 1)
+  z_twice <- c(0, rep(z[2:(K + 1)], each = 2))
+
   limits_df <- as.data.frame(ecdf_intervals(
     N = N,
     L = 1,
     K = K,
     gamma = gamma))
-  z <- seq(0,1, length.out = K + 1)
+  limits_df <- dplyr::mutate(limits_df,
+                             x = z_twice,
+                             lower = lower / N,
+                             upper = upper / N,
+                             # The uniform_val needs to be shifted w.r.t z_twice
+                             uniform_val =  c(rep(z[1:K], each = 2), 1))
 
-  ecdf_vals <- apply(pit, 2, function(col) ecdf(col)(z))
+  # Combining pit and ecdf calculations in one function to avoid
+  # numerical problems causing issue #79
+  base_vals <- floor((0:K) * ((max_rank + 1) / K))
+  ecdf_vals <- matrix(nrow = K + 1, ncol = ncol(ranks_matrix))
+  colnames(ecdf_vals) <- colnames(ranks_matrix)
+  for(i in 1:(K + 1)) {
+    # Note: for pit calculations we would use (col + 1) / (max_rank + 1)
+    # For ecdf we would use pit <= base_val / (max_rank + 1)
+    # So the "+ 1" and "<=" can be subsumed in "<"
+    ecdf_vals[i,] <- colMeans(ranks_matrix < base_vals[i])
+  }
+
 
   ecdf_df <- as.data.frame(ecdf_vals)
   ecdf_df$..z <- z
   ecdf_df <- tidyr::pivot_longer(ecdf_df, -..z, names_to = "variable", values_to = "ecdf")
   ecdf_df <- dplyr::rename(ecdf_df, z = ..z)
 
-  structure(list(limits_df = limits_df, ecdf_df = ecdf_df, K = K, N = N, z = z),
+  structure(list(limits_df = limits_df, ecdf_df = ecdf_df, K = K, N = N, z = z_twice),
             class = "SBC_ecdf_data")
 }
 

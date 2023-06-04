@@ -151,8 +151,8 @@ empirical_pit <- function(y, yrep) {
 }
 
 
-ranks_to_empirical_pit <- function(ranks, n_posterior_samples){
-  (1 + ranks) / (1 + n_posterior_samples)
+ranks_to_empirical_pit <- function(ranks, max_rank){
+  (1 + ranks) / (1 + max_rank)
 }
 
 #' Compute observed coverage of posterior credible intervals.
