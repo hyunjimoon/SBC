@@ -29,7 +29,7 @@ Still many of the approaches here also apply to complex models (especially start
 one can validate big chunks of Stan code while working with small models only.
 
 We expect the reader to be familiar with basics of the package. If not,
-check out the ["basic_usage" vignette](https://hyunjimoon.github.io/SBC/articles/basic_usage.html).
+check out the ["basic_usage" vignette](https://hyunjimoon.github.io/SBC/articles/SBC.html).
 
 ## Our goal
 

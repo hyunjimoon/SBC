@@ -18,7 +18,7 @@ As an example, we'll wrap the base R `glm` function as a backend. This will
 also let us discuss how we can treat frequentist models as approximations to
 Bayesian models and that SBC can tell us how faithful such an approximation is.
 
-We assume familiarity with the SBC package architecture as discussed in the  [basic usage vignette](https://hyunjimoon.github.io/SBC/articles/basic_usage.html) and
+We assume familiarity with the SBC package architecture as discussed in the  [basic usage vignette](https://hyunjimoon.github.io/SBC/articles/SBC.html) and
 [S3 classes](https://adv-r.hadley.nz/s3.html) in R.
 
 Let's setup the environment.
@@ -40,7 +40,7 @@ if(!dir.exists(cache_dir)) {
 
 ## Minimal backend support
 
-If you remember from the, [interface introduction vignette](https://hyunjimoon.github.io/SBC/articles/basic_usage.html)
+If you remember from the, [interface introduction vignette](https://hyunjimoon.github.io/SBC/articles/SBC.html)
 a backend for the SBC package describes a function that takes in data and produces posterior draws,
 i.e. the backend holds all the information other than data that are needed to 
 run the given statistical method. 
