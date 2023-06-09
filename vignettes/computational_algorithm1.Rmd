@@ -562,7 +562,7 @@ hmm_time$alg <- factor(hmm_time$alg,
                                   "Sampling (longest chain)"))
  
 ggplot(hmm_time, aes(x = time)) + 
-  geom_histogram(aes(y = ..density..), bins = 20) + 
+  geom_histogram(aes(y = after_stat(density)), bins = 20) + 
   facet_wrap(~alg, ncol = 1) +
   scale_x_continuous("Time [seconds]")
 ```

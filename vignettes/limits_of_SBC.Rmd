@@ -73,14 +73,14 @@ dens_data <- rbind(
              log_density = dt(x, df = 5, log = TRUE), type = "t(5)")) 
 
 ggplot(dens_data, aes(x = x, y = density, color = type)) +
-  geom_line(size = 2)
+  geom_line(linewidth = 2)
 ```
 
 As expected the t distribution has fatter tails, which is even better visible when looking at the logarithm of the density.
 
 ```{r log_dens_compare}
 ggplot(dens_data, aes(x = x, y = log_density, color = type)) +
-  geom_line(size = 2)
+  geom_line(linewidth = 2)
 ```
 
 Here is our Stan code for the simple normal model.

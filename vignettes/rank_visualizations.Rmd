@@ -47,13 +47,13 @@ should signal issues.
 
 ```{r densities}
 plot_density_comparison <- function(density_df) {
-  ggplot(density_df, aes(x = x, y = density, color = type, size = type)) + 
+  ggplot(density_df, aes(x = x, y = density, color = type, linewidth = type)) + 
     geom_line(data = dplyr::filter(density_df, type == "Correct")) + 
     geom_line(data = dplyr::filter(density_df, type == "Observed"), alpha = 0.8) + 
     facet_wrap(~variable) + 
     scale_color_manual("", values = c("Correct" = "skyblue1", 
                                     "Observed" = "black")) + 
-    scale_size_manual("", values = c("Correct" = 2, 
+    scale_linewidth_manual("", values = c("Correct" = 2, 
                                     "Observed" = 1)) +
     theme(legend.position = "bottom")
 }

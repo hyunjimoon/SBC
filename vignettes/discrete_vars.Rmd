@@ -252,7 +252,7 @@ cat(readLines("other_models/changepoint.jags"), sep = "\n")
 We will use the `rjags` package, let us verify it is installed correctly.
 
 
-```{r}
+```{r, warning=FALSE}
 library(rjags)
 ```
 
