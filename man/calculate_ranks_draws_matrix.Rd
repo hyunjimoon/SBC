@@ -15,5 +15,5 @@ calculate_ranks_draws_matrix(variables, dm, params = NULL)
 }
 \description{
 When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
-among the ties.
+among the ties. NA is assumed to be potentially equal to any value (Issue #78)
 }

@@ -364,28 +364,13 @@ generate_datasets.SBC_generator_brms <- function(generator, n_sims, n_datasets =
 
   prior_fit_brms <- brmsfit_from_stanfit(prior_fit, generator$args)
 
-  all_predictions <- brms::posterior_predict(prior_fit_brms)
-
-  original_data <- generator$args$data
-  processed_formula <- prior_fit_brms$formula
-
-  generated <- list()
+  generated <- full_ppred(prior_fit_brms)
   log_likelihoods <- numeric(n_sims)
+
   for(i in 1:n_sims) {
-
-    new_dataset <- original_data
-    if(inherits(processed_formula, "brmsformula")) {
-      new_dataset[[processed_formula$resp]] <- all_predictions[i, ]
-    } else if (inherits(processed_formula, "mvbrmsformula")) {
-      stop("Multivariate formulas not supported yet")
-    } else {
-      stop("Unrecognized formula")
-    }
-    generated[[i]] <- new_dataset
-
     ## Compute the likelihoods (observation model)
     if(generator$generate_lp) {
-      ll <- log_lik(prior_fit_brms, newdata = new_dataset, draw_ids = i, cores = 1)
+      ll <- log_lik(prior_fit_brms, newdata = generated[[i]], draw_ids = i, cores = 1)
       log_likelihoods[i] <- sum(ll)
     }
   }
