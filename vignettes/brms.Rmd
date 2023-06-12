@@ -123,7 +123,7 @@ plot_ecdf_diff(results)
 ## Using custom generator code
 
 
-Let's take a bit more complex model - with a single varying intercept.
+Let's take a bit more complex model - a linear regression with a single varying intercept.
 
 This time we will not use the `brms` model to also simulate from prior, but 
 simulate using an R function. This way, we get to learn if `brms` does what we think it does!
@@ -134,8 +134,6 @@ If on the other hand we are interested in a specific dataset, it might make
 more sense to use the predictors as seen in  the dataset in all simulations to focus
 our efforts on the dataset at hand.
 
-
-Let's take a Gaussian model with a single varying intercept.
 
 The data can be generated using the following code - note that we
 need to be careful to match the parameter names as `brms` uses them. You
