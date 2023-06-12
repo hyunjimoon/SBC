@@ -127,7 +127,7 @@
                         <h4 data-toc-skip class="author">Hyunji Moon,
 Martin Modrák, Shinyoung Kim</h4>
             
-            <h4 data-toc-skip class="date">2023-01-05</h4>
+            <h4 data-toc-skip class="date">2023-06-12</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/SBC.Rmd" class="external-link"><code>vignettes/SBC.Rmd</code></a></small>
       <div class="hidden name"><code>SBC.Rmd</code></div>
@@ -445,7 +445,7 @@ check individual stats:</p>
 <code class="sourceCode R"><span><span class="va">results</span><span class="op">$</span><span class="va">stats</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 100 × 15</span></span></span>
 <span><span class="co">##    sim_id variable simulated_value  rank z_score  mean median    sd   mad    q5</span></span>
-<span><span class="co">##     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">##     <span style="color: #949494; font-style: italic;">&lt;num&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;num&gt;</span> <span style="color: #949494; font-style: italic;">&lt;num&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;num&gt;</span> <span style="color: #949494; font-style: italic;">&lt;num&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;num&gt;</span> <span style="color: #949494; font-style: italic;">&lt;num&gt;</span> <span style="color: #949494; font-style: italic;">&lt;num&gt;</span> <span style="color: #949494; font-style: italic;">&lt;num&gt;</span></span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 1</span>      1 lambda              1.44    10  -<span style="color: #BB0000;">1.46</span>   1.74   1.73 0.202 0.200  1.42</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 2</span>      2 lambda              2.99    74  -<span style="color: #BB0000;">0.226</span>  3.05   3.04 0.265 0.262  2.63</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 3</span>      3 lambda              2.51    44  -<span style="color: #BB0000;">0.740</span>  2.69   2.68 0.249 0.253  2.29</span></span>
@@ -456,8 +456,9 @@ check individual stats:</p>
 <span><span class="co">## <span style="color: #BCBCBC;"> 8</span>      8 lambda              2.99   125   0.319  2.91   2.90 0.258 0.263  2.49</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 9</span>      9 lambda              2.55    20  -<span style="color: #BB0000;">1.22</span>   2.87   2.86 0.255 0.250  2.46</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">10</span>     10 lambda              1.73     8  -<span style="color: #BB0000;">1.56</span>   2.05   2.04 0.209 0.211  1.71</span></span>
-<span><span class="co">## <span style="color: #949494;"># … with 90 more rows, and 5 more variables: q95 &lt;dbl&gt;, rhat &lt;dbl&gt;,</span></span></span>
-<span><span class="co">## <span style="color: #949494;">#   ess_bulk &lt;dbl&gt;, ess_tail &lt;dbl&gt;, max_rank &lt;int&gt;</span></span></span></code></pre>
+<span><span class="co">## <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
+<span><span class="co">## <span style="color: #949494;"># ℹ 5 more variables: q95 &lt;num&gt;, rhat &lt;num&gt;, ess_bulk &lt;num&gt;, ess_tail &lt;num&gt;,</span></span></span>
+<span><span class="co">## <span style="color: #949494;">#   max_rank &lt;num&gt;</span></span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="plots">Plots<a class="anchor" aria-label="anchor" href="#plots"></a>
@@ -548,11 +549,13 @@ storage facilities.</p>
       <footer><div class="copyright">
   <p></p>
 <p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák, Teemu Säilynoja.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
+<p>This site uses <a href="https://plausible.io" class="external-link">Plausible.io</a> for privacy-friendly web analytics (no cookies, no tracking).</p>
+<p>Our stats are public at: <a href="https://plausible.io/hyunjimoon.github.io" class="external-link uri">https://plausible.io/hyunjimoon.github.io</a></p>
 </div>
 
       </footer>
