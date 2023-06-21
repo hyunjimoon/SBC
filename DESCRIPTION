@@ -19,7 +19,10 @@ Authors@R:
            comment = c(ORCID= "0000-0002-8886-7797")),
     person(given = "Teemu",
            family = "Säilynoja",
-           role = "aut")
+           role = "aut"),
+    person(given = "Luna",
+           family = "Fazio",
+           role = "ctb")
            )
 Description: SBC helps perform Simulation Based Calibration on Bayesian models. 
     SBC lets you check for bugs in your model code and/or algorithm that fits 
