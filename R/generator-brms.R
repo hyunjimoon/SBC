@@ -209,7 +209,7 @@ brms_response_sequence.brmsfit <- function(x){ brms_response_sequence(x$formula)
 #' @method brms_response_sequence bform
 #' @export
 brms_response_sequence.bform <- function(x){
-  term_list <- brms_response_sequence(brmsterms(x))
+  term_list <- brms_response_sequence(brms::brmsterms(x))
   resp_vars <- names(term_list)
 
   adjacency <- t(sapply(term_list, \(x)is.element(resp_vars, x)))
