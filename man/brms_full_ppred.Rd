@@ -22,3 +22,4 @@ Full forward sampling of a the response of brms fit, including multivariate mode
 \examples{
 # Pending
 }
+\keyword{internal}

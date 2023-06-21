@@ -161,6 +161,7 @@ generate_datasets.SBC_generator_brms <- function(generator, n_sims, n_datasets =
 #'
 #' @return A list of data.frames containing the draws.
 #'
+#' @keywords internal
 #' @examples # Pending
 brms_full_ppred <- function(fit, newdata = NULL, draws = NULL) {
   # 1. determine term hierarchy
@@ -200,6 +201,7 @@ nodes_by_depth <- function(adj_matrix) {
 }
 
 #' Determine the response sequence of brms model
+#' @keywords internal
 brms_response_sequence <- function(x){ UseMethod("brms_response_sequence") }
 
 #' @method brms_response_sequence brmsfit

@@ -9,3 +9,4 @@ brms_response_sequence(x)
 \description{
 Determine the response sequence of brms model
 }
+\keyword{internal}
