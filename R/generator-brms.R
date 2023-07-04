@@ -180,7 +180,8 @@ brms_full_ppred <- function(fit, newdata = NULL, draws = NULL) {
       pp_data[[i]][, vars] <- array(
         brms::posterior_predict(
           fit, newdata = pp_data[[i]],
-          resp = vars, draw_ids = i),
+          resp = vars, draw_ids = i,
+          skip_validate = TRUE),
         dim = c(1, n, length(vars)))[1,,]
     }
   }
