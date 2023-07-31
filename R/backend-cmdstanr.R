@@ -6,8 +6,10 @@
 #' @param ... other arguments passed to the `$sample()` method of the model. The `data` and
 #'   `parallel_chains` arguments cannot be set this way as they need to be controlled by the SBC
 #'   package.
+#' @param init_factory an optional function that takes in a dataset and returns a value that
+#' can be passed to the `init` argument of `$sample()`. This allows for data-dependent inits.
 #' @export
-SBC_backend_cmdstan_sample <- function(model, ...) {
+SBC_backend_cmdstan_sample <- function(model, ..., init_factory = NULL) {
   require_cmdstanr_version("cmdstan backend")
 
   stopifnot(inherits(model, "CmdStanModel"))
@@ -21,16 +23,24 @@ SBC_backend_cmdstan_sample <- function(model, ...) {
                 " cannot be provided when defining a backend as they need to be set ",
                 "by the SBC package"))
   }
-  structure(list(model = model, args = args), class = "SBC_backend_cmdstan_sample")
+
+  if(!is.null(init_factory) && any(names(args) == "init")) {
+    stop("You cannot specify both init and init_factory")
+  }
+  structure(list(model = model, args = args, init_factory = init_factory), class = "SBC_backend_cmdstan_sample")
 }
 
 #' @export
 SBC_fit.SBC_backend_cmdstan_sample <- function(backend, generated, cores) {
+  our_args <- list(
+    data = generated,
+    parallel_chains = cores)
+  if(!is.null(backend$init_factory)) {
+    our_args$init <- backend$init_factory(generated)
+  }
   fit <- do.call(backend$model$sample,
                  combine_args(backend$args,
-                              list(
-                                data = generated,
-                                parallel_chains = cores)))
+                              our_args))
 
   if(all(fit$return_codes() != 0)) {
     stop("No chains finished succesfully")
