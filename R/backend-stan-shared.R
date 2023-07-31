@@ -183,3 +183,65 @@ get_diagnostic_messages.SBC_ADVI_diagnostics_summary <- function(x) {
 
   SBC_diagnostic_messages(do.call(rbind, message_list))
 }
+
+
+#' @export
+summary.SBC_optimize_diagnostics <- function(x) {
+  summ <- list(
+    n_fits = nrow(x),
+    has_reject_initial = sum(x$n_reject_initial > 0),
+    max_reject_initial = max(x$n_reject_initial),
+    has_error_log_prob = sum(x$n_error_log_prob > 0),
+    max_error_log_prob = max(x$n_error_log_prob),
+    has_failed_ls = sum(x$n_failed_ls > 0),
+    max_failed_ls = max(x$n_failed_ls),
+    max_time = max(x$time)
+
+  )
+
+  structure(summ, class = "SBC_optimize_diagnostics_summary")
+}
+
+#' @export
+get_diagnostic_messages.SBC_optimize_diagnostics <- function(x) {
+  get_diagnostic_messages(summary(x))
+}
+
+
+#' @export
+get_diagnostic_messages.SBC_optimize_diagnostics_summary <- function(x) {
+  message_list <- list()
+
+  next_msg <- 1
+  if(x$has_reject_initial > 0) {
+    msg <- paste0(x$has_reject_initial, " (", round(100 * x$has_reject_initial / x$n_fits), "%) fits had some initial values ",
+                  "rejected. Maximum number of rejections was ", x$max_reject_initial, ".")
+    message_list[[next_msg]] <- data.frame(ok = FALSE, message = msg)
+  } else {
+    message_list[[next_msg]] <- data.frame(ok = TRUE, message = "No fits had initial values rejected.")
+  }
+  next_msg <- next_msg + 1
+
+  if(x$has_failed_ls > 0) {
+    msg <- paste0(x$has_failed_ls, " (", round(100 * x$has_failed_ls / x$n_fits), "%) fits had some line search failures.",
+                  " Maximum number of line search failures was ", x$max_failed_ls, ".")
+    message_list[[next_msg]] <- data.frame(ok = FALSE, message = msg)
+  } else {
+    message_list[[next_msg]] <- data.frame(ok = TRUE, message = "No fits had line search failures.")
+  }
+  next_msg <- next_msg + 1
+
+  if(x$has_error_log_prob > 0) {
+    msg <- paste0(x$has_error_log_prob, " (", round(100 * x$has_error_log_prob / x$n_fits), "%) fits had some errors evaluating log probability ",
+                  ". Maximum number of errors was ", x$max_error_log_prob, ".")
+    message_list[[next_msg]] <- data.frame(ok = FALSE, message = msg)
+  } else {
+    message_list[[next_msg]] <- data.frame(ok = TRUE, message = "No fits had errors evaluating log probability.")
+  }
+  next_msg <- next_msg + 1
+
+  message_list[[next_msg]] <- data.frame(ok = TRUE, message = paste0("Maximum time was ", x$max_time, " sec."))
+
+  SBC_diagnostic_messages(do.call(rbind, message_list))
+}
+

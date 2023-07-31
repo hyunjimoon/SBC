@@ -53,10 +53,19 @@ Let's start by setting up our environment.
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
 library(ggplot2)
-library(cmdstanr)
 
-library(rstan)
-rstan_options(auto_write = TRUE)
+use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
+
+# This vignette will always use cmdstanr as variational rstan backend
+# is currently not implemented.
+# It may however use either rstan or cmdstanr for the optimizing backend
+library(cmdstanr)
+if(!use_cmdstanr) {
+  library(rstan)
+  rstan_options(auto_write = TRUE)
+}
+
+
 
 
 options(mc.cores = parallel::detectCores())
@@ -73,11 +82,11 @@ options(SBC.min_chunk_size = 5)
 
 
 # Setup caching of results
-cache_dir <- "./_approximate_computation_SBC_cache"
-if(!dir.exists(cache_dir)) {
-  dir.create(cache_dir)
+if(use_cmdstanr) {
+  cache_dir <- "./_approximate_computation_SBC_cache"
+} else {
+  cache_dir <- "./_approximate_computation_rstan_SBC_cache"
 }
-
 ```
 
 
@@ -183,22 +192,24 @@ empirical_coverage(res_poisson_100$stats,width = c(0.95, 0.8, 0.5))
 
 If the model is so simple, maybe a simple Laplace approximation around
 the posterior mode would suffice? We can use Stan's `optimizing` mode exactly
-for that. Although unfortunately, this is currently implemented only in `rstan`
-and not for `cmdstanr` (because the underlying CmdStan does not expose the 
-Hessian of the optimizing fit).
+for that. 
 
 So let us build an optimizing backend
 
 ```{r}
-model_poisson_rstan <- stan_model("stan/poisson.stan")
-backend_poisson_optimizing <- SBC_backend_rstan_optimizing(model_poisson_rstan)
+if(use_cmdstanr) {
+  backend_poisson_optimizing <- SBC_backend_cmdstan_optimize(model_poisson)  
+} else {
+  model_poisson_rstan <- stan_model("stan/poisson.stan")
+  backend_poisson_optimizing <- SBC_backend_rstan_optimizing(model_poisson_rstan)
+}
 ```
 
 and use it to fit the same datasets - first to the one with `N = 20`.
 
 ```{r}
 res_poisson_optimizing <- 
-  compute_SBC(ds_poisson, backend_poisson_optimizing, keep_fits = FALSE,
+  compute_SBC(ds_poisson[3], backend_poisson_optimizing, keep_fits = FALSE,
     cache_mode = "results", cache_location = file.path(cache_dir, "poisson_opt"))
 ```
 
