@@ -160,37 +160,9 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
     # TODO add a validate_input generic that would let backends impose additional checks
     # on generated data.
 
-    # Directly converting to draws_matrix does not preserve arrays
-    guess_dims <- function(x) {
-      if(!is.null(dim(x))) {
-        dim(x)
-      } else {
-        if(length(x) > 1) {
-          length(x)
-        } else {
-          NULL
-        }
-      }
-    }
 
-    guess_dimnames <- function(x) {
-      if(!is.null(dimnames(x))) {
-        dimnames(x)
-      } else if(!is.null(names(x))) {
-        list(names(x))
-      } else {
-        NULL
-      }
-    }
+    variables_list[[iter]] <- list_of_values_to_draws_rvars(generator_output$variables)
 
-    vars_rvars <-
-      do.call(
-      posterior::draws_rvars,
-      purrr::map(generator_output$variables,
-                 ~ posterior::rvar(array(.x, dim = c(1, guess_dims(.x))), dimnames = guess_dimnames(.x))
-                 )
-      )
-    variables_list[[iter]] <- posterior::as_draws_matrix(vars_rvars)
     if(posterior::ndraws(variables_list[[iter]]) != 1) {
       stop("The `variables` element of the generator output must contain only
       a single draw")

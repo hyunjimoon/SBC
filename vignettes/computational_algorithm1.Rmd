@@ -123,7 +123,7 @@ variational approximation.
 We compile the model and create a variational SBC backend.
 
 ```{r}
-model_poisson <- cmdstan_model("stan/poisson.stan")
+model_poisson <- cmdstan_model("stan/poisson.stan", compile_model_methods = TRUE, compile_hessian_method = TRUE)
 backend_poisson <- SBC_backend_cmdstan_variational(model_poisson, n_retries_init = 3)
 ```
 
@@ -209,7 +209,7 @@ and use it to fit the same datasets - first to the one with `N = 20`.
 
 ```{r}
 res_poisson_optimizing <- 
-  compute_SBC(ds_poisson[3], backend_poisson_optimizing, keep_fits = FALSE,
+  compute_SBC(ds_poisson, backend_poisson_optimizing, keep_fits = FALSE,
     cache_mode = "results", cache_location = file.path(cache_dir, "poisson_opt"))
 ```
 
@@ -329,7 +329,7 @@ We start with the default (meanfield) variational backend via Stan:
 if(package_version(cmdstanr::cmdstan_version()) < package_version("2.26.0") ) {
   stop("The models int this section require CmdStan 2.26 or later.")
 }
-model_HMM <- cmdstan_model("stan/hmm_poisson.stan")
+model_HMM <- cmdstan_model("stan/hmm_poisson.stan", compile_model_methods = TRUE, compile_hessian_method = TRUE)
 backend_HMM <- SBC_backend_cmdstan_variational(model_HMM, n_retries_init = 3)
 ```
 
@@ -345,6 +345,8 @@ ds_hmm <- generate_datasets(SBC_generator_function(generator_HMM, N = 100), n_si
 res_hmm <- compute_SBC(ds_hmm, backend_HMM,
                            cache_mode = "results", cache_location = file.path(cache_dir, "hmm"))
 ```
+
+
 
 There are not huge problems, but the `mu_signal` variable seems to not be well calibrated:
 

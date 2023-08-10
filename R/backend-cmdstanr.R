@@ -210,7 +210,8 @@ SBC_fit.SBC_backend_cmdstan_optimize <- function(backend, generated, cores) {
       fit <- do.call(backend$model$optimize,
                      combine_args(backend$args,
                                   list(
-                                    data = generated)))
+                                    data = generated,
+                                    sig_figs = 18)))
     })
 
     # Only retry if the error is "Line search cannot do any more progress"
@@ -241,7 +242,27 @@ SBC_backend_hash_for_cache.SBC_backend_cmdstan_optimize <- function(backend) {
 
 #' @export
 SBC_fit_to_draws_matrix.CmdStanMLE <- function(fit) {
-  fit$draws(format = "draws_matrix")
+  if(!is.function(fit$hessian) || !is.function(fit$unconstrain_draws)) {
+    stop("CmdStanMLE Fit does not have the hessian() and unconstrain_draws() functions available\nThe model has to be compiled with compile_model_methods = TRUE, compile_hessian_method = TRUE")
+  }
+
+  uc_draws_mle <- fit$unconstrain_draws()[[1]][[1]]
+  hessian <- fit$hessian(uc_draws_mle, jacobian_adjustment = FALSE)$hessian
+  hessian_chol <- chol(-hessian)
+
+  n_opt_draws <- 1000
+  norm_draws <- matrix(rnorm(n_opt_draws * nrow(hessian)), nrow = n_opt_draws, ncol = nrow(hessian))
+  norm_draws_hess <- norm_draws %*% hessian_chol
+  uc_draws <- sweep(norm_draws_hess, MARGIN = 1, STATS = uc_draws_mle, FUN = "+")
+
+  trans_func <- function(uc_draw) {
+    posterior::as_draws_matrix(
+      list_of_values_to_draws_rvars(fit$constrain_variables(uc_draw)))
+  }
+
+  draws_list <- apply(uc_draws, MARGIN = 1, FUN = trans_func, simplify = FALSE)
+  draws <- do.call(posterior::bind_draws, c(along = "draw", draws_list))
+  return(draws)
 }
 
 #' @export

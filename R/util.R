@@ -43,3 +43,44 @@ require_brms_version <- function(purpose) {
 require_cmdstanr_version <- function(purpose) {
   require_package_version("cmdstanr", "0.4.0", purpose)
 }
+
+list_of_values_to_draws_rvars <- function(list_of_values) {
+    varnames <- names(list_of_values)
+    if(is.null(varnames) || any(is.na(varnames)) ||
+       any(varnames == "") || length(unique(varnames)) != length(varnames)) {
+      stop(SBC_error("SBC_datasets_error", "All elements of list_of_values must have a unique name"))
+    }
+
+    # Directly converting to draws_matrix does not preserve arrays
+    guess_dims <- function(x) {
+      if(!is.null(dim(x))) {
+        dim(x)
+      } else {
+        if(length(x) > 1) {
+          length(x)
+        } else {
+          NULL
+        }
+      }
+    }
+
+    guess_dimnames <- function(x) {
+      if(!is.null(dimnames(x))) {
+        dimnames(x)
+      } else if(!is.null(names(x))) {
+        list(names(x))
+      } else {
+        NULL
+      }
+    }
+
+    vars_rvars <-
+      do.call(
+      posterior::draws_rvars,
+      purrr::map(list_of_values,
+                 ~ posterior::rvar(array(.x, dim = c(1, guess_dims(.x))), dimnames = guess_dimnames(.x))
+                 )
+      )
+
+    return(vars_rvars)
+}
