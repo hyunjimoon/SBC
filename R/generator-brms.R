@@ -158,12 +158,13 @@ generate_datasets.SBC_generator_brms <- function(generator, n_sims, n_datasets =
 #' @param fit An object of class `brmsfit`
 #' @param newdata An optional data.frame for which to evaluate predictions. If NULL (default), the original data of the model is used.
 #' @param draws An integer vector specifying the posterior draws to be used. If NULL (the default), all draws are used.
+#' @param validate_all if TRUE, validation of input data will be done in all iterations, otherwise only once
 #'
 #' @return A list of data.frames containing the draws.
 #'
 #' @keywords internal
 #' @examples # Pending
-brms_full_ppred <- function(fit, newdata = NULL, draws = NULL) {
+brms_full_ppred <- function(fit, newdata = NULL, draws = NULL, validate_all = FALSE) {
   # 1. determine term hierarchy
   resp <- brms_response_sequence(fit)
   # 2.1. initialize dataframe using the original fit's data
@@ -174,6 +175,11 @@ brms_full_ppred <- function(fit, newdata = NULL, draws = NULL) {
   # 2.4. create list to hold data
   pp_data <- list()
 
+  if(!validate_all) {
+    # Validate once
+    newdata <- brms::validate_newdata(newdata, fit)
+  }
+
   for (i in draws) {
     pp_data[[i]] <- newdata
     for (vars in resp) {
@@ -181,7 +187,7 @@ brms_full_ppred <- function(fit, newdata = NULL, draws = NULL) {
         brms::posterior_predict(
           fit, newdata = pp_data[[i]],
           resp = vars, draw_ids = i,
-          skip_validate = TRUE),
+          skip_validate = !validate_all),
         dim = c(1, n, length(vars)))[1,,]
     }
   }
