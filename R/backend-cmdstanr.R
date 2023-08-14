@@ -8,6 +8,9 @@
 #'   package.
 #' @param init_factory an optional function that takes in a dataset and returns a value that
 #' can be passed to the `init` argument of `$sample()`. This allows for data-dependent inits.
+#' The caching mechanism in [compute_SBC()] ignores the environment of the function, i.e.
+#' if the init factory takes values from its environment and those values change between
+#' runs, this will not by itself cause cached results to be recomputed.
 #' @export
 SBC_backend_cmdstan_sample <- function(model, ..., init_factory = NULL) {
   require_cmdstanr_version("cmdstan backend")
@@ -24,8 +27,12 @@ SBC_backend_cmdstan_sample <- function(model, ..., init_factory = NULL) {
                 "by the SBC package"))
   }
 
-  if(!is.null(init_factory) && any(names(args) == "init")) {
-    stop("You cannot specify both init and init_factory")
+  if(!is.null(init_factory)) {
+    if(any(names(args) == "init")) {
+      stop("You cannot specify both init and init_factory")
+    }
+    stopifnot("init_factory has to be a function" = is.function(init_factory))
+    stopifnot("init_factory has to be a function taking a single argument" = length(formalArgs(init_factory)) == 1)
   }
   structure(list(model = model, args = args, init_factory = init_factory), class = "SBC_backend_cmdstan_sample")
 }
@@ -51,7 +58,20 @@ SBC_fit.SBC_backend_cmdstan_sample <- function(backend, generated, cores) {
 
 #' @export
 SBC_backend_hash_for_cache.SBC_backend_cmdstan_sample <- function(backend) {
-  rlang::hash(list(model = backend$model$code(), args = backend$args))
+  list_for_hash <- list(model = backend$model$code(), args = backend$args)
+  # Adding init_factory only when non-null to avoid invalidating old hashes
+  if(!is.null(backend$init_factory)) {
+    # Explicitly ignoring the environment of the init function,
+    # otherwise a refit will be trigerred by a restart of the session
+    list_for_hash$init_factory_formals <- formals(backend$init_factory)
+    list_for_hash$init_factory_body <- body(backend$init_factory)
+  }
+  # If there is a user header, add it to the hash
+  if(!is.null(backend$model$cpp_options()$USER_HEADER)) {
+    header_code <- readLines(backend$model$cpp_options()$USER_HEADER)
+    list_for_hash$user_header_code <- header_code
+  }
+  rlang::hash(list_for_hash)
 }
 
 
