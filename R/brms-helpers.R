@@ -1,4 +1,4 @@
-stanmodel_for_brms <- function(...) {
+stanmodel_for_brms <- function(..., out_stan_file = NULL) {
   model_code <- brms::make_stancode(...)
 
   args <- list(...)
@@ -13,15 +13,46 @@ stanmodel_for_brms <- function(...) {
     backend <- getOption("brms.backend", "rstan")
   }
   if(backend == "cmdstanr") {
-    compiled_model <- cmdstanr::cmdstan_model(cmdstanr::write_stan_file(model_code))
+    if(is.null(out_stan_file)) {
+      out_stan_file <- cmdstanr::write_stan_file(model_code)
+    } else {
+      write_stan_file_simple(out_stan_file, model_code)
+    }
+    compiled_model <- cmdstanr::cmdstan_model(out_stan_file)
   } else if(backend == "rstan") {
-    compiled_model <- rstan::stan_model(model_code = model_code)
+    if(is.null(out_stan_file)) {
+      compiled_model <- rstan::stan_model(model_code = model_code)
+    } else {
+      write_stan_file_simple(out_stan_file, model_code)
+      compiled_model <- rstan::stan_model(file = out_stan_file)
+    }
   } else {
     stop("Unsupported backend: ", backend)
 
   }
 
   compiled_model
+}
+
+# write code to file, not touching the file if the code matches
+write_stan_file_simple <- function(file, code) {
+  overwrite <- TRUE
+  if(file.exists(file)) {
+    collapsed_code <- paste0(code, collapse = "\n")
+    tryCatch({
+      file_contents <- paste0(readLines(file), collapse = "\n")
+      if (gsub("(\r|\n)+", "\n", file_contents) == gsub("(\r|\n)+", "\n", collapsed_code)) {
+        overwrite <- FALSE
+      }
+    },
+    error = function(e) {
+      warning("Error when checking old file contents", e)
+    })
+  }
+
+  if(overwrite) {
+    cat(code, file = file, sep = "\n")
+  }
 }
 
 translate_rstan_args_to_cmdstan <- function(args, include_unrecognized = TRUE) {

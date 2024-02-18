@@ -69,6 +69,7 @@ get_expected_max_rhat <- function(n_vars, prob = 0.99, approx_sd = 0.005) {
   1 + std_val_max * approx_sd
 }
 
+#' @export
 get_diagnostic_messages.SBC_nuts_diagnostics_summary <- function(x) {
   message_list <- list()
   i <- 1

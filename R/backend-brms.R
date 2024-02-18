@@ -25,7 +25,7 @@ new_SBC_backend_brms <- function(compiled_model,
 
 validate_SBC_backend_brms_args <- function(args) {
   if(!is.null(args$algorithm) && args$algorithm != "sampling") {
-    stop("Algorithms other than sampling not supported yet")
+    stop("Algorithms other than sampling not supported yet. Comment on https://github.com/hyunjimoon/SBC/issues/91 to express your interest.")
   }
 
   unacceptable_params <- c("data", "cores", "empty")
@@ -42,8 +42,10 @@ validate_SBC_backend_brms_args <- function(args) {
 #' @param template_data a representative value for the `data` argument in `brm`
 #'    that can be used to generate code.
 #' @param template_dataset DEPRECATED. Use `template_data`
+#' @param out_stan_file A filename for the generated Stan code. Useful for
+#'    debugging and for avoiding unnecessary recompilations.
 #' @export
-SBC_backend_brms <- function(..., template_data, template_dataset = NULL) {
+SBC_backend_brms <- function(..., template_data, out_stan_file = NULL, template_dataset = NULL) {
   if(!is.null(template_dataset)) {
     warning("Argument 'template_dataset' is deprecated, use 'template_data' instead")
     if(missing(template_data)) {
@@ -53,7 +55,7 @@ SBC_backend_brms <- function(..., template_data, template_dataset = NULL) {
   args = list(...)
   validate_SBC_backend_brms_args(args)
 
-  stanmodel <- stanmodel_for_brms(data = template_data, ...)
+  stanmodel <- stanmodel_for_brms(data = template_data, out_stan_file = out_stan_file, ...)
 
   new_SBC_backend_brms(stanmodel, args)
 }

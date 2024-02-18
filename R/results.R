@@ -1054,6 +1054,7 @@ validate_diagnostic_messages <- function(x) {
   x
 }
 
+#' @export
 print.SBC_diagnostic_messages <- function(x, include_ok = TRUE, print_func = cat) {
   x <- validate_diagnostic_messages(x)
   if(!include_ok) {

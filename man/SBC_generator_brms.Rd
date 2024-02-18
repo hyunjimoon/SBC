@@ -9,7 +9,8 @@ SBC_generator_brms(
   data,
   ...,
   generate_lp = TRUE,
-  generate_lp_chunksize = 5000/nrow(data)
+  generate_lp_chunksize = 5000/nrow(data),
+  out_stan_file = NULL
 )
 }
 \arguments{
@@ -23,6 +24,9 @@ but improves sensitivity of the SBC process.}
 the chunk size used with \code{\link[future.apply:future_mapply]{future.apply::future_mapply()}}. Set quite high
 by default as the parallelism only benefits for large individual datasets/number of
 simulations.}
+
+\item{out_stan_file}{A filename for the generated Stan code. Useful for
+debugging and for avoiding unnecessary recompilations.}
 }
 \description{
 Brms generator uses a brms model with \code{sample_prior = "only"} to generate

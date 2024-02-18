@@ -11,9 +11,12 @@
 #' the chunk size used with [future.apply::future_mapply()]. Set quite high
 #' by default as the parallelism only benefits for large individual datasets/number of
 #' simulations.
+#' @param out_stan_file A filename for the generated Stan code. Useful for
+#'    debugging and for avoiding unnecessary recompilations.
 #' @export
 SBC_generator_brms <- function(formula, data, ...,  generate_lp = TRUE,
-                               generate_lp_chunksize = 5000 / nrow(data)) {
+                               generate_lp_chunksize = 5000 / nrow(data),
+                               out_stan_file = NULL) {
   require_brms_version("brms generator")
 
   model_data <- brms::make_standata(formula = formula, data = data, ..., sample_prior = "only")
@@ -25,7 +28,7 @@ SBC_generator_brms <- function(formula, data, ...,  generate_lp = TRUE,
     stop("Algorithms other than sampling not supported yet")
   }
 
-  compiled_model <- stanmodel_for_brms(formula = formula, data = data, ...)
+  compiled_model <- stanmodel_for_brms(formula = formula, data = data, out_stan_file = out_stan_file, ...)
 
 
 

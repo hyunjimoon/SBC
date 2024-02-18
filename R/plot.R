@@ -292,6 +292,7 @@ data_for_ecdf_plots <- function(x, ...,
 }
 
 
+#' @export
 data_for_ecdf_plots.SBC_results <- function(x, variables = NULL,
                                                     prob = 0.95,
                                                     gamma = NULL,
@@ -308,6 +309,7 @@ data_for_ecdf_plots.SBC_results <- function(x, variables = NULL,
 }
 
 
+#' @export
 data_for_ecdf_plots.data.frame <- function(x, variables = NULL,
                                            prob = 0.95,
                                            gamma = NULL,
@@ -370,6 +372,7 @@ data_for_ecdf_plots.data.frame <- function(x, variables = NULL,
                       gamma = gamma, K = K)
 }
 
+#' @export
 data_for_ecdf_plots.matrix <- function(x,
                                        max_rank,
                                        variables = NULL,
