@@ -22,7 +22,6 @@ In this vignette, we'll first explain each of the visualizations individually
 
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
-library(bayesplot)
 library(SBC)
 library(ggplot2)
 library(patchwork)

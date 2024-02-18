@@ -34,7 +34,7 @@ BugReports: https://github.com/hyunjimoon/SBC/issues
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.1
+RoxygenNote: 7.3.1
 Imports:
     R6,
     posterior (>= 1.0.0),

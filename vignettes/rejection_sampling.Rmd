@@ -68,7 +68,6 @@ if(use_cmdstanr) {
   rstan_options(auto_write = TRUE)
 }
 
-library(bayesplot)
 library(posterior)
 
 library(future)
