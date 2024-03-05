@@ -101,12 +101,7 @@ When using SBC, please cite the following publication:
 
 Modrák, M., Moon, A. H., Kim, S., Bürkner, P., Huurre, N., Faltejsková, K., ... & Vehtari, A. (2023). Simulation-based calibration checking for Bayesian computation: The choice of test quantities shapes sensitivity. Bayesian Analysis, 1(1), 1-28.
 
-As SBC is a high-level interface to Stan, please additionally cite Stan (see also https://mc-stan.org/users/citations/):
-
-Stan Development Team. YEAR. Stan Modeling Language Users Guide and Reference Manual, VERSION. https://mc-stan.org
-Carpenter B., Gelman A., Hoffman M. D., Lee D., Goodrich B., Betancourt M., Brubaker M., Guo J., Li P., and Riddell A. (2017). Stan: A probabilistic programming language. Journal of Statistical Software. 76(1). doi.org/10.18637/jss.v076.i01
-
-Further, SBC relies on several other R packages and, of course, on R itself. To find out how to cite R and its packages, use `citation` function. SBC specifically rely on `posterior` for manipulating posterior draws and `future` for parallel processing.
+Further, SBC relies on several other R packages and, of course, on R itself. To find out how to cite R and its packages, use `citation` function. SBC specifically rely on `posterior` for manipulating posterior draws and `future` for parallel processing. Also, do not forget to cite the probabilistic inference tool you use as backend (e.g. Stan, JAGS, brms, ...)
 
 ## References
 
