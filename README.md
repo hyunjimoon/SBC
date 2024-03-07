@@ -99,14 +99,14 @@ Developing and maintaining open source software is an important yet often undera
 
 When using SBC, please cite the following publication:
 
-Modrák, M., Moon, A. H., Kim, S., Bürkner, P., Huurre, N., Faltejsková, K., ... & Vehtari, A. (2023). Simulation-based calibration checking for Bayesian computation: The choice of test quantities shapes sensitivity. Bayesian Analysis, 1(1), 1-28.
+Modrák, M., Moon, A. H., Kim, S., Bürkner, P., Huurre, N., Faltejsková, K., ... & Vehtari, A. (2023). Simulation-based calibration checking for Bayesian computation: The choice of test quantities shapes sensitivity. Bayesian Analysis, advance publication, DOI: [10.1214/23-BA1404](https://doi.org/10.1214/23-BA1404).
 
 Further, SBC relies on several other R packages and, of course, on R itself. To find out how to cite R and its packages, use `citation` function. SBC specifically rely on `posterior` for manipulating posterior draws and `future` for parallel processing. Also, do not forget to cite the probabilistic inference tool you use as backend (e.g. Stan, JAGS, brms, ...)
 
 ## References
 
 * Theoretical support
-   * [Simulation-Based Calibration Checking for Bayesian Computation: The Choice of Test Quantities Shapes Sensitivity](https://arxiv.org/abs/2211.02383v1) Modrák, Moon, Kim, Bürkner, Huurre, Faltejsková, Gelman, Vehtari, 2022
+   * [Simulation-Based Calibration Checking for Bayesian Computation: The Choice of Test Quantities Shapes Sensitivity](https://doi.org/10.1214/23-BA1404) Modrák, Moon, Kim, Bürkner, Huurre, Faltejsková, Gelman, Vehtari, 2023
    * [Validating Bayesian Inference Algorithms with Simulation-Based Calibration](http://www.stat.columbia.edu/~gelman/research/unpublished/sbc.pdf) Talts, Betancourt, Simpson, Vehtari, Gelman, 2018
    * [Graphical Test for Discrete Uniformity and its Applications in Goodness of Fit Evaluation and Multiple Sample Comparison](https://arxiv.org/abs/2103.10522)  Säilynoja, Bürkner, Vehtari, 2021
    * [Bayesian Workflow](https://arxiv.org/abs/2011.01808), Gelman et al., 2020
