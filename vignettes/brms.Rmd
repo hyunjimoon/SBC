@@ -75,9 +75,6 @@ priors <- prior(normal(0,1), class = "b") +
   prior(normal(0,1), class = "sigma")
 generator <- SBC_generator_brms(y ~ x, data = template_data, prior = priors, 
                                 thin = 50, warmup = 10000, refresh = 2000,
-                                # Will generate the log density - this is useful, 
-                                #but a bit computationally expensive
-                                generate_lp = TRUE,
                                 out_stan_file = file.path(cache_dir, "brms_linreg1.stan")
                                 )
 ```
@@ -253,7 +250,8 @@ priors_func2 <- prior(normal(0,1), class = "b") +
 
 backend_func2 <- SBC_backend_brms(y ~ 0 + Intercept + x + (1 | group),  
                             prior = priors_func2, warmup = 1000, iter = 2000, chains = 1,
-                            template_data = datasets_func$generated[[1]])
+                            template_data = datasets_func$generated[[1]],
+                            out_stan_file = file.path(cache_dir, "brms_linreg3.stan"))
 
 
 ```
