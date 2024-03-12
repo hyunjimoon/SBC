@@ -144,6 +144,11 @@ guess_rank_hist_bins <- function(max_rank, N) {
 #'   the granularity of the plot and can significantly speed up the computation
 #'   of the simultaneous confidence bands. Defaults to the smaller of number of
 #'   ranks per variable and the maximum rank.
+#' @param combine optionally specify a named list where each entry is a character
+#'   vectors which specifies a group of variables that will be displayed in the
+#'   same panel. Panel title will be the name of the list element.
+#' @param combine_alpha a function that controls the alpha level when `combine`
+#'   is specified. Takes the number of variables in each group as its argument.
 #' @param ... additional arguments passed to [data_for_ecdf_plots()].
 #' Most notably, if `x` is matrix, a `max_rank` parameter needs to be given.
 #' @param parameters DEPRECATED, use `variables` instead.
