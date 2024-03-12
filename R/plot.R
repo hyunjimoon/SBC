@@ -156,6 +156,8 @@ plot_ecdf <- function(x,
                       prob = 0.95,
                       size = 1,
                       alpha = 0.33,
+                      combine = NULL,
+                      combine_alpha = \(x) sqrt(1/x),
                       ...,
                       parameters = NULL) {
 
@@ -168,7 +170,8 @@ plot_ecdf <- function(x,
 
   ecdf_data <-
     data_for_ecdf_plots(x, variables = variables,
-                        prob = prob, K = K, gamma = gamma, ...)
+                        prob = prob, K = K, gamma = gamma,
+                        combine = combine, combine_alpha = combine_alpha, ...)
 
   N <- ecdf_data$N
   K <- ecdf_data$K
@@ -186,7 +189,7 @@ plot_ecdf <- function(x,
       alpha = alpha,
       size = size) +
     geom_step(
-      aes(x = z, y = ecdf)
+      aes(x = z, y = ecdf, group = variable, alpha = alpha)
     ) +
     scale_y_continuous(breaks = c(0, 0.5, 1)) +
     scale_color_manual(
@@ -208,9 +211,10 @@ plot_ecdf <- function(x,
         "sample ECDF" = expression(italic("sample ECDF"))
       )
     ) +
+    scale_alpha_identity() +
     xlab(NULL) +
     ylab(NULL) +
-    facet_wrap(~ variable)
+    facet_wrap(~ group)
 }
 
 #' @export
@@ -223,6 +227,8 @@ plot_ecdf_diff <- function(x,
                            prob = 0.95,
                            size = 1,
                            alpha = 0.33,
+                           combine = NULL,
+                           combine_alpha = \(x) sqrt(1/x),
                            ...,
                            parameters = NULL) {
   if(!is.null(parameters)) {
@@ -234,7 +240,8 @@ plot_ecdf_diff <- function(x,
 
   ecdf_data <-
     data_for_ecdf_plots(x, variables = variables,
-                        prob = prob, K = K, gamma = gamma, ...)
+                        prob = prob, K = K, gamma = gamma,
+                        combine = combine, combine_alpha = combine_alpha, ...)
 
   N <- ecdf_data$N
   K <- ecdf_data$K
@@ -253,7 +260,7 @@ plot_ecdf_diff <- function(x,
       alpha = alpha,
       size = size) +
     geom_step(
-      aes(x = z, y = z_diff)
+      aes(x = z, y = z_diff, group = variable, alpha = alpha)
     ) +
     scale_color_manual(
       name = "",
@@ -274,9 +281,10 @@ plot_ecdf_diff <- function(x,
         "sample ECDF" = expression(italic("sample ECDF"))
       )
     ) +
+    scale_alpha_identity() +
     xlab(NULL) +
     ylab(NULL) +
-    facet_wrap(~ variable, scales = "free_y")
+    facet_wrap(~ group, scales = "free_y")
 }
 
 
@@ -297,6 +305,7 @@ data_for_ecdf_plots.SBC_results <- function(x, variables = NULL,
                                                     prob = 0.95,
                                                     gamma = NULL,
                                                     K = NULL,
+                                                    ...,
                                             parameters = NULL) {
   if(!is.null(parameters)) {
     warning("The `parameters` argument is deprecated use `variables` instead.")
@@ -305,7 +314,8 @@ data_for_ecdf_plots.SBC_results <- function(x, variables = NULL,
     }
   }
 
-  data_for_ecdf_plots(x$stats, variables = variables, prob = prob, gamma = gamma, K = K)
+  data_for_ecdf_plots(x$stats, variables = variables, prob = prob,
+  gamma = gamma, K = K, ...)
 }
 
 
@@ -315,6 +325,7 @@ data_for_ecdf_plots.data.frame <- function(x, variables = NULL,
                                            gamma = NULL,
                                            K = NULL,
                                            max_rank = x$max_rank,
+                                           ...,
                                            parameters = NULL) {
 
   if(!is.null(parameters)) {
@@ -369,7 +380,7 @@ data_for_ecdf_plots.data.frame <- function(x, variables = NULL,
 
 
   data_for_ecdf_plots(rank_matrix, max_rank = max_rank, prob = prob,
-                      gamma = gamma, K = K)
+                      gamma = gamma, K = K, ...)
 }
 
 #' @export
@@ -381,6 +392,9 @@ data_for_ecdf_plots.matrix <- function(x,
                                        K = NULL,
                                        size = 1,
                                        alpha = 0.33,
+                                       combine = NULL,
+                                       combine_alpha = NULL,
+                                       ...,
                                        parameters = NULL) {
 
   if(!is.null(parameters)) {
@@ -443,6 +457,30 @@ data_for_ecdf_plots.matrix <- function(x,
   ecdf_df$..z <- z
   ecdf_df <- tidyr::pivot_longer(ecdf_df, -..z, names_to = "variable", values_to = "ecdf")
   ecdf_df <- dplyr::rename(ecdf_df, z = ..z)
+  # Allow user-specified grouping of variables (issue #88)
+  ecdf_df$group <- ecdf_df$variable
+  ecdf_df$alpha <- 1
+  if (!is.null(combine)) {
+    if(!is.list(combine) | is.null(names(combine))) {
+      stop("`combine` must be a named list")
+    }
+    if(is.null(combine_alpha)) {
+      stop("`combine_alpha` must be specified")
+    }
+    if(!identical(unique(table(unlist(combine))), 1L)) {
+      stop("Duplicated variable names are not allowed in `combine`")
+    }
+    if(!all(unlist(combine) %in% ecdf_df$variable)) {
+      stop("The following variables in `combine` couldn't be found: ",
+        paste(unlist(combine)[!unlist(combine) %in% ecdf_df$variable], collapse = ", "))
+    }
+    display_names <- names(combine)
+    for (i in seq_along(combine)) {
+      ecdf_df[ecdf_df$variable %in% combine[[i]], "group"] <- display_names[i]
+    }
+    ecdf_df <- dplyr::mutate(ecdf_df,
+      alpha = combine_alpha(length(unique(variable))), .by = group)
+  }
 
   structure(list(limits_df = limits_df, ecdf_df = ecdf_df, K = K, N = N, z = z_twice),
             class = "SBC_ecdf_data")
