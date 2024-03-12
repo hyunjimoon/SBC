@@ -469,8 +469,8 @@ data_for_ecdf_plots.matrix <- function(x,
     if(!is.list(combine) | is.null(names(combine))) {
       stop("`combine` must be a named list")
     }
-    if(is.null(combine_alpha)) {
-      stop("`combine_alpha` must be specified")
+    if(!is.function(combine_alpha)) {
+      stop("`combine_alpha` must be a function")
     }
     if(!identical(unique(table(unlist(combine))), 1L)) {
       stop("Duplicated variable names are not allowed in `combine`")
