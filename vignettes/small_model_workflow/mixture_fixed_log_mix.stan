@@ -1,6 +1,6 @@
 data {
   int<lower=0> N;
-  int y[N];
+  array[N] int y;
 }
 
 parameters {

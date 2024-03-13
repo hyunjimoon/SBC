@@ -1,6 +1,6 @@
 data{
   int N;
-  int y[N];
+  array[N] int y;
 }
 parameters{
   real<lower = 0> lambda;

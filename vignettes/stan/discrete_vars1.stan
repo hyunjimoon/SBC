@@ -3,7 +3,7 @@ data {
   real<lower=0> r_l;
 
   int<lower=1> T;
-  int<lower=0> y[T];
+  array[T] int<lower=0> y;
 }
 transformed data {
   real log_unif;
