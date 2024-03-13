@@ -144,11 +144,15 @@ guess_rank_hist_bins <- function(max_rank, N) {
 #'   the granularity of the plot and can significantly speed up the computation
 #'   of the simultaneous confidence bands. Defaults to the smaller of number of
 #'   ranks per variable and the maximum rank.
-#' @param combine optionally specify a named list where each entry is a character
+#' @param combine_variables optionally specify a named list where each entry is a character
 #'   vectors which specifies a group of variables that will be displayed in the
 #'   same panel. Panel title will be the name of the list element.
-#' @param combine_alpha a function that controls the alpha level when `combine`
-#'   is specified. Takes the number of variables in each group as its argument.
+#'   A function that takes a character vector as an input and produces a list
+#'   can also be specified (see [combine-functions]).
+#' @param ecdf_alpha the alpha level of the empirical CDF. Can be either a single number or
+#'   a function taking the number of variables that were combined (when `combine_variables`
+#'   is specified) and returns a number. By default, plots showing many
+#'   ECDFs will have reduced alpha.
 #' @param ... additional arguments passed to [data_for_ecdf_plots()].
 #' Most notably, if `x` is matrix, a `max_rank` parameter needs to be given.
 #' @param parameters DEPRECATED, use `variables` instead.
@@ -161,8 +165,8 @@ plot_ecdf <- function(x,
                       prob = 0.95,
                       size = 1,
                       alpha = 0.33,
-                      combine = NULL,
-                      combine_alpha = \(x) sqrt(1/x),
+                      combine_variables = NULL,
+                      ecdf_alpha = NULL,
                       ...,
                       parameters = NULL) {
 
@@ -176,7 +180,7 @@ plot_ecdf <- function(x,
   ecdf_data <-
     data_for_ecdf_plots(x, variables = variables,
                         prob = prob, K = K, gamma = gamma,
-                        combine = combine, combine_alpha = combine_alpha, ...)
+                        combine_variables = combine_variables, ecdf_alpha = ecdf_alpha, ...)
 
   N <- ecdf_data$N
   K <- ecdf_data$K
@@ -232,8 +236,8 @@ plot_ecdf_diff <- function(x,
                            prob = 0.95,
                            size = 1,
                            alpha = 0.33,
-                           combine = NULL,
-                           combine_alpha = \(x) sqrt(1/x),
+                           combine_variables = NULL,
+                           ecdf_alpha = NULL,
                            ...,
                            parameters = NULL) {
   if(!is.null(parameters)) {
@@ -246,7 +250,7 @@ plot_ecdf_diff <- function(x,
   ecdf_data <-
     data_for_ecdf_plots(x, variables = variables,
                         prob = prob, K = K, gamma = gamma,
-                        combine = combine, combine_alpha = combine_alpha, ...)
+                        combine_variables = combine_variables, ecdf_alpha = ecdf_alpha, ...)
 
   N <- ecdf_data$N
   K <- ecdf_data$K
@@ -397,8 +401,8 @@ data_for_ecdf_plots.matrix <- function(x,
                                        K = NULL,
                                        size = 1,
                                        alpha = 0.33,
-                                       combine = NULL,
-                                       combine_alpha = NULL,
+                                       combine_variables = NULL,
+                                       ecdf_alpha = NULL,
                                        ...,
                                        parameters = NULL) {
 
@@ -463,38 +467,73 @@ data_for_ecdf_plots.matrix <- function(x,
   ecdf_df <- tidyr::pivot_longer(ecdf_df, -..z, names_to = "variable", values_to = "ecdf")
   ecdf_df <- dplyr::rename(ecdf_df, z = ..z)
   # Allow user-specified grouping of variables (issue #88)
-  ecdf_df$group <- ecdf_df$variable
-  ecdf_df$alpha <- 1
-  if (!is.null(combine)) {
-    if(!is.list(combine) | is.null(names(combine))) {
-      stop("`combine` must be a named list")
+
+  if (!is.null(combine_variables)) {
+    if(is.function(combine_variables)) {
+      combine_variables <- combine_variables(unique(ecdf_df$variable))
     }
-    if(!is.function(combine_alpha)) {
-      stop("`combine_alpha` must be a function")
+    if(!is.list(combine_variables) | is.null(names(combine_variables))) {
+      stop("`combine_variables` must be a named list or a function returning a named list")
     }
-    if(!identical(unique(table(unlist(combine))), 1L)) {
-      stop("Duplicated variable names are not allowed in `combine`")
+    if(is.null(ecdf_alpha)) {
+      ecdf_alpha <- \(x) sqrt(1/x)
+    } else if(is.numeric(ecdf_alpha) & length(ecdf_alpha) == 1) {
+      ecdf_alpha_numeric <- ecdf_alpha
+      ecdf_alpha <- \(x) ecdf_alpha_numeric
+    } else if(!is.function(ecdf_alpha) | nargs(ecdf_alpha) != 1) {
+      stop("`ecdf_alpha` must be a function taking a single argument or a single numerical value")
     }
-    if(!all(unlist(combine) %in% ecdf_df$variable)) {
-      stop("The following variables in `combine` couldn't be found: ",
-        paste(unlist(combine)[!unlist(combine) %in% ecdf_df$variable], collapse = ", "))
+
+    if(!identical(unique(table(unlist(combine_variables))), 1L)) {
+      stop("Duplicated variable names are not allowed in `combine_variables`")
     }
-    display_names <- names(combine)
-    for (i in seq_along(combine)) {
-      ecdf_df[ecdf_df$variable %in% combine[[i]], "group"] <- display_names[i]
+    if(!all(unlist(combine_variables) %in% ecdf_df$variable)) {
+      stop("The following variables in `combine_variables` couldn't be found: ",
+        paste(unlist(combine_variables)[!unlist(combine_variables) %in% ecdf_df$variable], collapse = ", "))
+    }
+    display_names <- names(combine_variables)
+    for (i in seq_along(combine_variables)) {
+      ecdf_df[ecdf_df$variable %in% combine_variables[[i]], "group"] <- display_names[i]
     }
     ecdf_df <- dplyr::mutate(ecdf_df,
-      alpha = combine_alpha(length(unique(variable))), .by = group)
+      alpha = ecdf_alpha(length(unique(variable))), .by = group)
+  } else {
+    ecdf_df$alpha <- ecdf_alpha(1)
+    ecdf_df$group <- ecdf_df$variable
   }
 
   structure(list(limits_df = limits_df, ecdf_df = ecdf_df, K = K, N = N, z = z_twice),
             class = "SBC_ecdf_data")
 }
 
+#' Helper functions to be passed to [ECDF-plots] to combine variables in a single
+#' panel.
+#'
+#' `combine_all_variables` will merge all variables in a single plot, while
+#' `combine_array_elements` will merge all elements of any array into a single
+#' panel of the plot
+#' @param x parameter names
+#' @export
+#' @rdname combine-functions
+combine_all_variables <- function(x) {
+  list(all = x)
+}
+
+#' @export
+#' @rdname combine-functions
+combine_array_elements <- function(x) {
+  indices_removed <- gsub(r"(\[[^]]*\])", "[]", x)
+  unique_arrays <- sort(unique(indices_removed))
+  res <- list()
+  for(i in 1:length(unique_arrays)) {
+    res[[unique_arrays[i]]] <- x[indices_removed == unique_arrays[i]]
+  }
+  res
+}
 
 #' Prior/posterior contraction plot.
 #'
-#' The rationale for this plot and its interpretaion is explained in
+#' The rationale for this plot and its interpretation is explained in
 #' Mike Betancourt's
 #' [Towards A Principled Bayesian Workflow](https://betanalpha.github.io/assets/case_studies/principled_bayesian_workflow.html#132_A_Bayesian_Eye_Chart).
 #'

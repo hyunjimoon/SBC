@@ -13,6 +13,8 @@ plot_ecdf(
   prob = 0.95,
   size = 1,
   alpha = 0.33,
+  combine_variables = NULL,
+  ecdf_alpha = NULL,
   ...,
   parameters = NULL
 )
@@ -25,6 +27,8 @@ plot_ecdf_diff(
   prob = 0.95,
   size = 1,
   alpha = 0.33,
+  combine_variables = NULL,
+  ecdf_alpha = NULL,
   ...,
   parameters = NULL
 )
@@ -46,6 +50,17 @@ ranks per variable and the maximum rank.}
 \item{size}{size passed to \code{\link[ggplot2:geom_ribbon]{ggplot2::geom_ribbon()}} for the confidence band}
 
 \item{alpha}{alpha level of the confidence band}
+
+\item{combine_variables}{optionally specify a named list where each entry is a character
+vectors which specifies a group of variables that will be displayed in the
+same panel. Panel title will be the name of the list element.
+A function that takes a character vector as an input and produces a list
+can also be specified (see \link{combine-functions}).}
+
+\item{ecdf_alpha}{the alpha level of the empirical CDF. Can be either a single number or
+a function taking the number of variables that were combined (when \code{combine_variables}
+is specified) and returns a number. By default, plots showing many
+ECDFs will have reduced alpha.}
 
 \item{...}{additional arguments passed to \code{\link[=data_for_ecdf_plots]{data_for_ecdf_plots()}}.
 Most notably, if \code{x} is matrix, a \code{max_rank} parameter needs to be given.}
