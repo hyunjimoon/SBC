@@ -1,6 +1,6 @@
 data {
   int<lower=0> N_obs;
-  int y[N_obs];
+  array[N_obs] int y;
 
   int<lower=1> N_predictors;
   matrix[N_predictors, N_obs] x;
