@@ -19,7 +19,7 @@ See the methods for data_for_ecdf_plots() for available data formats.'><!-- math
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.3.0.9000</span>
       </span>
     </div>
 
@@ -120,6 +120,8 @@ See the methods for <code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots
 <span>  prob <span class="op">=</span> <span class="fl">0.95</span>,</span>
 <span>  size <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  alpha <span class="op">=</span> <span class="fl">0.33</span>,</span>
+<span>  combine_variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ecdf_alpha <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  parameters <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
@@ -132,6 +134,8 @@ See the methods for <code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots
 <span>  prob <span class="op">=</span> <span class="fl">0.95</span>,</span>
 <span>  size <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  alpha <span class="op">=</span> <span class="fl">0.33</span>,</span>
+<span>  combine_variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ecdf_alpha <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  parameters <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -170,6 +174,21 @@ ranks per variable and the maximum rank.</p></dd>
 <dd><p>alpha level of the confidence band</p></dd>
 
 
+<dt>combine_variables</dt>
+<dd><p>optionally specify a named list where each entry is a character
+vectors which specifies a group of variables that will be displayed in the
+same panel. Panel title will be the name of the list element.
+A function that takes a character vector as an input and produces a list
+can also be specified (see combine-functions).</p></dd>
+
+
+<dt>ecdf_alpha</dt>
+<dd><p>the alpha level of the empirical CDF. Can be either a single number or
+a function taking the number of variables that were combined (when <code>combine_variables</code>
+is specified) and returns a number. By default, plots showing many
+ECDFs will have reduced alpha.</p></dd>
+
+
 <dt>...</dt>
 <dd><p>additional arguments passed to <code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots()</a></code>.
 Most notably, if <code>x</code> is matrix, a <code>max_rank</code> parameter needs to be given.</p></dd>
@@ -196,7 +215,7 @@ Most notably, if <code>x</code> is matrix, a <code>max_rank</code> parameter nee
 
 
       <footer><div class="copyright">
-  <p></p><p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák, Teemu Säilynoja.</p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
+  <p></p><p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
 <div class="pkgdown">

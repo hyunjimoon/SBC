@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.3.0.9000</span>
       </span>
     </div>
 
@@ -127,7 +127,7 @@
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2023-06-12</h4>
+            <h4 data-toc-skip class="date">2024-03-14</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/brms.Rmd" class="external-link"><code>vignettes/brms.Rmd</code></a></small>
       <div class="hidden name"><code>brms.Rmd</code></div>
@@ -193,14 +193,12 @@ resulting draws heavily.</p>
 <span><span class="co"># of the correct data type</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">213452</span><span class="op">)</span></span>
 <span><span class="va">template_data</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">15</span><span class="op">)</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">15</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"b"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"Intercept"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"sigma"</span><span class="op">)</span></span>
+<span><span class="va">priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"b"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"Intercept"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"sigma"</span><span class="op">)</span></span>
 <span><span class="va">generator</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_brms.html">SBC_generator_brms</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span>, data <span class="op">=</span> <span class="va">template_data</span>, prior <span class="op">=</span> <span class="va">priors</span>, </span>
 <span>                                thin <span class="op">=</span> <span class="fl">50</span>, warmup <span class="op">=</span> <span class="fl">10000</span>, refresh <span class="op">=</span> <span class="fl">2000</span>,</span>
-<span>                                <span class="co"># Will generate the log density - this is useful, </span></span>
-<span>                                <span class="co">#but a bit computationally expensive</span></span>
-<span>                                generate_lp <span class="op">=</span> <span class="cn">TRUE</span> </span>
+<span>                                out_stan_file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"brms_linreg1.stan"</span><span class="op">)</span></span>
 <span>                                <span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">22133548</span><span class="op">)</span></span>
@@ -217,9 +215,9 @@ resulting draws heavily.</p>
 <span><span class="co">## Chain 1 Iteration: 12000 / 15000 [ 80%]  (Sampling) </span></span>
 <span><span class="co">## Chain 1 Iteration: 14000 / 15000 [ 93%]  (Sampling) </span></span>
 <span><span class="co">## Chain 1 Iteration: 15000 / 15000 [100%]  (Sampling) </span></span>
-<span><span class="co">## Chain 1 finished in 0.2 seconds.</span></span></code></pre>
+<span><span class="co">## Chain 1 finished in 0.1 seconds.</span></span></code></pre>
 <pre><code><span><span class="co">## Warning: Some rhats are &gt; 1.01 indicating the prior was not explored well.</span></span>
-<span><span class="co">## The highest rhat is 1.01 for Intercept</span></span>
+<span><span class="co">## The highest rhat is 1.05 for lp__</span></span>
 <span><span class="co">## Consider adding warmup iterations (via 'warmup' argument).</span></span></code></pre>
 <p>Now we’ll build a backend matching the generator (and reuse the
 compiled model from the generator)</p>
@@ -237,8 +235,8 @@ compiled model from the generator)</p>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"first"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'first'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 12 (12%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.037.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 47 (47%) fits had some steps rejected. Maximum number of rejections was 1.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 10 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.024.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 46 (46%) fits had some steps rejected. Maximum number of rejections was 1.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -325,15 +323,16 @@ vignette for discussion on why this is useful).</p>
 build the model (e.g. to see how many levels of various varying
 intercepts to include):</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">priors_func</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"b"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">5</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"Intercept"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">5</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"sigma"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0.75</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"sd"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">priors_func</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"b"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">5</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"Intercept"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">5</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"sigma"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0.75</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"sd"</span><span class="op">)</span></span>
 <span></span>
 <span></span>
 <span><span class="va">backend_func</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_brms.html">SBC_backend_brms</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,  </span>
-<span>                            prior <span class="op">=</span> <span class="va">priors_func</span>, chains <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>                            template_data <span class="op">=</span> <span class="va">datasets_func</span><span class="op">$</span><span class="va">generated</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+<span>                      prior <span class="op">=</span> <span class="va">priors_func</span>, chains <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>                      template_data <span class="op">=</span> <span class="va">datasets_func</span><span class="op">$</span><span class="va">generated</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>                      out_stan_file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"brms_linreg2.stan"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>So we can happily compute:</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_func</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_func</span>, <span class="va">backend_func</span>, </span>
@@ -341,14 +340,14 @@ intercepts to include):</p>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"func"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'func'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 34 (34%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.468.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 3 (3%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
-<span><span class="co">## the rank statistics. The lowest tail ESS was 16.</span></span>
+<pre><code><span><span class="co">##  - 31 (31%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.098.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 5 (5%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
+<span><span class="co">## the rank statistics. The lowest tail ESS was 13.</span></span>
 <span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
 <span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 46 (46%) fits had divergent transitions. Maximum number of divergences was 330.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 2 (2%) fits had iterations that saturated max treedepth. Maximum number of max treedepth was 531.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 80 (80%) fits had some steps rejected. Maximum number of rejections was 6.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 51 (51%) fits had divergent transitions. Maximum number of divergences was 115.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 2 (2%) fits had iterations that saturated max treedepth. Maximum number of max treedepth was 455.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 84 (84%) fits had some steps rejected. Maximum number of rejections was 7.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -376,15 +375,16 @@ the other variables.</p>
 new backend that should match our simulator better</p>
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Using 0 + Intercept also changes how we need to specify priors</span></span>
-<span><span class="va">priors_func2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"b"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">5</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"b"</span>, coef <span class="op">=</span> <span class="st">"Intercept"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">5</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"sigma"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0.75</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"sd"</span><span class="op">)</span></span>
+<span><span class="va">priors_func2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"b"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">5</span>,<span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"b"</span>, coef <span class="op">=</span> <span class="st">"Intercept"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">5</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"sigma"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0.75</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"sd"</span><span class="op">)</span></span>
 <span></span>
 <span></span>
 <span><span class="va">backend_func2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_brms.html">SBC_backend_brms</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fl">0</span> <span class="op">+</span> <span class="va">Intercept</span> <span class="op">+</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,  </span>
 <span>                            prior <span class="op">=</span> <span class="va">priors_func2</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, iter <span class="op">=</span> <span class="fl">2000</span>, chains <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>                            template_data <span class="op">=</span> <span class="va">datasets_func</span><span class="op">$</span><span class="va">generated</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+<span>                            template_data <span class="op">=</span> <span class="va">datasets_func</span><span class="op">$</span><span class="va">generated</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>                            out_stan_file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"brms_linreg3.stan"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Let’s fit the same simulations with the new backend.</p>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_func2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_func</span>, <span class="va">backend_func2</span>, </span>
@@ -392,24 +392,20 @@ new backend that should match our simulator better</p>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"func2"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'func2'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 16 (16%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.164.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 2 (2%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
-<span><span class="co">## the rank statistics. The lowest tail ESS was 39.</span></span>
-<span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
-<span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 4 (4%) fits had divergent transitions. Maximum number of divergences was 12.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (1%) fits had iterations that saturated max treedepth. Maximum number of max treedepth was 507.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 82 (82%) fits had some steps rejected. Maximum number of rejections was 7.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 19 (19%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.042.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 4 (4%) fits had divergent transitions. Maximum number of divergences was 2.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (1%) fits had iterations that saturated max treedepth. Maximum number of max treedepth was 521.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 85 (85%) fits had some steps rejected. Maximum number of rejections was 8.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>We see that this still results in some problematic fits, but the
 proportion got lower. At this point I am honestly unsure what is the
 issue, but the rank plots look mostly OK:</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_func2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="brms_files/figure-html/results_func2_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_func2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="brms_files/figure-html/results_func2_plots-2.png" width="700"></p>
 <p>I promise to update this vignette once I figure out the source of the
@@ -429,7 +425,7 @@ problems.</p>
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák, Teemu Säilynoja.</p>
+<p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
 <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 

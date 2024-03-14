@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.3.0.9000</span>
       </span>
     </div>
 
@@ -108,7 +108,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">brms_full_ppred</span><span class="op">(</span><span class="va">fit</span>, newdata <span class="op">=</span> <span class="cn">NULL</span>, draws <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">brms_full_ppred</span><span class="op">(</span><span class="va">fit</span>, newdata <span class="op">=</span> <span class="cn">NULL</span>, draws <span class="op">=</span> <span class="cn">NULL</span>, validate_all <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -123,6 +123,10 @@
 
 <dt>draws</dt>
 <dd><p>An integer vector specifying the posterior draws to be used. If NULL (the default), all draws are used.</p></dd>
+
+
+<dt>validate_all</dt>
+<dd><p>if TRUE, validation of input data will be done in all iterations, otherwise only once</p></dd>
 
 </dl></div>
     <div id="value">
@@ -146,7 +150,7 @@
 
 
       <footer><div class="copyright">
-  <p></p><p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák, Teemu Säilynoja.</p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
+  <p></p><p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
 <div class="pkgdown">

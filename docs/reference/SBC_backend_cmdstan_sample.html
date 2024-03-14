@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.3.0.9000</span>
       </span>
     </div>
 
@@ -99,7 +99,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Backend based on sampling via <code>cmdstanr</code>.</h1>
-    <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/R/backends.R" class="external-link"><code>R/backends.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/R/backend-cmdstanr.R" class="external-link"><code>R/backend-cmdstanr.R</code></a></small>
     <div class="hidden name"><code>SBC_backend_cmdstan_sample.Rd</code></div>
     </div>
 
@@ -108,7 +108,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">SBC_backend_cmdstan_sample</span><span class="op">(</span><span class="va">model</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">SBC_backend_cmdstan_sample</span><span class="op">(</span><span class="va">model</span>, <span class="va">...</span>, init_factory <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -122,6 +122,14 @@
 <code>parallel_chains</code> arguments cannot be set this way as they need to be controlled by the SBC
 package.</p></dd>
 
+
+<dt>init_factory</dt>
+<dd><p>an optional function that takes in a dataset and returns a value that
+can be passed to the <code>init</code> argument of <code>$sample()</code>. This allows for data-dependent inits.
+The caching mechanism in <code><a href="compute_SBC.html">compute_SBC()</a></code> ignores the environment of the function, i.e.
+if the init factory takes values from its environment and those values change between
+runs, this will not by itself cause cached results to be recomputed.</p></dd>
+
 </dl></div>
 
   </div>
@@ -132,7 +140,7 @@ package.</p></dd>
 
 
       <footer><div class="copyright">
-  <p></p><p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák, Teemu Säilynoja.</p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
+  <p></p><p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
 <div class="pkgdown">

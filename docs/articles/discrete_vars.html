@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.3.0.9000</span>
       </span>
     </div>
 
@@ -128,7 +128,7 @@ JAGS</h1>
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2023-06-12</h4>
+            <h4 data-toc-skip class="date">2024-03-14</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/discrete_vars.Rmd" class="external-link"><code>vignettes/discrete_vars.Rmd</code></a></small>
       <div class="hidden name"><code>discrete_vars.Rmd</code></div>
@@ -188,7 +188,7 @@ usual in Stan).</p>
   real&lt;lower=0&gt; r_l;
 
   int&lt;lower=1&gt; T;
-  int&lt;lower=0&gt; y[T];
+  array[T] int&lt;lower=0&gt; y;
 }
 transformed data {
   real log_unif;
@@ -223,8 +223,127 @@ generated quantities {
 <span>  <span class="va">model_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/discrete_vars1.stan"</span><span class="op">)</span></span>
 <span>  <span class="va">backend_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span><span class="va">model_1</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
+<pre><code><span><span class="co">## In file included from stan/lib/stan_math/lib/boost_1.81.0/boost/multi_array/multi_array_ref.hpp:32,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/lib/boost_1.81.0/boost/multi_array.hpp:34,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/lib/boost_1.81.0/boost/numeric/odeint/algebra/multi_array_algebra.hpp:22,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/lib/boost_1.81.0/boost/numeric/odeint.hpp:63,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math/prim/functor/ode_rk45.hpp:9,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math/prim/functor/integrate_ode_rk45.hpp:6,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math/prim/functor.hpp:16,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math/rev/fun.hpp:200,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math/rev.hpp:12,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math.hpp:19,</span></span>
+<span><span class="co">##                  from stan/src/stan/model/model_header.hpp:4,</span></span>
+<span><span class="co">##                  from C:/Users/Martin/AppData/Local/Temp/RtmpA34pwG/model-2b747fd82a5f.hpp:2:</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:180:45: warning: 'template&lt;class _Arg, class _Result&gt; struct std::unary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   180 |         : public boost::functional::detail::unary_function&lt;typename unary_traits&lt;Predicate&gt;::argument_type,bool&gt;</span></span>
+<span><span class="co">##       |                                             ^~~~~~~~~~~~~~</span></span></code></pre>
+<pre><code><span><span class="co">## In file included from C:/rtools43/ucrt64/include/c++/13.2.0/string:49,</span></span>
+<span><span class="co">##                  from C:/rtools43/ucrt64/include/c++/13.2.0/bits/locale_classes.h:40,</span></span>
+<span><span class="co">##                  from C:/rtools43/ucrt64/include/c++/13.2.0/bits/ios_base.h:41,</span></span>
+<span><span class="co">##                  from C:/rtools43/ucrt64/include/c++/13.2.0/ios:44,</span></span>
+<span><span class="co">##                  from C:/rtools43/ucrt64/include/c++/13.2.0/istream:40,</span></span>
+<span><span class="co">##                  from C:/rtools43/ucrt64/include/c++/13.2.0/sstream:40,</span></span>
+<span><span class="co">##                  from C:/rtools43/ucrt64/include/c++/13.2.0/complex:45,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/lib/eigen_3.4.0/Eigen/Core:50,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/lib/eigen_3.4.0/Eigen/Dense:1,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math/prim/fun/Eigen.hpp:22,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math/rev.hpp:4:</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:117:12: note: declared here</span></span>
+<span><span class="co">##   117 |     struct unary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~</span></span></code></pre>
+<pre><code><span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:214:45: warning: 'template&lt;class _Arg1, class _Arg2, class _Result&gt; struct std::binary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   214 |         : public boost::functional::detail::binary_function&lt;</span></span>
+<span><span class="co">##       |                                             ^~~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:131:12: note: declared here</span></span>
+<span><span class="co">##   131 |     struct binary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~~</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:252:45: warning: 'template&lt;class _Arg, class _Result&gt; struct std::unary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   252 |         : public boost::functional::detail::unary_function&lt;</span></span>
+<span><span class="co">##       |                                             ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:117:12: note: declared here</span></span>
+<span><span class="co">##   117 |     struct unary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:299:45: warning: 'template&lt;class _Arg, class _Result&gt; struct std::unary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   299 |         : public boost::functional::detail::unary_function&lt;</span></span>
+<span><span class="co">##       |                                             ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:117:12: note: declared here</span></span>
+<span><span class="co">##   117 |     struct unary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:345:57: warning: 'template&lt;class _Arg, class _Result&gt; struct std::unary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   345 |     class mem_fun_t : public boost::functional::detail::unary_function&lt;T*, S&gt;</span></span>
+<span><span class="co">##       |                                                         ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:117:12: note: declared here</span></span>
+<span><span class="co">##   117 |     struct unary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:361:58: warnin</span></span></code></pre>
+<pre><code><span><span class="co">## g: 'template&lt;class _Arg1, class _Arg2, class _Result&gt; struct std::binary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   361 |     class mem_fun1_t : public boost::functional::detail::binary_function&lt;T*, A, S&gt;</span></span>
+<span><span class="co">##       |                                                          ^~~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:131:12: note: declared here</span></span>
+<span><span class="co">##   131 |     struct binary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~~</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:377:63: warning: 'template&lt;class _Arg, class _Result&gt; struct std::unary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   377 |     class const_mem_fun_t : public boost::functional::detail::unary_function&lt;const T*, S&gt;</span></span>
+<span><span class="co">##       |                                                               ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:117:12: note: declared here</span></span>
+<span><span class="co">##   117 |     struct unary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:393:64: warning: 'template&lt;class _Arg1, class _Arg2, class _Result&gt; struct std::binary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   393 |     class const_mem_fun1_t : public boost::functional::detail::binary_function&lt;const T*, A, S&gt;</span></span>
+<span><span class="co">##       |                                                                ^~~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:131:12: note: declared here</span></span>
+<span><span class="co">##   131 |     struct binary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~~</span></span></code></pre>
+<pre><code><span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:438:61: warning: 'template&lt;class _Arg, class _Result&gt; struct std::unary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   438 |     class mem_fun_ref_t : public boost::functional::detail::unary_function&lt;T&amp;, S&gt;</span></span>
+<span><span class="co">##       |                                                             ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:117:12: note: declared here</span></span>
+<span><span class="co">##   117 |     struct unary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:454:62: warning: 'template&lt;class _Arg1, class _Arg2, class _Result&gt; struct std::binary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   454 |     class mem_fun1_ref_t : public boost::functional::detail::binary_function&lt;T&amp;, A, S&gt;</span></span>
+<span><span class="co">##       |                                                              ^~~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:131:12: note: declared here</span></span>
+<span><span class="co">##   131 |     struct binary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~~</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:470:67: warning: 'template&lt;class _Arg, class _Result&gt; struct std::unary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   470 |     class const_mem_fun_ref_t : public boost::functional::detail::unary_function&lt;const T&amp;, S&gt;</span></span>
+<span><span class="co">##       |                                                                   ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:117:12: note: declared here</span></span>
+<span><span class="co">##   117 |     struct unary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:487:68: warning: 'template&lt;class _Arg1, class _Arg2, class _Result&gt; struct std::binary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   487 |     class const_mem_fun1_ref_t : public boost::functional::detail::binary_function&lt;const T&amp;, A, S&gt;</span></span>
+<span><span class="co">##       |                                                                    ^~~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bi</span></span></code></pre>
+<pre><code><span><span class="co">## ts/stl_function.h:131:12: note: declared here</span></span>
+<span><span class="co">##   131 |     struct binary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~~</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:533:73: warning: 'template&lt;class _Arg, class _Result&gt; struct std::unary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   533 |     class pointer_to_unary_function : public boost::functional::detail::unary_function&lt;Arg,Result&gt;</span></span>
+<span><span class="co">##       |                                                                         ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:117:12: note: declared here</span></span>
+<span><span class="co">##   117 |     struct unary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~</span></span>
+<span><span class="co">## stan/lib/stan_math/lib/boost_1.81.0/boost/functional.hpp:557:74: warning: 'template&lt;class _Arg1, class _Arg2, class _Result&gt; struct std::binary_function' is deprecated [-Wdeprecated-declarations]</span></span>
+<span><span class="co">##   557 |     class pointer_to_binary_function : public boost::functional::detail::binary_function&lt;Arg1,Arg2,Result&gt;</span></span>
+<span><span class="co">##       |                                                                          ^~~~~~~~~~~~~~~</span></span>
+<span><span class="co">## C:/rtools43/ucrt64/include/c++/13.2.0/bits/stl_function.h:131:12: note: declared here</span></span>
+<span><span class="co">##   131 |     struct binary_function</span></span>
+<span><span class="co">##       |            ^~~~~~~~~~~~~~~</span></span></code></pre>
+<pre><code><span><span class="co">## In file included from stan/lib/stan_math/stan/math/prim/prob/von_mises_lccdf.hpp:5,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math/prim/prob/von_mises_ccdf_log.hpp:4,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math/prim/prob.hpp:359,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math/prim.hpp:16,</span></span>
+<span><span class="co">##                  from stan/lib/stan_math/stan/math/rev.hpp:16:</span></span>
+<span><span class="co">## stan/lib/stan_math/stan/math/prim/prob/von_mises_cdf.hpp: In function 'stan::return_type_t&lt;T_x, T_sigma, T_l&gt; stan::math::von_mises_cdf(const T_x&amp;, const T_mu&amp;, const T_k&amp;)':</span></span>
+<span><span class="co">## stan/lib/stan_math/stan/math/prim/prob/von_mises_cdf.hpp:194: note: '-Wmisleading-indentation' is disabled from this point onwards, since column-tracking was disabled due to the size of the code/headers</span></span>
+<span><span class="co">##   194 |       if (cdf_n &lt; 0.0)</span></span>
+<span><span class="co">##       |</span></span></code></pre>
+<pre><code><span><span class="co">## stan/lib/stan_math/stan/math/prim/prob/von_mises_cdf.hpp:194: note: adding '-flarge-source-files' will allow for more column-tracking support, at the expense of compilation time and memory</span></span></code></pre>
 <p>Now, let’s generate data from the model.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">generate_single_sim_1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">T</span>, <span class="va">r_e</span>, <span class="va">r_l</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">r_e</span><span class="op">)</span></span>
 <span>  <span class="va">l</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">r_l</span><span class="op">)</span></span>
@@ -253,7 +372,7 @@ generated quantities {
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">generator_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generate_single_sim_1</span>, T <span class="op">=</span> <span class="fl">5</span>, r_e <span class="op">=</span> <span class="fl">0.5</span>, r_l <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">85394672</span><span class="op">)</span></span>
 <span><span class="va">datasets_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_1</span>, <span class="fl">30</span><span class="op">)</span></span></code></pre></div>
 <p>Additionally, we’ll add a derived quantity expressing the total
@@ -264,21 +383,21 @@ checks. It turns out this type of derived quantities can increase the
 sensitivity of the SBC against some issues in the model. See
 <code><a href="../articles/limits_of_SBC.html">vignette("limits_of_SBC")</a></code> for a more detailed discussion of
 this.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">log_lik_dq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/derived_quantities.html">derived_quantities</a></span><span class="op">(</span>log_lik <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">dpois</a></span><span class="op">(</span><span class="va">y</span>, <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="cn">T</span> <span class="op">&lt;</span> <span class="va">s</span>, <span class="va">e</span>, <span class="va">l</span><span class="op">)</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>So finally, lets actually compute SBC:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_1</span>, <span class="va">backend_1</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model1"</span><span class="op">)</span>,</span>
 <span>                    dquants <span class="op">=</span> <span class="va">log_lik_dq</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'model1'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 4 (13%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 3 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
 <pre><code><span><span class="co">##  - 20 (67%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
 <span><span class="co">## the rank statistics. The lowest tail ESS was NA.</span></span>
 <span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
 <span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 2 (7%) fits had divergent transitions. Maximum number of divergences was 3.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 2 (7%) fits had divergent transitions. Maximum number of divergences was 2.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -292,24 +411,24 @@ how to handle this better.</p>
 parameter are extreme - many ranks of 0 and <em>extreme</em> z-scores,
 including -Infinity. Seing just one or two such fits should be enough to
 convince us that there is something fundamentally wrong.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">results_1</span><span class="op">$</span><span class="va">stats</span>, <span class="va">variable</span> <span class="op">==</span> <span class="st">"s"</span><span class="op">)</span> </span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 30 × 15</span></span></span>
 <span><span class="co">##    sim_id variable simulated_value  rank   z_score  mean median    sd   mad</span></span>
-<span><span class="co">##     <span style="color: #949494; font-style: italic;">&lt;num&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;num&gt;</span> <span style="color: #949494; font-style: italic;">&lt;num&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;num&gt;</span> <span style="color: #949494; font-style: italic;">&lt;num&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;num&gt;</span> <span style="color: #949494; font-style: italic;">&lt;num&gt;</span> <span style="color: #949494; font-style: italic;">&lt;num&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 1</span>      1 s                      3   186    0.020<span style="text-decoration: underline;">0</span>  2.97      3 1.59   2.97</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 2</span>      2 s                      1    24   -<span style="color: #BB0000;">1.90</span>    2.02      2 0.537  0   </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 3</span>      3 s                      4   126   -<span style="color: #BB0000;">1.37</span>    4.67      5 0.489  0   </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 4</span>      4 s                      1    10   -<span style="color: #BB0000;">2.85</span>    2.86      3 0.651  0   </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 5</span>      5 s                      5   397    2.76    2.86      3 0.775  0   </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 6</span>      6 s                      2   290    0.118   1.84      1 1.35   0   </span></span>
+<span><span class="co">##     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 1</span>      1 s                      3   179    0.052<span style="text-decoration: underline;">3</span>  2.92      3 1.61   2.97</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 2</span>      2 s                      1    14   -<span style="color: #BB0000;">1.91</span>    2.02      2 0.534  0   </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 3</span>      3 s                      4   128   -<span style="color: #BB0000;">1.36</span>    4.66      5 0.485  0   </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 4</span>      4 s                      1     4   -<span style="color: #BB0000;">3.51</span>    2.91      3 0.545  0   </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 5</span>      5 s                      5   398    2.81    2.86      3 0.762  0   </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 6</span>      6 s                      2   275    0.016<span style="text-decoration: underline;">9</span>  1.98      1 1.44   0   </span></span>
 <span><span class="co">## <span style="color: #BCBCBC;"> 7</span>      7 s                      3     0 -<span style="color: #BB0000;">Inf</span>       4         4 0      0   </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 8</span>      8 s                      2   129   -<span style="color: #BB0000;">0.594</span>   2.87      3 1.46   1.48</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 9</span>      9 s                      2     0   -<span style="color: #BB0000;">6.84</span>    2.99      3 0.144  0   </span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">10</span>     10 s                      2     3   -<span style="color: #BB0000;">8.68</span>    3.00      3 0.115  0   </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 8</span>      8 s                      2   128   -<span style="color: #BB0000;">0.580</span>   2.84      3 1.45   1.48</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 9</span>      9 s                      2     0   -<span style="color: #BB0000;">7.97</span>    2.99      3 0.124  0   </span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">10</span>     10 s                      2     2   -<span style="color: #BB0000;">8.42</span>    3.00      3 0.119  0   </span></span>
 <span><span class="co">## <span style="color: #949494;"># ℹ 20 more rows</span></span></span>
-<span><span class="co">## <span style="color: #949494;"># ℹ 6 more variables: q5 &lt;num&gt;, q95 &lt;num&gt;, rhat &lt;num&gt;, ess_bulk &lt;num&gt;,</span></span></span>
-<span><span class="co">## <span style="color: #949494;">#   ess_tail &lt;num&gt;, max_rank &lt;num&gt;</span></span></span></code></pre>
+<span><span class="co">## <span style="color: #949494;"># ℹ 6 more variables: q5 &lt;dbl&gt;, q95 &lt;dbl&gt;, rhat &lt;dbl&gt;, ess_bulk &lt;dbl&gt;,</span></span></span>
+<span><span class="co">## <span style="color: #949494;">#   ess_tail &lt;dbl&gt;, max_rank &lt;int&gt;</span></span></span></code></pre>
 <p>Inspecting the statistics shows that quite often, the model is quite
 sure of the value of <code>s</code> while the simulated value is just
 one less.</p>
@@ -319,10 +438,10 @@ parameters do not show such bad behaviour. Note that the
 <code>log_lik</code> derived quantity shows even starker failure than
 <code>s</code>, so it indeed poses a stricter check in this
 scenario.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_1</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results1_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_1</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results1_plots-2.png" width="700"></p>
 <p>An important note: you may wonder, how we got such a wiggly line for
@@ -343,7 +462,7 @@ points <code>t &lt;=  s</code>, so there is effectively a shift by one
 time point between the simulator and the model. So let’s assume that we
 beleive that the Stan model is in fact right. We therefore updated the
 simulator to match the model:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">generate_single_sim_2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">T</span>, <span class="va">r_e</span>, <span class="va">r_l</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">r_e</span><span class="op">)</span></span>
 <span>  <span class="va">l</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">r_l</span><span class="op">)</span></span>
@@ -373,7 +492,7 @@ simulator to match the model:</p>
 <span></span>
 <span><span class="va">generator_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="va">generate_single_sim_2</span>, T <span class="op">=</span> <span class="fl">5</span>, r_e <span class="op">=</span> <span class="fl">0.5</span>, r_l <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span></code></pre></div>
 <p>And we can recompute:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">5846502</span><span class="op">)</span></span>
 <span><span class="va">datasets_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_2</span>, <span class="fl">30</span><span class="op">)</span></span>
 <span><span class="va">results_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2</span>, <span class="va">backend_1</span>,</span>
@@ -386,19 +505,19 @@ simulator to match the model:</p>
 <span><span class="co">## the rank statistics. The lowest tail ESS was NA.</span></span>
 <span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
 <span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 2 (7%) fits had divergent transitions. Maximum number of divergences was 2.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 2 (7%) fits had divergent transitions. Maximum number of divergences was 4.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results_2_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results_2_plots-2.png" width="700"></p>
 <p>Looks good, so let us add some more simulations to make sure the
 model behaves well.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">54321488</span><span class="op">)</span></span>
 <span><span class="va">datasets_2_more</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_2</span>, <span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">results_2_more</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2_more</span>, <span class="va">backend_1</span>,</span>
@@ -406,21 +525,21 @@ model behaves well.</p>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model3"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'model3'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 15 (15%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 72 (72%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
+<pre><code><span><span class="co">##  - 16 (16%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 71 (71%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
 <span><span class="co">## the rank statistics. The lowest tail ESS was NA.</span></span>
 <span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
 <span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 9 (9%) fits had divergent transitions. Maximum number of divergences was 25.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 7 (7%) fits had divergent transitions. Maximum number of divergences was 19.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_2_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span><span class="va">results_2</span>, <span class="va">results_2_more</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_2_all</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results_2_all_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_2_all</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/results_2_all_plots-2.png" width="700"></p>
 <p>Now - as far as this amount of SBC steps can see, the model is good
@@ -432,7 +551,7 @@ parameters and the <code>log_lik</code> derived quantity. Hooray!</p>
 </h2>
 <p>We can now write the same model in JAGS. This becomes a bit easier as
 JAGS lets us represent discrete parameters directly:</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"other_models/changepoint.jags"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data {
   for(i in 1:T) {
@@ -450,14 +569,14 @@ model {
 }</code></pre>
 <p>We will use the <code>rjags</code> package, let us verify it is
 installed correctly.</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mcmc-jags.sourceforge.io" class="external-link">rjags</a></span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Loading required package: coda</span></span></code></pre>
 <pre><code><span><span class="co">## Linked to JAGS 4.3.1</span></span></code></pre>
 <pre><code><span><span class="co">## Loaded modules: basemod,bugs</span></span></code></pre>
 <p>We will also default to relatively large number of samples as we can
 expect some autocorrelation in the Gibbs sampler.</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">backend_jags</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rjags.html">SBC_backend_rjags</a></span><span class="op">(</span><span class="st">"other_models/changepoint.jags"</span>,</span>
 <span>                                  variable.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"e"</span>,<span class="st">"l"</span>,<span class="st">"s"</span><span class="op">)</span>,</span>
 <span>                                  n.iter <span class="op">=</span> <span class="fl">10000</span>,</span>
@@ -467,15 +586,15 @@ expect some autocorrelation in the Gibbs sampler.</p>
 <p>Running SBC with all the corrected datasets from before (rJAGS
 accepts input data in exactly the same format as Stan, so we can reuse
 the datasets without any change):</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">datasets_2_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_datasets.html">bind_datasets</a></span><span class="op">(</span><span class="va">datasets_2</span>, <span class="va">datasets_2_more</span><span class="op">)</span></span>
 <span><span class="va">results_jags</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2_all</span>, <span class="va">backend_jags</span>,</span>
 <span>                            dquants <span class="op">=</span> <span class="va">log_lik_dq</span>,</span>
 <span>                        cache_mode <span class="op">=</span> <span class="st">"results"</span>,</span>
 <span>                        cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir_jags</span>, <span class="st">"rjags"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'rjags'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 20 (15%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 93 (72%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
+<pre><code><span><span class="co">##  - 19 (15%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 95 (73%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
 <span><span class="co">## the rank statistics. The lowest tail ESS was NA.</span></span>
 <span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
 <span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
@@ -486,17 +605,17 @@ the datasets without any change):</p>
 positives due to the <code>s</code> parameter, which we need to handle
 better.</p>
 <p>The rank plots show no problems.</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_jags</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/ranks_jags-1.png" width="700"></p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_jags</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/ranks_jags-2.png" width="700"></p>
 <p>As an exercise, we can also write the marginalized version of the
 model in JAGS. In some cases, marginalization improves performance even
 for JAGS models, however, for this model it is actually not an
 improvement, presumably because the model is very simple.</p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"other_models/changepoint_marginalized.jags"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data {
   for(i in 1:T) {
@@ -541,7 +660,7 @@ model {
 <p>The code got quite a bit more complex, se let’s check if we didn’t
 mess up the rewrite - first we build a backend with this new
 representation:</p>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">backend_jags_marginalized</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rjags.html">SBC_backend_rjags</a></span><span class="op">(</span><span class="st">"other_models/changepoint_marginalized.jags"</span>,</span>
 <span>                                  variable.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"e"</span>,<span class="st">"l"</span>,<span class="st">"s"</span><span class="op">)</span>,</span>
 <span>                                  n.iter <span class="op">=</span> <span class="fl">10000</span>,</span>
@@ -549,14 +668,14 @@ representation:</p>
 <span>                                  n.chains <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>                                  thin <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <p>Then we run the actual SBC:</p>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_jags_marginalized</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_2_all</span>, <span class="va">backend_jags_marginalized</span>,</span>
 <span>                                         dquants <span class="op">=</span> <span class="va">log_lik_dq</span>,</span>
 <span>                        cache_mode <span class="op">=</span> <span class="st">"results"</span>,</span>
 <span>                        cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir_jags</span>, <span class="st">"rjags_marginalized"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'rjags_marginalized'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 26 (20%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 93 (72%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
+<pre><code><span><span class="co">##  - 24 (18%) fits had at least one Rhat &gt; 1.01. Largest Rhat was NA.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 95 (73%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
 <span><span class="co">## the rank statistics. The lowest tail ESS was NA.</span></span>
 <span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
 <span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
@@ -565,10 +684,10 @@ representation:</p>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>And the ranks plots look good, so we indeed probably did succeed in
 correctly marginalizing the <code>s</code> parameter!</p>
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_jags_marginalized</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/ranks_jags_marginalized-1.png" width="700"></p>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_jags_marginalized</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/ranks_jags_marginalized-2.png" width="700"></p>
 </div>
@@ -586,7 +705,7 @@ correctly marginalizing the <code>s</code> parameter!</p>
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Shinyoung Kim, Hyunji Moon, Martin Modrák, Teemu Säilynoja.</p>
+<p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
 <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
