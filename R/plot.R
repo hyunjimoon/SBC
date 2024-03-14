@@ -466,22 +466,21 @@ data_for_ecdf_plots.matrix <- function(x,
   ecdf_df$..z <- z
   ecdf_df <- tidyr::pivot_longer(ecdf_df, -..z, names_to = "variable", values_to = "ecdf")
   ecdf_df <- dplyr::rename(ecdf_df, z = ..z)
-  # Allow user-specified grouping of variables (issue #88)
-
+  # Allow user-specified grouping of variables + alpha on ecdf line (issue #88)
+  if(is.null(ecdf_alpha)) {
+    ecdf_alpha <- \(x) sqrt(1/x)
+  } else if(is.numeric(ecdf_alpha) & length(ecdf_alpha) == 1) {
+    ecdf_alpha_numeric <- ecdf_alpha
+    ecdf_alpha <- \(x) ecdf_alpha_numeric
+  } else if(!is.function(ecdf_alpha) | nargs(ecdf_alpha) != 1) {
+    stop("`ecdf_alpha` must be a function taking a single argument or a single numerical value")
+  }
   if (!is.null(combine_variables)) {
     if(is.function(combine_variables)) {
       combine_variables <- combine_variables(unique(ecdf_df$variable))
     }
     if(!is.list(combine_variables) | is.null(names(combine_variables))) {
       stop("`combine_variables` must be a named list or a function returning a named list")
-    }
-    if(is.null(ecdf_alpha)) {
-      ecdf_alpha <- \(x) sqrt(1/x)
-    } else if(is.numeric(ecdf_alpha) & length(ecdf_alpha) == 1) {
-      ecdf_alpha_numeric <- ecdf_alpha
-      ecdf_alpha <- \(x) ecdf_alpha_numeric
-    } else if(!is.function(ecdf_alpha) | nargs(ecdf_alpha) != 1) {
-      stop("`ecdf_alpha` must be a function taking a single argument or a single numerical value")
     }
 
     if(!identical(unique(table(unlist(combine_variables))), 1L)) {
