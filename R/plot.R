@@ -494,6 +494,7 @@ data_for_ecdf_plots.matrix <- function(x,
     for (i in seq_along(combine_variables)) {
       ecdf_df[ecdf_df$variable %in% combine_variables[[i]], "group"] <- display_names[i]
     }
+    ecdf_df$group <- factor(ecdf_df$group, levels = display_names, ordered = TRUE)
     ecdf_df <- dplyr::mutate(ecdf_df,
       alpha = ecdf_alpha(length(unique(variable))), .by = group)
   } else {
