@@ -106,6 +106,7 @@ reference:
   - contains("plot")
   - guess_rank_hist_bins
   - empirical_coverage
+  - starts_with("combine_")
 - title: Examples
   desc: Functions to let you easily test the pacakge
 - contents:
