@@ -48,6 +48,7 @@ if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
 
+theme_set(theme_minimal())
 ```
 
 Premise: we mistakenly assume that Stan does parametrize the Gamma distribution
@@ -117,17 +118,16 @@ results_gamma <- compute_SBC(datasets_gamma, backend_gamma,
 Here we also use the caching feature to avoid recomputing the fits when recompiling this vignette. 
 In practice, caching is not necessary but is often useful.
 
-10 simulations are enough to see something is wrong with the model. The problem is best seen on an `ecdf_diff` plot - we even see the issue is primarily with the `scale` variable!
+10 simulations are enough to see something is wrong with the model. The problem is best seen on an `ecdf` plot - we even see the issue is primarily with the `scale` variable!
 
 ```{r results1_ecdf_diff}
-plot_ecdf_diff(results_gamma)
+plot_ecdf(results_gamma)
 ```
 
-However, we can use the rank histogram (with suitable number of bins) and the `ecdf` plot to show different visualisations of the same problem. The rank histogram often tends to be intuitively more understandable than the `ecdf` plots, but tweaking the number of bins is often necessary and the confidence interval is only approximate and has decreased sensitivity.
+However, we can use the rank histogram (with suitable number of bins) to show a different visualisation of the same problem. The rank histogram often tends to be intuitively more understandable than the `ecdf` plots, but tweaking the number of bins is often necessary and the confidence interval is only approximate and has decreased sensitivity.
 
 ```{r results1_other}
 plot_rank_hist(results_gamma, bins = 10)
-plot_ecdf(results_gamma)
 ```
 
 
@@ -164,9 +164,8 @@ results_gamma2 <- compute_SBC(datasets_gamma, backend_gamma_2,
 No obvious problems here, but if we wanted to be sure, we should have ran a lot more simulations.
 
 ```{r results2_plots}
-plot_ecdf_diff(results_gamma2)
-plot_rank_hist(results_gamma2, bins = 10)
 plot_ecdf(results_gamma2)
+plot_rank_hist(results_gamma2, bins = 10)
 ```
 
 

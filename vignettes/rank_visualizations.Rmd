@@ -25,6 +25,7 @@ In this vignette, we'll first explain each of the visualizations individually
 library(SBC)
 library(ggplot2)
 library(patchwork)
+theme_set(theme_minimal())
 ```
 
 ## Simulation setup

@@ -52,6 +52,7 @@ if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
 
+theme_set(theme_minimal())
 ```
 
 
@@ -140,7 +141,7 @@ Not really...
 
 ```{r results_minor_10_plots}
 plot_rank_hist(results_minor_10)
-plot_ecdf_diff(results_minor_10)
+plot_ecdf(results_minor_10)
 ```
 
 Will we have better luck with 100 simulations? (Note that we can use `bind_results` to combine multiple results,
@@ -155,7 +156,7 @@ results_minor_100 <- bind_results(
 )
 ```
 
-Here we see something suspicios with the `sigma` variable, but it is not very convincing.
+Here we see something suspicios with the `sigma` variable, but it is not very convincing (we switch to `ecdf_diff` as it looks better with more simulations).
 
 ```{r results_minor_100_plots}
 plot_rank_hist(results_minor_100)

@@ -54,6 +54,7 @@ if(!dir.exists(cache_dir_jags)) {
   dir.create(cache_dir_jags)
 }
 
+theme_set(theme_minimal())
 ```
 
 We take the changepoint model from:
@@ -149,11 +150,11 @@ dplyr::filter(results_1$stats, variable == "s")
 
 Inspecting the statistics shows that quite often, the model is quite sure of the value of `s` while the simulated value is just one less. 
 
-Looking at the `ecdf_diff` plot we see that this seems to compromise heavily the inference for `s`, but the other parameters do not show such bad behaviour. Note that the `log_lik` derived quantity shows even starker
+Looking at the `ecdf` plot we see that this seems to compromise heavily the inference for `s`, but the other parameters do not show such bad behaviour. Note that the `log_lik` derived quantity shows even starker
 failure than `s`, so it indeed poses a stricter check in this scenario. 
 
 ```{r results1_plots}
-plot_ecdf_diff(results_1)
+plot_ecdf(results_1)
 plot_rank_hist(results_1)
 ```
 
@@ -215,11 +216,11 @@ results_2 <- compute_SBC(datasets_2, backend_1,
 
 ```{r results_2_plots}
 plot_rank_hist(results_2)
-plot_ecdf_diff(results_2)
+plot_ecdf(results_2)
 ```
 
 
-Looks good, so let us add some more simulations to make sure the model behaves well.
+Looks good, so let us add some more simulations to make sure the model behaves well. 
 
 ```{r}
 set.seed(54321488)
@@ -231,6 +232,7 @@ results_2_more <- compute_SBC(datasets_2_more, backend_1,
 
 results_2_all <- bind_results(results_2, results_2_more)
 ```
+We switch from the `ecdf` plot to `ecdf_diff` as it is more legible with large number of simulations.
 
 ```{r results_2_all_plots}
 plot_rank_hist(results_2_all)

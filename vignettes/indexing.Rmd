@@ -39,6 +39,7 @@ if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
 
+theme_set(theme_minimal())
 ```
 
 Below are three different Stan codes for implementing a simple linear regression. Not all of them are correct - can you see which are wrong?
@@ -148,7 +149,7 @@ Here we also use the caching feature to avoid recomputing the fits when recompil
 In practice, caching is not necessary but is often useful.
 
 ```{r plots_regression1}
-plot_ecdf_diff(results_regression_1)
+plot_ecdf(results_regression_1)
 plot_rank_hist(results_regression_1)
 
 ```
@@ -158,7 +159,7 @@ but we tested the model for you and it is OK (although the implementation is not
 
 
 ```{r plots_regression2}
-plot_ecdf_diff(results_regression_2)
+plot_ecdf(results_regression_2)
 plot_rank_hist(results_regression_2)
 
 ```
@@ -169,7 +170,7 @@ propagates most strongly to the `sigma` variable (reusing the same `x` element l
 
 
 ```{r plots_regression3}
-plot_ecdf_diff(results_regression_3)
+plot_ecdf(results_regression_3)
 plot_rank_hist(results_regression_3)
 ```
 

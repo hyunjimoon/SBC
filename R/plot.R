@@ -142,8 +142,9 @@ guess_rank_hist_bins <- function(max_rank, N) {
 #' @param alpha alpha level of the confidence band
 #' @param K number of uniformly spaced evaluation points for the ECDF or ECDFs. Affects
 #'   the granularity of the plot and can significantly speed up the computation
-#'   of the simultaneous confidence bands. Defaults to the smaller of number of
-#'   ranks per variable and the maximum rank.
+#'   of the simultaneous confidence bands. Default value is chosen heuristically.
+#'   You can also use `"max"` to represent
+#'   the number of ranks or `"min"` to choose a lower but still sensible value.
 #' @param combine_variables optionally specify a named list where each entry is a character
 #'   vectors which specifies a group of variables that will be displayed in the
 #'   same panel. Panel title will be the name of the list element.
@@ -252,6 +253,11 @@ plot_ecdf_diff <- function(x,
                         prob = prob, K = K, gamma = gamma,
                         combine_variables = combine_variables, ecdf_alpha = ecdf_alpha, ...)
 
+  if(ecdf_data$N < 50 && is.null(K)) {
+    message("With less than 50 simulations, we recommend using plot_ecdf as it has better fidelity.\n",
+            "Disable this message by explicitly setting the K parameter. ",
+            "You can use the strings \"max\" (high fidelity) or \"min\" (nicer plot) or choose a specific integer.")
+  }
   N <- ecdf_data$N
   K <- ecdf_data$K
   z <- ecdf_data$z
@@ -424,7 +430,19 @@ data_for_ecdf_plots.matrix <- function(x,
 
   N <- nrow(ranks_matrix)
   if (is.null(K)) {
-    K <- min(max_rank + 1, N)
+    if(N < 50) {
+      K <- max_rank + 1
+    } else {
+      K <- min(max_rank + 1, N)
+    }
+  } else if (K == "max") {
+    K <- max_rank + 1
+  } else if (K == "min") {
+    K <- min(max_rank + 1, N, 100)
+  } else if (!is.numeric(K) & length(K) == 1) {
+    stop("K must be either a single number, \"max\", \"min\" or NULL")
+  } else {
+    K <- as.integer(K)
   }
   if (is.null(gamma)) {
     gamma <- adjust_gamma(
