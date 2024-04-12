@@ -153,6 +153,12 @@ guess_rank_hist_bins <- function(max_rank, N) {
 #'   a function taking the number of variables that were combined (when `combine_variables`
 #'   is specified) and returns a number. By default, plots showing many
 #'   ECDFs will have reduced alpha.
+#' @param only_observed If `TRUE` (default) the ECDF diff plot will plot only
+#' the ranks attained by at least some simulation. With low number of simulations,
+#' this results in cleaner plots. The default is to use `only_observed` when the
+#' number of simulations is smaller than the maximum rank and `K` has not been
+#' specified. This setting does not affect ECDF plot as there is no penalty
+#' for displaying everything)
 #' @param ... additional arguments passed to [data_for_ecdf_plots()].
 #' Most notably, if `x` is matrix, a `max_rank` parameter needs to be given.
 #' @param parameters DEPRECATED, use `variables` instead.
@@ -180,7 +186,7 @@ plot_ecdf <- function(x,
   ecdf_data <-
     data_for_ecdf_plots(x, variables = variables,
                         prob = prob, K = K, gamma = gamma,
-                        combine_variables = combine_variables, ecdf_alpha = ecdf_alpha, ...)
+                        combine_variables = combine_variables, ecdf_alpha = ecdf_alpha, only_observed = FALSE, ...)
 
   N <- ecdf_data$N
   K <- ecdf_data$K
@@ -238,6 +244,7 @@ plot_ecdf_diff <- function(x,
                            alpha = 0.33,
                            combine_variables = NULL,
                            ecdf_alpha = NULL,
+                           only_observed = NULL,
                            ...,
                            parameters = NULL) {
   if(!is.null(parameters)) {
@@ -250,7 +257,8 @@ plot_ecdf_diff <- function(x,
   ecdf_data <-
     data_for_ecdf_plots(x, variables = variables,
                         prob = prob, K = K, gamma = gamma,
-                        combine_variables = combine_variables, ecdf_alpha = ecdf_alpha, ...)
+                        combine_variables = combine_variables, ecdf_alpha = ecdf_alpha,
+                        only_observed = only_observed, ...)
 
   N <- ecdf_data$N
   K <- ecdf_data$K
@@ -403,6 +411,7 @@ data_for_ecdf_plots.matrix <- function(x,
                                        alpha = 0.33,
                                        combine_variables = NULL,
                                        ecdf_alpha = NULL,
+                                       only_observed = NULL,
                                        ...,
                                        parameters = NULL) {
 
@@ -424,8 +433,15 @@ data_for_ecdf_plots.matrix <- function(x,
 
   N <- nrow(ranks_matrix)
   if (is.null(K)) {
-    K <- min(max_rank + 1, N)
+    K <- max_rank + 1
+  } else if(isTRUE(only_observed) && K != max_rank + 1){
+    stop("When specifying K other than max_rank +1, only_observed cannot be TRUE.")
   }
+
+  if(is.null(only_observed)) {
+    only_observed <- N < K
+  }
+
   if (is.null(gamma)) {
     gamma <- adjust_gamma(
       N = N,
@@ -448,6 +464,11 @@ data_for_ecdf_plots.matrix <- function(x,
                              upper = upper / N,
                              # The uniform_val needs to be shifted w.r.t z_twice
                              uniform_val =  c(rep(z[1:K], each = 2), 1))
+  if(only_observed) {
+    limits_df$rank <- c(-1, rep(0:max_rank, each = 2))
+  }
+
+
 
   # Combining pit and ecdf calculations in one function to avoid
   # numerical problems causing issue #79
@@ -461,11 +482,20 @@ data_for_ecdf_plots.matrix <- function(x,
     ecdf_vals[i,] <- colMeans(ranks_matrix < base_vals[i])
   }
 
-
   ecdf_df <- as.data.frame(ecdf_vals)
   ecdf_df$..z <- z
-  ecdf_df <- tidyr::pivot_longer(ecdf_df, -..z, names_to = "variable", values_to = "ecdf")
+  ignored_cols <- "..z"
+  if(only_observed) {
+    ecdf_df$..rank <- c(-1:max_rank)
+    ignored_cols <- c(ignored_cols, "..rank")
+  }
+  ecdf_df <- tidyr::pivot_longer(ecdf_df, -all_of(ignored_cols), names_to = "variable", values_to = "ecdf")
   ecdf_df <- dplyr::rename(ecdf_df, z = ..z)
+  if(only_observed){
+    ecdf_df <- dplyr::rename(ecdf_df, rank = ..rank)
+    observed_ranks_df <- tidyr::pivot_longer(as.data.frame(ranks_matrix), cols = tidyselect::everything(), names_to = "variable", values_to = "rank")
+  }
+
   # Allow user-specified grouping of variables + alpha on ecdf line (issue #88)
   if(is.null(ecdf_alpha)) {
     ecdf_alpha <- \(x) sqrt(1/x)
@@ -493,6 +523,9 @@ data_for_ecdf_plots.matrix <- function(x,
     display_names <- names(combine_variables)
     for (i in seq_along(combine_variables)) {
       ecdf_df[ecdf_df$variable %in% combine_variables[[i]], "group"] <- display_names[i]
+      if(only_observed) {
+        observed_ranks_df[observed_ranks_df$variable %in% combine_variables[[i]], "group"] <- display_names[i]
+      }
     }
     ecdf_df$group <- factor(ecdf_df$group, levels = display_names, ordered = TRUE)
     ecdf_df <- dplyr::mutate(ecdf_df,
@@ -500,7 +533,21 @@ data_for_ecdf_plots.matrix <- function(x,
   } else {
     ecdf_df$alpha <- ecdf_alpha(1)
     ecdf_df$group <- ecdf_df$variable
+    if(only_observed) {
+      observed_ranks_df$group <- observed_ranks_df$variable
+    }
   }
+
+  if(only_observed){
+    observe_boundaries <- tidyr::crossing(group = unique(ecdf_df$group), rank = c(-1, max_rank))
+    observed_ranks_df <- rbind(dplyr::select(observed_ranks_df, -variable),
+                               observe_boundaries)
+    observed_ranks_df <- dplyr::distinct(observed_ranks_df)
+    observed_ranks_df$observed = TRUE
+    ecdf_df <- dplyr::semi_join(ecdf_df, observed_ranks_df, by = c("group", "rank"))
+    limits_df <- dplyr::inner_join(limits_df, observed_ranks_df, by = c("rank"))
+  }
+
 
   structure(list(limits_df = limits_df, ecdf_df = ecdf_df, K = K, N = N, z = z_twice),
             class = "SBC_ecdf_data")
