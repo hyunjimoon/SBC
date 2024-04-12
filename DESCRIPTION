@@ -22,6 +22,9 @@ Authors@R:
            role = "aut"),
     person(given = "Luna",
            family = "Fazio",
+           role = "ctb"),
+    person(given = "Timo",
+           family = "Stenz",
            role = "ctb")
            )
 Description: SBC helps perform Simulation Based Calibration on Bayesian models. 
