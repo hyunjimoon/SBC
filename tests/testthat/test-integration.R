@@ -70,7 +70,7 @@ test_that("Result caching", {
   # Change datasets
   old_file_info <- file.info(cache_file)
   datasets_changed <- datasets
-  datasets_changed[[3]] <- "a"
+  datasets_changed$generated[[3]] <- "a"
   expect_message(
     compute_SBC(datasets_changed, backend, thin_ranks = 1, cache_mode = "results", cache_location = cache_file),
     "datasets.*differ.*recompute"

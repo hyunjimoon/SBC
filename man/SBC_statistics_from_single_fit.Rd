@@ -12,6 +12,7 @@ SBC_statistics_from_single_fit(
   ensure_num_ranks_divisor,
   dquants,
   backend,
+  var_attributes = NULL,
   gen_quants = NULL
 )
 }

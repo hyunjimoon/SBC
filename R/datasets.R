@@ -1,4 +1,4 @@
-new_SBC_datasets <- function(variables, generated, parameters = NULL) {
+new_SBC_datasets <- function(variables, generated, var_attributes = NULL, parameters = NULL) {
   if(!is.null(parameters)) {
     warning("The `parameters` argument is deprecated use `variables` instead.")
     if(missing(variables)) {
@@ -7,7 +7,8 @@ new_SBC_datasets <- function(variables, generated, parameters = NULL) {
   }
 
   structure(list(variables = variables,
-                 generated = generated),
+                 generated = generated,
+                 var_attributes = var_attributes),
             class = "SBC_datasets")
 }
 
@@ -37,6 +38,25 @@ validate_SBC_datasets <- function(x) {
     stop("Needs equal no. of draws for variables and length of generated")
   }
 
+  if(!is.null(x$var_attributes)) {
+    if(!is.list(x$var_attributes)) {
+      stop("`var_attributes` must be a list")
+    }
+    varnames_no_arrays <- gsub(r"(\[[^\]]*\])", "", posterior::variables(x$variables))
+    unrecognized_names <- setdiff(names(x$var_attributes), varnames_no_arrays)
+    if(length(unrecognized_names) > 0) {
+      message(paste0(unrecognized_names, collapse = ", "))
+      stop("Some names of elements of `var_attributes` do not correspond to a name of a variable.\n",
+           "Note that arrays are treated as a single variable and attributes must match the name.\n",
+           "without brackets.")
+    }
+    character_attributes <- purrr::map_lgl(x$var_attributes, is.character)
+    if(!all(character_attributes)) {
+      message(paste0(names(x$var_attributes)[!character_attributes], collapse = ", "))
+      stop("All elements of `var_attributes` must be character vectors")
+    }
+  }
+
   x
 }
 
@@ -51,14 +71,14 @@ validate_SBC_datasets <- function(x) {
 #' (e.g. list of values for Stan-based backends, a data frame for `SBC_backend_brms`)
 #' @param parameters DEPRECATED. Use variables instead.
 #' @export
-SBC_datasets <- function(variables, generated, parameters = NULL) {
+SBC_datasets <- function(variables, generated, var_attributes = NULL, parameters = NULL) {
   if(!is.null(parameters)) {
     warning("The `parameters` argument is deprecated use `variables` instead.")
     if(missing(variables)) {
       variables <- parameters
     }
   }
-  x <-  new_SBC_datasets(variables, generated)
+  x <-  new_SBC_datasets(variables, generated, var_attributes)
   validate_SBC_datasets(x)
   x
 }
@@ -131,6 +151,7 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
   variables_list <- list()
   generated <- list()
   warned_parameters <- FALSE
+  var_attributes <- NULL
   for(iter in 1:n_sims){
     generator_output <- do.call(generator$f, generator$args)
     # Ensuring backwards compatibility
@@ -149,7 +170,8 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
        is.null(generator_output$generated)) {
       stop(SBC_error("SBC_datasets_error",
       "The generating function has to return a list with elements `variables`
-      (that can be converted to `draws_rvars`) and `generated`"))
+      (that can be converted to `draws_rvars`) and `generated`.
+      Optionally a `var_attributes` element can also be returned."))
     }
 
     varnames <- names(generator_output$variables)
@@ -196,11 +218,24 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
       a single draw")
     }
     generated[[iter]] <- generator_output$generated
+
+    # Process var_attributes
+    if(iter == 1) {
+      var_attributes <- generator_output$var_attributes
+    } else {
+      if(is.null(var_attributes) != is.null(generator_output$var_attributes)) {
+        stop("Some simulations returned $var_attributes, while others did not.")
+      }
+      if(!is.null(var_attributes) && !identical(var_attributes, generator_output$var_attributes)) {
+        stop("Some simulations returned different $var_attributes than others.
+             Attributes must be identical for all simulations.")
+      }
+    }
   }
 
   variables <- do.call(posterior::bind_draws, args = c(variables_list, list(along = "draw")))
 
-  SBC_datasets(variables, generated)
+  SBC_datasets(variables, generated, var_attributes = var_attributes)
 }
 
 #' Wrap a function the creates a complete dataset.

@@ -227,7 +227,7 @@ empirical_coverage <- function(stats, width, prob = 0.95, interval_type = "centr
   }
 
 
-  long <- dplyr::full_join(stats_trimmed, data.frame(width = width), by = character())
+  long <- dplyr::cross_join(stats_trimmed, data.frame(width = width))
   long <- dplyr::mutate(long,
                         n_ranks_covered = round((max_rank + 1) * width),
                         low_rank = get_low_rank(max_rank, n_ranks_covered),

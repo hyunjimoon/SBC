@@ -143,21 +143,22 @@ test_that("calculate_ranks_draws_matrix works", {
 })
 
 test_that("calculate_ranks_draws_matrix infinity NA", {
-  dm <- matrix(NA_real_, nrow = 5, ncol = 5)
-  colnames(dm) <- c("a","b", "c","d", "e")
+  dm <- matrix(NA_real_, nrow = 5, ncol = 6)
+  colnames(dm) <- c("a","b", "c","d", "e", "f")
   dm[,"a"] <- c(-Inf, -Inf, 1, 2, +Inf)
   dm[,"b"] <- c(-Inf, -Inf, -Inf, 1, 2)
   dm[,"c"] <- c(-Inf, NA_real_, -Inf, 1, 2)
   dm[,"d"] <- rep(NA_real_, 5)
   dm[,"e"] <- rep(-Inf, 5)
+  dm[,"f"] <- c(-Inf, NA_real_, Inf, -300, -500)
 
   dm <- posterior::as_draws_matrix(dm)
 
-  vars <- matrix(c(-Inf, NA_real_, 14, NA_real_, -Inf), nrow = 1)
-  colnames(vars) <- c("a","b","c", "d", "e")
+  vars <- matrix(c(-Inf, NA_real_, 14, NA_real_, -Inf, NA_real_), nrow = 1)
+  colnames(vars) <- c("a","b","c", "d", "e", "F")
 
   N_steps <- 200
-  all_ranks <- matrix(NA_real_, nrow = N_steps, ncol = 5)
+  all_ranks <- matrix(NA_real_, nrow = N_steps, ncol = ncol(dm))
   for(i in 1:N_steps) {
     last_ranks <- calculate_ranks_draws_matrix(vars, dm)
     all_ranks[i,] <- last_ranks
@@ -165,14 +166,13 @@ test_that("calculate_ranks_draws_matrix infinity NA", {
   }
   expect_true(!any(is.na(all_ranks)))
 
-  # The final rank is stochastic due to presence of ties
   expect_true(all(all_ranks[,1] <= 2))
   expect_true(all(0:2 %in% all_ranks[,1]))
-  expect_true(all(0:5 %in% all_ranks[,2]))
-  expect_true(all(all_ranks[,3] <= 5 & all_ranks[,3] >= 4))
-  expect_true(all(4:5 %in% all_ranks[,3]))
+  expect_true(all(all_ranks[,2] == 0))
+  expect_true(all(all_ranks[,3] == 5))
   expect_true(all(0:5 %in% all_ranks[,4]))
   expect_true(all(0:5 %in% all_ranks[,5]))
+  expect_true(all(0:1 %in% all_ranks[,6]))
 })
 
 test_that("calculate_sds_draws_matrix", {
@@ -202,7 +202,8 @@ test_that("SBC_statistics_from_single_fit", {
     res <- SBC_statistics_from_single_fit(test_draws,
                                variables = vars, thin_ranks = 1, dquants = NULL,
                                ensure_num_ranks_divisor = 1,
-                               backend = SBC_backend_mock())
+                               backend = SBC_backend_mock(),
+                               var_attributes = NULL)
 
 
     expect_equal(length(unique(res$max_rank)), 1)
@@ -217,7 +218,8 @@ test_that("SBC_statistics_from_single_fit", {
     res_ensure2 <- SBC_statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
                                       variables = vars, thin_ranks = 1, dquants = NULL,
                                       ensure_num_ranks_divisor = 2,
-                                      backend = SBC_backend_mock())
+                                      backend = SBC_backend_mock(),
+                                      var_attributes = NULL)
     # Number of ranks = max_rank + 1 (as 0 is a valid rank)
     expect_equal(unique(res_ensure2$max_rank), 399)
 
@@ -226,7 +228,49 @@ test_that("SBC_statistics_from_single_fit", {
     res_ensure7 <- SBC_statistics_from_single_fit(posterior::example_draws(example = "eight_schools"),
                                               variables = vars, thin_ranks = 4, dquants = NULL,
                                               ensure_num_ranks_divisor = 7,
-                                              backend = SBC_backend_mock())
+                                              backend = SBC_backend_mock(),
+                                              var_attributes = NULL)
     expect_equal(unique(res_ensure7$max_rank), 97)
+
+})
+
+test_that("attribute_present", {
+  expect_true(attribute_present("binary", "binary"))
+  expect_true(attribute_present("binary", "binary, allow_na"))
+  expect_true(attribute_present("binary", "binary,allow_na"))
+  expect_true(attribute_present("binary", "allow_na,binary"))
+  expect_true(attribute_present("binary", "allow_na, binary"))
+  expect_true(attribute_present("binary", "allow_na, binary, other"))
+  expect_true(attribute_present("binary", "allow_na,binary,other"))
+  expect_true(attribute_present("binary", "allow_na,binary, other"))
+  expect_true(attribute_present("binary", "allow_na, binary, other"))
+  expect_true(attribute_present("binary", "binary, binary, binary"))
+
+  expect_false(attribute_present("binary", "allow_na"))
+  expect_false(attribute_present("binary", "binary2"))
+  expect_false(attribute_present("binary", "allow_binary, other"))
+  expect_false(attribute_present("binary", "allow_binary, other"))
+})
+
+test_that("var_attributes_to_attributes_column", {
+  expect_identical(
+    var_attributes_to_attributes_column(list(a = "discrete"), c("a", "b")),
+    c("discrete", "")
+    )
+
+  expect_identical(
+    var_attributes_to_attributes_column(list(a = "discrete", b = c("test1", "test2", "test3")), c("c", "d", "b", "a")),
+    c("", "", "test1, test2, test3", "discrete")
+  )
+
+  expect_identical(
+    var_attributes_to_attributes_column(list(a = "discrete", b = c("test1", "test2", "test3")), c("a", "ab", "bb", "a")),
+    c("discrete", "", "", "discrete")
+  )
+
+  expect_identical(
+    var_attributes_to_attributes_column(NULL, c("a", "ab", "bb", "a")),
+    c("", "", "", "")
+  )
 
 })

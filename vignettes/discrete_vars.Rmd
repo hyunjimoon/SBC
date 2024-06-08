@@ -100,6 +100,11 @@ generate_single_sim_1 <- function(T, r_e, r_l) {
       r_e = r_e,
       r_l = r_l,
       y = y
+    ),
+    # Letting SBC know that the s parameter can potentially
+    # be drawn as all constants 
+    var_attributes = list(
+      s = possibly_constant_var_attribute()
     )
   )
 }
@@ -137,9 +142,6 @@ results_1 <- compute_SBC(datasets_1, backend_1,
 
 Here we also use the caching feature to avoid recomputing the fits when recompiling this vignette. 
 In practice, caching is not necessary but is often useful.
-
-TODO the diagnostic failures are false positives, because Rhat and ESS don't work very well for discrete parameters.
-We need to figure out how to handle this better.
 
 We can quickly note that the statistics for the `s` parameter are extreme - many ranks of 0 and _extreme_ z-scores, including -Infinity. Seing just one or two such fits should be enough to convince us that there is something fundamentally wrong.
 
@@ -195,6 +197,11 @@ generate_single_sim_2 <- function(T, r_e, r_l) {
       r_e = r_e,
       r_l = r_l,
       y = y
+    ),
+    # Letting SBC know that the s parameter can potentially
+    # be drawn as all constants 
+    var_attributes = list(
+      s = possibly_constant_var_attribute()
     )
   )
 }
