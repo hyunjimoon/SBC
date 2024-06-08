@@ -73,13 +73,17 @@ test_that("Generating datasets via functions - exceptions", {
 })
 
 test_that("subsetting datasets", {
+  my_var_attributes <- list(
+    mu = hidden_var_attribute()
+  )
   list_function <- function(N) {
     mu <- rnorm(1)
     sigma <- abs(rnorm(1))
     y1 <- rnorm(N, mu, sigma)
     y2 <- rnorm(2 * N, mu + 5, sigma)
     list(variables = list(mu = mu, sigma = sigma),
-         generated = list(y1 = y1, y2 = y2))
+         generated = list(y1 = y1, y2 = y2),
+         var_attributes = my_var_attributes)
   }
 
   res <- generate_datasets(
@@ -92,6 +96,45 @@ test_that("subsetting datasets", {
   expect_identical(res_subs$generated[[1]], res$generated[[3]])
   expect_identical(res_subs$generated[[2]], res$generated[[4]])
   expect_identical(res_subs$generated[[3]], res$generated[[5]])
+  expect_identical(res_subs$var_attributes, res$var_attributes)
   expect_equal(length(res_subs$generated), 3)
+
+})
+
+test_that("binding datasets", {
+  my_var_attributes <- list(
+    mu = hidden_var_attribute()
+  )
+  list_function <- function(N) {
+    mu <- rnorm(1)
+    sigma <- abs(rnorm(1))
+    y1 <- rnorm(N, mu, sigma)
+    y2 <- rnorm(2 * N, mu + 5, sigma)
+    list(variables = list(mu = mu, sigma = sigma),
+         generated = list(y1 = y1, y2 = y2),
+         var_attributes = my_var_attributes)
+  }
+
+  res <- generate_datasets(
+    SBC_generator_function(list_function, N = 10),
+    n_sims = 7)
+
+  res2 <- generate_datasets(
+    SBC_generator_function(list_function, N = 10),
+    n_sims = 5)
+
+
+  res_combined <- bind_datasets(res, res2)
+
+  expect_identical(res$var_attributes, res_combined$var_attributes)
+  expect_equal(length(res_combined$generated), 12)
+
+  res_no_attributes <- res2
+  res_no_attributes$var_attributes <- NULL
+  expect_error(bind_datasets(res, res_no_attributes), "var_attributes")
+
+  res_other_attributes <- res2
+  res_other_attributes$var_attributes <- list(sigma = possibly_constant_var_attribute())
+  expect_error(bind_datasets(res, res_other_attributes), "var_attributes")
 
 })

@@ -95,7 +95,8 @@ length.SBC_datasets <- function(x) {
 `[.SBC_datasets` <- function(x, indices) {
   validate_SBC_datasets(x)
   new_SBC_datasets(posterior::subset_draws(x$variables, draw = indices, unique = FALSE),
-                   x$generated[indices])
+                   x$generated[indices],
+                   var_attributes = x$var_attributes)
 }
 
 #' Combine multiple datasets together.
@@ -104,14 +105,26 @@ length.SBC_datasets <- function(x) {
 bind_datasets <- function(...) {
   args <- list(...)
 
+  if(length(args) == 0) {
+    stop("Must bind at least 1 dataset")
+  }
+
   purrr::walk(args, validate_SBC_datasets)
-  #TODO check identical par names
+  #TODO check identical par names (throws error implicitly in bind_draws)
 
   variables_list <- purrr::map(args, function(x) x$variables)
   generated_list <- purrr::map(args, function(x) x$generated)
 
+  var_attributes_list <- purrr::map(args, function(x) x$var_attributes)
+  purrr::walk(var_attributes_list, \(attr) {
+    if(!identical(attr, var_attributes_list[[1]])) {
+      stop("All var_attributes of datasets to be bound must be identical")
+    }
+  })
+
   new_SBC_datasets(do.call(posterior::bind_draws, c(variables_list, list(along = "draw"))),
-                   do.call(c, generated_list))
+                   do.call(c, generated_list),
+                   var_attributes = var_attributes_list[[1]])
 }
 
 #' Generate datasets.

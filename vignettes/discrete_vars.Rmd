@@ -290,9 +290,6 @@ results_jags <- compute_SBC(datasets_2_all, backend_jags,
                         cache_location = file.path(cache_dir_jags, "rjags"))
 ```
 
-Similarly to the case above, the Rhat and ESS warnings are false positives due to the `s` parameter, which
-we need to handle better.
-
 The rank plots show no problems.
 
 ```{r ranks_jags}
