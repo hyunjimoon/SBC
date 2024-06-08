@@ -40,8 +40,9 @@ plot_ecdf_diff(
 
 \item{K}{number of uniformly spaced evaluation points for the ECDF or ECDFs. Affects
 the granularity of the plot and can significantly speed up the computation
-of the simultaneous confidence bands. Defaults to the smaller of number of
-ranks per variable and the maximum rank.}
+of the simultaneous confidence bands. Default value is chosen heuristically.
+You can also use \code{"max"} to represent
+the number of ranks or \code{"min"} to choose a lower but still sensible value.}
 
 \item{gamma}{TODO}
 

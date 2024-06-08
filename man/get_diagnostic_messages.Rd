@@ -2,9 +2,12 @@
 % Please edit documentation in R/results.R
 \name{get_diagnostic_messages}
 \alias{get_diagnostic_messages}
+\alias{get_diagnostic_messages.default}
 \title{Get diagnostic messages for \code{SBC_results} or other objects.}
 \usage{
 get_diagnostic_messages(x)
+
+\method{get_diagnostic_messages}{default}(x)
 }
 \value{
 An object of class \code{SBC_diagnostic_messages}, inheriting a data.frame.
