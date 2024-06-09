@@ -8,3 +8,6 @@
 ^pkgdown$
 _SBC_cache$
 ^vignettes/stan/.*\.rds$
+^vignettes/stan/.*\.exe$
+^vignettes/small_model_workflow/.*\.rds$
+^vignettes/small_model_workflow/.*\.exe$

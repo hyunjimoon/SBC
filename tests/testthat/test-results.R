@@ -155,12 +155,33 @@ test_that("calculate_ranks_draws_matrix infinity NA", {
   dm <- posterior::as_draws_matrix(dm)
 
   vars <- matrix(c(-Inf, NA_real_, 14, NA_real_, -Inf, NA_real_), nrow = 1)
-  colnames(vars) <- c("a","b","c", "d", "e", "F")
+  colnames(vars) <- c("a","b","c", "d", "e", "f")
 
+  # First with default settings
   N_steps <- 200
   all_ranks <- matrix(NA_real_, nrow = N_steps, ncol = ncol(dm))
   for(i in 1:N_steps) {
     last_ranks <- calculate_ranks_draws_matrix(vars, dm)
+    all_ranks[i,] <- last_ranks
+
+  }
+  expect_true(!any(is.na(all_ranks)))
+
+  expect_true(all(all_ranks[,1] <= 2))
+  expect_true(all(0:2 %in% all_ranks[,1]))
+
+  expect_true(all(0:5 %in% all_ranks[,2]))
+  expect_true(all(all_ranks[,3] <= 5 & all_ranks[,3] >= 4))
+  expect_true(all(4:5 %in% all_ranks[,3]))
+  expect_true(all(0:5 %in% all_ranks[,4]))
+  expect_true(all(0:5 %in% all_ranks[,5]))
+  expect_true(all(0:1 %in% all_ranks[,6]))
+
+  # Now with na_lowest = TRUE
+  N_steps <- 200
+  all_ranks <- matrix(NA_real_, nrow = N_steps, ncol = ncol(dm))
+  for(i in 1:N_steps) {
+    last_ranks <- calculate_ranks_draws_matrix(vars, dm, na_lowest = TRUE)
     all_ranks[i,] <- last_ranks
 
   }
@@ -235,21 +256,44 @@ test_that("SBC_statistics_from_single_fit", {
 })
 
 test_that("attribute_present", {
-  expect_true(attribute_present("binary", "binary"))
-  expect_true(attribute_present("binary", "binary, allow_na"))
-  expect_true(attribute_present("binary", "binary,allow_na"))
-  expect_true(attribute_present("binary", "allow_na,binary"))
-  expect_true(attribute_present("binary", "allow_na, binary"))
-  expect_true(attribute_present("binary", "allow_na, binary, other"))
-  expect_true(attribute_present("binary", "allow_na,binary,other"))
-  expect_true(attribute_present("binary", "allow_na,binary, other"))
-  expect_true(attribute_present("binary", "allow_na, binary, other"))
-  expect_true(attribute_present("binary", "binary, binary, binary"))
+  expect_identical(
+    attribute_present("binary",
+                      c("a", "b"),
+                      var_attributes = list(
+                        b = c("allow_na", "binary"),
+                        d = c("binary")
+                      )),
+    c("a" = FALSE, "b" = TRUE)
+  )
+  expect_identical(
+    attribute_present("allow_na",
+                      c("a", "b", "c", "d"),
+                      var_attributes = list(
+                        a = c("binary", "test"),
+                        b = c("allow_na", "binary"),
+                        d = c("binary"),
+                        e = character(0)
+                      )),
+    c("a" = FALSE, "b" = TRUE, "c" = FALSE, "d" = FALSE)
+  )
+})
 
-  expect_false(attribute_present("binary", "allow_na"))
-  expect_false(attribute_present("binary", "binary2"))
-  expect_false(attribute_present("binary", "allow_binary, other"))
-  expect_false(attribute_present("binary", "allow_binary, other"))
+test_that("attribute_present_stats", {
+  expect_true(attribute_present_stats("binary", "binary"))
+  expect_true(attribute_present_stats("binary", "binary, allow_na"))
+  expect_true(attribute_present_stats("binary", "binary,allow_na"))
+  expect_true(attribute_present_stats("binary", "allow_na,binary"))
+  expect_true(attribute_present_stats("binary", "allow_na, binary"))
+  expect_true(attribute_present_stats("binary", "allow_na, binary, other"))
+  expect_true(attribute_present_stats("binary", "allow_na,binary,other"))
+  expect_true(attribute_present_stats("binary", "allow_na,binary, other"))
+  expect_true(attribute_present_stats("binary", "allow_na, binary, other"))
+  expect_true(attribute_present_stats("binary", "binary, binary, binary"))
+
+  expect_false(attribute_present_stats("binary", "allow_na"))
+  expect_false(attribute_present_stats("binary", "binary2"))
+  expect_false(attribute_present_stats("binary", "allow_binary, other"))
+  expect_false(attribute_present_stats("binary", "allow_binary, other"))
 })
 
 test_that("var_attributes_to_attributes_column", {

@@ -27,86 +27,33 @@ SBC_results <- function(stats,
   )
 }
 
-#' Predefined constants to use for variable attributes recognized by SBC.
-#'
-#' Attributes give additional information useful for presenting SBC results
-#' concerning the variables.
-#'
-#' Should be passed via a named list to the `var_attributes` argument of
-#' [SBC_datasets()] (e.g. by returning a `$var_attributes` element from a
-#' function passed to [SBC_generator_function()]).
-#'
-#' `possibly_constant_var_attribute` attribute signals that having all
-#' posterior draws identical is possible and thus no warnings should be
-#' made for the resulting NAs in rhat and ESS checks.
-#'
-#' `binary_var_attribute` marks the attribute as a binary variable (0 or 1)
-#' and thus eligible for some special visualisations (TODO).
-#'
-#' `hidden_var_attribute` will hide the variable in default visualisations,
-#' unless the variable is explicitly mentioned.
-#'
-#' In SBC results, the attributes of a variable are summarised in the
-#' `attributes` column of the `$stats` data.frame. Use [attribute_present()]
-#' to check for presence of an attribute there.
-#'
-#' @rdname variable-attributes
-#' @export
-possibly_constant_var_attribute <- function() {
-  "possibly_constant"
-}
-
-#' @rdname variable-attributes
-#' @export
-binary_var_attribute <- function() {
-  "binary"
-}
-
-#' @rdname variable-attributes
-#' @export
-hidden_var_attribute <- function() {
-  "hidden"
-}
-
-#' Check an attribute  in the `$stats` element of the results
-#' for presence of an attribute.
-#' @export
-#'
-attribute_present <- function(attribute, x) {
-  grepl(paste0("(^|,) *",attribute," *($|,)"), x)
-}
-
-
-var_attributes_to_attributes_column <- function(var_attributes, variables) {
-  missing_names <- setdiff(variables, names(var_attributes))
-  for(n in missing_names){
-    var_attributes[[n]] <- ""
-  }
-  attributes_collapsed <- purrr::map_chr(var_attributes, \(x) paste0(x, collapse = ", "))
-  names(attributes_collapsed) <- names(var_attributes)
-  res <- attributes_collapsed[variables]
-  names(res) <- NULL
-  return(res)
-}
 
 compute_default_diagnostics <- function(stats) {
   if(is.null(stats$attributes)) {
     stats$attributes <- ""
   }
   eligible_for_check <- function(value, attributes) {
-    value[!is.na(value) | !attribute_present(possibly_constant_var_attribute(), attributes)]
+    value[!is.na(value) | !attribute_present_stats(possibly_constant_var_attribute(), attributes)]
   }
 
-  dplyr::summarise(dplyr::group_by(stats, sim_id),
+  should_check_na <- function(attributes) {
+    !attribute_present_stats(na_valid_var_attribute(), attributes) & !attribute_present_stats(na_lowest_var_attribute(), attributes)
+  }
+
+  val <- dplyr::summarise(dplyr::group_by(stats, sim_id),
                    n_vars = dplyr::n(),
+                   n_has_na = sum(has_na & should_check_na(attributes)),
                    n_na_rhat = sum(is.na(eligible_for_check(rhat, attributes))),
                    n_na_ess_bulk = sum(is.na(eligible_for_check(ess_bulk, attributes))),
                    n_na_ess_tail = sum(is.na(eligible_for_check(ess_tail, attributes))),
                    max_rhat = max(c(-Inf, eligible_for_check(rhat, attributes)), na.rm = TRUE),
                    min_ess_bulk = min(c(Inf, eligible_for_check(ess_bulk, attributes))),
                    min_ess_tail = min(c(Inf, eligible_for_check(ess_tail, attributes))),
-                   min_ess_to_rank = min(c(Inf, eligible_for_check(ess_tail / max_rank, attributes)))
+                   min_ess_to_rank = min(c(Inf, eligible_for_check(ess_tail / max_rank, attributes))),
+                   .groups = "drop"
                    )
+
+  return(val)
 }
 
 #' @export
@@ -485,6 +432,11 @@ compute_SBC <- function(datasets, backend,
     }
 
     backend_hash <- SBC_backend_hash_for_cache(backend)
+
+    # Standardize datasets for hash
+    if(is.null(datasets$var_attributes)) {
+      datasets$var_attributes <- NULL
+    }
     data_hash <- rlang::hash(datasets)
 
     # Ensure backwards compatibility of cache
@@ -671,7 +623,7 @@ compute_SBC <- function(datasets, backend,
   } else {
     # Return dummy stats that let the rest of the code work.
     stats <- data.frame(sim_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
-                        ess_tail = numeric(0),
+                        ess_tail = numeric(0), has_na = logical(0),
                         rank = integer(0), simulated_value = numeric(0), max_rank = integer(0),
                         attributes = character(0))
   }
@@ -919,13 +871,15 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
     }
   }
 
-  ranks <- calculate_ranks_draws_matrix(variables, fit_thinned)
+  na_lowest <- attribute_present(na_lowest_var_attribute(), posterior::variables(variables), var_attributes)
+  ranks <- calculate_ranks_draws_matrix(variables, fit_thinned, na_lowest = na_lowest)
   if(!identical(stats$variable, names(ranks))) {
     stop("A naming conflict")
   }
   stats$rank <- ranks
   stats$max_rank <- attr(ranks, "max_rank")
   stats$z_score <- (stats$simulated_value - stats$mean) / stats$sd
+  stats$has_na <- as.logical(is.na(variables)) | apply(fit_thinned, MARGIN = 2, FUN = \(x) any(is.na(x)))
 
   stats <- dplyr::select(
     stats, variable, simulated_value, rank, z_score, tidyselect::everything())
@@ -1074,13 +1028,20 @@ rdunif <- function(n, a, b) {
 #' Calculate ranks given variable values within a posterior distribution.
 #'
 #' When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
-#' among the ties. NA is assumed to be potentially equal to any value (Issue #78)
+#' among the ties. Depending on `na_lowest`,
+#' NA is either assumed to be lower than all non-NA values or
+#' potentially equal to any value.
 #' @param variables a vector of values to check
 #' @param dm draws_matrix of the fit (assumed to be already thinned if that was necessary)
+#' @param na_lowest a logical, or a vector of logical the same length as variables.
+#' If `FALSE`, NA is assumed to be potentially equal to all values (this works
+#' well when NAs represent rare problems in computation). If `TRUE`, NA is
+#' assumed to lower than any non-NA values and equal to other NA values (this
+#' works well when NA is a special value indicating e.g. that the variable is
+#' not present at all in a given fit).
 #' @param params DEPRECATED. Use `variables` instead.
 #' @export
-calculate_ranks_draws_matrix <- function(variables, dm, params = NULL) {
-  #TODO validate input
+calculate_ranks_draws_matrix <- function(variables, dm, na_lowest = FALSE, params = NULL) {
 
   if(!is.null(params)) {
     warning("The `params` argument is deprecated use `variables` instead.")
@@ -1089,25 +1050,50 @@ calculate_ranks_draws_matrix <- function(variables, dm, params = NULL) {
     }
   }
 
-  max_rank <- posterior::ndraws(dm)
+  stopifnot(posterior::is_draws_matrix(dm))
+  stopifnot(posterior::nvariables(dm) == length(variables))
+  stopifnot(is.logical(na_lowest))
+  stopifnot(length(na_lowest) == 1 || length(na_lowest) == length(variables))
 
-  # NA is assumed to be lower than all values except NA
+  max_rank <- posterior::ndraws(dm)
+  nvars <- posterior::nvariables(dm)
+  if(length(na_lowest) == 1) {
+    na_lowest <- rep(na_lowest, nvars)
+  }
+
+  rank_min <- integer(nvars)
+  rank_range <- integer(nvars)
+
+
+  # Wtih na_lowest NA is assumed to be lower than all values except NA
   # This lets us use NA to fill variables that don't exist in all fits.
-  less_with_NA <- function(a, b) {
+  less_with_na_lowest <- function(a, b) {
     (is.na(a) & !is.na(b)) | (!is.na(a) & !is.na(b) & a < b)
   }
-  less_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = less_with_NA)
-  rank_min <- colSums(less_matrix, na.rm = TRUE)
+
+  equal_with_na_lowest <- function(a,b) {
+    (is.na(a) & is.na(b)) | a == b
+  }
+
+  # Otherwise, NA is assumed to be potentially equal to any value (Issue #78)
+  equal_or_NA <- function(a,b) {
+    is.na(a) | is.na(b) | a == b
+  }
+
+  for(i in 1:nvars) {
+    if(na_lowest[i]) {
+      rank_min[i] <- sum(less_with_na_lowest(dm[,i], variables[i]), na.rm = TRUE)
+      rank_range[i] <- sum(equal_with_na_lowest(variables[i], dm[,i]), na.rm = TRUE)
+    } else {
+      rank_min[i] <- sum(dm[,i] < variables[i], na.rm = TRUE)
+      rank_range[i] <- sum(equal_or_NA(variables[i], dm[,i]), na.rm = TRUE)
+    }
+  }
 
   # When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
   # among the ties
-  equal_with_NA <- function(a,b) {
-    (is.na(a) & is.na(b)) | a == b
-  }
-  equal_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = equal_with_NA)
-  rank_range <- colSums(equal_matrix, na.rm = TRUE)
-
   ranks <- rank_min + rdunif(posterior::nvariables(dm), a = 0, b = rank_range)
+  names(ranks) <- posterior::variables(dm)
 
   attr(ranks, "max_rank") <- max_rank
   ranks
@@ -1215,6 +1201,7 @@ summary.SBC_results <- function(x) {
     n_warnings = sum(purrr::map_lgl(x$messages, ~ !is.null(.x) && any(x$type == "warning"))),
 
     # ifelse required for backwards compatibility with caches from 0.3 or below
+    n_has_na = if("n_has_na" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_has_na > 0) }  else {  0 },
     n_na_rhat = if("n_na_rhat" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_rhat > 0) }  else {  0 },
     n_na_ess_tail = if("n_na_ess_tail" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_ess_tail > 0) }  else {  0 },
     n_na_ess_bulk = if("n_na_ess_tail" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_ess_tail > 0) }  else {  0 },
@@ -1263,6 +1250,13 @@ get_diagnostic_messages.SBC_results_summary <- function(x) {
   }
   i <- i + 1
 
+  if(x$n_has_na > 0) {
+    msg <- paste0(x$n_has_na, " (", round(100 * x$n_has_na / x$n_fits), "%) fits had some NAs in variables/samples.\n ",
+                  "If this is expected, mark the variable with `na_valid_var_attribute()` or `na_lowest_var_attribute()`\n",
+                  "to specify NA handling and suppress this message.")
+    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
+    i <- i + 1
+  }
   if(x$n_na_rhat > 0) {
     msg <- paste0(x$n_na_rhat, " (", round(100 * x$n_na_rhat / x$n_fits), "%) fits had NA Rhat.\n ",
                   "This likely means all posterior draws were equal for some variable.\n",
