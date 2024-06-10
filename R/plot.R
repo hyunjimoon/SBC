@@ -1,3 +1,12 @@
+filter_stats_by_variables_and_hidden <- function(x, variables) {
+  if(!is.null(variables)) {
+    x <- dplyr::filter(x, variable %in% variables)
+  } else if("attributes" %in% names(x)) {
+    x <- dplyr::filter(x, !attribute_present_stats(hidden_var_attribute(), attributes))
+  }
+  x
+}
+
 #' Plot rank histogram of an SBC results.
 #'
 #' The expected uniform distribution and an approximate confidence interval
@@ -44,6 +53,13 @@ plot_rank_hist.data.frame <- function(x, variables = NULL, bins = NULL, prob = 0
   if(!all(c("variable", "rank") %in% names(x))) {
     stop("The data.frame needs a 'variable' and 'rank' columns")
   }
+
+  x <- filter_stats_by_variables_and_hidden(x, variables)
+
+  if(nrow(x) == 0) {
+    stop("No data for the selected variables.")
+  }
+
   n_sims <- dplyr::summarise(dplyr::group_by(x, variable), count = dplyr::n())$count
   if(length(unique(n_sims)) > 1) {
     stop("Differing number of SBC steps per variable not supported.")
@@ -63,14 +79,6 @@ plot_rank_hist.data.frame <- function(x, variables = NULL, bins = NULL, prob = 0
     bins <- guess_rank_hist_bins(max_rank, n_sims)
   } else if(bins > max_rank + 1) {
     stop("Cannot use more bins than max_rank + 1")
-  }
-
-  if(!is.null(variables)) {
-    x <- dplyr::filter(x, variable %in% variables)
-  }
-
-  if(nrow(x) == 0) {
-    stop("No data for the selected variables.")
   }
 
   #CI - taken from https://github.com/seantalts/simulation-based-calibration/blob/master/Rsbc/generate_plots_sbc_inla.R
@@ -370,10 +378,7 @@ data_for_ecdf_plots.data.frame <- function(x, variables = NULL,
                    "The stats data.frame needs a 'variable', 'rank' and 'sim_id' columns"))
   }
 
-  stats <- x
-  if(!is.null(variables)) {
-    stats <- dplyr::filter(stats, variable %in% variables)
-  }
+  stats <- filter_stats_by_variables_and_hidden(x, variables)
 
   if(is.null(max_rank)) {
     stop("max_rank either has to be supplied explicitly or be a column in the data")
@@ -608,9 +613,10 @@ plot_contraction.data.frame <- function(x, prior_sd, variables = NULL, scale = "
     stop("prior_sd has to be a named vector")
   }
 
+  x <- filter_stats_by_variables_and_hidden(x, variables)
+
   if(!is.null(variables)) {
     prior_sd <- prior_sd[names(prior_sd) %in% variables]
-    x <- dplyr::filter(x, variable %in% variables)
   }
 
   if(nrow(x) == 0 || length(prior_sd) == 0) {
@@ -698,9 +704,7 @@ plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean"
     stop("The data.frame needs to have the following columns: ", paste0("'", required_columns, "'", collapse = ", "))
   }
 
-  if(!is.null(variables)) {
-    x <- dplyr::filter(x, variable %in% variables)
-  }
+  x <- filter_stats_by_variables_and_hidden(x, variables)
 
   if(is.null(alpha)) {
     n_points <- dplyr::summarise(dplyr::group_by(x, variable), count = dplyr::n())
@@ -805,9 +809,7 @@ plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
     }
   }
 
-  if(!is.null(variables)) {
-    x <- dplyr::filter(x, variable %in% variables)
-  }
+  x <- filter_stats_by_variables_and_hidden(x, variables)
 
   max_max_rank <- max(x$max_rank)
   if(is.null(max_points) || max_max_rank + 2 <= max_points) {
@@ -855,9 +857,7 @@ plot_coverage_diff.data.frame <- function(x, variables = NULL, prob = 0.95,
                    "The stats data.frame needs a 'variable', 'rank' and 'max_rank' columns"))
   }
 
-  if(!is.null(variables)) {
-    x <- dplyr::filter(x, variable %in% variables)
-  }
+  x <- filter_stats_by_variables_and_hidden(x, variables)
 
   max_max_rank <- max(x$max_rank)
   if(is.null(max_points) || max_max_rank + 2 <= max_points) {
