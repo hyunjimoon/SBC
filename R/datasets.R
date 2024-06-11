@@ -38,11 +38,10 @@ validate_SBC_datasets <- function(x) {
     stop("Needs equal no. of draws for variables and length of generated")
   }
 
+  x$var_attributes <- validate_var_attributes(x$var_attributes)
+
   if(!is.null(x$var_attributes)) {
-    if(!is.list(x$var_attributes)) {
-      stop("`var_attributes` must be a list")
-    }
-    varnames_no_arrays <- gsub(r"(\[[^\]]*\])", "", posterior::variables(x$variables))
+    varnames_no_arrays <- unique(variable_names_to_var_attributes_names(posterior::variables(x$variables)))
     unrecognized_names <- setdiff(names(x$var_attributes), varnames_no_arrays)
     if(length(unrecognized_names) > 0) {
       message(paste0(unrecognized_names, collapse = ", "))
@@ -50,12 +49,8 @@ validate_SBC_datasets <- function(x) {
            "Note that arrays are treated as a single variable and attributes must match the name.\n",
            "without brackets.")
     }
-    character_attributes <- purrr::map_lgl(x$var_attributes, is.character)
-    if(!all(character_attributes)) {
-      message(paste0(names(x$var_attributes)[!character_attributes], collapse = ", "))
-      stop("All elements of `var_attributes` must be character vectors")
-    }
   }
+
 
   x
 }

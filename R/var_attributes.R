@@ -1,3 +1,25 @@
+#' @export
+validate_var_attributes <- function(var_attributes) {
+  if(is.null(var_attributes)) {
+    return(NULL)
+  }
+
+  if(!is.list(var_attributes)) {
+    stop("`var_attributes` must be a list")
+  }
+  character_attributes <- purrr::map_lgl(var_attributes, is.character)
+  if(!all(character_attributes)) {
+    message(paste0(names(var_attributes)[!character_attributes], collapse = ", "))
+    stop("All elements of `var_attributes` must be character vectors")
+  }
+
+  return(var_attributes)
+}
+
+variable_names_to_var_attributes_names <- function(variable_names) {
+  gsub(r"(\[.*\])", "", variable_names)
+}
+
 #' Predefined constants to use for variable attributes recognized by SBC.
 #'
 #' Attributes give additional information useful for presenting SBC results

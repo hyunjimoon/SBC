@@ -1204,7 +1204,7 @@ summary.SBC_results <- function(x) {
     n_has_na = if("n_has_na" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_has_na > 0) }  else {  0 },
     n_na_rhat = if("n_na_rhat" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_rhat > 0) }  else {  0 },
     n_na_ess_tail = if("n_na_ess_tail" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_ess_tail > 0) }  else {  0 },
-    n_na_ess_bulk = if("n_na_ess_tail" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_ess_tail > 0) }  else {  0 },
+    n_na_ess_bulk = if("n_na_ess_bulk" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_ess_bulk > 0) }  else {  0 },
 
     n_high_rhat = sum(is.na(x$default_diagnostics$max_rhat) | x$default_diagnostics$max_rhat > 1.01),
     max_max_rhat = max(c(-Inf, x$default_diagnostics$max_rhat)),

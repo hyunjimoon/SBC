@@ -64,5 +64,6 @@ Suggests:
     MASS,
     mvtnorm,
     patchwork,
+    bridgesampling,
     bayesplot
 VignetteBuilder: knitr

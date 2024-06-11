@@ -1,0 +1,227 @@
+---
+title: "SBC for bayes factors (and bridgesampling)"
+author: "Martin Modrák"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: yes
+vignette: >
+  %\VignetteIndexEntry{SBC for bayes factors (and bridgesampling)}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+
+Let's setup the environment (bridgesampling currently works only with rstan):
+
+```{r setup, message=FALSE,warning=FALSE, results="hide"}
+library(SBC)
+library(ggplot2)
+library(bridgesampling)
+library(dplyr)
+library(tidyr)
+
+use_cmdstanr <- FALSE
+library(rstan)
+rstan_options(auto_write = TRUE)
+
+options(mc.cores = parallel::detectCores())
+
+library(future)
+plan(multisession)
+
+
+# Setup caching of results
+if(use_cmdstanr) {
+  cache_dir <- "./_bayes_factor_SBC_cache"
+} else {
+  cache_dir <- "./_bayes_factor_rstan_SBC_cache"
+}
+if(!dir.exists(cache_dir)) {
+  dir.create(cache_dir)
+}
+
+theme_set(theme_minimal())
+```
+
+
+
+## Presence of random effects
+
+
+
+```{r, comment = ""}
+cat(readLines("stan/turtles_H0.stan"), sep = "\n")
+```
+
+```{r}
+m_H0 <- stan_model("stan/turtles_H0.stan")
+m_H1 <- stan_model("stan/turtles_H1.stan")
+```
+
+```{r}
+data("turtles", package = "bridgesampling")
+
+sim_turtles <- function(model, N = NULL, C = NULL) {
+  if(is.null(N)) {
+    stopifnot(is.null(C))
+    fixed_predictors <- TRUE
+    
+    N <- nrow(turtles)
+    C <- max(turtles$clutch)
+    clutch <- turtles$clutch
+    x <- turtles$x
+  } else {
+    stopifnot(!is.null(C))
+    stopifnot(N >= 3 * C)
+    fixed_predictors <- FALSE
+  }
+
+  ## Rejection sampling to avoid low-variability datasets
+  for(i in 1:200) {
+
+    alpha0_raw <- rnorm(1) 
+    alpha1_raw <- rnorm(1) 
+    alpha0 <- sqrt(10) * alpha0_raw
+    alpha1 <- sqrt(10) * alpha1_raw
+    
+    if(!fixed_predictors) {
+      clutch <- rep(1:C, length.out = N)
+
+      x <- rnorm(N) / 3  
+    }
+    
+    
+    log_lik_shared <- dnorm(alpha0_raw, log = TRUE) +
+      dnorm(alpha1_raw, log = TRUE)
+    
+    if(model == 0) {
+      predictor <- alpha0 + alpha1 * x
+      log_lik_spec <- 0
+    } else {
+      sigma_clutch <- abs(rnorm(1))
+      
+      b_clutch_raw <- rnorm(C)
+      b_clutch <- b_clutch_raw * sigma_clutch
+      
+      predictor <- alpha0 + alpha1 * x + b_clutch[clutch]
+      
+      log_lik_spec <- 
+        #log(sigma2_clutch)  +# Jacobian
+        #(- 2 * log1p(sigma2_clutch)) + 
+        log(sigma_clutch) + dnorm(sigma_clutch, log = TRUE) + log(2) +
+        sum(dnorm(b_clutch_raw, log = TRUE))
+    }
+    
+    #prob <- pnorm(predictor)
+    prob <- plogis(predictor)
+    y <- rbinom(N, p = prob, size = 1)
+    if(mean(y == 0) < 0.9 && mean(y == 1) < 0.9) {
+      break
+    }
+  }
+  if(i >= 200) {
+    warning("Could not generate nice dataset")
+  }
+  
+  log_lik_predictor <- sum(dbinom(y, size = 1, p = prob, log = TRUE))
+  
+  variables <- list(
+      alpha0 = alpha0,
+      alpha1 = alpha1,
+      lp__ = log_lik_shared + log_lik_spec + log_lik_predictor
+    )
+  
+  if(model == 1) {
+    variables$sigma <- sigma_clutch
+    variables$b <- b_clutch
+  } 
+
+  list(
+    generated = list(
+      N = N,
+      y = y,
+      x = x,
+      C = C,
+      clutch = clutch
+    ),
+    variables = variables
+  )
+}
+```
+
+```{r}
+N_sims <- 10
+N <- 80
+C <- 10
+ds_turtles_m0 <- generate_datasets(SBC_generator_function(sim_turtles, model = 0, N = N, C = C), n_sims = N_sims)
+ds_turtles_m1 <- generate_datasets(SBC_generator_function(sim_turtles, model = 1, N = N, C = C), n_sims = N_sims)
+ds_turtles <- SBC_datasets_for_bf(ds_turtles_m0, ds_turtles_m1)
+```
+
+
+## Custom BF backend
+
+
+
+```{r}
+sim_beta_binom <- function(N, shape1, shape2) {
+
+  theta <- rbeta(1, shape1, shape2)
+
+  list(
+    generated = list(
+      N = N,
+      y = rbinom(1, size = N, prob = theta)
+      ),
+    variables = list(
+      theta = theta
+    )
+  )
+}
+
+n_sims <- 500
+ds_custom_m0 <- generate_datasets(SBC_generator_function(sim_beta_binom, N = 30, shape1 = 1, shape2 = 1), n_sims = n_sims)
+ds_custom_m1 <- generate_datasets(SBC_generator_function(sim_beta_binom, N = 30, shape1 = 6, shape2 = 1), n_sims = n_sims)
+ds_custom <- SBC_datasets_for_bf(ds_custom_m0, ds_custom_m1)
+```
+```{r}
+backend_beta_binom <- function(shape1, shape2, ndraws = 5000){
+  structure(list(shape1 = shape1, shape2 = shape2, ndraws = ndraws), class = "SBC_backend_beta_binom")
+}
+
+SBC_fit.SBC_backend_beta_binom <- function(backend, generated, cores) {
+  draws <- rbeta(backend$ndraws, backend$shape1 + generated$y, backend$shape2 + generated$N - generated$y)
+  posterior::draws_matrix("theta" = draws)
+}
+
+SBC_fit_to_bridge_sampler.SBC_backend_beta_binom <- function(backend, fit, generated, ...) {
+  log_posterior_func <- function(draws.row, data) {
+    dbinom(generated$y, size = generated$N, prob = draws.row["theta"])
+  }
+  bridgesampling::bridge_sampler(fit, log_posterior = log_posterior_func,
+                                 data = generated, lb = c("theta" = 0), ub = c("theta" = 1))
+}
+
+SBC_backend_iid_draws.SBC_backend_beta_binom <- function(backend) {
+  TRUE
+}
+
+beta_binom_globals <- c("SBC_fit.SBC_backend_beta_binom", "SBC_fit_to_bridge_sampler.SBC_backend_beta_binom", "SBC_backend_iid_draws.SBC_backend_beta_binom")
+
+backend_bs_custom <- SBC_backend_bridgesampling(
+  backend_beta_binom(1, 1),
+  backend_beta_binom(6, 1)
+)
+```
+
+
+```{r}
+res_custom <- compute_SBC(ds_custom, backend_bs_custom, globals = beta_binom_globals, keep_fits = FALSE)
+
+plot_ecdf_diff(res_custom)
+
+res_custom$stats
+res_custom$backend_diagnostics
+```
+
