@@ -48,33 +48,47 @@ combine_draws_matrix_for_bf <- function(dm0, dm1, model_draws, NA_raw_dm = FALSE
 }
 
 # Note: needs to be kept in sync with combine_draws_matrix_for_bf
-combine_var_attributes_for_bf <- function(dm0, dm1, var_attributes0, var_attributes1, model_var = "model") {
+combine_var_attributes_for_bf <- function(dm0, dm1, var_attr0, var_attr1, model_var = "model") {
   stopifnot(posterior::is_draws_matrix(dm0))
   stopifnot(posterior::is_draws_matrix(dm1))
 
-  var_attributes0 <- validate_var_attributes(var_attributes0)
-  var_attributes1 <- validate_var_attributes(var_attributes1)
+  var_attr0 <- validate_var_attributes(var_attr0)
+  var_attr1 <- validate_var_attributes(var_attr1)
 
   stopifnot(is.character(model_var) & length(model_var) == 1)
 
 
-  warning("Temporary implementation of combine_var_attributes_for_bf")
-  raw_attr_vec <- c(hidden_var_attribute(), na_valid_var_attribute())
+  raw_attrs <- function(dm, orig_attr, prefix) {
+    attr_names <- variable_names_to_var_attributes_names(posterior::variables(dm))
 
-  attr0_names <- unique(variable_names_to_var_attributes_names(posterior::variables(dm0)))
-  attr0_raw <- rep(list(raw_attr_vec), length(attr0_names))
-  names(attr0_raw) <- paste0(".m0.",attr0_names)
+    new_attr_vec <- c(hidden_var_attribute(), na_valid_var_attribute())
+    new_attr <- var_attributes_from_list(attr_names, list(new_attr_vec))
 
+    attr_combined <- combine_var_attributes(new_attr, orig_attr)
+    names(attr_combined) <- paste0(prefix, names(attr_combined))
 
-  attr1_names <- unique(variable_names_to_var_attributes_names(posterior::variables(dm1)))
-  attr1_raw <- rep(list(raw_attr_vec), length(attr1_names))
-  names(attr1_raw) <- paste0(".m1.",attr1_names)
+    return(attr_combined)
+  }
 
+  raw_attr0 <- raw_attrs(dm0, var_attr0, ".m0.")
+  raw_attr1 <- raw_attrs(dm1, var_attr1, ".m1.")
 
-  attr_model <- list(c(binary_var_attribute(), possibly_constant_var_attribute()))
+  single_model_variables <- c(
+    setdiff(posterior::variables(dm0), posterior::variables(dm1)),
+    setdiff(posterior::variables(dm1), posterior::variables(dm0))
+  )
+
+  attr_model <- var_attributes(model = c(binary_var_attribute(), possibly_constant_var_attribute()))
   names(attr_model) <- model_var
 
-  return(c(var_attributes0, var_attributes1, attr_model, attr0_raw, attr1_raw))
+  return(
+    combine_var_attributes(attr_model,
+                           var_attr0,
+                           var_attr1,
+                           raw_attr0,
+                           raw_attr1
+                           )
+  )
 }
 
 #' @export

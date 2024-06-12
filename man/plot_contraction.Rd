@@ -10,6 +10,7 @@ plot_contraction(
   variables = NULL,
   scale = "sd",
   alpha = 0.8,
+  ...,
   parameters = NULL
 )
 }

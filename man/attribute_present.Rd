@@ -4,7 +4,14 @@
 \alias{attribute_present}
 \title{Get attribute presence for a vector of variable names.}
 \usage{
-attribute_present(attribute, variable_names, var_attributes)
+attribute_present(attribute, variable_names, var_attr)
+}
+\arguments{
+\item{attribute}{the attribute to test}
+
+\item{variable_names}{names of variable to test for the attribute}
+
+\item{var_attr}{an object defining the attributes, see \link{variable-attributes}.}
 }
 \value{
 a logical vector the same length as \code{variable_names}

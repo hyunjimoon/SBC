@@ -107,13 +107,10 @@ sim_turtles <- function(model, N = NULL, C = NULL) {
       predictor <- alpha0 + alpha1 * x + b_clutch[clutch]
       
       log_lik_spec <- 
-        #log(sigma2_clutch)  +# Jacobian
-        #(- 2 * log1p(sigma2_clutch)) + 
         log(sigma_clutch) + dnorm(sigma_clutch, log = TRUE) + log(2) +
         sum(dnorm(b_clutch_raw, log = TRUE))
     }
     
-    #prob <- pnorm(predictor)
     prob <- plogis(predictor)
     y <- rbinom(N, p = prob, size = 1)
     if(mean(y == 0) < 0.9 && mean(y == 1) < 0.9) {
@@ -151,12 +148,73 @@ sim_turtles <- function(model, N = NULL, C = NULL) {
 ```
 
 ```{r}
-N_sims <- 10
+set.seed(54223248)
+N_sims <- 100
 N <- 80
 C <- 10
 ds_turtles_m0 <- generate_datasets(SBC_generator_function(sim_turtles, model = 0, N = N, C = C), n_sims = N_sims)
 ds_turtles_m1 <- generate_datasets(SBC_generator_function(sim_turtles, model = 1, N = N, C = C), n_sims = N_sims)
 ds_turtles <- SBC_datasets_for_bf(ds_turtles_m0, ds_turtles_m1)
+```
+```{r}
+iter <- 15500
+warmup <- 500
+init <- 0
+backend_turtles <- SBC_backend_bridgesampling(
+  SBC_backend_rstan_sample(m_H0, iter = iter, warmup = warmup, init = init),
+  SBC_backend_rstan_sample(m_H1, iter = iter, warmup = warmup, init = init)
+)
+res_turtles <- compute_SBC(ds_turtles, backend_turtles, 
+                           keep_fits = FALSE,
+                           cache_mode = "results",
+                           cache_location = file.path(cache_dir, "turtles_1.rds"))
+```
+
+```{r}
+res_turtles$stats
+```
+
+
+```{r}
+plot_ecdf_diff(res_turtles, combine_variables = combine_array_elements)
+plot_ecdf_diff(res_turtles, variables = c(".m1.sigma", paste0(".m1.b[",1:C,"]")), combine_variables = combine_array_elements)
+```
+
+```{r}
+set.seed(784522)
+N_sims <- 500
+N <- 80
+C <- 10
+ds_turtles_m0_2 <- generate_datasets(SBC_generator_function(sim_turtles, model = 0, N = N, C = C), n_sims = N_sims)
+ds_turtles_m1_2 <- generate_datasets(SBC_generator_function(sim_turtles, model = 1, N = N, C = C), n_sims = N_sims)
+ds_turtles_2 <- SBC_datasets_for_bf(ds_turtles_m0_2, ds_turtles_m1_2)
+
+res_turtles_2 <- compute_SBC(ds_turtles_2, backend_turtles, 
+                           keep_fits = FALSE,
+                           cache_mode = "results",
+                           cache_location = file.path(cache_dir, "turtles_2.rds"))
+
+```
+
+```{r}
+res_turtles_all <- bind_results(res_turtles, res_turtles_2)
+plot_ecdf_diff(res_turtles_all)
+```
+```{r}
+res_turtles_all$stats
+```
+
+
+```{r}
+stats_test <- res_turtles_all$stats %>% group_by(sim_id) %>% filter(simulated_value[variable == "model"] == 1) %>% ungroup()
+plot_ecdf_diff(stats_test, variables = c(paste0("alpha",0:1,""), paste0(".m1.alpha",0:1,"")))
+plot_ecdf_diff(stats_test, variables = paste0(".m1.b[",1:9,"]"))
+```
+
+```{r}
+stats_test0 <- res_turtles_all$stats %>% group_by(sim_id) %>% filter(simulated_value[variable == "model"] == 0) %>% ungroup()
+plot_ecdf_diff(stats_test0, variables = c(paste0("alpha",0:1,""), paste0(".m0.alpha",0:1,"")))
+
 ```
 
 
@@ -185,6 +243,7 @@ ds_custom_m0 <- generate_datasets(SBC_generator_function(sim_beta_binom, N = 30,
 ds_custom_m1 <- generate_datasets(SBC_generator_function(sim_beta_binom, N = 30, shape1 = 6, shape2 = 1), n_sims = n_sims)
 ds_custom <- SBC_datasets_for_bf(ds_custom_m0, ds_custom_m1)
 ```
+
 ```{r}
 backend_beta_binom <- function(shape1, shape2, ndraws = 5000){
   structure(list(shape1 = shape1, shape2 = shape2, ndraws = ndraws), class = "SBC_backend_beta_binom")
@@ -220,6 +279,7 @@ backend_bs_custom <- SBC_backend_bridgesampling(
 res_custom <- compute_SBC(ds_custom, backend_bs_custom, globals = beta_binom_globals, keep_fits = FALSE)
 
 plot_ecdf_diff(res_custom)
+plot_ecdf_diff(res_custom, show_hidden = TRUE)
 
 res_custom$stats
 res_custom$backend_diagnostics

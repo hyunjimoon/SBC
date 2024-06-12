@@ -2,7 +2,7 @@ test_that("attribute_present", {
   expect_identical(
     attribute_present("binary",
                       c("a", "b"),
-                      var_attributes = list(
+                      var_attr = var_attributes(
                         b = c("allow_na", "binary"),
                         d = c("binary")
                       )),
@@ -10,14 +10,14 @@ test_that("attribute_present", {
   )
   expect_identical(
     attribute_present("allow_na",
-                      c("a", "b", "c", "d"),
-                      var_attributes = list(
+                      c("a", "b", "b[1]", "b[2,3,4]", "c", "d"),
+                      var_attr = var_attributes(
                         a = c("binary", "test"),
                         b = c("allow_na", "binary"),
                         d = c("binary"),
                         e = character(0)
                       )),
-    c("a" = FALSE, "b" = TRUE, "c" = FALSE, "d" = FALSE)
+    c("a" = FALSE, "b" = TRUE, "b[1]" = TRUE, "b[2,3,4]" = TRUE,"c" = FALSE, "d" = FALSE)
   )
 })
 
@@ -60,4 +60,32 @@ test_that("var_attributes_to_attributes_column", {
     c("", "", "", "")
   )
 
+  expect_identical(
+    var_attributes_to_attributes_column(list(a = "discrete", b = c("test1", "test2", "test3")), c("a[1]", "a[2]", "b[1,1]", "b[4,5]")),
+    c("discrete", "discrete", "test1, test2, test3", "test1, test2, test3")
+  )
+
+})
+
+test_that("combine_var_attributes", {
+  expect_identical(combine_var_attributes(
+    var_attributes(a = c(binary_var_attribute(), hidden_var_attribute()),
+                   b = c(hidden_var_attribute())),
+    var_attributes(a = c(hidden_var_attribute()),
+                   q = possibly_constant_var_attribute(),
+                   z = binary_var_attribute()),
+    var_attributes(a  = hidden_var_attribute(),
+                   b = binary_var_attribute(),
+                   q = na_valid_var_attribute())
+  ),
+  var_attributes(a = c(binary_var_attribute(), hidden_var_attribute(),hidden_var_attribute(),hidden_var_attribute()),
+                 b = c(hidden_var_attribute(), binary_var_attribute()),
+                 q = c(possibly_constant_var_attribute(), na_valid_var_attribute()),
+                 z = binary_var_attribute()))
+})
+
+test_that("remove_attribute_from_stats", {
+  expect_identical(remove_attribute_from_stats("a", "a, b,c"), "b,c")
+  expect_identical(remove_attribute_from_stats("b", "ab,b, cb,b,bbc"), "ab, cb,b,bbc")
+  expect_identical(remove_attribute_from_stats("ab", "a,b,cab,ab"), "a,b,cab")
 })

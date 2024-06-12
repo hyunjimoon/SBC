@@ -1,8 +1,12 @@
-filter_stats_by_variables_and_hidden <- function(x, variables) {
+filter_stats_by_variables_and_hidden <- function(x, variables, show_hidden = FALSE) {
   if(!is.null(variables)) {
     x <- dplyr::filter(x, variable %in% variables)
-  } else if("attributes" %in% names(x)) {
+  } else if("attributes" %in% names(x) & !show_hidden) {
     x <- dplyr::filter(x, !attribute_present_stats(hidden_var_attribute(), attributes))
+  }
+
+  if(nrow(x) == 0) {
+    stop("No variables to plot.")
   }
   x
 }
@@ -30,8 +34,10 @@ plot_rank_hist <- function(x, variables = NULL, bins = NULL, prob = 0.95, ..., p
 }
 
 #' @export
+#' @rdname plot_rank_hist
+#' @param show_hidden Show variables marked with [hidden_var_attribute()] (by default, those are not shown)
 #' @import ggplot2
-plot_rank_hist.data.frame <- function(x, variables = NULL, bins = NULL, prob = 0.95, max_rank = x$max_rank, parameters = NULL) {
+plot_rank_hist.data.frame <- function(x, variables = NULL, bins = NULL, prob = 0.95, max_rank = x$max_rank, show_hidden = FALSE, parameters = NULL) {
   # Ensuring backwards compatibility
   if("parameter" %in% names(x)) {
     if(!("variable" %in% names(x))) {
@@ -54,7 +60,7 @@ plot_rank_hist.data.frame <- function(x, variables = NULL, bins = NULL, prob = 0
     stop("The data.frame needs a 'variable' and 'rank' columns")
   }
 
-  x <- filter_stats_by_variables_and_hidden(x, variables)
+  x <- filter_stats_by_variables_and_hidden(x, variables, show_hidden)
 
   if(nrow(x) == 0) {
     stop("No data for the selected variables.")
@@ -162,6 +168,8 @@ guess_rank_hist_bins <- function(max_rank, N) {
 #'   a function taking the number of variables that were combined (when `combine_variables`
 #'   is specified) and returns a number. By default, plots showing many
 #'   ECDFs will have reduced alpha.
+#' @param show_hidden Show variables marked with [hidden_var_attribute()]
+#'    (by default, those are not shown, available only when `x` is a data.frame)
 #' @param ... additional arguments passed to [data_for_ecdf_plots()].
 #' Most notably, if `x` is matrix, a `max_rank` parameter needs to be given.
 #' @param parameters DEPRECATED, use `variables` instead.
@@ -176,6 +184,7 @@ plot_ecdf <- function(x,
                       alpha = 0.33,
                       combine_variables = NULL,
                       ecdf_alpha = NULL,
+                      show_hidden = FALSE,
                       ...,
                       parameters = NULL) {
 
@@ -189,7 +198,9 @@ plot_ecdf <- function(x,
   ecdf_data <-
     data_for_ecdf_plots(x, variables = variables,
                         prob = prob, K = K, gamma = gamma,
-                        combine_variables = combine_variables, ecdf_alpha = ecdf_alpha, ...)
+                        combine_variables = combine_variables,
+                        ecdf_alpha = ecdf_alpha,
+                        show_hidden = show_hidden, ...)
 
   N <- ecdf_data$N
   K <- ecdf_data$K
@@ -247,6 +258,7 @@ plot_ecdf_diff <- function(x,
                            alpha = 0.33,
                            combine_variables = NULL,
                            ecdf_alpha = NULL,
+                           show_hidden = FALSE,
                            ...,
                            parameters = NULL) {
   if(!is.null(parameters)) {
@@ -259,7 +271,10 @@ plot_ecdf_diff <- function(x,
   ecdf_data <-
     data_for_ecdf_plots(x, variables = variables,
                         prob = prob, K = K, gamma = gamma,
-                        combine_variables = combine_variables, ecdf_alpha = ecdf_alpha, ...)
+                        combine_variables = combine_variables,
+                        ecdf_alpha = ecdf_alpha,
+                        show_hidden = show_hidden,
+                        ...)
 
   if(ecdf_data$N < 50 && is.null(K)) {
     message("With less than 50 simulations, we recommend using plot_ecdf as it has better fidelity.\n",
@@ -348,6 +363,7 @@ data_for_ecdf_plots.data.frame <- function(x, variables = NULL,
                                            gamma = NULL,
                                            K = NULL,
                                            max_rank = x$max_rank,
+                                           show_hidden = FALSE,
                                            ...,
                                            parameters = NULL) {
 
@@ -378,7 +394,7 @@ data_for_ecdf_plots.data.frame <- function(x, variables = NULL,
                    "The stats data.frame needs a 'variable', 'rank' and 'sim_id' columns"))
   }
 
-  stats <- filter_stats_by_variables_and_hidden(x, variables)
+  stats <- filter_stats_by_variables_and_hidden(x, variables, show_hidden)
 
   if(is.null(max_rank)) {
     stop("max_rank either has to be supplied explicitly or be a column in the data")
@@ -572,7 +588,7 @@ combine_array_elements <- function(x) {
 #' @param parameters DEPRECATED, use `variables` instead.
 #' @return a ggplot2 plot object
 #' @export
-plot_contraction <- function(x, prior_sd, variables = NULL, scale = "sd", alpha = 0.8, parameters = NULL) {
+plot_contraction <- function(x, prior_sd, variables = NULL, scale = "sd", alpha = 0.8, ...,  parameters = NULL) {
   UseMethod("plot_contraction")
 }
 
@@ -588,8 +604,10 @@ plot_contraction.SBC_results <- function(x, prior_sd, variables = NULL, scale = 
   plot_contraction(x$stats, prior_sd = prior_sd, variables = variables, alpha = alpha)
 }
 
+#' @param show_hidden Show variables marked with [hidden_var_attribute()]
+#'    (by default, those are not shown, available only when `x` is a data.frame)
 #' @export
-plot_contraction.data.frame <- function(x, prior_sd, variables = NULL, scale = "sd", alpha = 0.8, parameters = NULL) {
+plot_contraction.data.frame <- function(x, prior_sd, variables = NULL, scale = "sd", alpha = 0.8, show_hidden = FALSE, parameters = NULL) {
   if(!is.null(parameters)) {
     warning("The `parameters` argument is deprecated use `variables` instead.")
     if(is.null(variables)) {
@@ -613,7 +631,7 @@ plot_contraction.data.frame <- function(x, prior_sd, variables = NULL, scale = "
     stop("prior_sd has to be a named vector")
   }
 
-  x <- filter_stats_by_variables_and_hidden(x, variables)
+  x <- filter_stats_by_variables_and_hidden(x, variables, show_hidden)
 
   if(!is.null(variables)) {
     prior_sd <- prior_sd[names(prior_sd) %in% variables]
@@ -660,14 +678,14 @@ plot_contraction.data.frame <- function(x, prior_sd, variables = NULL, scale = "
 #' @export
 plot_sim_estimated <- function(x, variables = NULL, estimate = "mean",
                                uncertainty = c("q5", "q95"),
-                               alpha = NULL, parameters = NULL) {
+                               alpha = NULL, ..., parameters = NULL) {
   UseMethod("plot_sim_estimated")
 }
 
 #' @export
 plot_sim_estimated.SBC_results <- function(x, variables = NULL, estimate = "mean",
                                            uncertainty = c("q5", "q95"),
-                                           alpha = NULL, parameters = NULL) {
+                                           alpha = NULL, ..., parameters = NULL) {
   if(!is.null(parameters)) {
     warning("The `parameters` argument is deprecated use `variables` instead.")
     if(is.null(variables)) {
@@ -676,13 +694,17 @@ plot_sim_estimated.SBC_results <- function(x, variables = NULL, estimate = "mean
   }
 
   plot_sim_estimated(x$stats, variables = variables, estimate = estimate,
-                     uncertainty = uncertainty, alpha = alpha)
+                     uncertainty = uncertainty, alpha = alpha, ...)
 }
 
+#' @param show_hidden Show variables marked with [hidden_var_attribute()]
+#'    (by default, those are not shown, available only when `x` is a data.frame)
 #' @export
 plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean",
                                           uncertainty = c("q5", "q95"),
-                                          alpha = NULL, parameters = NULL) {
+                                          alpha = NULL,
+                                          show_hidden = FALSE,
+                                          parameters = NULL) {
 
   if(!is.null(parameters)) {
     warning("The `parameters` argument is deprecated use `variables` instead.")
@@ -704,7 +726,7 @@ plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean"
     stop("The data.frame needs to have the following columns: ", paste0("'", required_columns, "'", collapse = ", "))
   }
 
-  x <- filter_stats_by_variables_and_hidden(x, variables)
+  x <- filter_stats_by_variables_and_hidden(x, variables, show_hidden)
 
   if(is.null(alpha)) {
     n_points <- dplyr::summarise(dplyr::group_by(x, variable), count = dplyr::n())
@@ -763,14 +785,15 @@ plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean"
 #' @seealso empirical_coverage
 #' @export
 plot_coverage <- function(x, variables = NULL, prob = 0.95,
-                          interval_type = "central", parameters = NULL,
+                          interval_type = "central", ..., parameters = NULL,
                           max_points = NULL) {
   UseMethod("plot_coverage")
 }
 
 #' @export
 plot_coverage.SBC_results <- function(x, variables = NULL, prob = 0.95,
-                                      interval_type = "central", parameters = NULL,
+                                      interval_type = "central", ...,
+                                      parameters = NULL,
                                       max_points = NULL) {
 
   if(!is.null(parameters)) {
@@ -781,12 +804,14 @@ plot_coverage.SBC_results <- function(x, variables = NULL, prob = 0.95,
   }
 
   plot_coverage(x$stats, variables = variables, prob = prob, interval_type = interval_type,
-                max_points = max_points)
+                max_points = max_points, ...)
 }
 
 #' @export
 plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
-                                     interval_type = "central", parameters = NULL,
+                                     interval_type = "central",
+                                     show_hidden = FALSE,
+                                     parameters = NULL,
                                      max_points = NULL) {
 
   # Ensuring backwards compatibility
@@ -809,7 +834,7 @@ plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
     }
   }
 
-  x <- filter_stats_by_variables_and_hidden(x, variables)
+  x <- filter_stats_by_variables_and_hidden(x, variables, show_hidden)
 
   max_max_rank <- max(x$max_rank)
   if(is.null(max_points) || max_max_rank + 2 <= max_points) {
@@ -835,7 +860,9 @@ plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
 #' @rdname plot_coverage
 #' @export
 plot_coverage_diff <- function(x, variables = NULL, prob = 0.95,
-                          interval_type = "central", parameters = NULL,
+                          interval_type = "central",
+                          ...,
+                          parameters = NULL,
                           max_points = NULL) {
   UseMethod("plot_coverage_diff")
 }
@@ -843,21 +870,24 @@ plot_coverage_diff <- function(x, variables = NULL, prob = 0.95,
 #' @export
 plot_coverage_diff.SBC_results <- function(x, variables = NULL, prob = 0.95,
                                       interval_type = "central",
+                                      ...,
                                       max_points = NULL) {
   plot_coverage_diff(x$stats, variables = variables, prob = prob,
-                     interval_type = interval_type, max_points = max_points)
+                     interval_type = interval_type, max_points = max_points, ...)
 }
 
 #' @export
 plot_coverage_diff.data.frame <- function(x, variables = NULL, prob = 0.95,
-                                     interval_type = "central", parameters = NULL,
+                                     interval_type = "central",
+                                     show_hidden = FALSE,
+                                     parameters = NULL,
                                      max_points = NULL) {
   if(!all(c("variable", "rank", "max_rank") %in% names(x))) {
     stop(SBC_error("SBC_invalid_argument_error",
                    "The stats data.frame needs a 'variable', 'rank' and 'max_rank' columns"))
   }
 
-  x <- filter_stats_by_variables_and_hidden(x, variables)
+  x <- filter_stats_by_variables_and_hidden(x, variables, show_hidden)
 
   max_max_rank <- max(x$max_rank)
   if(is.null(max_points) || max_max_rank + 2 <= max_points) {

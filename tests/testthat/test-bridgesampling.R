@@ -27,3 +27,25 @@ test_that("combine_draws_matrix_for_bf", {
     .m1.c = c(NA, 60, NA, 80))
   expect_identical(res_NA_raw, target_NA_raw)
 })
+
+
+test_that("combine_var_attributes_for_bf", {
+  dm0 <- posterior::draws_matrix("a" = c(1,2,3,4), "b[0]" = c(5,6,7,8), "b[1]" = c(9,10,11,12))
+  dm1 <- posterior::draws_matrix("a" = c(10,20,30,40), "c" = c(50, 60, 70, 80))
+  var_attr0 <- var_attributes(a = binary_var_attribute())
+  var_attr1 <- var_attributes(c = c(possibly_constant_var_attribute(), hidden_var_attribute()))
+
+  expect_identical(
+    combine_var_attributes_for_bf(dm0, dm1, var_attr0, var_attr1, model = "mmm"),
+    var_attributes(
+      .m0.a = c(hidden_var_attribute(), na_valid_var_attribute(), binary_var_attribute()),
+      .m0.b = c(hidden_var_attribute(), na_valid_var_attribute()),
+      .m1.a = c(hidden_var_attribute(), na_valid_var_attribute()),
+      .m1.c = c(hidden_var_attribute(), na_valid_var_attribute(), possibly_constant_var_attribute(), hidden_var_attribute()),
+      a = binary_var_attribute(),
+      b = na_lowest_var_attribute(),
+      c = c(na_lowest_var_attribute(), possibly_constant_var_attribute(), hidden_var_attribute()),
+      mmm = c(binary_var_attribute(), possibly_constant_var_attribute())
+    )
+  )
+})

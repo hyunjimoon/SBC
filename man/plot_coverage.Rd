@@ -10,6 +10,7 @@ plot_coverage(
   variables = NULL,
   prob = 0.95,
   interval_type = "central",
+  ...,
   parameters = NULL,
   max_points = NULL
 )
@@ -19,6 +20,7 @@ plot_coverage_diff(
   variables = NULL,
   prob = 0.95,
   interval_type = "central",
+  ...,
   parameters = NULL,
   max_points = NULL
 )

@@ -33,7 +33,10 @@ compute_default_diagnostics <- function(stats) {
     stats$attributes <- ""
   }
   eligible_for_check <- function(value, attributes) {
-    value[!is.na(value) | !attribute_present_stats(possibly_constant_var_attribute(), attributes)]
+    value[!is.na(value)
+          | !attribute_present_stats(possibly_constant_var_attribute(), attributes)
+          | !attribute_present_stats(na_valid_var_attribute(), attributes)
+          ]
   }
 
   should_check_na <- function(attributes) {

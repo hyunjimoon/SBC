@@ -10,6 +10,7 @@ plot_sim_estimated(
   estimate = "mean",
   uncertainty = c("q5", "q95"),
   alpha = NULL,
+  ...,
   parameters = NULL
 )
 }
