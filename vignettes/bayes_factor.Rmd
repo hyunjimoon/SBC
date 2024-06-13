@@ -223,9 +223,12 @@ plot_ecdf_diff(stats_test0, variables = c(paste0("alpha",0:1,""), paste0(".m0.al
 
 
 ```{r}
-sim_beta_binom <- function(N, shape1, shape2) {
+sim_beta_binom <- function(N, shape1, shape2, two_theta = FALSE) {
 
   theta <- rbeta(1, shape1, shape2)
+  if(two_theta){
+    theta
+  }
 
   list(
     generated = list(
@@ -283,5 +286,111 @@ plot_ecdf_diff(res_custom, show_hidden = TRUE)
 
 res_custom$stats
 res_custom$backend_diagnostics
+```
+
+## Custom BF for extra tests
+
+```{r}
+sim_beta_binom2 <- function(N, shape1, shape2, single_theta = TRUE) {
+
+  theta <- rbeta(1, shape1, shape2)
+  variables <- list(
+      theta = theta
+  )
+
+  if(single_theta) {
+    theta2 <- theta
+  } else {
+    theta2 <- rbeta(1, shape1, shape2)
+    variables$theta2 <- theta2
+  }
+  
+  
+  
+  list(
+    generated = list(
+      N = N,
+      y = rbinom(2, size = N, prob = c(theta, theta2))
+      ),
+    variables = variables
+  )
+}
+
+n_sims <- 5000
+ds_custom2_m0 <- generate_datasets(SBC_generator_function(sim_beta_binom2, N = 100, shape1 = 1, shape2 = 1), n_sims = n_sims)
+ds_custom2_m1 <- generate_datasets(SBC_generator_function(sim_beta_binom2, N = 100, shape1 = 1, shape2 = 1, single_theta = FALSE), n_sims = n_sims)
+ds_custom2 <- SBC_datasets_for_bf(ds_custom2_m0, ds_custom2_m1)
+```
+
+```{r}
+backend_beta_binom2 <- function(shape1, shape2, single_theta = TRUE, ndraws = 5000){
+  structure(list(shape1 = shape1, shape2 = shape2, single_theta = single_theta, ndraws = ndraws), class = "SBC_backend_beta_binom2")
+}
+
+SBC_fit.SBC_backend_beta_binom2 <- function(backend, generated, cores) {
+  if(backend$single_theta) {
+    draws <- rbeta(backend$ndraws, backend$shape1 + sum(generated$y), backend$shape2 + 2 * generated$N - sum(generated$y))
+    posterior::draws_matrix("theta" = draws)
+  } else {
+    draws1 <- rbeta(backend$ndraws, backend$shape1 + generated$y[1], backend$shape2 + generated$N - generated$y[1])
+    draws2 <- rbeta(backend$ndraws, backend$shape1 + generated$y[2], backend$shape2 + generated$N - generated$y[2])
+    posterior::draws_matrix("theta" = draws1, "theta2" = draws2)
+    
+  }
+}
+
+SBC_fit_to_bridge_sampler.SBC_backend_beta_binom2 <- function(backend, fit, generated, ...) {
+  log_posterior_func <- function(draws.row, data) {
+    if(backend$single_theta) {
+      dbinom(sum(generated$y), size = 2 * generated$N, prob = draws.row["theta"])
+    } else {
+      dbinom(generated$y[1], size = generated$N, prob = draws.row["theta"]) + 
+        dbinom(generated$y[2], size = generated$N, prob = draws.row["theta2"])
+    }
+  }
+  
+  if(backend$single_theta) {
+    lb <- c("theta" = 0)
+    ub <- c("theta" = 1)
+  } else {
+    lb <-  c("theta" = 0, "theta2" = 0)
+    ub <-  c("theta" = 1, "theta2" = 1)
+  }
+  
+  bridgesampling::bridge_sampler(fit, log_posterior = log_posterior_func,
+                                 data = generated, lb = lb, ub = ub)
+}
+
+SBC_backend_iid_draws.SBC_backend_beta_binom2 <- function(backend) {
+  TRUE
+}
+
+beta_binom2_globals <- c("SBC_fit.SBC_backend_beta_binom2", "SBC_fit_to_bridge_sampler.SBC_backend_beta_binom2", "SBC_backend_iid_draws.SBC_backend_beta_binom2")
+
+backend_bs_custom2 <- SBC_backend_bridgesampling(
+  backend_beta_binom2(1, 1),
+  backend_beta_binom2(1, 1, single_theta = FALSE)
+)
+```
+
+
+```{r}
+res_custom2 <- compute_SBC(ds_custom2, backend_bs_custom2, globals = beta_binom2_globals, keep_fits = FALSE)
+
+plot_ecdf_diff(res_custom2)
+plot_ecdf_diff(res_custom2, show_hidden = TRUE)
+
+res_custom2$stats
+res_custom2$backend_diagnostics
+```
+
+```{r}
+dm <- SBC_fit_to_draws_matrix( res_custom2$fits[[3]])
+as.numeric(dm[,"theta2"]) %>% is.na() %>% sum()
+```
+
+
+```{r}
+res_custom2$default_diagnostics
 ```
 

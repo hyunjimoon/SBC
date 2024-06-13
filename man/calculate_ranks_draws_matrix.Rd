@@ -4,25 +4,17 @@
 \alias{calculate_ranks_draws_matrix}
 \title{Calculate ranks given variable values within a posterior distribution.}
 \usage{
-calculate_ranks_draws_matrix(variables, dm, na_lowest = FALSE, params = NULL)
+calculate_ranks_draws_matrix(variables, dm, params = NULL)
 }
 \arguments{
 \item{variables}{a vector of values to check}
 
 \item{dm}{draws_matrix of the fit (assumed to be already thinned if that was necessary)}
 
-\item{na_lowest}{a logical, or a vector of logical the same length as variables.
-If \code{FALSE}, NA is assumed to be potentially equal to all values (this works
-well when NAs represent rare problems in computation). If \code{TRUE}, NA is
-assumed to lower than any non-NA values and equal to other NA values (this
-works well when NA is a special value indicating e.g. that the variable is
-not present at all in a given fit).}
-
 \item{params}{DEPRECATED. Use \code{variables} instead.}
 }
 \description{
 When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
 among the ties. Depending on \code{na_lowest},
-NA is either assumed to be lower than all non-NA values or
-potentially equal to any value.
+NA is assumed to be equal to any value.
 }

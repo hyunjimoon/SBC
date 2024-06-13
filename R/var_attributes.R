@@ -9,6 +9,7 @@ var_attributes_from_list <- function(attr_names, attr_list) {
   if(length(attr_names) == 0) {
     return(NULL)
   }
+  stopifnot(length(attr_list) == 1 || length(attr_list) == length(attr_names))
   if(length(attr_list) == 1 && length(attr_names) > 1) {
     attr_list <- rep(attr_list, length(attr_names))
   }
@@ -68,17 +69,20 @@ variable_names_to_var_attributes_names <- function(variable_names) {
 #' `hidden_var_attribute` will hide the variable in default visualisations,
 #' unless the variable is explicitly mentioned.
 #'
-#' `na_lowest_var_attribute` will treat NAs in the variable as the lowest
-#' in rank ordering. This gives the expected results when NA is a special value
-#' indicating e.g. that the variable is
-#' not present at all in a given fit. (see [calculate_ranks_draws_matrix()])
 #'
 #' `na_valid_var_attribute` will treat NAs as potentially equal to any
 #' other value in rank ordering. This gives the expected results when NA
 #' represents rare problems in computation that
 #' should be ignored (see [calculate_ranks_draws_matrix()]). Setting this
-#' attribute also silences warning for NAs in ranks.
+#' attribute also changes the ESS/Rhat computation to ignore NAs.
 #'
+#' `inf_valid_var_attribute` means infinity values may appear in the samples
+#' (this is useful e.g. to note that the parameter is actually not present for the
+#' given draw). Setting this
+#' attribute also changes the ESS/Rhat computation to ignore infinities.
+#'
+#' `submodel_var_attribute` signals that the parameter belongs to a submodel
+#' which can be extracted individually
 #'
 #' In SBC results, the attributes of a variable are summarised in the
 #' `attributes` column of the `$stats` data.frame. Use [attribute_present_stats()]
@@ -104,15 +108,23 @@ hidden_var_attribute <- function() {
 
 #' @rdname variable-attributes
 #' @export
-na_lowest_var_attribute <- function() {
-  "na_lowest"
+na_valid_var_attribute <- function() {
+  "na_valid"
+}
+
+
+#' @rdname variable-attributes
+#' @export
+inf_valid_var_attribute <- function() {
+  "inf_valid"
 }
 
 #' @rdname variable-attributes
 #' @export
-na_valid_var_attribute <- function() {
-  "na_valid"
+submodel_var_attribute <- function(sub_id) {
+  paste0("submodel(",sub_id,")")
 }
+
 
 #' Get attribute presence for a vector of variable names.
 #'

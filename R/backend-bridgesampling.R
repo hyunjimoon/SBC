@@ -26,16 +26,19 @@ combine_draws_matrix_for_bf <- function(dm0, dm1, model_draws, NA_raw_dm = FALSE
 
   all_variables_names <- unique(c(posterior::variables(dm0), posterior::variables(dm1)))
   list_all_vars <- list()
+
+  param_not_present <- -Inf
+
   for(v in all_variables_names) {
     if(v %in% posterior::variables(dm0)) {
       var0 <- as.numeric(dm0[, v])
     } else {
-      var0 <- NA_real_
+      var0 <- param_not_present
     }
     if(v %in% posterior::variables(dm1)) {
       var1 <- as.numeric(dm1[, v])
     } else {
-      var1 <- NA_real_
+      var1 <- param_not_present
     }
     list_all_vars[[v]] <- dplyr::if_else(model_draws == 0, var0, var1)
   }
@@ -58,31 +61,34 @@ combine_var_attributes_for_bf <- function(dm0, dm1, var_attr0, var_attr1, model_
   stopifnot(is.character(model_var) & length(model_var) == 1)
 
 
-  raw_attrs <- function(dm, orig_attr, prefix) {
+  raw_attrs <- function(dm, orig_attr, model_id) {
     attr_names <- variable_names_to_var_attributes_names(posterior::variables(dm))
 
-    new_attr_vec <- c(hidden_var_attribute(), na_valid_var_attribute())
+    new_attr_vec <- c(hidden_var_attribute(), submodel_var_attribute(model_id))
     new_attr <- var_attributes_from_list(attr_names, list(new_attr_vec))
 
     attr_combined <- combine_var_attributes(new_attr, orig_attr)
+    prefix <- paste0(".m", model_id, ".")
     names(attr_combined) <- paste0(prefix, names(attr_combined))
 
     return(attr_combined)
   }
 
-  raw_attr0 <- raw_attrs(dm0, var_attr0, ".m0.")
-  raw_attr1 <- raw_attrs(dm1, var_attr1, ".m1.")
+  raw_attr0 <- raw_attrs(dm0, var_attr0, 0)
+  raw_attr1 <- raw_attrs(dm1, var_attr1, 1)
 
   single_model_variables <- c(
     setdiff(posterior::variables(dm0), posterior::variables(dm1)),
     setdiff(posterior::variables(dm1), posterior::variables(dm0))
   )
+  single_model_attr <- var_attributes_from_list(single_model_variables, list(inf_valid_var_attribute()))
 
   attr_model <- var_attributes(model = c(binary_var_attribute(), possibly_constant_var_attribute()))
   names(attr_model) <- model_var
 
   return(
     combine_var_attributes(attr_model,
+                           single_model_attr,
                            var_attr0,
                            var_attr1,
                            raw_attr0,

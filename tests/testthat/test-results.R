@@ -176,24 +176,6 @@ test_that("calculate_ranks_draws_matrix infinity NA", {
   expect_true(all(0:5 %in% all_ranks[,4]))
   expect_true(all(0:5 %in% all_ranks[,5]))
   expect_true(all(0:1 %in% all_ranks[,6]))
-
-  # Now with na_lowest = TRUE
-  N_steps <- 200
-  all_ranks <- matrix(NA_real_, nrow = N_steps, ncol = ncol(dm))
-  for(i in 1:N_steps) {
-    last_ranks <- calculate_ranks_draws_matrix(vars, dm, na_lowest = TRUE)
-    all_ranks[i,] <- last_ranks
-
-  }
-  expect_true(!any(is.na(all_ranks)))
-
-  expect_true(all(all_ranks[,1] <= 2))
-  expect_true(all(0:2 %in% all_ranks[,1]))
-  expect_true(all(all_ranks[,2] == 0))
-  expect_true(all(all_ranks[,3] == 5))
-  expect_true(all(0:5 %in% all_ranks[,4]))
-  expect_true(all(0:5 %in% all_ranks[,5]))
-  expect_true(all(0:1 %in% all_ranks[,6]))
 })
 
 test_that("calculate_sds_draws_matrix", {

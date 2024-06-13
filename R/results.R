@@ -35,12 +35,11 @@ compute_default_diagnostics <- function(stats) {
   eligible_for_check <- function(value, attributes) {
     value[!is.na(value)
           | !attribute_present_stats(possibly_constant_var_attribute(), attributes)
-          | !attribute_present_stats(na_valid_var_attribute(), attributes)
           ]
   }
 
   should_check_na <- function(attributes) {
-    !attribute_present_stats(na_valid_var_attribute(), attributes) & !attribute_present_stats(na_lowest_var_attribute(), attributes)
+    !attribute_present_stats(na_valid_var_attribute(), attributes)
   }
 
   val <- dplyr::summarise(dplyr::group_by(stats, sim_id),
@@ -839,22 +838,51 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
 
   # Make sure the order of variables matches
   variables <- posterior::subset_draws(variables, variable = shared_vars)
-
-
   fit_matrix <- posterior::subset_draws(fit_matrix, variable = shared_vars)
 
   fit_thinned <- posterior::thin_draws(fit_matrix, thin_ranks)
 
 
+  stats <- data.frame(variable = shared_vars,
+                      mean = NA,
+                      sd = NA,
+                      q5 = NA,
+                      median = NA,
+                      q95 = NA,
+                      rhat = NA,
+                      ess_bulk = NA,
+                      ess_tail = NA)
 
-  if(SBC_backend_iid_draws(backend)) {
-    stats <- posterior::summarise_draws(fit_matrix, posterior::default_summary_measures())
-    ## iid draws have the bestest diagnostics by construction
-    stats$rhat <- 1
-    stats$ess_bulk <- posterior::ndraws(fit_matrix)
-    stats$ess_tail <- posterior::ndraws(fit_matrix)
-  } else {
-    stats <- posterior::summarise_draws(fit_matrix)
+  na_valid <- attribute_present(na_valid_var_attribute(), shared_vars, var_attributes)
+  inf_valid <- attribute_present(inf_valid_var_attribute(), shared_vars, var_attributes)
+  for(i in 1:length(shared_vars)) {
+    var <- shared_vars[i]
+    var_draws <- fit_matrix[,var]
+    stats$mean[i] <- mean(var_draws, na.rm = na_valid[i])
+    stats$sd[i] <- sd(var_draws, na.rm = na_valid[i])
+    stats$q5[i] <- quantile(var_draws, prob = 0.05, na.rm = na_valid[i])
+    stats$median[i] <- median(var_draws, na.rm = na_valid[i])
+    stats$q95[i] <- quantile(var_draws, prob = 0.95, na.rm = na_valid[i])
+
+    if(SBC_backend_iid_draws(backend)) {
+      ## iid draws have the bestest diagnostics by construction
+      stats$rhat[i] <- 1
+      stats$ess_bulk[i] <- posterior::ndraws(fit_matrix)
+      stats$ess_tail[i] <- posterior::ndraws(fit_matrix)
+    } else {
+      draws_for_diags <- var_draws
+      if(inf_valid[i]) {
+        finite_draws <- draws_for_diags[is.finite(draws_for_diags)]
+        draws_for_diags[draws_for_diags == -Inf] <- min(finite_draws) - 1
+        draws_for_diags[draws_for_diags == +Inf] <- max(finite_draws) + 1
+      }
+      if(na_valid[i]) {
+        draws_for_diags[is.na(draws_for_diags)] <- median(draws_for_diags)
+      }
+      stats$rhat[i] <- posterior::rhat(draws_for_diags)
+      stats$ess_bulk[i] <- posterior::ess_bulk(draws_for_diags)
+      stats$ess_tail[i] <- posterior::ess_tail(draws_for_diags)
+    }
   }
 
   stats$simulated_value <- as.numeric(variables)
@@ -874,15 +902,14 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
     }
   }
 
-  na_lowest <- attribute_present(na_lowest_var_attribute(), posterior::variables(variables), var_attributes)
-  ranks <- calculate_ranks_draws_matrix(variables, fit_thinned, na_lowest = na_lowest)
+  ranks <- calculate_ranks_draws_matrix(variables, fit_thinned)
   if(!identical(stats$variable, names(ranks))) {
     stop("A naming conflict")
   }
   stats$rank <- ranks
   stats$max_rank <- attr(ranks, "max_rank")
   stats$z_score <- (stats$simulated_value - stats$mean) / stats$sd
-  stats$has_na <- as.logical(is.na(variables)) | apply(fit_thinned, MARGIN = 2, FUN = \(x) any(is.na(x)))
+  stats$has_na <- as.logical(apply(fit_thinned, MARGIN = 2, FUN = \(x) any(is.na(x))))
 
   stats <- dplyr::select(
     stats, variable, simulated_value, rank, z_score, tidyselect::everything())
@@ -1032,19 +1059,12 @@ rdunif <- function(n, a, b) {
 #'
 #' When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
 #' among the ties. Depending on `na_lowest`,
-#' NA is either assumed to be lower than all non-NA values or
-#' potentially equal to any value.
+#' NA is assumed to be equal to any value.
 #' @param variables a vector of values to check
 #' @param dm draws_matrix of the fit (assumed to be already thinned if that was necessary)
-#' @param na_lowest a logical, or a vector of logical the same length as variables.
-#' If `FALSE`, NA is assumed to be potentially equal to all values (this works
-#' well when NAs represent rare problems in computation). If `TRUE`, NA is
-#' assumed to lower than any non-NA values and equal to other NA values (this
-#' works well when NA is a special value indicating e.g. that the variable is
-#' not present at all in a given fit).
 #' @param params DEPRECATED. Use `variables` instead.
 #' @export
-calculate_ranks_draws_matrix <- function(variables, dm, na_lowest = FALSE, params = NULL) {
+calculate_ranks_draws_matrix <- function(variables, dm, params = NULL) {
 
   if(!is.null(params)) {
     warning("The `params` argument is deprecated use `variables` instead.")
@@ -1055,48 +1075,23 @@ calculate_ranks_draws_matrix <- function(variables, dm, na_lowest = FALSE, param
 
   stopifnot(posterior::is_draws_matrix(dm))
   stopifnot(posterior::nvariables(dm) == length(variables))
-  stopifnot(is.logical(na_lowest))
-  stopifnot(length(na_lowest) == 1 || length(na_lowest) == length(variables))
 
   max_rank <- posterior::ndraws(dm)
   nvars <- posterior::nvariables(dm)
-  if(length(na_lowest) == 1) {
-    na_lowest <- rep(na_lowest, nvars)
-  }
 
-  rank_min <- integer(nvars)
-  rank_range <- integer(nvars)
-
-
-  # Wtih na_lowest NA is assumed to be lower than all values except NA
-  # This lets us use NA to fill variables that don't exist in all fits.
-  less_with_na_lowest <- function(a, b) {
-    (is.na(a) & !is.na(b)) | (!is.na(a) & !is.na(b) & a < b)
-  }
-
-  equal_with_na_lowest <- function(a,b) {
-    (is.na(a) & is.na(b)) | a == b
-  }
-
-  # Otherwise, NA is assumed to be potentially equal to any value (Issue #78)
-  equal_or_NA <- function(a,b) {
-    is.na(a) | is.na(b) | a == b
-  }
-
-  for(i in 1:nvars) {
-    if(na_lowest[i]) {
-      rank_min[i] <- sum(less_with_na_lowest(dm[,i], variables[i]), na.rm = TRUE)
-      rank_range[i] <- sum(equal_with_na_lowest(variables[i], dm[,i]), na.rm = TRUE)
-    } else {
-      rank_min[i] <- sum(dm[,i] < variables[i], na.rm = TRUE)
-      rank_range[i] <- sum(equal_or_NA(variables[i], dm[,i]), na.rm = TRUE)
-    }
-  }
+  less_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = "<")
+  rank_min <- colSums(less_matrix, na.rm = TRUE)
 
   # When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
   # among the ties
+  # NA is assumed to be potentially equal to any value (Issue #78)
+  equal_or_NA <- function(a,b) {
+    is.na(a) | is.na(b) | a == b
+  }
+  equal_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = equal_or_NA)
+  rank_range <- colSums(equal_matrix)
+
   ranks <- rank_min + rdunif(posterior::nvariables(dm), a = 0, b = rank_range)
-  names(ranks) <- posterior::variables(dm)
 
   attr(ranks, "max_rank") <- max_rank
   ranks

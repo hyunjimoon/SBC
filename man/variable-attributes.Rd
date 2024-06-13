@@ -6,8 +6,9 @@
 \alias{possibly_constant_var_attribute}
 \alias{binary_var_attribute}
 \alias{hidden_var_attribute}
-\alias{na_lowest_var_attribute}
 \alias{na_valid_var_attribute}
+\alias{inf_valid_var_attribute}
+\alias{submodel_var_attribute}
 \title{Predefined constants to use for variable attributes recognized by SBC.}
 \usage{
 var_attributes(...)
@@ -20,9 +21,11 @@ binary_var_attribute()
 
 hidden_var_attribute()
 
-na_lowest_var_attribute()
-
 na_valid_var_attribute()
+
+inf_valid_var_attribute()
+
+submodel_var_attribute(sub_id)
 }
 \description{
 Attributes give additional information useful for presenting SBC results
@@ -43,16 +46,19 @@ and thus eligible for some special visualisations (TODO).
 \code{hidden_var_attribute} will hide the variable in default visualisations,
 unless the variable is explicitly mentioned.
 
-\code{na_lowest_var_attribute} will treat NAs in the variable as the lowest
-in rank ordering. This gives the expected results when NA is a special value
-indicating e.g. that the variable is
-not present at all in a given fit. (see \code{\link[=calculate_ranks_draws_matrix]{calculate_ranks_draws_matrix()}})
-
 \code{na_valid_var_attribute} will treat NAs as potentially equal to any
 other value in rank ordering. This gives the expected results when NA
 represents rare problems in computation that
 should be ignored (see \code{\link[=calculate_ranks_draws_matrix]{calculate_ranks_draws_matrix()}}). Setting this
-attribute also silences warning for NAs in ranks.
+attribute also changes the ESS/Rhat computation to ignore NAs.
+
+\code{inf_valid_var_attribute} means infinity values may appear in the samples
+(this is useful e.g. to note that the parameter is actually not present for the
+given draw). Setting this
+attribute also changes the ESS/Rhat computation to ignore infinities.
+
+\code{submodel_var_attribute} signals that the parameter belongs to a submodel
+which can be extracted individually
 
 In SBC results, the attributes of a variable are summarised in the
 \code{attributes} column of the \verb{$stats} data.frame. Use \code{\link[=attribute_present_stats]{attribute_present_stats()}}
