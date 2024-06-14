@@ -197,6 +197,11 @@ res_turtles_2 <- compute_SBC(ds_turtles_2, backend_turtles,
 ```
 
 ```{r}
+plot_binary_calibration_diff(res_turtles_all$stats)
+```
+
+
+```{r}
 res_turtles_all <- bind_results(res_turtles, res_turtles_2)
 plot_ecdf_diff(res_turtles_all)
 ```
@@ -241,7 +246,7 @@ sim_beta_binom <- function(N, shape1, shape2, two_theta = FALSE) {
   )
 }
 
-n_sims <- 500
+n_sims <- 5000
 ds_custom_m0 <- generate_datasets(SBC_generator_function(sim_beta_binom, N = 30, shape1 = 1, shape2 = 1), n_sims = n_sims)
 ds_custom_m1 <- generate_datasets(SBC_generator_function(sim_beta_binom, N = 30, shape1 = 6, shape2 = 1), n_sims = n_sims)
 ds_custom <- SBC_datasets_for_bf(ds_custom_m0, ds_custom_m1)
@@ -259,7 +264,8 @@ SBC_fit.SBC_backend_beta_binom <- function(backend, generated, cores) {
 
 SBC_fit_to_bridge_sampler.SBC_backend_beta_binom <- function(backend, fit, generated, ...) {
   log_posterior_func <- function(draws.row, data) {
-    dbinom(generated$y, size = generated$N, prob = draws.row["theta"])
+    dbeta(draws.row["theta"], backend$shape1, backend$shape2, log = TRUE) +
+    dbinom(generated$y, size = generated$N, prob = draws.row["theta"], log = TRUE)
   }
   bridgesampling::bridge_sampler(fit, log_posterior = log_posterior_func,
                                  data = generated, lb = c("theta" = 0), ub = c("theta" = 1))
@@ -284,9 +290,18 @@ res_custom <- compute_SBC(ds_custom, backend_bs_custom, globals = beta_binom_glo
 plot_ecdf_diff(res_custom)
 plot_ecdf_diff(res_custom, show_hidden = TRUE)
 
+plot_coverage_diff(res_custom, show_hidden = TRUE)
+
 res_custom$stats
 res_custom$backend_diagnostics
+
+plot_binary_calibration_diff(res_custom$stats)
 ```
+
+```{r}
+hist(res_custom$backend_diagnostics$prob_H1)
+```
+
 
 ## Custom BF for extra tests
 
@@ -340,25 +355,35 @@ SBC_fit.SBC_backend_beta_binom2 <- function(backend, generated, cores) {
 }
 
 SBC_fit_to_bridge_sampler.SBC_backend_beta_binom2 <- function(backend, fit, generated, ...) {
-  log_posterior_func <- function(draws.row, data) {
-    if(backend$single_theta) {
-      dbinom(sum(generated$y), size = 2 * generated$N, prob = draws.row["theta"])
-    } else {
-      dbinom(generated$y[1], size = generated$N, prob = draws.row["theta"]) + 
-        dbinom(generated$y[2], size = generated$N, prob = draws.row["theta2"])
-    }
-  }
-  
+  print(fit)
   if(backend$single_theta) {
+    log_posterior_func <- function(draws.row, data) {
+      log(draws.row["theta"]) + log1p(-draws.row["theta"]) +
+      dbeta(draws.row["theta"], backend$shape1, backend$shape2, log = TRUE) +
+      dbinom(sum(generated$y), size = 2 * generated$N, prob = draws.row["theta"], log = TRUE)
+    } 
+    
     lb <- c("theta" = 0)
     ub <- c("theta" = 1)
+    print(log_posterior_func(c("theta" = 0.3), generated))
   } else {
+    log_posterior_func <- function(draws.row, data) {
+      dbeta(draws.row["theta"], backend$shape1, backend$shape2, log = TRUE) +
+      dbeta(draws.row["theta2"], backend$shape1, backend$shape2, log = TRUE) +
+      dbinom(generated$y[1], size = generated$N, prob = draws.row["theta"], log = TRUE) + 
+        dbinom(generated$y[2], size = generated$N, prob = draws.row["theta2"], log = TRUE)
+    }
     lb <-  c("theta" = 0, "theta2" = 0)
     ub <-  c("theta" = 1, "theta2" = 1)
+    print(log_posterior_func(c("theta" = 0.3, "theta2" = 0.3), generated))
   }
   
-  bridgesampling::bridge_sampler(fit, log_posterior = log_posterior_func,
+  
+  bs <- bridgesampling::bridge_sampler(fit, log_posterior = log_posterior_func,
                                  data = generated, lb = lb, ub = ub)
+  
+  print(bridgesampling::logml(bs))
+  return(bs)
 }
 
 SBC_backend_iid_draws.SBC_backend_beta_binom2 <- function(backend) {
@@ -375,7 +400,7 @@ backend_bs_custom2 <- SBC_backend_bridgesampling(
 
 
 ```{r}
-res_custom2 <- compute_SBC(ds_custom2, backend_bs_custom2, globals = beta_binom2_globals, keep_fits = FALSE)
+res_custom2 <- compute_SBC(ds_custom2[1:3], backend_bs_custom2, globals = beta_binom2_globals, keep_fits = FALSE)
 
 plot_ecdf_diff(res_custom2)
 plot_ecdf_diff(res_custom2, show_hidden = TRUE)
@@ -383,6 +408,18 @@ plot_ecdf_diff(res_custom2, show_hidden = TRUE)
 res_custom2$stats
 res_custom2$backend_diagnostics
 ```
+
+```{r}
+res_custom2$outputs %>% purrr::walk(\(x) { cat("=======\n"); cat(x, sep = "\n")})
+```
+
+
+```{r}
+hist(res_custom2$backend_diagnostics$prob_H1)
+plot_coverage_diff(res_custom2, show_hidden = TRUE)
+
+```
+
 
 ```{r}
 dm <- SBC_fit_to_draws_matrix( res_custom2$fits[[3]])

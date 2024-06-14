@@ -911,6 +911,16 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
   stats$z_score <- (stats$simulated_value - stats$mean) / stats$sd
   stats$has_na <- as.logical(apply(fit_thinned, MARGIN = 2, FUN = \(x) any(is.na(x))))
 
+  variables_dbl <- as.numeric(variables)
+  names(variables_dbl) <- posterior::variables(variables)
+  cdf_df <- SBC_posterior_cdf(fit, variables_dbl)
+  cdf_df <- validate_cdf_df(cdf_df, stats$variable)
+  if(!is.null(cdf_df)) {
+    stats <- dplyr::left_join(stats, cdf_df, by = "variable",
+                              unmatched = "error",
+                              multiple = "error")
+  }
+
   stats <- dplyr::select(
     stats, variable, simulated_value, rank, z_score, tidyselect::everything())
 

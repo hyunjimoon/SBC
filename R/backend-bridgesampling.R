@@ -77,11 +77,11 @@ combine_var_attributes_for_bf <- function(dm0, dm1, var_attr0, var_attr1, model_
   raw_attr0 <- raw_attrs(dm0, var_attr0, 0)
   raw_attr1 <- raw_attrs(dm1, var_attr1, 1)
 
-  single_model_variables <- c(
+  single_model_attr_names <- variable_names_to_var_attributes_names(c(
     setdiff(posterior::variables(dm0), posterior::variables(dm1)),
     setdiff(posterior::variables(dm1), posterior::variables(dm0))
-  )
-  single_model_attr <- var_attributes_from_list(single_model_variables, list(inf_valid_var_attribute()))
+  ))
+  single_model_attr <- var_attributes_from_list(single_model_attr_names, list(inf_valid_var_attribute()))
 
   attr_model <- var_attributes(model = c(binary_var_attribute(), possibly_constant_var_attribute()))
   names(attr_model) <- model_var
@@ -172,8 +172,15 @@ SBC_fit.SBC_backend_bridgesampling <- function(backend, generated, cores) {
     fit0 = fit0,
     fit1 = fit1,
     bridge_H0 = bridge_H0,
-    bridge_H1 = bridge_H1
+    bridge_H1 = bridge_H1,
+    model_var = backend$model_var
   ), class = "SBC_fit_bridgesampling")
+}
+
+SBC_fit_bridgesampling_to_prob1 <- function(fit) {
+  log_bf_01 <- bridgesampling::bf(fit$bridge_H0, fit$bridge_H1, log = TRUE)$bf
+  prob1 <- plogis(-log_bf_01)
+  return(prob1)
 }
 
 #' @export
@@ -190,20 +197,39 @@ SBC_fit_to_draws_matrix.SBC_fit_bridgesampling <- function(fit) {
     }
   }
 
-  logml0 <- bridgesampling::logml(fit$bridge_H0)
-  logml1 <- bridgesampling::logml(fit$bridge_H1)
-
-
-  log_bf_01 <- bridgesampling::bf(fit$bridge_H0, fit$bridge_H1, log = TRUE)$bf
-  prob1 <- plogis(-log_bf_01)
+  prob1 <- SBC_fit_bridgesampling_to_prob1(fit)
 
   total_draws <- posterior::ndraws(draws0)
 
   model_draws <- rbinom(n = total_draws, size = 1, prob = prob1)
 
-  combined_draws <- combine_draws_matrix_for_bf(draws0, draws1, model_draws)
+  combined_draws <- combine_draws_matrix_for_bf(draws0, draws1, model_draws, model_var = fit$model_var)
 
   return(combined_draws)
+}
+
+#' @export
+SBC_posterior_cdf.SBC_fit_bridgesampling <- function(fit, variables) {
+  if(fit$model_var %in% names(variables)) {
+    prob1 <- SBC_fit_bridgesampling_to_prob1(fit)
+    if(variables[fit$model_var] == 0) {
+      cdf_low <- 0
+      cdf_high <- prob1
+    } else if(variables[fit$model_var] == 1) {
+      cdf_low <- prob1
+      cdf_high <- 1
+    } else {
+      warning("SBC_posterior_cdf.SBC_fit_bridgesampling expects the model variable to be either 0 or 1")
+      cdf_low <- 0
+      cdf_high <- 0
+    }
+
+    return(data.frame(variable = fit$model_var,
+                      cdf_low = cdf_low,
+                      cdf_high = cdf_high))
+  } else {
+    return(NULL)
+  }
 }
 
 #' @export
@@ -211,9 +237,7 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
   diags0 <- SBC_fit_to_diagnostics(fit$fit0, fit_output, fit_messages, fit_warnings)
   diags1 <- SBC_fit_to_diagnostics(fit$fit1, fit_output, fit_messages, fit_warnings)
 
-
-  log_bf_01 <- bridgesampling::bf(fit$bridge_H0, fit$bridge_H1, log = TRUE)$bf
-  prob1 <- plogis(-log_bf_01)
+  prob1 <- SBC_fit_bridgesampling_to_prob1(fit)
 
   percentage_error0 <- bridgesampling::error_measures(fit$bridge_H0)$percentage
   percentage_error1 <- bridgesampling::error_measures(fit$bridge_H1)$percentage

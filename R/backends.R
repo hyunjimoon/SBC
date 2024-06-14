@@ -26,6 +26,57 @@ SBC_fit_to_draws_matrix.default <- function(fit) {
   posterior::as_draws_matrix(fit)
 }
 
+#' Use a fitted model to obtain a posterior CDF at a given point.
+#'
+#' Backends that represent explicit posterior distributions (i.e. not just samples)
+#' can implement this S3 generic to evaluate the CDF of that distribution at
+#' the simulated values.
+#'
+#' A backend may choose to return explicit CDF only for some model parameters.
+#' return from [SBC_fit()].
+#'
+#' @param fit an object returned by the [SBC_fit()] method.
+#' @param variables a named vector of values at which to evaluate the CDF
+#' @return either `NULL` (the default implementation) or a `data.frame`
+#' with a row for each variable. The columns must include:
+#' `variable` (variable name), and either `cdf` (if there are no ties) or the
+#' pair `cdf_low` and `cdf_high` indicate the possible tied values for the CDF.
+#'
+#' @export
+SBC_posterior_cdf <- function(fit, variables) {
+  UseMethod("SBC_posterior_cdf")
+}
+
+#' @rdname SBC_posterior_cdf
+#' @export
+SBC_posterior_cdf.default <- function(fit, variables) {
+  NULL
+}
+
+#' Validate the results of a SBC_posterior_cdf call.
+#' @keywords internal
+validate_cdf_df <- function(cdf_df, valid_variables) {
+  if(!is.null(cdf_df)) {
+    if(!is.data.frame(cdf_df)) {
+      stop("Result of SBC_posterior_cdf must either be NULL or a data.frame")
+    }
+    if(!("variable" %in% names(cdf_df))) {
+      stop("Result of SBC_posterior_cdf must have a 'variable' column.")
+    }
+    if(!(("cdf_low" %in% names(cdf_df)) || !("cdf_high" %in% names(cdf_df)))) {
+      if(!("cdf" %in% names(cdf_df))) {
+        stop("Result of SBC_posterior_cdf must either have a 'cdf' column or both a 'cdf_low' and a 'cdf_high' column.")
+      }
+    }
+    unknown_vars <- cdf_df$variable[!(cdf_df$variable %in% valid_variables)]
+    if(length(unknown_vars) > 0) {
+      stop(paste0("Result of SBC_posterior_cdf refers to unknown variables: ",
+                  paste0(unknown_vars, ", ")))
+    }
+  }
+  return(cdf_df)
+}
+
 #' S3 generic to get backend-specific diagnostics.
 #'
 #' The diagnostics object has to be a `data.frame` but may
