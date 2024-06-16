@@ -1,3 +1,4 @@
+#' @export
 binary_calibration_from_stats <- function(stats, method = "isotonic") {
   stats <- dplyr::filter(stats, attribute_present_stats(binary_var_attribute(), attributes))
   if(nrow(stats) == 0) {
@@ -20,6 +21,7 @@ binary_calibration_from_stats <- function(stats, method = "isotonic") {
   return(res)
 }
 
+#' @export
 binary_calibration_base <- function(prob, outcome, method = "isotonic") {
   stopifnot(is.numeric(prob) && is.numeric(outcome))
   stopifnot(all(outcome %in% c(0,1)))
@@ -67,6 +69,7 @@ binary_calibration_base <- function(prob, outcome, method = "isotonic") {
 }
 
 
+#' @export
 plot_binary_calibration_diff <- function(stats, method = "isotonic") {
   calib_df <- binary_calibration_from_stats(stats, method = method)
 
@@ -76,6 +79,7 @@ plot_binary_calibration_diff <- function(stats, method = "isotonic") {
     geom_line() + facet_wrap(~variable)
 }
 
+#' @export
 plot_binary_calibration <- function(stats, method = "isotonic") {
   calib_df <- binary_calibration_from_stats(stats, method = method)
 
