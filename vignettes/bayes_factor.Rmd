@@ -20,6 +20,7 @@ library(ggplot2)
 library(bridgesampling)
 library(dplyr)
 library(tidyr)
+library(calibrationband)
 
 use_cmdstanr <- FALSE
 library(rstan)
@@ -179,6 +180,13 @@ res_turtles$stats
 plot_ecdf_diff(res_turtles, combine_variables = combine_array_elements)
 plot_ecdf_diff(res_turtles, variables = c(".m1.sigma", paste0(".m1.b[",1:C,"]")), combine_variables = combine_array_elements)
 ```
+
+```{r}
+stats_split <- split_SBC_results_for_bf(res_turtles)
+plot_ecdf_diff(stats_split$stats_H0)
+plot_ecdf_diff(stats_split$stats_H1)
+```
+
 
 ```{r}
 set.seed(784522)

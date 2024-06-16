@@ -32,11 +32,14 @@ test_that("attribute_present_stats", {
   expect_true(attribute_present_stats("binary", "allow_na,binary, other"))
   expect_true(attribute_present_stats("binary", "allow_na, binary, other"))
   expect_true(attribute_present_stats("binary", "binary, binary, binary"))
+  expect_true(attribute_present_stats("submodel(0)", "binary, binary, submodel(0)"))
+  expect_true(attribute_present_stats("submodel(1)", "submodel(1), binary, binary"))
 
   expect_false(attribute_present_stats("binary", "allow_na"))
   expect_false(attribute_present_stats("binary", "binary2"))
   expect_false(attribute_present_stats("binary", "allow_binary, other"))
   expect_false(attribute_present_stats("binary", "allow_binary, other"))
+  expect_false(attribute_present_stats("submodel(0)", "submodel(1), binary, binary"))
 })
 
 test_that("var_attributes_to_attributes_column", {
@@ -88,4 +91,6 @@ test_that("remove_attribute_from_stats", {
   expect_identical(remove_attribute_from_stats("a", "a, b,c"), "b,c")
   expect_identical(remove_attribute_from_stats("b", "ab,b, cb,b,bbc"), "ab, cb,b,bbc")
   expect_identical(remove_attribute_from_stats("ab", "a,b,cab,ab"), "a,b,cab")
+  expect_identical(remove_attribute_from_stats("ab(44)", "a,b,cab,ab(44)"), "a,b,cab")
+  expect_identical(remove_attribute_from_stats("ab(44)", "a,b,cab,ab(21)"), "a,b,cab,ab(21)")
 })

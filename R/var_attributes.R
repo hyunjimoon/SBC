@@ -150,7 +150,9 @@ attribute_present <- function(attribute, variable_names, var_attr) {
 #' @export
 #'
 attribute_present_stats <- function(attribute, x) {
-  grepl(paste0("(^|,) *",attribute," *($|,)"), x)
+  stopifnot(is.character(attribute))
+  stopifnot(length(attribute) == 1)
+  grepl(paste0("(^|,) *\\Q",attribute,"\\E *($|,)"), x)
 }
 
 
@@ -196,7 +198,7 @@ combine_var_attributes <- function(...) {
 #'
 #' @export
 remove_attribute_from_stats <- function(attribute, x) {
-  res <- trimws(sub(paste0("(^|,) *",attribute," *($|,)"), "\\1", x))
+  res <- trimws(sub(paste0("(^|,) *\\Q",attribute,"\\E *($|,)"), "\\1", x))
   res_no_trail <- trimws(sub(",$", "", res))
   return(res_no_trail)
 }
