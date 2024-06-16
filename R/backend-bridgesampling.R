@@ -32,7 +32,7 @@ SBC_fit_to_bridge_sampler.SBC_backend_rstan_sample <- function(backend, fit, gen
 }
 
 #' @export
-SBC_fit_to_bridge_sampler.SBC_backend_brms <- function(backend, fit, ...) {
+SBC_fit_to_bridge_sampler.SBC_backend_brms <- function(backend, fit, generated, ...) {
   bridgesampling::bridge_sampler(fit, ...)
 }
 
