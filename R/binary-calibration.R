@@ -1,5 +1,5 @@
 #' @export
-binary_calibration_from_stats <- function(stats, method = "isotonic") {
+binary_probabilities_from_stats <- function(stats) {
   stats <- dplyr::filter(stats, attribute_present_stats(binary_var_attribute(), attributes))
   if(nrow(stats) == 0) {
     warning("No variables annotated with `binary_var_attribute()` found.")
@@ -14,6 +14,13 @@ binary_calibration_from_stats <- function(stats, method = "isotonic") {
   }
 
   stats <- dplyr::mutate(stats, prob = if_else(cdf_low == 0, cdf_high, cdf_low))
+
+  return(stats)
+}
+
+#' @export
+binary_calibration_from_stats <- function(stats, method = "isotonic") {
+  stats <- binary_probabilities_from_stats(stats)
 
   stats_grouped <- dplyr::group_by(stats, variable)
   res <- dplyr::reframe(stats_grouped, binary_calibration_base(prob, simulated_value, method = method))

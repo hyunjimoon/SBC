@@ -52,9 +52,9 @@ SBC_fit.SBC_backend_bridgesampling <- function(backend, generated, cores) {
   ), class = "SBC_fit_bridgesampling")
 }
 
-SBC_fit_bridgesampling_to_prob1 <- function(fit) {
+SBC_fit_bridgesampling_to_prob1 <- function(fit, log.p = FALSE) {
   log_bf_01 <- bridgesampling::bf(fit$bridge_H0, fit$bridge_H1, log = TRUE)$bf
-  prob1 <- plogis(-log_bf_01)
+  prob1 <- plogis(-log_bf_01, log.p = log.p)
   return(prob1)
 }
 
@@ -113,10 +113,11 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
   diags1 <- SBC_fit_to_diagnostics(fit$fit1, fit_output, fit_messages, fit_warnings)
 
   prob1 <- SBC_fit_bridgesampling_to_prob1(fit)
+  log_prob1 <- SBC_fit_bridgesampling_to_prob1(fit, log.p = TRUE)
 
   percentage_error0 <- bridgesampling::error_measures(fit$bridge_H0)$percentage
   percentage_error1 <- bridgesampling::error_measures(fit$bridge_H1)$percentage
-  diags_bs <- data.frame(prob_H1 = prob1, bs_error_H0 = percentage_error0, bs_error_H1 = percentage_error1)
+  diags_bs <- data.frame(prob_H1 = prob1, bs_error_H0 = percentage_error0, bs_error_H1 = percentage_error1, log_prob_H1 = log_prob1)
 
   if(!is.null(diags0)) {
     names(diags0) <- paste0(names(diags0), "_H0")
