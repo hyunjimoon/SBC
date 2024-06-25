@@ -916,9 +916,12 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
   cdf_df <- SBC_posterior_cdf(fit, variables_dbl)
   cdf_df <- validate_cdf_df(cdf_df, stats$variable)
   if(!is.null(cdf_df)) {
-    stats <- dplyr::left_join(stats, cdf_df, by = "variable",
+    stats <- tryCatch(
+      dplyr::left_join(stats, cdf_df, by = "variable",
                               unmatched = "error",
-                              multiple = "error")
+                              relationship = "one-to-one"),
+      error = function(e) { warning("Error when joining posterior CDF and stats default per-variable diagnostics. ", e); stats }
+      )
   }
 
   stats <- dplyr::select(

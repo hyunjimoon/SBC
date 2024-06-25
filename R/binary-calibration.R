@@ -19,17 +19,17 @@ binary_probabilities_from_stats <- function(stats) {
 }
 
 #' @export
-binary_calibration_from_stats <- function(stats, method = "isotonic") {
+binary_calibration_from_stats <- function(stats, type = "isotonic", ...) {
   stats <- binary_probabilities_from_stats(stats)
 
   stats_grouped <- dplyr::group_by(stats, variable)
-  res <- dplyr::reframe(stats_grouped, binary_calibration_base(prob, simulated_value, method = method))
+  res <- dplyr::reframe(stats_grouped, binary_calibration_base(prob, simulated_value, type = type, ...))
 
   return(res)
 }
 
 #' @export
-binary_calibration_base <- function(prob, outcome, method = "isotonic") {
+binary_calibration_base <- function(prob, outcome, type = "isotonic", ...) {
   stopifnot(is.numeric(prob) && is.numeric(outcome))
   stopifnot(all(outcome %in% c(0,1)))
   stopifnot(all(prob >=0 & prob <= 1))
@@ -40,9 +40,9 @@ binary_calibration_base <- function(prob, outcome, method = "isotonic") {
   prob <- prob[!na_indices]
   outcome <- outcome[!na_indices]
 
-  method <- match.arg(method)
-  if(method == "isotonic") {
-    require_package_version("calibrationband", "0.2", "to compute binary calibration with the method 'isotonic'.")
+  type <- match.arg(type)
+  if(type == "isotonic") {
+    require_package_version("calibrationband", "0.2", "to compute binary calibration with the type 'isotonic'.")
     # Need to remove extreme indices because they cause crashes in the package
     extreme_indices <- prob < 1e-10 | prob > 1 - 1e-10
     extreme_indices_mismatch <- extreme_indices & round(prob) != outcome
@@ -56,7 +56,7 @@ binary_calibration_base <- function(prob, outcome, method = "isotonic") {
     # Avoiding https://github.com/marius-cp/calibrationband/issues/1
     prob <- round(prob, digits = 7)
 
-    bands <- calibrationband::calibration_bands(prob, outcome)
+    bands <- calibrationband::calibration_bands(prob, outcome, ...)
 
     res <- dplyr::transmute(bands$bands, prob = x, low = lwr, high = upr)
 
@@ -71,14 +71,14 @@ binary_calibration_base <- function(prob, outcome, method = "isotonic") {
 
     return(res)
   } else {
-    stop("Unknown method")
+    stop("Unknown type")
   }
 }
 
 
 #' @export
-plot_binary_calibration_diff <- function(stats, method = "isotonic") {
-  calib_df <- binary_calibration_from_stats(stats, method = method)
+plot_binary_calibration_diff <- function(stats, type = "isotonic", ...) {
+  calib_df <- binary_calibration_from_stats(stats, type = type, ...)
 
   ggplot(calib_df, aes(x = prob, ymin = low - prob, ymax = high - prob, y = estimate - prob)) +
     geom_segment(x = 0, y = 0, xend = 1, yend = 0, color = "skyblue1", size = 2) +
@@ -87,8 +87,8 @@ plot_binary_calibration_diff <- function(stats, method = "isotonic") {
 }
 
 #' @export
-plot_binary_calibration <- function(stats, method = "isotonic") {
-  calib_df <- binary_calibration_from_stats(stats, method = method)
+plot_binary_calibration <- function(stats, type = "isotonic", ...) {
+  calib_df <- binary_calibration_from_stats(stats, type = type, ...)
 
   ggplot(calib_df, aes(x = prob, ymin = low, ymax = high, y = estimate)) +
     geom_segment(x = 0, y = 0, xend = 1, yend = 1, color = "skyblue1", size = 2) +

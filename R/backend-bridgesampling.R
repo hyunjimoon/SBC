@@ -22,12 +22,15 @@ SBC_fit_to_bridge_sampler <- function(backend, fit, generated, ...) {
 
 #' @export
 SBC_fit_to_bridge_sampler.default <- function(backend, fit, generated, ...) {
-  stop(paste0("To use bridgesampling with backend of class '", class(backend)), "',",
-       "you need to implement a corresponding S3 method for SBC_fit_to_bridge_sampler")
+  all_classes <- paste0("'", class(backend), "'", collapse = ", ")
+  stop(paste0("To use bridgesampling with backend of class ", all_classes, ", ",
+       "you need to implement a corresponding S3 method for 'SBC_fit_to_bridge_sampler' ",
+       "(most likely this would be 'SBC_fit_to_bridge_sampler.", class(backend)[1], "'"))
 }
 
 #' @export
 SBC_fit_to_bridge_sampler.SBC_backend_rstan_sample <- function(backend, fit, generated, ...) {
+  warning("Need to figure out how to  update @.MISC in stanfit to work with cache")
   bridgesampling::bridge_sampler(fit, ...)
 }
 
@@ -53,7 +56,12 @@ SBC_fit.SBC_backend_bridgesampling <- function(backend, generated, cores) {
 }
 
 SBC_fit_bridgesampling_to_prob1 <- function(fit, log.p = FALSE) {
-  log_bf_01 <- bridgesampling::bf(fit$bridge_H0, fit$bridge_H1, log = TRUE)$bf
+  bf_res <- bridgesampling::bf(fit$bridge_H0, fit$bridge_H1, log = TRUE)
+  if(inherits(bf_res, "bf_bridge_list")) {
+    log_bf_01 <- bf_res$bf_median_based
+  } else {
+    log_bf_01 <- bf_res$bf
+  }
   prob1 <- plogis(-log_bf_01, log.p = log.p)
   return(prob1)
 }
@@ -115,8 +123,23 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
   prob1 <- SBC_fit_bridgesampling_to_prob1(fit)
   log_prob1 <- SBC_fit_bridgesampling_to_prob1(fit, log.p = TRUE)
 
-  percentage_error0 <- bridgesampling::error_measures(fit$bridge_H0)$percentage
-  percentage_error1 <- bridgesampling::error_measures(fit$bridge_H1)$percentage
+  get_percentage_error <- function(bridge) {
+    errm <- bridgesampling::error_measures(bridge)
+    if(inherits(bridge, "bridge_list")) {
+      base <- logml(bridge)
+      perc_raw <- errm$IQR / base
+      return(perc_raw * 100)
+    } else {
+      if(grepl("^[0-9]*%$", errm$percentage)) {
+        return(as.numeric(gsub("%", "", errm$percentage)))
+      } else {
+        warning("Urecognized percentage format: ", errm$percentage)
+        return(NA_real_)
+      }
+    }
+  }
+  percentage_error0 <- get_percentage_error(fit$bridge_H0)
+  percentage_error1 <- get_percentage_error(fit$bridge_H1)
   diags_bs <- data.frame(prob_H1 = prob1, bs_error_H0 = percentage_error0, bs_error_H1 = percentage_error1, log_prob_H1 = log_prob1)
 
   if(!is.null(diags0)) {
