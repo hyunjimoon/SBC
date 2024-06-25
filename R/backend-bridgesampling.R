@@ -126,7 +126,7 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
   get_percentage_error <- function(bridge) {
     errm <- bridgesampling::error_measures(bridge)
     if(inherits(bridge, "bridge_list")) {
-      base <- logml(bridge)
+      base <- bridgesampling::logml(bridge)
       perc_raw <- errm$IQR / base
       return(perc_raw * 100)
     } else {
