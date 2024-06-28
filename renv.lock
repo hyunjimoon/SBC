@@ -16,6 +16,28 @@
       "Repository": "CRAN",
       "Hash": "a8235afbcd6316e6e91433ea47661013"
     },
+    "BayesFactor": {
+      "Package": "BayesFactor",
+      "Version": "0.9.12-4.7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "Matrix",
+        "MatrixModels",
+        "R",
+        "Rcpp",
+        "RcppEigen",
+        "coda",
+        "graphics",
+        "hypergeo",
+        "methods",
+        "mvtnorm",
+        "pbapply",
+        "stringr",
+        "utils"
+      ],
+      "Hash": "5dac49252d6f980e39b2f2d04dd09421"
+    },
     "Brobdingnag": {
       "Package": "Brobdingnag",
       "Version": "1.2-9",
@@ -70,6 +92,19 @@
         "utils"
       ],
       "Hash": "1a00d4828f33a9d690806e98bd17150c"
+    },
+    "MatrixModels": {
+      "Package": "MatrixModels",
+      "Version": "0.5-3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "Matrix",
+        "R",
+        "methods",
+        "stats"
+      ],
+      "Hash": "0776bf7526869e0286b0463cb72fb211"
     },
     "QuickJSR": {
       "Package": "QuickJSR",
@@ -478,6 +513,13 @@
       "Repository": "CRAN",
       "Hash": "5d8225445acb167abf7797de48b2ee3c"
     },
+    "contfrac": {
+      "Package": "contfrac",
+      "Version": "1.1-12",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "57120b229b87ba5206eb33c5b6f04f75"
+    },
     "cpp11": {
       "Package": "cpp11",
       "Version": "0.4.7",
@@ -534,6 +576,20 @@
         "methods"
       ],
       "Hash": "8ee9ac56ef633d0c7cab8b2ca87d683e"
+    },
+    "deSolve": {
+      "Package": "deSolve",
+      "Version": "1.40",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "grDevices",
+        "graphics",
+        "methods",
+        "stats"
+      ],
+      "Hash": "0a861334beb4eb8ca0d24a27b28b6679"
     },
     "desc": {
       "Package": "desc",
@@ -677,6 +733,17 @@
         "rlang"
       ],
       "Hash": "bb0eec2fe32e88d9e2836c2f73ea2077"
+    },
+    "elliptic": {
+      "Package": "elliptic",
+      "Version": "1.4-0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "MASS",
+        "R"
+      ],
+      "Hash": "4ad4fc696f70fece9399140246f409f3"
     },
     "evaluate": {
       "Package": "evaluate",
@@ -1017,6 +1084,19 @@
       ],
       "Hash": "03d741c92fda96d98c3a3f22494e3b4a"
     },
+    "hypergeo": {
+      "Package": "hypergeo",
+      "Version": "1.2-13",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "contfrac",
+        "deSolve",
+        "elliptic"
+      ],
+      "Hash": "3195e099bdbe91e28310c818d925d471"
+    },
     "ini": {
       "Package": "ini",
       "Version": "0.3.1",
@@ -1312,6 +1392,17 @@
         "utils"
       ],
       "Hash": "5410df8d22bd36e616f2a2343dbb328c"
+    },
+    "pbapply": {
+      "Package": "pbapply",
+      "Version": "1.7-2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "parallel"
+      ],
+      "Hash": "68a2d681e10cf72f0afa1d84d45380e5"
     },
     "pillar": {
       "Package": "pillar",

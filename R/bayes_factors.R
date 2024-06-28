@@ -153,3 +153,15 @@ split_SBC_results_for_bf <- function(results_bf) {
     stats_H1 = get_stats_for_submodel(stats, 1)
   )
 }
+
+# Constructs a CDF data.frame for SBC_posterior_cdf from posterior probability
+# of a binary variable.
+binary_to_cdf <- function(variables, prob1, simulated_value) {
+  if(!all(simulated_value %in% c(0,1))) {
+    warning("binary_to_cdf expects the simulated_value to be either 0 or 1")
+  }
+  data.frame(variable = variables,
+             cdf_low = dplyr::if_else(simulated_value == 0, 0, prob1),
+             cdf_high = dplyr::if_else(simulated_value == 0, prob1, 1))
+}
+

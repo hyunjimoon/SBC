@@ -95,21 +95,7 @@ SBC_fit_to_draws_matrix.SBC_fit_bridgesampling <- function(fit) {
 SBC_posterior_cdf.SBC_fit_bridgesampling <- function(fit, variables) {
   if(fit$model_var %in% names(variables)) {
     prob1 <- SBC_fit_bridgesampling_to_prob1(fit)
-    if(variables[fit$model_var] == 0) {
-      cdf_low <- 0
-      cdf_high <- prob1
-    } else if(variables[fit$model_var] == 1) {
-      cdf_low <- prob1
-      cdf_high <- 1
-    } else {
-      warning("SBC_posterior_cdf.SBC_fit_bridgesampling expects the model variable to be either 0 or 1")
-      cdf_low <- 0
-      cdf_high <- 0
-    }
-
-    return(data.frame(variable = fit$model_var,
-                      cdf_low = cdf_low,
-                      cdf_high = cdf_high))
+    return(binary_to_cdf(fit$model_var, prob1, variables[fit$model_var]))
   } else {
     return(NULL)
   }
