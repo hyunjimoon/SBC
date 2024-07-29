@@ -42,6 +42,12 @@ if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
 
+fit_cache_dir <- file.path(cache_dir, "fits")
+if(!dir.exists(fit_cache_dir)) {
+  dir.create(fit_cache_dir)
+}
+
+
 theme_set(theme_minimal())
 ```
 
@@ -157,6 +163,25 @@ ds_turtles_m0 <- generate_datasets(SBC_generator_function(sim_turtles, model = 0
 ds_turtles_m1 <- generate_datasets(SBC_generator_function(sim_turtles, model = 1, N = N, C = C), n_sims = N_sims)
 ds_turtles <- SBC_datasets_for_bf(ds_turtles_m0, ds_turtles_m1)
 ```
+
+
+```{r}
+iter <- 15500
+warmup <- 500
+init <- 0
+backend_turtles_warp <- SBC_backend_bridgesampling(
+  SBC_backend_rstan_sample(m_H0, iter = iter, warmup = warmup, init = init),
+  SBC_backend_rstan_sample(m_H1, iter = iter, warmup = warmup, init = init),
+  method = "warp3",
+  repetitions = 5
+)
+res_turtles_w <- compute_SBC(ds_turtles[1:2], backend_turtles_warp, 
+                           keep_fits = TRUE)
+res_turtles_w$stats
+# TODO: figure out how to update @.MISC in stanfit
+```
+
+
 ```{r}
 iter <- 15500
 warmup <- 500
@@ -185,6 +210,9 @@ plot_ecdf_diff(res_turtles, variables = c(".m1.sigma", paste0(".m1.b[",1:C,"]"))
 stats_split <- split_SBC_results_for_bf(res_turtles)
 plot_ecdf_diff(stats_split$stats_H0)
 plot_ecdf_diff(stats_split$stats_H1)
+```
+```{r}
+plot_binary_calibration_diff(res_turtles$stats)
 ```
 
 

@@ -35,7 +35,9 @@ SBC_fit_to_draws_matrix.SBC_fit_lmBF <- function(fit) {
   posterior::as_draws_matrix(fit$posterior)
 }
 
-
+#' A backend for Bayes factor workflow with [BayesFactor::extractBF].
+#'
+#'
 #' @export
 SBC_backend_extractBF_comparison <- function(backend_H0, backend_H1, model_var = "model") {
   SBC:::require_package_version("BayesFactor", version = "0.9", purpose = " to use the extractBF_comparison SBC backend")

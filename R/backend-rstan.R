@@ -182,3 +182,10 @@ get_diagnostic_messages.SBC_RStanOptimizing_diagnostics_summary <- function(x) {
     )
   )
 }
+
+#' @export
+SBC_backend_postprocess_cached_fit.SBC_backend_rstan_sample <- function(backend, fit) {
+  fit@stanmodel <- backend$model
+  return(fit)
+}
+
