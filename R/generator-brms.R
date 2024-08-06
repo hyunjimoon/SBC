@@ -174,7 +174,7 @@ brms_full_ppred <- function(fit, newdata = NULL, draws = NULL, validate_all = FA
   if(is.null(newdata)) newdata <- fit$data
   n <- nrow(newdata)
   # 2.3. if no draws set, range from 1 to all iters (check draws < iters)
-  if(is.null(draws)) draws <- seq_len(sum(fit$fit@sim$n_save))
+	if(is.null(draws)) draws <- seq_len(posterior::ndraws(fit))
   # 2.4. create list to hold data
   pp_data <- list()
 

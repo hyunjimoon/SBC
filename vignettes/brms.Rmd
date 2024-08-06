@@ -183,8 +183,6 @@ vignette for discussion on why this is useful).
 ```{r}
 log_lik_dq_func <- derived_quantities(
   log_lik = sum(dnorm(y, b_Intercept + x * b_x + r_group[group], sigma, log = TRUE))
-  # Testing CRPS, probably not worth it
-  #, CRPS = mean(scoringRules::crps_norm(y, b_Intercept + x * b_x + r_group[group], sigma))
   )
 
 ```
@@ -196,7 +194,7 @@ datasets_func <- generate_datasets(n_sims_generator, 100)
 ```
 
 This is then our `brms` backend - note that `brms` requires us to provide a
-dataset that it will use to build the model (e.g. to see how many levels of 
+dataset (`template_data`) that it will use to build the model (e.g. to see how many levels of 
 various varying intercepts to include):
 
 ```{r}
@@ -209,6 +207,7 @@ priors_func <- prior(normal(0,1), class = "b") +
 backend_func <- SBC_backend_brms(y ~ x + (1 | group),  
                       prior = priors_func, chains = 1,
                       template_data = datasets_func$generated[[1]],
+                      control = list(adapt_delta = 0.95),
                       out_stan_file = file.path(cache_dir, "brms_linreg2.stan"))
 
 ```
@@ -250,8 +249,9 @@ priors_func2 <- prior(normal(0,1), class = "b") +
 
 
 backend_func2 <- SBC_backend_brms(y ~ 0 + Intercept + x + (1 | group),  
-                            prior = priors_func2, warmup = 1000, iter = 2000, chains = 1,
+                            prior = priors_func2, warmup = 1000, iter = 2000, chains = 2,
                             template_data = datasets_func$generated[[1]],
+                            control = list(adapt_delta = 0.95),
                             out_stan_file = file.path(cache_dir, "brms_linreg3.stan"))
 
 
@@ -266,14 +266,11 @@ results_func2 <- compute_SBC(datasets_func, backend_func2,
                     cache_location = file.path(cache_dir, "func2"))
 ```
 
-We see that this still results in some problematic fits,
-but the proportion got lower. At this point I am honestly unsure
-what is the issue, but the rank plots look mostly OK:
+We see that this still results in a small number of mildly problematic fits, 
+which is enough for our purposes (likely ramping up `adapt_delta` even higher 
+would help). The rank plots look mostly OK:
 
 ```{r results_func2_plots}
 plot_rank_hist(results_func2)
 plot_ecdf_diff(results_func2)
 ```
-
-
-I promise to update this vignette once I figure out the source of the problems.

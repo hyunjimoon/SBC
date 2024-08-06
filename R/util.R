@@ -37,7 +37,7 @@ require_package_version <- function(package, version, purpose) {
 }
 
 require_brms_version <- function(purpose) {
-  require_package_version("brms", "2.16.1", purpose)
+  require_package_version("brms", "2.21.0", purpose)
 }
 
 require_cmdstanr_version <- function(purpose) {
