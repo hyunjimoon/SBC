@@ -4,7 +4,7 @@
 \alias{SBC_backend_postprocess_cached_fit}
 \title{Allows the backend to do any pre-/post- processing on a fit stored to / loaded from cache.}
 \usage{
-SBC_backend_postprocess_cached_fit(backend, fit)
+SBC_backend_postprocess_cached_fit(backend, generated, fit)
 }
 \description{
 This is useful e.g. to provide a live \code{stanmodel} instance to an rstan fit,

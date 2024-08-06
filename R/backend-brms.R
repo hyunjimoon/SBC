@@ -111,3 +111,16 @@ SBC_backend_hash_for_cache.SBC_backend_brms <- function(backend) {
   rlang::hash(object_for_hash)
 }
 
+#' #' @export
+#' SBC_backend_postprocess_cached_fit.SBC_backend_brms <- function(backend, generated, fit) {
+#'   if(inherits(backend$stan_backend, "SBC_backend_rstan_sample")) {
+#'     # args_with_data <- backend$args
+#'     # args_with_data$data <- generated
+#'     #
+#'     # standata <- do.call(brms::make_standata, args_with_data)
+#'     #
+#'     # fit$fit@stanmodel <- backend$stan_backend$model
+#'     # fit$fit@.MISC <- construct_rstan_misc_env(backend$stan_beckend$model, standata)
+#'   }
+#'   return(fit)
+#' }

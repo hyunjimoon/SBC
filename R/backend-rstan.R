@@ -184,8 +184,26 @@ get_diagnostic_messages.SBC_RStanOptimizing_diagnostics_summary <- function(x) {
 }
 
 #' @export
-SBC_backend_postprocess_cached_fit.SBC_backend_rstan_sample <- function(backend, fit) {
+SBC_backend_postprocess_cached_fit.SBC_backend_rstan_sample <- function(backend, generated, fit) {
   fit@stanmodel <- backend$model
+  fit@.MISC <- construct_rstan_misc_env(backend$model, generated)
   return(fit)
 }
 
+construct_rstan_misc_env <- function(m, standata) {
+  cxxfun <- rstan:::grab_cxxfun(m@dso)
+  stan_fit_cpp_module <- m@mk_cppmodule(m)
+
+  standata <- with(standata, rstan:::parse_data(get_cppcode(m)))
+  standata <- rstan:::data_preprocess(standata)
+  sampler <- try(new(stan_fit_cpp_module, standata, as.integer(0L), cxxfun))
+  if (is(sampler, "try-error")) {
+    message('failed to create the optimizer; optimization not done')
+    return(invisible(list(stanmodel = object)))
+  }
+
+  sfmiscenv <- new.env(parent = emptyenv())
+  assign("stan_fit_instance", sampler, envir = sfmiscenv)
+
+  return(sfmiscenv)
+}

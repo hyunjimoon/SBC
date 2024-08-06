@@ -50,7 +50,7 @@ SBC_fit.SBC_backend_cached <- function(backend, generated, cores) {
     message("Fit read from cache file '", cache_file, "'")
     res_and_output <- readRDS(cache_file)
     reemit_captured(res_and_output)
-    fit <- SBC_backend_postprocess_cached_fit(backend$backend, res_and_output$fit)
+    fit <- SBC_backend_postprocess_cached_fit(backend$backend, generated, res_and_output$fit)
     return(fit)
   } else {
     res_and_output <- capture_all_outputs(
@@ -60,7 +60,7 @@ SBC_fit.SBC_backend_cached <- function(backend, generated, cores) {
 
     reemit_captured(res_and_output)
     message("Storing fit in cache file '", cache_file, "'")
-    res_and_output$fit <- SBC_backend_preprocess_fit_for_cache(backend$backend, res_and_output$fit)
+    res_and_output$fit <- SBC_backend_preprocess_fit_for_cache(backend$backend, generated, res_and_output$fit)
     saveRDS(res_and_output, file = cache_file)
     return(res_and_output$fit)
   }
@@ -94,23 +94,23 @@ SBC_fit_to_bridge_sampler.SBC_backend_cached <- function(backend, ...) {
 #' The deafult implementation does nothing.
 #'
 #' @export
-SBC_backend_postprocess_cached_fit <- function(backend, fit) {
+SBC_backend_postprocess_cached_fit <- function(backend, generated, fit) {
   UseMethod("SBC_backend_postprocess_cached_fit")
 }
 
 #' @export
 #' @rdname SBC_backend_preprocess_fit_for_cache
-SBC_backend_preprocess_fit_for_cache <- function(backend, fit) {
+SBC_backend_preprocess_fit_for_cache <- function(backend, generated, fit) {
   UseMethod("SBC_backend_preprocess_fit_for_cache")
 }
 
 
 #' @export
-SBC_backend_postprocess_cached_fit.default <- function(backend, fit) {
+SBC_backend_postprocess_cached_fit.default <- function(backend, generated, fit) {
   return(fit)
 }
 
 #' @export
-SBC_backend_preprocess_fit_for_cache.default <- function(backend, fit) {
+SBC_backend_preprocess_fit_for_cache.default <- function(backend, generated, fit) {
   return(fit)
 }
