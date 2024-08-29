@@ -6,7 +6,11 @@ new_SBC_backend_brms <- function(compiled_model,
 ) {
   require_brms_version("brms backend")
 
-  arg_names_for_stan <- c("chains", "inits", "init", "iter", "warmup", "thin")
+  if(args$algorithm == "sampling") {
+    arg_names_for_stan <- c("chains", "inits", "init", "iter", "warmup", "thin")
+  } else if(args$algorithm == "meanfield") {
+    arg_names_for_stan <- c("inits", "init") # possibly more valid args
+  }
   args_for_stan <- args[intersect(names(args), arg_names_for_stan)]
 
   args_for_stan_renames <- c("inits" = "init")
@@ -18,14 +22,18 @@ new_SBC_backend_brms <- function(compiled_model,
       args_for_stan[[orig]] <- NULL
     }
   }
-  stan_backend <- sampling_backend_from_stanmodel(compiled_model, args_for_stan)
+  if(args$algorithm == "sampling") {
+    stan_backend <- sampling_backend_from_stanmodel(compiled_model, args_for_stan)
+  } else if(args$algorithm == "meanfield") {
+    stan_backend <- variational_backend_from_stanmodel(compiled_model, args_for_stan)
+  }
 
   structure(list(stan_backend = stan_backend, args = args), class = "SBC_backend_brms")
 }
 
 validate_SBC_backend_brms_args <- function(args) {
-  if(!is.null(args$algorithm) && args$algorithm != "sampling") {
-    stop("Algorithms other than sampling not supported yet. Comment on https://github.com/hyunjimoon/SBC/issues/91 to express your interest.")
+  if(!is.null(args$algorithm) && args$algorithm != "sampling" && args$algorithm != "meanfield") {
+    stop("Algorithms other than sampling and meanfield not supported yet. Comment on https://github.com/hyunjimoon/SBC/issues/91 to express your interest.")
   }
 
   unacceptable_params <- c("data", "cores", "empty")
