@@ -67,3 +67,4 @@ Suggests:
     bridgesampling,
     bayesplot
 VignetteBuilder: knitr
+Language: en-US

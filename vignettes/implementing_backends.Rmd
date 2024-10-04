@@ -121,7 +121,8 @@ SBC_fit_to_draws_matrix.glm <- function(fit) {
 
 Note that for non-base packages, we specify the namespace explicitly and
 do not rely on those functions being loaded via `library` - this is good
-practice for package development and will make paralellization work (see notes below).
+practice for package development and will be necessary for paralellization later
+(there are is some extra work needed for parallel processing to work, see notes below).
 
 A quick example to show this minimal setup already works. We'll build a simple Poisson
 regression simulator:
@@ -186,7 +187,7 @@ plot_sim_estimated(res_poisson)
 ## Additional backend improvements
 
 Beyond the minimal setup, there are additional functions that our backend can implement to make it more
-comfortable to use. Let's walk through the options and se and how they can be implemented for the 
+comfortable to use. Let's walk through the options and see how they can be implemented for the 
 `glm` wrapper.
 
 Since (unlike MCMC methods) the `glm` approximation does 
@@ -214,10 +215,11 @@ we'll run a quite pathological logistic regression:
 problematic_data <- data.frame(y = rep(0:1, each = 100), x = 1:200)
 glm(y ~ x, data = problematic_data, family = "binomial")
 ```
+
 So we get two problems - one is that the optimization method did not converge
 (this can be checked via the `$converged` member of the resulting fit) and
 that extreme probabilities occurred (this is related to the problem of "perfect 
-separation"). This problem is however only signalled as a warning and never 
+separation"). This problem is however only signaled as a warning and never 
 reported in the fit object itself. 
 
 For this reason, SBC package will capture all output, warnings and messages
@@ -298,6 +300,11 @@ get_diagnostic_messages.SBC_glm_diagnostics_summary <- function(x) {
   SBC_diagnostic_messages(do.call(rbind, message_list))
 }
 ```
+
+```{r}
+#TODO implement CDFs once there more use for them
+```
+
 
 Finally, some backend objects are complex and may differ between R sessions,
 even if they represent the same backend (Stan backends are a prime example as
@@ -448,10 +455,10 @@ plot_rank_hist(res_indo_simple)
 plot_ecdf_diff(res_indo_simple)
 ```
 
-The coverages are very tight
+The coverages are close to nominal:
 
 ```{r indo_sim_coverage}
-plot_coverage(res_indo_simple)
+plot_coverage_diff(res_indo_simple)
 ```
 
 we can make this precise by inspecting the same results numerically:
