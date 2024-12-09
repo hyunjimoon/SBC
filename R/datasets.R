@@ -146,9 +146,9 @@ generate_datasets <- function(generator, n_sims, n_datasets = NULL) {
 #' defaults to +Inf (no paralellism).
 #' @param ... Additional arguments passed to `f`
 #'@export
-SBC_generator_function <- function(f, future.chunk.size = getOption("SBC.generator_chunk_size", +Inf) ,...) {
+SBC_generator_function <- function(f, future.chunk.size = getOption("SBC.generator_chunk_size", +Inf), future.globals = TRUE ,...) {
   stopifnot(is.function(f))
-  structure(list(f = f, future.chunk.size = future.chunk.size, args = list(...)), class = "SBC_generator_function")
+  structure(list(f = f, future.chunk.size = future.chunk.size, future.globals = future.globals, args = list(...)), class = "SBC_generator_function")
 }
 
 
@@ -237,7 +237,10 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
   }
 
   if(is.finite(generator$future.chunk.size)) {
-    all_outputs <- future.apply::future_replicate(n_sims, generate_single(), future.chunk.size = generator$future.chunk.size, simplify = FALSE)
+    all_outputs <- future.apply::future_replicate(n_sims, generate_single(),
+                                                  future.chunk.size = generator$future.chunk.size,
+                                                  future.globals = generator$future.globals,
+                                                  simplify = FALSE)
   } else {
     all_outputs <- replicate(n_sims, generate_single(), simplify = FALSE)
   }
