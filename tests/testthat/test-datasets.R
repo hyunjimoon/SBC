@@ -73,7 +73,7 @@ test_that("Generating datasets via functions - exceptions", {
 })
 
 test_that("subsetting datasets", {
-  my_var_attributes <- list(
+  my_var_attributes <- var_attributes(
     mu = hidden_var_attribute()
   )
   list_function <- function(N) {
@@ -102,7 +102,7 @@ test_that("subsetting datasets", {
 })
 
 test_that("binding datasets", {
-  my_var_attributes <- list(
+  my_var_attributes <- var_attributes(
     mu = hidden_var_attribute()
   )
   list_function <- function(N) {

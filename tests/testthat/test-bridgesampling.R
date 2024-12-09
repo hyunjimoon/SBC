@@ -7,8 +7,8 @@ test_that("combine_draws_matrix_for_bf", {
   target <- posterior::draws_matrix(
     model_test = model_draws,
     a = c(1,20,3,40),
-    b = c(5, NA, 7, NA),
-    c = c(NA, 60, NA, 80),
+    b = c(5, -Inf, 7, -Inf),
+    c = c(-Inf, 60, -Inf, 80),
     .m0.a = dm0[,"a"],
     .m0.b = dm0[,"b"],
     .m1.a = dm1[,"a"],
@@ -19,8 +19,8 @@ test_that("combine_draws_matrix_for_bf", {
   target_NA_raw <- posterior::draws_matrix(
     model_test = model_draws,
     a = c(1,20,3,40),
-    b = c(5, NA, 7, NA),
-    c = c(NA, 60, NA, 80),
+    b = c(5, -Inf, 7, -Inf),
+    c = c(-Inf, 60, -Inf, 80),
     .m0.a = c(1,NA,3,NA),
     .m0.b = c(5, NA, 7,NA),
     .m1.a = c(NA, 20, NA, 40),
@@ -38,13 +38,13 @@ test_that("combine_var_attributes_for_bf", {
   expect_identical(
     combine_var_attributes_for_bf(dm0, dm1, var_attr0, var_attr1, model = "mmm"),
     var_attributes(
-      .m0.a = c(hidden_var_attribute(), na_valid_var_attribute(), binary_var_attribute()),
-      .m0.b = c(hidden_var_attribute(), na_valid_var_attribute()),
-      .m1.a = c(hidden_var_attribute(), na_valid_var_attribute()),
-      .m1.c = c(hidden_var_attribute(), na_valid_var_attribute(), possibly_constant_var_attribute(), hidden_var_attribute()),
+      .m0.a = c(hidden_var_attribute(), submodel_var_attribute(0), binary_var_attribute()),
+      .m0.b = c(hidden_var_attribute(), submodel_var_attribute(0)),
+      .m1.a = c(hidden_var_attribute(), submodel_var_attribute(1)),
+      .m1.c = c(hidden_var_attribute(), submodel_var_attribute(1), possibly_constant_var_attribute(), hidden_var_attribute()),
       a = binary_var_attribute(),
-      b = na_lowest_var_attribute(),
-      c = c(na_lowest_var_attribute(), possibly_constant_var_attribute(), hidden_var_attribute()),
+      b = inf_valid_var_attribute(),
+      c = c(inf_valid_var_attribute(), possibly_constant_var_attribute(), hidden_var_attribute()),
       mmm = c(binary_var_attribute(), possibly_constant_var_attribute())
     )
   )

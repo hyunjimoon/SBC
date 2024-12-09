@@ -26,7 +26,7 @@ validate_var_attributes <- function(var_attr) {
   }
 
   if(!is.list(var_attr) || !inherits(var_attr, "var_attributes")) {
-    stop("`var_attributes` must be a list")
+    stop("`var_attributes` must either be NULL or a list inheriting from the `var_attributes` class")
   }
 
   if(is.null(names(var_attr)) || any(names(var_attr) == "")) {

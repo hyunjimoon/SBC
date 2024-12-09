@@ -6,10 +6,12 @@ new_SBC_datasets <- function(variables, generated, var_attributes = NULL, parame
     }
   }
 
-  structure(list(variables = variables,
+  unvalidated <- structure(list(variables = variables,
                  generated = generated,
                  var_attributes = var_attributes),
             class = "SBC_datasets")
+
+  return(validate_SBC_datasets(unvalidated))
 }
 
 #' @export
@@ -73,9 +75,8 @@ SBC_datasets <- function(variables, generated, var_attributes = NULL, parameters
       variables <- parameters
     }
   }
-  x <-  new_SBC_datasets(variables, generated, var_attributes)
-  validate_SBC_datasets(x)
-  x
+  x <- new_SBC_datasets(variables, generated, var_attributes)
+  return(x)
 }
 
 #' @export
@@ -89,9 +90,10 @@ length.SBC_datasets <- function(x) {
 #' @export
 `[.SBC_datasets` <- function(x, indices) {
   validate_SBC_datasets(x)
-  new_SBC_datasets(posterior::subset_draws(x$variables, draw = indices, unique = FALSE),
+  res <- new_SBC_datasets(posterior::subset_draws(x$variables, draw = indices, unique = FALSE),
                    x$generated[indices],
                    var_attributes = x$var_attributes)
+  return(res)
 }
 
 #' Combine multiple datasets together.
