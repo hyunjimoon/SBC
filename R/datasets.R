@@ -131,7 +131,6 @@ bind_datasets <- function(...) {
 #' @param n_sims the number of simulated datasets to use
 #' @param n_datasets DEPRECATED, use `n_sims` instead.
 #' @return object of class `SBC_datasets`
-#' TODO: seed
 #' @export
 generate_datasets <- function(generator, n_sims, n_datasets = NULL) {
   UseMethod("generate_datasets")
@@ -142,11 +141,14 @@ generate_datasets <- function(generator, n_sims, n_datasets = NULL) {
 #' @param f function returning a list with elements `variables`
 #' (prior draws, a list or anything that can be converted to `draws_rvars`) and
 #' `generated` (observed dataset, ready to be passed to backend)
+#' @param future.chunk.size if finite, datasets will be generated in parallel using
+#' the `future` package with this chunk size (see [future.apply::future_lapply]). Defaults to the `SBC.generator_chunk_size` option, which
+#' defaults to +Inf (no paralellism).
 #' @param ... Additional arguments passed to `f`
 #'@export
-SBC_generator_function <- function(f, ...) {
+SBC_generator_function <- function(f, future.chunk.size = getOption("SBC.generator_chunk_size", +Inf) ,...) {
   stopifnot(is.function(f))
-  structure(list(f = f, args = list(...)), class = "SBC_generator_function")
+  structure(list(f = f, future.chunk.size = future.chunk.size, args = list(...)), class = "SBC_generator_function")
 }
 
 
@@ -158,17 +160,18 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
       n_sims <- n_datasets
     }
   }
-  variables_list <- list()
-  generated <- list()
+
+  stopifnot(n_sims >= 1)
+
   warned_parameters <- FALSE
-  var_attributes <- NULL
-  for(iter in 1:n_sims){
+
+  generate_single <- function() {
     generator_output <- do.call(generator$f, generator$args)
     # Ensuring backwards compatibility
     if(!is.null(generator_output$parameters)) {
       if(!warned_parameters) {
         warning("Generator function returns a list with element `parameters`, which is deprecated. Return `variables` instead.")
-        warned_parameters <- TRUE
+        warned_parameters <<- TRUE
       }
       if(is.null(generator_output$variables)) {
         generator_output$variables <- generator_output$parameters
@@ -179,7 +182,7 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
        is.null(generator_output$variables) ||
        is.null(generator_output$generated)) {
       stop(SBC_error("SBC_datasets_error",
-      "The generating function has to return a list with elements `variables`
+                     "The generating function has to return a list with elements `variables`
       (that can be converted to `draws_rvars`) and `generated`.
       Optionally a `var_attributes` element can also be returned."))
     }
@@ -217,33 +220,49 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
 
     vars_rvars <-
       do.call(
-      posterior::draws_rvars,
-      purrr::map(generator_output$variables,
-                 ~ posterior::rvar(array(.x, dim = c(1, guess_dims(.x))), dimnames = guess_dimnames(.x))
-                 )
+        posterior::draws_rvars,
+        purrr::map(generator_output$variables,
+                   ~ posterior::rvar(array(.x, dim = c(1, guess_dims(.x))), dimnames = guess_dimnames(.x))
+        )
       )
-    variables_list[[iter]] <- posterior::as_draws_matrix(vars_rvars)
-    if(posterior::ndraws(variables_list[[iter]]) != 1) {
+
+    vars_dm <- posterior::as_draws_matrix(vars_rvars)
+    if(posterior::ndraws(vars_dm) != 1) {
       stop("The `variables` element of the generator output must contain only
       a single draw")
     }
-    generated[[iter]] <- generator_output$generated
+    generator_output$variables <- vars_dm
 
-    # Process var_attributes
-    if(iter == 1) {
-      var_attributes <- generator_output$var_attributes
-    } else {
-      if(is.null(var_attributes) != is.null(generator_output$var_attributes)) {
+    return(generator_output)
+  }
+
+  if(is.finite(generator$future.chunk.size)) {
+    all_outputs <- future.apply::future_replicate(n_sims, generate_single(), future.chunk.size = generator$future.chunk.size, simplify = FALSE)
+  } else {
+    all_outputs <- replicate(n_sims, generate_single(), simplify = FALSE)
+  }
+
+  variables_dm_list <- purrr::map(all_outputs, \(x) x$variables)
+  generated <- purrr::map(all_outputs, \(x) x$generated)
+
+  # Process var_attributes
+  var_attributes <- all_outputs[[1]]$var_attributes
+  if(n_sims >= 2) {
+    for (iter in 2:n_sims) {
+      if (is.null(var_attributes) != is.null(all_outputs[[iter]]$var_attributes)) {
         stop("Some simulations returned $var_attributes, while others did not.")
       }
-      if(!is.null(var_attributes) && !identical(var_attributes, generator_output$var_attributes)) {
-        stop("Some simulations returned different $var_attributes than others.
-             Attributes must be identical for all simulations.")
+      if (!is.null(var_attributes) &&
+          !identical(var_attributes, all_outputs[[iter]]$var_attributes)) {
+        stop(
+          "Some simulations returned different $var_attributes than others.
+             Attributes must be identical for all simulations."
+        )
       }
     }
   }
 
-  variables <- do.call(posterior::bind_draws, args = c(variables_list, list(along = "draw")))
+  variables <- do.call(posterior::bind_draws, args = c(variables_dm_list, list(along = "draw")))
 
   SBC_datasets(variables, generated, var_attributes = var_attributes)
 }

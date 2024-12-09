@@ -27,6 +27,12 @@ test_that("Generating datasets via functions", {
 
   expect_equal(posterior::ndraws(res$variables), 7)
 
+  res_chunked <- generate_datasets(
+    SBC_generator_function(list_function, N = 10, future.chunk.size = 1),
+    n_sims = 7)
+
+  expect_identical(posterior::variables(res$variables), posterior::variables(res_chunked$variables))
+
   direct_func <- function(n_sims, base_indices = 1:length(res)) {
       res[base_indices[rep(1:length(base_indices), length.out = n_sims)]]
     }
