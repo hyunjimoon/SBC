@@ -721,12 +721,18 @@ capture_all_outputs <- function(expr) {
 
 # Re-emit what was captured with capture_all_outputs
 reemit_captured <- function(captured) {
-  cat(captured$output, sep = "\n")
-  for(m in 1:length(captured$messages)) {
-    message(captured$messages[m], appendLF = FALSE)
+  if(!is.null(captured$output)) {
+    cat(captured$output, sep = "\n")
   }
-  for(w in 1:length(captured$warnings)) {
-    warning(captured$warnings[w])
+  if(!is.null(captured$messages)) {
+    for(m in 1:length(captured$messages)) {
+      message(captured$messages[m], appendLF = FALSE)
+    }
+  }
+  if(!is.null(captured$warnings)) {
+    for(w in 1:length(captured$warnings)) {
+      warning(captured$warnings[w])
+    }
   }
 }
 

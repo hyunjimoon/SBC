@@ -232,9 +232,7 @@ res_turtles_2 <- compute_SBC(ds_turtles_2, backend_turtles,
 
 ```
 
-```{r}
-plot_binary_calibration_diff(res_turtles_all$stats)
-```
+
 
 
 ```{r}
@@ -245,6 +243,9 @@ plot_ecdf_diff(res_turtles_all)
 res_turtles_all$stats
 ```
 
+```{r}
+plot_binary_calibration_diff(res_turtles_all$stats)
+```
 
 ```{r}
 stats_test <- res_turtles_all$stats %>% group_by(sim_id) %>% filter(simulated_value[variable == "model"] == 1) %>% ungroup()

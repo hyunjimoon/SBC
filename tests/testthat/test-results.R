@@ -1,6 +1,20 @@
 test_that("capture_all_outputs", {
+    # No output
+  expect_identical(
+    res_no_output <- capture_all_outputs({
+      list(a = 5)
+    }),
+    list(result = list(a = 5),
+         messages = c(),
+         warnings = c(),
+         output = character()))
+
+    expect_no_message(expect_no_warning(expect_output(regexp = NA, #NA = no output
+                                                      reemit_captured(res_no_output))))
+
+    # Messages and warnings
     expect_identical(
-        capture_all_outputs({
+        res_full <- capture_all_outputs({
             cat("Test\n")
             warning("W")
             message("M", appendLF = FALSE)

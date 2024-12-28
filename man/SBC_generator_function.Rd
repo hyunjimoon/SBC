@@ -4,12 +4,21 @@
 \alias{SBC_generator_function}
 \title{Generate datasets via a function that creates a single dataset.}
 \usage{
-SBC_generator_function(f, ...)
+SBC_generator_function(
+  f,
+  future.chunk.size = getOption("SBC.generator_chunk_size", +Inf),
+  future.globals = TRUE,
+  ...
+)
 }
 \arguments{
 \item{f}{function returning a list with elements \code{variables}
 (prior draws, a list or anything that can be converted to \code{draws_rvars}) and
 \code{generated} (observed dataset, ready to be passed to backend)}
+
+\item{future.chunk.size}{if finite, datasets will be generated in parallel using
+the \code{future} package with this chunk size (see \link[future.apply:future_lapply]{future.apply::future_lapply}). Defaults to the \code{SBC.generator_chunk_size} option, which
+defaults to +Inf (no paralellism).}
 
 \item{...}{Additional arguments passed to \code{f}}
 }

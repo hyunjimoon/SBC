@@ -25,18 +25,21 @@ SBC_backend_cached <- function(cache_dir, backend) {
 #' Provide a file where a cached result of a fit will be/was stored.
 #'
 #' This is to allow you to directly access the cache, should you need to.
-#' The cache file will always be a `list` readable by `readRDS` and have
+#' For normal fits, the cache file will always be a `list` readable by `readRDS` and have
 #' element `$fit` for the actual fit. Other elements will contain the
 #' text output, messages and warnings emitted by the fit.
 #'
+#' This is also used internally to cache some extra data (notably bridgesampling
+#' results) using a non-empty `suffix` string.
 #'
 #' @export
-cached_fit_filename <- function(cache_dir, backend, generated) {
+cached_fit_filename <- function(cache_dir, backend, generated, suffix = "") {
   cache_basename <- paste0(
     "back_",
     SBC_backend_hash_for_cache(backend),
     "_ds_",
     rlang::hash(generated),
+    suffix,
     ".rds"
   )
   cache_file <- file.path(cache_dir, cache_basename)
@@ -82,8 +85,24 @@ SBC_backend_default_thin_ranks.SBC_backend_cached <- function(backend) {
 }
 
 #' @export
-SBC_fit_to_bridge_sampler.SBC_backend_cached <- function(backend, ...) {
-  SBC_fit_to_bridge_sampler(backend$backend, ...)
+SBC_fit_to_bridge_sampler.SBC_backend_cached <- function(backend, fit, generated, ...) {
+  cache_file <- cached_fit_filename(backend$cache_dir, backend$backend, generated, suffix = "_bridgesampling")
+  if(file.exists(cache_file)) {
+    message("bridgesampler read from cache file '", cache_file, "'")
+    res_and_output <- readRDS(cache_file)
+    reemit_captured(res_and_output)
+    return(res_and_output$bridgesampler)
+  } else {
+    res_and_output <- capture_all_outputs(
+      SBC_fit_to_bridge_sampler(backend$backend, fit, generated, ...)
+    )
+    names(res_and_output)[names(res_and_output) == "result"] <- "bridgesampler"
+
+    reemit_captured(res_and_output)
+    message("Storing bridgesampler in cache file '", cache_file, "'")
+    saveRDS(res_and_output, file = cache_file)
+    return(res_and_output$bridgesampler)
+  }
 }
 
 #' Allows the backend to do any pre-/post- processing on a fit stored to / loaded from cache.

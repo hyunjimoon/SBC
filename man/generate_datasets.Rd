@@ -16,7 +16,6 @@ generate_datasets(generator, n_sims, n_datasets = NULL)
 }
 \value{
 object of class \code{SBC_datasets}
-TODO: seed
 }
 \description{
 Generate datasets.

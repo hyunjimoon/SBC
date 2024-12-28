@@ -8,7 +8,7 @@
 #' @export
 SBC_backend_mock <- function(result = posterior::draws_matrix(a = rnorm(100)),
                              output = NULL, message = NULL,
-                             warning = NULL, error = NULL) {
+                             warning = NULL, error = NULL, bridgesampler = NULL) {
   if(!posterior::is_draws_matrix(result)) {
     stop("Mock backend requires result to be draws_matrix")
   }
@@ -17,7 +17,8 @@ SBC_backend_mock <- function(result = posterior::draws_matrix(a = rnorm(100)),
                  output = output,
                  message = message,
                  warning = warning,
-                 error = error), class = "SBC_backend_mock")
+                 error = error,
+                 bridgesampler = bridgesampler), class = "SBC_backend_mock")
 }
 
 #' @export
@@ -37,6 +38,11 @@ SBC_fit.SBC_backend_mock <- function(backend, generated, cores) {
 
   backend$result
 }
+
+SBC_fit_to_bridge_sampler.SBC_backend_mock <- function(backend, ...)  {
+  return(backend$bridgesampler)
+}
+
 
 #' @export
 SBC_backend_mock_rng <- function(..., n_draws = 1000) {
@@ -70,10 +76,12 @@ SBC_backend_mock_rng <- function(..., n_draws = 1000) {
 SBC_fit.SBC_backend_mock_rng <- function(backend, generated, cores) {
   draws_list <- purrr::map(backend$var_to_rng, ~ .x(backend$n_draws))
 
-  do.call(posterior::draws_matrix, draws_list)
+  res_matrix <- do.call(posterior::draws_matrix, draws_list)
+  return(res_matrix)
 }
 
 #' @export
 SBC_backend_iid_draws.SBC_backend_mock_rng <- function(backend) {
   TRUE
 }
+
