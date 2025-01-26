@@ -1,5 +1,5 @@
 Package: SBC
-Title: Simulation Based Calibration for rstan/cmdstanr models
+Title: Simulation Based Calibration for Bayesian models
 Version: 0.3.0.9000
 Authors@R: 
     c(person(given = "Shinyoung",
