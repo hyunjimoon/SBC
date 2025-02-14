@@ -735,10 +735,8 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
           generated = generated, dquants = dquants,
           backend = backend)
 
-        if(fit$algorithm != "meanfield") {
-          res$backend_diagnostics <- SBC::SBC_fit_to_diagnostics(
-            fit, res$output, res$messages, res$warnings)
-        }
+        res$backend_diagnostics <- SBC::SBC_fit_to_diagnostics(
+          fit, res$output, res$messages, res$warnings)
         NULL
       }, error = identity)
     })

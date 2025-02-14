@@ -118,6 +118,9 @@ brmsfit_from_stanfit <- function(fit, brmsargs) {
   fit_brms <- do.call(brms::brm, combine_args(brmsargs, list(empty = TRUE)))
   if(inherits(fit, "CmdStanFit")) {
     fit_brms$fit <- brms::read_csv_as_stanfit(fit$output_files())
+    if(inherits(fit, "CmdStanVB")) {
+      fit_brms$vb_fit <- fit
+    }
   } else {
     fit_brms$fit <- fit
   }
