@@ -6,7 +6,7 @@ new_SBC_backend_brms <- function(compiled_model,
 ) {
   require_brms_version("brms backend")
 
-  if(args$algorithm == "sampling") {
+  if(is.null(args$algorithm) || args$algorithm == "sampling") {
     arg_names_for_stan <- c("chains", "inits", "init", "iter", "warmup", "thin")
   } else if(args$algorithm %in% c("meanfield", "fullrank")) {
     arg_names_for_stan <- c("inits", "init") # possibly more valid args
@@ -22,7 +22,7 @@ new_SBC_backend_brms <- function(compiled_model,
       args_for_stan[[orig]] <- NULL
     }
   }
-  if(args$algorithm == "sampling") {
+  if(is.null(args$algorithm) || args$algorithm == "sampling") {
     stan_backend <- sampling_backend_from_stanmodel(compiled_model, args_for_stan)
   } else if(args$algorithm %in% c("meanfield", "fullrank")) {
     args_for_stan$algorithm <- args$algorithm
@@ -37,7 +37,7 @@ validate_SBC_backend_brms_args <- function(args) {
     stop("Algorithms other than sampling, meanfield and fullrank not supported yet. Comment on https://github.com/hyunjimoon/SBC/issues/91 to express your interest.")
   }
 
-  if(args$algorithm %in% c("meanfield", "fullrank")) {
+  if(!is.null(args$algorithm) && args$algorithm %in% c("meanfield", "fullrank")) {
     backend <- args$backend
     if(is.null(backend)) {
       backend <- getOption("brms.backend", "rstan")
