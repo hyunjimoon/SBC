@@ -274,3 +274,60 @@ would help). The rank plots look mostly OK:
 plot_rank_hist(results_func2)
 plot_ecdf_diff(results_func2)
 ```
+
+
+## Using variational inference with `brms`
+
+
+Currently variational inference is supported only for `cmdstanr` brms backend, so this part will be skipped with `rstan` backend. We simply pass `algorithm = "meanfield"` when building the SBC backend:
+
+```{r, eval=use_cmdstanr}
+backend_func2_meanfield <- SBC_backend_brms(y ~ 0 + Intercept + x + (1 | group),  
+                            prior = priors_func2, warmup = 1000, iter = 2000, chains = 2,
+                            template_data = datasets_func$generated[[1]],
+                            algorithm = "meanfield",
+                            out_stan_file = file.path(cache_dir, "brms_linreg3.stan"))
+
+```
+
+
+And we run SBC:
+
+```{r, eval=use_cmdstanr}
+results_func2_meanfield <- compute_SBC(datasets_func, backend_func2_meanfield, 
+                                 dquants = log_lik_dq_func, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "func2_meanfield"))
+```
+
+We see a lot of warnings and when we inspect the diagnostic plots, we see that meanfield variational inference doesn't really work for this model.
+
+```{r results_func2_meanfield_plots, eval=use_cmdstanr}
+plot_rank_hist(results_func2_meanfield)
+plot_ecdf_diff(results_func2_meanfield)
+```
+
+What about fullrank variational inference? Let's try
+
+```{r, eval=use_cmdstanr}
+backend_func2_fullrank <- SBC_backend_brms(y ~ 0 + Intercept + x + (1 | group),  
+                            prior = priors_func2, warmup = 1000, iter = 2000, chains = 2,
+                            template_data = datasets_func$generated[[1]],
+                            algorithm = "fullrank",
+                            out_stan_file = file.path(cache_dir, "brms_linreg3.stan"))
+
+results_func2_fullrank <- compute_SBC(datasets_func, backend_func2_fullrank, 
+                                 dquants = log_lik_dq_func, 
+                    cache_mode = "results", 
+                    cache_location = file.path(cache_dir, "func2_fullrank"))
+```
+
+We once again see a lot of warnings and when we inspect the diagnostic plots, we see that fullrank variational inference is also not well suited here.
+
+```{r results_func2_fullrank_plots, eval=use_cmdstanr}
+plot_rank_hist(results_func2_fullrank)
+plot_ecdf_diff(results_func2_fullrank)
+```
+
+This is not so surprising as we know that Stan's variational inference just isn't very good. See also the [ADVI vignette for plain Stan models](https://hyunjimoon.github.io/SBC/articles/computational_algorithm1.html).
+

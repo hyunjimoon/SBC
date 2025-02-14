@@ -113,12 +113,7 @@ reference:
   - contains("example")
 - title: Miscellaneous
 - contents:
-  - wasserstein
-  - cjs_dist
   - combine_args
-  - max_diff
-  - rank2unif
-  - set2set
 
 footer:
   structure:

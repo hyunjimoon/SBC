@@ -6,20 +6,19 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Getting Started with SBC • SBC</title>
-<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/cosmo/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/cosmo/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
 <script src="../pkgdown.js"></script><meta property="og:title" content="Getting Started with SBC">
-<meta property="og:description" content="SBC">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
 <![endif]--><script defer data-domain="hyunjimoon.github.io" src="https://plausible.io/js/script.js"></script>
 </head>
 <body data-spy="scroll" data-target="#toc">
-    
+
 
     <div class="container template-article">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -51,7 +50,7 @@
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
-     
+
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu">
@@ -95,19 +94,19 @@
 <li>
   <a href="https://twitter.com/mcmc_stan" class="external-link">
     <span class="fa fa-twitter"></span>
-     
+
   </a>
 </li>
 <li>
   <a href="https://github.com/hyunjimoon/SBC" class="external-link">
     <span class="fa fa-github"></span>
-     
+
   </a>
 </li>
 <li>
   <a href="http://discourse.mc-stan.org/" class="external-link">
     <span class="fa fa-users"></span>
-     
+
   </a>
 </li>
       </ul>
@@ -118,7 +117,7 @@
 </div>
 <!--/.navbar -->
 
-      
+
 
       </header><div class="row">
   <div class="col-md-9 contents">
@@ -127,7 +126,7 @@
                         <h4 data-toc-skip class="author">Hyunji Moon,
 Martin Modrák, Shinyoung Kim</h4>
             
-            <h4 data-toc-skip class="date">2024-03-14</h4>
+            <h4 data-toc-skip class="date">2025-02-14</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/SBC.Rmd" class="external-link"><code>vignettes/SBC.Rmd</code></a></small>
       <div class="hidden name"><code>SBC.Rmd</code></div>
@@ -148,7 +147,8 @@ model to data.</p>
 <p>The rough sketch of SBC is that we simulate some datasets and then
 for each simulated dataset:</p>
 <ol style="list-style-type: decimal">
-<li>Fit the model and obtain <span class="math inline">\(D\)</span>
+<li>Fit the model and obtain
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math>
 independent draws from the posterior.</li>
 <li>For each variable of interest, take the rank of the simulated value
 within the posterior draws
@@ -160,12 +160,15 @@ value</li>
 </ol>
 <p>It can be shown that if model matched the generator and algorithm
 works correctly, then for each variable, the ranks obtained in SBC
-should be uniformly distributed between <span class="math inline">\(0\)</span> and <span class="math inline">\(D\)</span>. This corresponds quite directly to
-claims like “the posterior 84% credible interval should contain the
-simulated value in 84% of simulations”, the rank uniformity represents
-this claim for all interval widths at once. The theory of SBC is fully
-described in <a href="https://arxiv.org/abs/2211.02383v1" class="external-link">Modrák et
-al.</a> which builds upon <a href="https://arxiv.org/abs/1804.06788" class="external-link">Talts et al.</a></p>
+should be uniformly distributed between
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0</mn><annotation encoding="application/x-tex">0</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math>.
+This corresponds quite directly to claims like “the posterior 84%
+credible interval should contain the simulated value in 84% of
+simulations”, the rank uniformity represents this claim for all interval
+widths at once. The theory of SBC is fully described in <a href="https://arxiv.org/abs/2211.02383v1" class="external-link">Modrák et al.</a> which builds
+upon <a href="https://arxiv.org/abs/1804.06788" class="external-link">Talts et al.</a></p>
 <p>This opens two principal use-cases of SBC:</p>
 <ol style="list-style-type: lower-alpha">
 <li>We have an algorithm that we trust is correct and a generator and
@@ -427,7 +430,7 @@ the backend:</p>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"results"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'results'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 94 (94%) fits had some steps rejected. Maximum number of rejections was 2.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 94 (94%) fits had some steps rejected. Maximum number of rejections was 3.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -445,16 +448,16 @@ check individual stats:</p>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 100 × 15</span></span></span>
 <span><span class="co">##    sim_id variable simulated_value  rank z_score  mean median    sd   mad    q5</span></span>
 <span><span class="co">##     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 1</span>      1 lambda              1.44    10  -<span style="color: #BB0000;">1.46</span>   1.74   1.73 0.202 0.200  1.42</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 2</span>      2 lambda              2.99    71  -<span style="color: #BB0000;">0.225</span>  3.05   3.04 0.270 0.269  2.64</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 3</span>      3 lambda              2.51    39  -<span style="color: #BB0000;">0.762</span>  2.70   2.69 0.255 0.254  2.30</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 4</span>      4 lambda              2.86    56  -<span style="color: #BB0000;">0.633</span>  3.03   3.02 0.269 0.267  2.62</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 5</span>      5 lambda              2.97   181   1.28   2.66   2.66 0.244 0.244  2.27</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 6</span>      6 lambda              2.54   149   0.776  2.36   2.36 0.236 0.240  1.97</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 7</span>      7 lambda              2.65    17  -<span style="color: #BB0000;">1.48</span>   3.04   3.03 0.268 0.274  2.61</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 8</span>      8 lambda              2.99   128   0.322  2.90   2.90 0.260 0.261  2.49</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 9</span>      9 lambda              2.55    20  -<span style="color: #BB0000;">1.22</span>   2.87   2.86 0.255 0.250  2.46</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">10</span>     10 lambda              1.73     9  -<span style="color: #BB0000;">1.54</span>   2.05   2.04 0.211 0.205  1.70</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 1</span>      1 lambda              1.44    14  -<span style="color: #BB0000;">1.49</span>   1.73   1.72 0.193 0.195  1.43</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 2</span>      2 lambda              2.99    86  -<span style="color: #BB0000;">0.189</span>  3.04   3.03 0.255 0.250  2.63</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 3</span>      3 lambda              2.51    49  -<span style="color: #BB0000;">0.698</span>  2.68   2.67 0.251 0.249  2.29</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 4</span>      4 lambda              2.86    54  -<span style="color: #BB0000;">0.684</span>  3.04   3.03 0.258 0.259  2.64</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 5</span>      5 lambda              2.97   170   1.16   2.68   2.66 0.253 0.240  2.28</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 6</span>      6 lambda              2.54   160   0.848  2.35   2.34 0.228 0.222  2.00</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 7</span>      7 lambda              2.65    19  -<span style="color: #BB0000;">1.44</span>   3.02   3.02 0.261 0.255  2.60</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 8</span>      8 lambda              2.99   135   0.286  2.91   2.90 0.263 0.260  2.51</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;"> 9</span>      9 lambda              2.55    18  -<span style="color: #BB0000;">1.32</span>   2.88   2.87 0.248 0.247  2.49</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">10</span>     10 lambda              1.73     8  -<span style="color: #BB0000;">1.52</span>   2.05   2.04 0.211 0.204  1.70</span></span>
 <span><span class="co">## <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
 <span><span class="co">## <span style="color: #949494;"># ℹ 5 more variables: q95 &lt;dbl&gt;, rhat &lt;dbl&gt;, ess_bulk &lt;dbl&gt;, ess_tail &lt;dbl&gt;,</span></span></span>
 <span><span class="co">## <span style="color: #949494;">#   max_rank &lt;int&gt;</span></span></span></code></pre>
@@ -508,9 +511,11 @@ philosophy of statistics and understand SBC as a probabilistic unit test
 for your model. In this view, SBC tests a certain identity that we
 expect to hold if our system is implemented correctly, similarly how one
 could test an implementation of an arithmetical system by comparing the
-results of computing <span class="math inline">\((x + y)^2\)</span> and
-<span class="math inline">\(x^2 + 2xy + y^2\)</span> - any mismatch
-means the test failed.</p>
+results of computing
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>+</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><annotation encoding="application/x-tex">(x + y)^2</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><mn>2</mn><mi>x</mi><mi>y</mi><mo>+</mo><msup><mi>y</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">x^2 + 2xy + y^2</annotation></semantics></math>
+- any mismatch means the test failed.</p>
 </div>
 <div class="section level2">
 <h2 id="where-to-go-next">Where to go next?<a class="anchor" aria-label="anchor" href="#where-to-go-next"></a>
@@ -537,9 +542,7 @@ storage facilities.</p>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
 
-        <nav id="toc" data-toggle="toc"><h2 data-toc-skip>Contents</h2>
-    </nav>
-</div>
+      </div>
 
 </div>
 
@@ -548,7 +551,7 @@ storage facilities.</p>
       <footer><div class="copyright">
   <p></p>
 <p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
 </div>
 
 <div class="pkgdown">
@@ -560,10 +563,10 @@ storage facilities.</p>
       </footer>
 </div>
 
-  
 
 
-  
+
+
 
   </body>
 </html>

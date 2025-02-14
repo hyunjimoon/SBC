@@ -6,7 +6,11 @@ new_SBC_backend_brms <- function(compiled_model,
 ) {
   require_brms_version("brms backend")
 
-  arg_names_for_stan <- c("chains", "inits", "init", "iter", "warmup", "thin")
+  if(is.null(args$algorithm) || args$algorithm == "sampling") {
+    arg_names_for_stan <- c("chains", "inits", "init", "iter", "warmup", "thin")
+  } else if(args$algorithm %in% c("meanfield", "fullrank")) {
+    arg_names_for_stan <- c("inits", "init") # possibly more valid args
+  }
   args_for_stan <- args[intersect(names(args), arg_names_for_stan)]
 
   args_for_stan_renames <- c("inits" = "init")
@@ -18,14 +22,29 @@ new_SBC_backend_brms <- function(compiled_model,
       args_for_stan[[orig]] <- NULL
     }
   }
-  stan_backend <- sampling_backend_from_stanmodel(compiled_model, args_for_stan)
+  if(is.null(args$algorithm) || args$algorithm == "sampling") {
+    stan_backend <- sampling_backend_from_stanmodel(compiled_model, args_for_stan)
+  } else if(args$algorithm %in% c("meanfield", "fullrank")) {
+    args_for_stan$algorithm <- args$algorithm
+    stan_backend <- variational_backend_from_stanmodel(compiled_model, args_for_stan)
+  }
 
   structure(list(stan_backend = stan_backend, args = args), class = "SBC_backend_brms")
 }
 
 validate_SBC_backend_brms_args <- function(args) {
-  if(!is.null(args$algorithm) && args$algorithm != "sampling") {
-    stop("Algorithms other than sampling not supported yet. Comment on https://github.com/hyunjimoon/SBC/issues/91 to express your interest.")
+  if(!is.null(args$algorithm) && !(args$algorithm %in% c("sampling", "meanfield", "fullrank"))) {
+    stop("Algorithms other than sampling, meanfield and fullrank not supported yet. Comment on https://github.com/hyunjimoon/SBC/issues/91 to express your interest.")
+  }
+
+  if(!is.null(args$algorithm) && args$algorithm %in% c("meanfield", "fullrank")) {
+    backend <- args$backend
+    if(is.null(backend)) {
+      backend <- getOption("brms.backend", "rstan")
+    }
+    if(backend != "cmdstanr") {
+      stop("algorithm = 'meanfield' or 'fullrank' is currently supported only when using cmdstanr as brms backend. Comment on https://github.com/hyunjimoon/SBC/issues/91 to express your interest.")
+    }
   }
 
   unacceptable_params <- c("data", "cores", "empty")
@@ -100,8 +119,23 @@ SBC_fit_to_draws_matrix.brmsfit <- function(fit) {
 
 #' @export
 SBC_fit_to_diagnostics.brmsfit <- function(fit, fit_output, fit_messages, fit_warnings) {
-  SBC_fit_to_diagnostics(fit$fit, fit_output, fit_messages, fit_warnings)
+  if(!is.null(fit$vb_fit)) {
+    SBC_fit_to_diagnostics(fit$vb_fit, fit_output, fit_messages, fit_warnings)
+  } else {
+    SBC_fit_to_diagnostics(fit$fit, fit_output, fit_messages, fit_warnings)
+  }
 }
+
+#' @export
+SBC_backend_iid_draws.SBC_backend_brms <- function(backend) {
+  SBC_backend_iid_draws(backend$stan_backend)
+}
+
+#' @export
+SBC_backend_default_thin_ranks.SBC_backend_brms <- function(backend) {
+  SBC_backend_default_thin_ranks(backend$stan_backend)
+}
+
 
 #' @export
 SBC_backend_hash_for_cache.SBC_backend_brms <- function(backend) {

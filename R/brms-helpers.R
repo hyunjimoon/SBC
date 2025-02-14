@@ -101,10 +101,26 @@ sampling_backend_from_stanmodel <- function(stanmodel, args) {
   }
 }
 
+variational_backend_from_stanmodel <- function(stanmodel, args) {
+
+  if(inherits(stanmodel, "CmdStanModel")) {
+    translated_args <- translate_rstan_args_to_cmdstan(args)
+
+    do.call(SBC_backend_cmdstan_variational, combine_args(translated_args, list(model = stanmodel)))
+  } else if(inherits(stanmodel, "stanmodel")) {
+    do.call(SBC_backend_rstan_variational, combine_args(args,list(model = stanmodel)))
+  } else {
+    stop("stanmodel does not inherit from `stanmodel` or `CmdStanModel`")
+  }
+}
+
 brmsfit_from_stanfit <- function(fit, brmsargs) {
   fit_brms <- do.call(brms::brm, combine_args(brmsargs, list(empty = TRUE)))
-  if(inherits(fit, "CmdStanMCMC")) {
+  if(inherits(fit, "CmdStanFit")) {
     fit_brms$fit <- brms::read_csv_as_stanfit(fit$output_files())
+    if(inherits(fit, "CmdStanVB")) {
+      fit_brms$vb_fit <- fit
+    }
   } else {
     fit_brms$fit <- fit
   }

@@ -18,7 +18,8 @@ presented at SBC StanConnect. Feel free to head to the tutorial website to get a
 Let's setup the environment:
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
-library(SBC); 
+library(SBC)
+library(ggplot2)
 use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
 if(use_cmdstanr) {
