@@ -24,8 +24,11 @@ SBC_generator_brms <- function(formula, data, ...,  generate_lp = TRUE,
 
   args <- list(...)
 
-  if(!is.null(args$algorithm) && args$algorithm != "sampling") {
-    stop("Algorithms other than sampling not supported yet")
+  if(!is.null(args$algorithm) && !(args$algorithm %in% c("sampling", "meanfield", "fullrank"))) {
+    stop("Algorithms other than sampling and meanfield not supported yet")
+  }
+  if(args$algorithm %in% c("meanfield", "fullrank")) {
+    warning("Variational inference is not recommended for generating datasets as it is unlikely to produce correct results.")
   }
 
   compiled_model <- stanmodel_for_brms(formula = formula, data = data, out_stan_file = out_stan_file, ...)
