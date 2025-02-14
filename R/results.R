@@ -1077,6 +1077,13 @@ get_diagnostic_messages <- function(x) {
 }
 
 
+#' @export
+#' @rdname get_diagnostic_messages
+get_diagnostic_messages.default <- function(x) {
+  SBC_diagnostic_messages(data.frame(message = character(0), ok = logical(0)))
+}
+
+
 #' Check diagnostics and issue warnings when those fail.
 #'
 #' @rdname check_all_SBC_diagnostics

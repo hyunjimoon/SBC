@@ -78,6 +78,7 @@ if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
 
+theme_set(theme_minimal())
 ```
 
 
@@ -346,6 +347,7 @@ We may also look at the observed coverage of central intervals - we see that for
 
 ```{r hmm_coverage}
 plot_coverage(res_hmm)
+plot_coverage_diff(res_hmm)
 ```
 
 To make sure this is not a fluke we add 400 more simulations.

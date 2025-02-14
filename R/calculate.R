@@ -29,7 +29,7 @@ adjust_gamma_optimize <- function(N, K, conf_level=0.95) {
 
     # pre-compute quantiles and use symmetry for increased efficiency.
     x2_lower <- qbinom(gamma / 2, N, z2)
-    x2_upper <- c(N - rev(x2_lower)[2:K], 1)
+    x2_upper <- c(N - rev(x2_lower)[2:K], N)
 
     # Compute the total probability of trajectories inside the confidence
     # intervals. Initialize the set and corresponding probasbilities known

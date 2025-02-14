@@ -98,6 +98,7 @@ if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
 
+theme_set(theme_minimal())
 ```
 
 ## Mixture submodel
@@ -377,7 +378,7 @@ This gives us no obvious problems.
 
 ```{r mixture_fixed_ordered_subset_results}
 plot_rank_hist(results_fixed_ordered_subset)
-plot_ecdf_diff(results_fixed_ordered_subset)
+plot_ecdf(results_fixed_ordered_subset)
 ```
 
 Since we now have only `r length(results_fixed_ordered_subset)` simulations, it is not surprising that we are still left with a huge uncertainty about the actual coverage of our posterior intervals - we can see that in a plot:
@@ -545,7 +546,7 @@ We get a single fit with divergent transitions and the ranks look mostly OK:
 
 ```{r beta_first_results}
 plot_rank_hist(results_beta_first_10)
-plot_ecdf_diff(results_beta_first_10)
+plot_ecdf(results_beta_first_10)
 ```
 
 Let's inspect the pairs plot for the offending fit:
@@ -669,7 +670,7 @@ No big problems from the fit and the plots:
 
 ```{r results_beta_precision_10_plots}
 plot_rank_hist(results_beta_precision_10)
-plot_ecdf_diff(results_beta_precision_10)
+plot_ecdf(results_beta_precision_10)
 ```
 
 So we'll run 90 more iterations and combine them with the previous results:
