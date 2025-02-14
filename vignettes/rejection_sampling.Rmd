@@ -58,7 +58,7 @@ So let's see if that also happens in practice. Let's setup our environment:
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
-
+library(ggplot2)
 use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
 if(use_cmdstanr) {

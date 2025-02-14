@@ -70,6 +70,7 @@ Let's setup and get our hands dirty:
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
+library(ggplot2)
 
 use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 

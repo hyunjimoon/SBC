@@ -36,6 +36,7 @@ if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
 
+future::plan(future::sequential)
 theme_set(theme_minimal())
 ```
 
