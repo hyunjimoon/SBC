@@ -3,11 +3,12 @@
 #'
 #' @param ... passed to [bridgesampling::bridge_sampler()].
 #' @export
-SBC_backend_bridgesampling <- function(backend_H0, backend_H1, model_var = "model", ...) {
+SBC_backend_bridgesampling <- function(backend_H0, backend_H1, model_var = "model", prior_prob1 = 0.5, ...) {
   require_package_version("bridgesampling", version = "1.0", purpose = " to use the bridgesampling SBC backend")
   structure(list(backend_H0 = backend_H0,
                  backend_H1 = backend_H1,
                  model_var = model_var,
+                 prior_prob1 = prior_prob1,
                  bridgesampling_args = list(...)),
             class = "SBC_backend_bridgesampling")
 }
@@ -51,7 +52,8 @@ SBC_fit.SBC_backend_bridgesampling <- function(backend, generated, cores) {
     fit1 = fit1,
     bridge_H0 = bridge_H0,
     bridge_H1 = bridge_H1,
-    model_var = backend$model_var
+    model_var = backend$model_var,
+    prior_prob1 = backend$prior_prob1
   ), class = "SBC_fit_bridgesampling")
 }
 
@@ -62,7 +64,8 @@ SBC_fit_bridgesampling_to_prob1 <- function(fit, log.p = FALSE) {
   } else {
     log_bf_01 <- bf_res$bf
   }
-  prob1 <- plogis(-log_bf_01, log.p = log.p)
+  prior_log <- log(fit$prior_prob1) - log1p( -fit$prior_prob1)
+  prob1 <- plogis(-log_bf_01 + prior_log, log.p = log.p)
   return(prob1)
 }
 
