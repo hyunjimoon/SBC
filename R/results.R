@@ -193,7 +193,7 @@ bind_results <- function(...) {
 
   # Ensure unique sim_ids
   max_ids <- as.numeric(purrr::map(stats_list, function(x) max(x$sim_id)))
-  shifts <- c(0, max_ids[1:(length(max_ids)) - 1]) # Shift of IDs per dataset
+  shifts <- cumsum(c(0, max_ids[1:(length(max_ids) - 1)])) # Shift of IDs per dataset
 
   shift_sim_id <- function(x, shift) {
     if(is.null(x)) {

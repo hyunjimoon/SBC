@@ -73,14 +73,14 @@ test_that("capture_all_outputs", {
 })
 
 test_that("subset_bind", {
-    res <- SBC_results(stats = data.frame(sim_id = rep(1:3, each = 4), s = 1:12),
-                       fits = list("A", NULL, "C"),
-                       outputs = list(c("A1","A2"), c(), c("C1", "C4")),
-                       warnings = list(c(), "XXXX", "asdfdaf"),
-                       messages = list("aaaa", "ddddd", NA_character_),
-                       errors = list(NULL, "customerror", NULL),
-                       default_diagnostics = data.frame(sim_id = 1:3, qq = rnorm(3)),
-                       backend_diagnostics = data.frame(sim_id = 1:3, rr = rnorm(3))
+    res <- SBC_results(stats = data.frame(sim_id = rep(1:5, each = 4), s = 1:20),
+                       fits = list("A", NULL, "C", "D", "E"),
+                       outputs = list(c("A1","A2"), c(), c("C1", "C4"), c("D1", "D2", "D3"), c("E1")),
+                       warnings = list(c(), "XXXX", "asdfdaf", c(), c()),
+                       messages = list("aaaa", "ddddd", NA_character_, c("WD1", "WD2"), c("WE1", "WE2", "WE3") ),
+                       errors = list(NULL, "customerror", NULL, NULL, NULL),
+                       default_diagnostics = data.frame(sim_id = 1:5, qq = rnorm(5)),
+                       backend_diagnostics = data.frame(sim_id = 1:5, rr = rnorm(5))
                        )
 
     remove_sim_id_names <- function(x) {
@@ -92,12 +92,17 @@ test_that("subset_bind", {
         x
     }
 
-    expect_equal(res, remove_sim_id_names(bind_results(res[1], res[2:3])))
-    expect_equal(res, remove_sim_id_names(bind_results(res[1:2], res[3])))
+    expect_equal(remove_sim_id_names(res[1:3]), remove_sim_id_names(bind_results(res[1], res[2:3])))
+    expect_equal(remove_sim_id_names(res[1:3]), remove_sim_id_names(bind_results(res[1:2], res[3])))
+    expect_equal(remove_sim_id_names(res[1:3]), remove_sim_id_names(bind_results(res[1], res[2], res[3])))
     expect_equal(remove_sim_id_names(res[3:1]), remove_sim_id_names(bind_results(res[3:2], res[1])))
     expect_equal(remove_sim_id_names(res[2]), remove_sim_id_names(((res[2:3])[1])))
 
-    # The same, but with some NULLs
+    expect_equal(res, remove_sim_id_names(bind_results(res[1], res[2:3], res[4:5])))
+    expect_equal(res, remove_sim_id_names(bind_results(res[1:2], res[3:4], res[5])))
+    expect_equal(remove_sim_id_names(res[5:1]), remove_sim_id_names(bind_results(res[5:4],res[3:2], res[1])))
+
+    # Shorter, but with some NULLs
     res2 <- SBC_results(stats = data.frame(sim_id = rep(1:3, each = 4), s = 1:12),
                        fits = list("A", NULL, "C"),
                        outputs = rep(list(NULL), 3),
@@ -110,6 +115,7 @@ test_that("subset_bind", {
 
     expect_equal(res2, remove_sim_id_names(bind_results(res2[1], res2[2:3])))
     expect_equal(res2, remove_sim_id_names(bind_results(res2[1:2], res2[3])))
+    expect_equal(res2, remove_sim_id_names(bind_results(res2[1], res2[2], res2[3])))
     expect_equal(remove_sim_id_names(res2[3:1]), remove_sim_id_names(bind_results(res2[3:2], res2[1])))
     expect_equal(remove_sim_id_names(res2[2]), remove_sim_id_names(((res2[2:3])[1])))
 
