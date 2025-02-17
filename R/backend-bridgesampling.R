@@ -151,5 +151,9 @@ SBC_backend_hash_for_cache.SBC_backend_bridgesampling <- function(backend) {
   backend_for_hash <- backend
   backend_for_hash$backend_H0 <- SBC_backend_hash_for_cache(backend$backend_H0)
   backend_for_hash$backend_H1 <- SBC_backend_hash_for_cache(backend$backend_H1)
+  # Keep caches from older versions valid
+  if(!is.null(backend$prior_prob1) && backend$prior_prob1 == 0.5) {
+    backend_for_hash$prior_prob1 <- NULL
+  }
   rlang::hash(backend_for_hash)
 }
