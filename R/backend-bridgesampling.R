@@ -44,9 +44,11 @@ SBC_fit_to_bridge_sampler.SBC_backend_brms <- function(backend, fit, generated, 
 #' @export
 SBC_fit.SBC_backend_bridgesampling <- function(backend, generated, cores) {
   fit0 <- SBC_fit(backend$backend_H0, generated, cores)
-  fit1 <- SBC_fit(backend$backend_H1, generated, cores)
   bridge_H0 <- do.call("SBC_fit_to_bridge_sampler", c(list(backend$backend_H0, fit0, generated), backend$bridgesampling_args))
+
+  fit1 <- SBC_fit(backend$backend_H1, generated, cores)
   bridge_H1 <- do.call("SBC_fit_to_bridge_sampler", c(list(backend$backend_H1, fit1, generated), backend$bridgesampling_args))
+
   structure(list(
     fit0 = fit0,
     fit1 = fit1,
