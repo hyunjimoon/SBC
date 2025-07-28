@@ -4,11 +4,15 @@
 \alias{cached_fit_filename}
 \title{Provide a file where a cached result of a fit will be/was stored.}
 \usage{
-cached_fit_filename(cache_dir, backend, generated)
+cached_fit_filename(cache_dir, backend, generated, suffix = "")
 }
 \description{
 This is to allow you to directly access the cache, should you need to.
-The cache file will always be a \code{list} readable by \code{readRDS} and have
+For normal fits, the cache file will always be a \code{list} readable by \code{readRDS} and have
 element \verb{$fit} for the actual fit. Other elements will contain the
 text output, messages and warnings emitted by the fit.
+}
+\details{
+This is also used internally to cache some extra data (notably bridgesampling
+results) using a non-empty \code{suffix} string.
 }

@@ -9,7 +9,8 @@ SBC_backend_mock(
   output = NULL,
   message = NULL,
   warning = NULL,
-  error = NULL
+  error = NULL,
+  bridgesampler = NULL
 )
 }
 \arguments{

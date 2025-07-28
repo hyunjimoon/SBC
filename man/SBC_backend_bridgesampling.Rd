@@ -5,7 +5,13 @@
 \title{Backend using bridgesampling to do Bayes factor calculation (and Bayesian Model Averaging) over two candidate
 models.}
 \usage{
-SBC_backend_bridgesampling(backend_H0, backend_H1, model_var = "model", ...)
+SBC_backend_bridgesampling(
+  backend_H0,
+  backend_H1,
+  model_var = "model",
+  prior_prob1 = 0.5,
+  ...
+)
 }
 \arguments{
 \item{...}{passed to \code{\link[bridgesampling:bridge_sampler]{bridgesampling::bridge_sampler()}}.}
