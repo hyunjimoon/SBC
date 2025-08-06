@@ -19,7 +19,7 @@ binary_probabilities_from_stats <- function(stats) {
 }
 
 #' @export
-binary_calibration_from_stats <- function(stats, type = "isotonic", ...) {
+binary_calibration_from_stats <- function(stats, type = c("reliabilitydiag", "calibrationband"), ...) {
   stats <- binary_probabilities_from_stats(stats)
 
   stats_grouped <- dplyr::group_by(stats, variable)
@@ -29,8 +29,10 @@ binary_calibration_from_stats <- function(stats, type = "isotonic", ...) {
 }
 
 #' @export
-binary_calibration_base <- function(prob, outcome, type = "isotonic", ...) {
-  stopifnot(is.numeric(prob) && is.numeric(outcome))
+binary_calibration_base <- function(prob, outcome, uncertainty_prob = 0.95, type = c("reliabilitydiag", "calibrationband"), ...) {
+  stopifnot(is.numeric(prob))
+  stopifnot((is.numeric(outcome) || is.logical(outcome) || is.integer(outcome)))
+  outcome <- as.numeric(outcome)
   stopifnot(all(outcome %in% c(0,1)))
   stopifnot(all(prob >=0 & prob <= 1))
   stopifnot(length(prob) == length(outcome))
@@ -41,8 +43,22 @@ binary_calibration_base <- function(prob, outcome, type = "isotonic", ...) {
   outcome <- outcome[!na_indices]
 
   type <- match.arg(type)
-  if(type == "isotonic") {
-    require_package_version("calibrationband", "0.2", "to compute binary calibration with the type 'isotonic'.")
+  if(type == "reliabilitydiag") {
+    require_package_version("reliabilitydiag", "0.2.1", "to compute binary calibration with the type 'reliabilitydiag'.")
+    rel_diag <- reliabilitydiag::reliabilitydiag(
+      x = prob,
+      y = outcome,
+      region.level = uncertainty_prob,
+      ...
+    )
+    res <- data.frame(prob = rel_diag$x$regions$x, low = rel_diag$x$regions$lower, high = rel_diag$x$regions$upper)
+    res$estimate <- approx(x = c(rel_diag$x$bins$x_min, rel_diag$x$bins$x_max),
+                           y = rep(rel_diag$x$bins$CEP_pav, times = 2),
+                           xout = res$prob)$y
+
+    return(res)
+  } else if(type == "calibrationband") {
+    require_package_version("calibrationband", "0.2", "to compute binary calibration with the type 'calibrationband'.")
     # Need to remove extreme indices because they cause crashes in the package
     extreme_indices <- prob < 1e-10 | prob > 1 - 1e-10
     extreme_indices_mismatch <- extreme_indices & round(prob) != outcome
@@ -56,7 +72,7 @@ binary_calibration_base <- function(prob, outcome, type = "isotonic", ...) {
     # Avoiding https://github.com/marius-cp/calibrationband/issues/1
     prob <- round(prob, digits = 7)
 
-    bands <- calibrationband::calibration_bands(prob, outcome, ...)
+    bands <- calibrationband::calibration_bands(prob, outcome, alpha = 1 - uncertainty_prob, ...)
 
     res <- dplyr::transmute(bands$bands, prob = x, low = lwr, high = upr)
 
@@ -77,7 +93,7 @@ binary_calibration_base <- function(prob, outcome, type = "isotonic", ...) {
 
 
 #' @export
-plot_binary_calibration_diff <- function(stats, type = "isotonic", ...) {
+plot_binary_calibration_diff <- function(stats, type = c("reliabilitydiag", "calibrationband"), ...) {
   calib_df <- binary_calibration_from_stats(stats, type = type, ...)
 
   ggplot(calib_df, aes(x = prob, ymin = low - prob, ymax = high - prob, y = estimate - prob)) +
@@ -87,11 +103,11 @@ plot_binary_calibration_diff <- function(stats, type = "isotonic", ...) {
 }
 
 #' @export
-plot_binary_calibration <- function(stats, type = "isotonic", ...) {
+plot_binary_calibration <- function(stats, type = c("reliabilitydiag", "calibrationband"), ...) {
   calib_df <- binary_calibration_from_stats(stats, type = type, ...)
 
   ggplot(calib_df, aes(x = prob, ymin = low, ymax = high, y = estimate)) +
     geom_segment(x = 0, y = 0, xend = 1, yend = 1, color = "skyblue1", size = 2) +
     geom_ribbon(fill = "black", alpha = 0.33) +
-    geom_line() + facet_wrap(~variable)
+    geom_line() + facet_wrap(~variable) + coord_fixed()
 }
