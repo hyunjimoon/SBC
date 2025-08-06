@@ -52,6 +52,11 @@ theme_set(theme_minimal())
 ```
 
 
+```{r enable progressr, eval = FALSE}
+# Run this # Run this _in the console_ to report progress for all computations to report progress for all computations
+# see https://progressr.futureverse.org/ for more options
+progressr::handlers(global = TRUE)
+```
 
 ## Presence of random effects
 
@@ -283,6 +288,7 @@ sim_beta_binom <- function(N, shape1, shape2, two_theta = FALSE) {
   )
 }
 
+set.seed(396523)
 n_sims <- 5000
 ds_custom_m0 <- generate_datasets(SBC_generator_function(sim_beta_binom, N = 30, shape1 = 1, shape2 = 1), n_sims = n_sims)
 ds_custom_m1 <- generate_datasets(SBC_generator_function(sim_beta_binom, N = 30, shape1 = 6, shape2 = 1), n_sims = n_sims)
@@ -322,7 +328,11 @@ backend_bs_custom <- SBC_backend_bridgesampling(
 
 
 ```{r}
-res_custom <- compute_SBC(ds_custom, backend_bs_custom, globals = beta_binom_globals, keep_fits = FALSE)
+res_custom <- compute_SBC(
+  ds_custom, backend_bs_custom, globals = beta_binom_globals,
+  cache_mode = "results",
+  cache_location = file.path(cache_dir, "beta_binom.rds"),
+  keep_fits = FALSE)
 
 plot_ecdf_diff(res_custom)
 plot_ecdf_diff(res_custom, show_hidden = TRUE)

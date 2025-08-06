@@ -1,6 +1,6 @@
 Package: SBC
 Title: Simulation Based Calibration for Bayesian models
-Version: 0.3.0.9000
+Version: 0.4.0.9000
 Authors@R: 
     c(person(given = "Shinyoung",
            family = "Kim",
@@ -65,6 +65,8 @@ Suggests:
     mvtnorm,
     patchwork,
     bridgesampling,
-    bayesplot
+    bayesplot,
+    reliabilitydiag,
+    progressr
 VignetteBuilder: knitr
 Language: en-US

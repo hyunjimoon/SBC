@@ -138,6 +138,13 @@ generate_datasets <- function(generator, n_sims, n_datasets = NULL) {
 
 #' Generate datasets via a function that creates a single dataset.
 #'
+#'
+#' The generator supports progress reporting with the
+#' [`progressr`](https://progressr.futureverse.org/) package.
+#' Run `progressr::handlers(global = TRUE)` to enable progress reporting
+#' globally, see the `progressr` docs for more options.
+#'
+#'
 #' @param f function returning a list with elements `variables`
 #' (prior draws, a list or anything that can be converted to `draws_rvars`) and
 #' `generated` (observed dataset, ready to be passed to backend)
@@ -164,6 +171,13 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
   stopifnot(n_sims >= 1)
 
   warned_parameters <- FALSE
+
+  if(requireNamespace("progressr", quietly = TRUE)) {
+    progressor <- progressr::progressor(n_sims)
+  } else {
+    progressor <- NULL
+  }
+
 
   generate_single <- function() {
     generator_output <- do.call(generator$f, generator$args)
@@ -232,6 +246,10 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
       a single draw")
     }
     generator_output$variables <- vars_dm
+
+    if(!is.null(progressor)) {
+      progressor()
+    }
 
     return(generator_output)
   }

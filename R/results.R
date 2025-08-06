@@ -319,6 +319,15 @@ compute_results <- function(...) {
 #'  to just call `plan(multisession)` once in your R session and  all
 #'  cores your computer will be used. For more details refer to the documentation
 #'  of the `future` package.
+#'  On some Linux systems, using [future.mirai::mirai_multisession] may give
+#'  performance boosts.
+#'
+#' # Progress reporting
+#'
+#' This function supports progress reporting with the
+#' [`progressr`](https://progressr.futureverse.org/) package.
+#' Run `progressr::handlers(global = TRUE)` to enable progress reporting
+#' globally, see the `progressr` docs for more options.
 #'
 #' # Thinning
 #'
@@ -530,6 +539,12 @@ compute_SBC <- function(datasets, backend,
     future.globals <- bind_globals(globals, dq_globals)
   }
 
+  if(requireNamespace("progressr", quietly = TRUE)) {
+    progressor <- progressr::progressor(along = vars_and_generated_list)
+  } else {
+    progressor <- NULL
+  }
+
   results_raw <- future.apply::future_lapply(
     vars_and_generated_list, SBC:::compute_SBC_single,
     backend = backend, cores = cores_per_fit,
@@ -539,7 +554,8 @@ compute_SBC <- function(datasets, backend,
     var_attributes = datasets$var_attributes,
     future.seed = TRUE,
     future.globals = future.globals,
-    future.chunk.size = chunk_size)
+    future.chunk.size = chunk_size,
+    progressor = progressor)
 
   # Combine, check and summarise
   fits <- rep(list(NULL), length(datasets))
@@ -741,7 +757,8 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
                                keep_fit, thin_ranks,
                                ensure_num_ranks_divisor,
                                dquants,
-                               var_attributes) {
+                               var_attributes,
+                               progressor = NULL) {
 
   variables <- vars_and_generated$variables
   generated <- vars_and_generated$generated
@@ -800,6 +817,9 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
     res$fit <- NULL
   }
 
+  if(!is.null(progressor)) {
+    progressor()
+  }
   res
 }
 

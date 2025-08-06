@@ -50,6 +50,13 @@ if(!dir.exists(cache_dir)) {
 theme_set(theme_minimal())
 ```
 
+```{r enable progressr, eval = FALSE}
+# Run this # Run this _in the console_ to report progress for all computations to report progress for all computations
+# see https://progressr.futureverse.org/ for more options
+progressr::handlers(global = TRUE)
+```
+
+
 ## Generating data using `brms`
 
 The `brms` package has a built-in feature to simulate from 

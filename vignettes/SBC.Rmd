@@ -163,6 +163,13 @@ if(!dir.exists(cache_dir)) {
 
 ```
 
+```{r enable progressr, eval = FALSE}
+# Run this # Run this _in the console_ to report progress for all computations to report progress for all computations
+# see https://progressr.futureverse.org/ for more options
+progressr::handlers(global = TRUE)
+```
+
+
 ### Model Setup
 
 We will be running SBC against a model that defines `y ~ Poisson(lambda)`, where `lambda ~ Gamma(15, 5)`. We will use the following Stan model:

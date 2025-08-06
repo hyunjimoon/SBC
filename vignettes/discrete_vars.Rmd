@@ -57,6 +57,13 @@ if(!dir.exists(cache_dir_jags)) {
 theme_set(theme_minimal())
 ```
 
+```{r enable progressr, eval = FALSE}
+# Run this # Run this _in the console_ to report progress for all computations to report progress for all computations
+# see https://progressr.futureverse.org/ for more options
+progressr::handlers(global = TRUE)
+```
+
+
 We take the changepoint model from:
 https://mc-stan.org/docs/2_26/stan-users-guide/change-point-section.html
 
