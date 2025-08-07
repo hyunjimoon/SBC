@@ -2,9 +2,12 @@
 % Please edit documentation in R/backend-cached.R
 \name{SBC_backend_postprocess_cached_fit}
 \alias{SBC_backend_postprocess_cached_fit}
+\alias{SBC_backend_preprocess_fit_for_cache}
 \title{Allows the backend to do any pre-/post- processing on a fit stored to / loaded from cache.}
 \usage{
 SBC_backend_postprocess_cached_fit(backend, generated, fit)
+
+SBC_backend_preprocess_fit_for_cache(backend, generated, fit)
 }
 \description{
 This is useful e.g. to provide a live \code{stanmodel} instance to an rstan fit,

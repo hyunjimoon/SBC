@@ -2,6 +2,7 @@
 % Please edit documentation in R/plot.R
 \name{plot_sim_estimated}
 \alias{plot_sim_estimated}
+\alias{plot_sim_estimated.data.frame}
 \title{Plot the simulated "true" values versus posterior estimates}
 \usage{
 plot_sim_estimated(
@@ -11,6 +12,16 @@ plot_sim_estimated(
   uncertainty = c("q5", "q95"),
   alpha = NULL,
   ...,
+  parameters = NULL
+)
+
+\method{plot_sim_estimated}{data.frame}(
+  x,
+  variables = NULL,
+  estimate = "mean",
+  uncertainty = c("q5", "q95"),
+  alpha = NULL,
+  show_hidden = FALSE,
   parameters = NULL
 )
 }
@@ -28,6 +39,9 @@ must correspond a field already computed in the results. Pass \code{NULL} to avo
 \item{alpha}{the alpha for the points and uncertainty intervals}
 
 \item{parameters}{DEPRECATED, use \code{variables} instead}
+
+\item{show_hidden}{Show variables marked with \code{\link[=hidden_var_attribute]{hidden_var_attribute()}}
+(by default, those are not shown, available only when \code{x} is a data.frame)}
 }
 \value{
 a ggplot2 plot object

@@ -23,5 +23,8 @@ defaults to +Inf (no paralellism).}
 \item{...}{Additional arguments passed to \code{f}}
 }
 \description{
-Generate datasets via a function that creates a single dataset.
+The generator supports progress reporting with the
+\href{https://progressr.futureverse.org/}{\code{progressr}} package.
+Run \code{progressr::handlers(global = TRUE)} to enable progress reporting
+globally, see the \code{progressr} docs for more options.
 }

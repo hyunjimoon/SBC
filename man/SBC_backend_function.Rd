@@ -36,7 +36,7 @@ work is necessary to make it work with SBC.
 \examples{
 # Generate t-distributed variables as a ratio of standard normal (z)
 # and transformed chi-squared (v) variables.
-# What is the distribution of z if t is observed?
+# What is the conditional distribution of z if t is observed?
 # See https://math.stackexchange.com/a/5085538/423833 for derivation that it
 # is generalized gamma distribution. Here we test this is correct.
 
@@ -48,7 +48,8 @@ t <- z / sqrt(v/df)
 
 # Bundle in a dataset with extra quantities
 my_data <- SBC_datasets(
-  variables = posterior::draws_matrix(z = z, v = v, lik = abs(z) * dchisq(df * z^2 / t^2, df = df)),
+  variables = posterior::draws_matrix
+  (z = z, v = v, lik = abs(z) * dchisq(df * z^2 / t^2, df = df)),
   generated = purrr::map(t, \(t) list(t = t, df = df)))
 
 # Main workhorse function

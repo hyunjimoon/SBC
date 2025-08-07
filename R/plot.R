@@ -607,6 +607,7 @@ plot_contraction.SBC_results <- function(x, prior_sd, variables = NULL, scale = 
 #' @param show_hidden Show variables marked with [hidden_var_attribute()]
 #'    (by default, those are not shown, available only when `x` is a data.frame)
 #' @export
+#' @rdname plot_contraction
 plot_contraction.data.frame <- function(x, prior_sd, variables = NULL, scale = "sd", alpha = 0.8, show_hidden = FALSE, parameters = NULL) {
   if(!is.null(parameters)) {
     warning("The `parameters` argument is deprecated use `variables` instead.")
@@ -700,6 +701,7 @@ plot_sim_estimated.SBC_results <- function(x, variables = NULL, estimate = "mean
 #' @param show_hidden Show variables marked with [hidden_var_attribute()]
 #'    (by default, those are not shown, available only when `x` is a data.frame)
 #' @export
+#' @rdname plot_sim_estimated
 plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean",
                                           uncertainty = c("q5", "q95"),
                                           alpha = NULL,

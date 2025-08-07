@@ -171,6 +171,8 @@ var_attributes_to_attributes_column <- function(var_attr, variables) {
 }
 
 
+#' Combine multiple sets of variable attributes.
+#'
 #' @details
 #' It is currently by design that multiple copies of an attribute are kept
 #'

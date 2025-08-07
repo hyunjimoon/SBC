@@ -118,7 +118,7 @@ SBC_backend_postprocess_cached_fit <- function(backend, generated, fit) {
 }
 
 #' @export
-#' @rdname SBC_backend_preprocess_fit_for_cache
+#' @rdname SBC_backend_postprocess_cached_fit
 SBC_backend_preprocess_fit_for_cache <- function(backend, generated, fit) {
   UseMethod("SBC_backend_preprocess_fit_for_cache")
 }

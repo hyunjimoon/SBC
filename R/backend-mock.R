@@ -39,6 +39,7 @@ SBC_fit.SBC_backend_mock <- function(backend, generated, cores) {
   backend$result
 }
 
+#' @export
 SBC_fit_to_bridge_sampler.SBC_backend_mock <- function(backend, ...)  {
   return(backend$bridgesampler)
 }
