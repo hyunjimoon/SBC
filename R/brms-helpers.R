@@ -116,8 +116,11 @@ variational_backend_from_stanmodel <- function(stanmodel, args) {
 
 brmsfit_from_stanfit <- function(fit, brmsargs) {
   fit_brms <- do.call(brms::brm, combine_args(brmsargs, list(empty = TRUE)))
+  variables <- fit$metadata()$stan_variables
+  exclude <- brms:::exclude_pars(fit_brms)
   if(inherits(fit, "CmdStanFit")) {
-    fit_brms$fit <- brms::read_csv_as_stanfit(fit$output_files())
+    fit_brms$fit <- brms::read_csv_as_stanfit(fit$output_files(),
+      variables = variables, exclude = exclude, algorithm = fit_brms$algorithm)
     if(inherits(fit, "CmdStanVB")) {
       fit_brms$vb_fit <- fit
     }

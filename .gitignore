@@ -2,6 +2,7 @@
 .Rproj.user
 .Rhistory
 .RData
+.Rprofile
 Meta
 
 *.nb.html

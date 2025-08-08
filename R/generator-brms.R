@@ -91,7 +91,7 @@ generate_datasets.SBC_generator_brms <- function(generator, n_sims, n_datasets =
       min_ess <- min(c(Inf, summ$ess_bulk), na.rm = TRUE)
       if(min_ess < n_sims / 2) {
         message("Warning: Bulk effective sample size for some parameters is less than half the number of simulations.\n",
-                "The lowest ESS_bulk/n_sims is ", round(min_ess / n_sims, 2)," for ", summ$parameter[which.min(summ$ess_bulk)],
+                "The lowest ESS_bulk/n_sims is ", round(min_ess / n_sims, 2)," for ", summ$variable[which.min(summ$ess_bulk)],
                 "\nConsider increased thinning  (via 'thin' argument) .")
       }
 

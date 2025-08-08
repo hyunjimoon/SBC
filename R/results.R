@@ -731,7 +731,7 @@ capture_all_outputs <- function(expr) {
       finally = {
         options(try.outFile = previous_try_outfile)
       })
-  }, type = "output")
+  }, type = "output", split = getOption("SBC.split_output", default = FALSE))
   list(result = res, messages = do.call(c, logs$message), warnings = do.call(c, logs$warning), output = output)
 }
 
