@@ -5,7 +5,7 @@ See the methods for data_for_ecdf_plots() for available data formats.'><!-- math
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
 <![endif]--><script defer data-domain="hyunjimoon.github.io" src="https://plausible.io/js/script.js"></script></head><body data-spy="scroll" data-target="#toc">
-
+    
 
     <div class="container template-reference-topic">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -19,7 +19,7 @@ See the methods for data_for_ecdf_plots() for available data formats.'><!-- math
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.3.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.4.0.9000</span>
       </span>
     </div>
 
@@ -36,7 +36,7 @@ See the methods for data_for_ecdf_plots() for available data formats.'><!-- math
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
-
+     
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu"><li>
@@ -76,26 +76,26 @@ See the methods for data_for_ecdf_plots() for available data formats.'><!-- math
       </ul><ul class="nav navbar-nav navbar-right"><li>
   <a href="https://twitter.com/mcmc_stan" class="external-link">
     <span class="fa fa-twitter"></span>
-
+     
   </a>
 </li>
 <li>
   <a href="https://github.com/hyunjimoon/SBC" class="external-link">
     <span class="fa fa-github"></span>
-
+     
   </a>
 </li>
 <li>
   <a href="http://discourse.mc-stan.org/" class="external-link">
     <span class="fa fa-users"></span>
-
+     
   </a>
 </li>
       </ul></div><!--/.nav-collapse -->
   </div><!--/.container -->
 </div><!--/.navbar -->
 
-
+      
 
       </header><div class="row">
   <div class="col-md-9 contents">
@@ -122,6 +122,7 @@ See the methods for <code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots
 <span>  alpha <span class="op">=</span> <span class="fl">0.33</span>,</span>
 <span>  combine_variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ecdf_alpha <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  show_hidden <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  parameters <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
@@ -136,6 +137,7 @@ See the methods for <code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots
 <span>  alpha <span class="op">=</span> <span class="fl">0.33</span>,</span>
 <span>  combine_variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ecdf_alpha <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  show_hidden <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  parameters <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -143,17 +145,15 @@ See the methods for <code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots
 
     <div id="arguments">
     <h2>Arguments</h2>
-
-
-<dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
+    <dl><dt>x</dt>
 <dd><p>object supporting the <code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots()</a></code> method.</p></dd>
 
 
-<dt id="arg-variables">variables<a class="anchor" aria-label="anchor" href="#arg-variables"></a></dt>
+<dt>variables</dt>
 <dd><p>optional subset of variables to show in the plot</p></dd>
 
 
-<dt id="arg-k">K<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
+<dt>K</dt>
 <dd><p>number of uniformly spaced evaluation points for the ECDF or ECDFs. Affects
 the granularity of the plot and can significantly speed up the computation
 of the simultaneous confidence bands. Default value is chosen heuristically.
@@ -161,23 +161,23 @@ You can also use <code>"max"</code> to represent
 the number of ranks or <code>"min"</code> to choose a lower but still sensible value.</p></dd>
 
 
-<dt id="arg-gamma">gamma<a class="anchor" aria-label="anchor" href="#arg-gamma"></a></dt>
+<dt>gamma</dt>
 <dd><p>TODO</p></dd>
 
 
-<dt id="arg-prob">prob<a class="anchor" aria-label="anchor" href="#arg-prob"></a></dt>
+<dt>prob</dt>
 <dd><p>the width of the plotted confidence interval for the ECDF.</p></dd>
 
 
-<dt id="arg-size">size<a class="anchor" aria-label="anchor" href="#arg-size"></a></dt>
+<dt>size</dt>
 <dd><p>size passed to <code><a href="https://ggplot2.tidyverse.org/reference/geom_ribbon.html" class="external-link">ggplot2::geom_ribbon()</a></code> for the confidence band</p></dd>
 
 
-<dt id="arg-alpha">alpha<a class="anchor" aria-label="anchor" href="#arg-alpha"></a></dt>
+<dt>alpha</dt>
 <dd><p>alpha level of the confidence band</p></dd>
 
 
-<dt id="arg-combine-variables">combine_variables<a class="anchor" aria-label="anchor" href="#arg-combine-variables"></a></dt>
+<dt>combine_variables</dt>
 <dd><p>optionally specify a named list where each entry is a character
 vectors which specifies a group of variables that will be displayed in the
 same panel. Panel title will be the name of the list element.
@@ -185,19 +185,24 @@ A function that takes a character vector as an input and produces a list
 can also be specified (see combine-functions).</p></dd>
 
 
-<dt id="arg-ecdf-alpha">ecdf_alpha<a class="anchor" aria-label="anchor" href="#arg-ecdf-alpha"></a></dt>
+<dt>ecdf_alpha</dt>
 <dd><p>the alpha level of the empirical CDF. Can be either a single number or
 a function taking the number of variables that were combined (when <code>combine_variables</code>
 is specified) and returns a number. By default, plots showing many
 ECDFs will have reduced alpha.</p></dd>
 
 
-<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dt>show_hidden</dt>
+<dd><p>Show variables marked with <code><a href="variable-attributes.html">hidden_var_attribute()</a></code>
+(by default, those are not shown, available only when <code>x</code> is a data.frame)</p></dd>
+
+
+<dt>...</dt>
 <dd><p>additional arguments passed to <code><a href="data_for_ecdf_plots.html">data_for_ecdf_plots()</a></code>.
 Most notably, if <code>x</code> is matrix, a <code>max_rank</code> parameter needs to be given.</p></dd>
 
 
-<dt id="arg-parameters">parameters<a class="anchor" aria-label="anchor" href="#arg-parameters"></a></dt>
+<dt>parameters</dt>
 <dd><p>DEPRECATED, use <code>variables</code> instead.</p></dd>
 
 </dl></div>
@@ -218,7 +223,7 @@ Most notably, if <code>x</code> is matrix, a <code>max_rank</code> parameter nee
 
 
       <footer><div class="copyright">
-  <p></p><p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p></p><p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 
 <div class="pkgdown">
@@ -227,10 +232,10 @@ Most notably, if <code>x</code> is matrix, a <code>max_rank</code> parameter nee
 
       </footer></div>
 
+  
 
 
-
-
+  
 
   </body></html>
 

@@ -1,82 +1,354 @@
-<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
-<url><loc>https://hyunjimoon.github.io/SBC/404.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/LICENSE-text.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/LICENSE.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/SBC.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/bad_parametrization.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/brms.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/computational_algorithm1.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/discrete_vars.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/implementing_backends.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/index.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/indexing.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/rank_visualizations.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/articles/small_model_workflow.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/authors.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/index.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/ECDF-plots.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC-deprecated.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_brms.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_brms_from_generator.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_cmdstan_sample.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_cmdstan_variational.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_default_thin_ranks.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_hash_for_cache.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_iid_draws.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_mock.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_rjags.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_rstan_optimizing.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_rstan_sample.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_datasets.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_example_backend.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_example_generator.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_example_results.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_fit.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_fit_to_diagnostics.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_fit_to_draws_matrix.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_generator_brms.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_generator_custom.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_generator_function.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_print_example_model.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_results.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/SBC_statistics_from_single_fit.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/bind_datasets.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/bind_derived_quantities.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/bind_generated_quantities-deprecated.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/bind_globals.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/bind_results.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/brms_full_ppred.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/brms_response_sequence.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/calculate_prior_sd.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/calculate_ranks_draws_matrix.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/check_all_SBC_diagnostics.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/combine-functions.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/combine_args.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/compute_SBC.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/compute_dquants.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/compute_gen_quants-deprecated.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/compute_results-deprecated.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/data_for_ecdf_plots.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/default_chunk_size.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/default_cores_per_fit.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/derived_quantities.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/empirical_coverage.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/generate_datasets.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/generated_quantities-deprecated.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/get_diagnostic_messages.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/guess_rank_hist_bins.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/index.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/plot_contraction.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/plot_coverage.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/plot_rank_hist.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/plot_sim_estimated.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/rdunif.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/recompute_SBC_statistics.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/recompute_statistics-deprecated.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/sub-.SBC_datasets.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/sub-.SBC_results.html</loc></url>
-<url><loc>https://hyunjimoon.github.io/SBC/reference/validate_derived_quantities.html</loc></url>
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/404.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/LICENSE-text.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/LICENSE.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/SBC.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/bad_parametrization.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/bayes_factor.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/brms.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/computational_algorithm1.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/discrete_vars.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/implementing_backends.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/index.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/indexing.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/limits_of_SBC.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/rank_visualizations.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/articles/small_model_workflow.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/authors.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/index.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/ECDF-plots.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC-deprecated.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_bridgesampling.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_brms.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_brms_from_generator.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_cached.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_cmdstan_sample.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_cmdstan_variational.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_default_thin_ranks.default.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_default_thin_ranks.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_extractBF_comparison.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_function.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_hash_for_cache.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_iid_draws.default.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_iid_draws.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_lmBF.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_mock.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_postprocess_cached_fit.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_rjags.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_rstan_optimizing.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_backend_rstan_sample.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_datasets.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_example_backend.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_example_generator.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_example_results.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_fit.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_fit_to_BFBayesFactor.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_fit_to_bridge_sampler.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_fit_to_diagnostics.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_fit_to_draws_matrix.default.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_fit_to_draws_matrix.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_generator_brms.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_generator_custom.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_generator_function.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_posterior_cdf.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_print_example_model.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_results.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/SBC_statistics_from_single_fit.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/attribute_present.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/attribute_present_stats.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/binary-calibration-tests.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/binary_calibration.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/binary_probabilities_from_stats.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/bind_datasets.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/bind_derived_quantities.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/bind_generated_quantities-deprecated.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/bind_generated_quantities.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/bind_globals.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/bind_results.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/brms_full_ppred.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/brms_response_sequence.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/cached_fit_filename.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/calculate_prior_sd.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/calculate_ranks_draws_matrix.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/check_all_SBC_diagnostics.SBC_results.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/check_all_SBC_diagnostics.default.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/check_all_SBC_diagnostics.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/combine-functions.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/combine_args.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/combine_array_elements.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/combine_var_attributes.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/compute_SBC.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/compute_dquants.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/compute_gen_quants-deprecated.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/compute_gen_quants.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/compute_results-deprecated.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/compute_results.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/data_for_ecdf_plots.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/default_chunk_size.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/default_cores_per_fit.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/derived_quantities.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/empirical_coverage.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/gaffke_test.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/generate_datasets.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/generated_quantities-deprecated.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/generated_quantities.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/get_diagnostic_messages.default.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/get_diagnostic_messages.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/get_stats_for_submodel.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/guess_rank_hist_bins.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/index.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/plot_contraction.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/plot_coverage.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/plot_coverage_diff.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/plot_ecdf_diff.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/plot_rank_hist.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/plot_sim_estimated.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/rdunif.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/recompute_SBC_statistics.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/recompute_statistics-deprecated.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/recompute_statistics.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/remove_attribute_from_stats.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/split_SBC_results_for_bf.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/sub-.SBC_datasets.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/sub-.SBC_results.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/validate_cdf_df.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/validate_derived_quantities.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/validate_generated_quantities.html</loc>
+  </url>
+  <url>
+    <loc>https://hyunjimoon.github.io/SBC/reference/variable-attributes.html</loc>
+  </url>
 </urlset>
-

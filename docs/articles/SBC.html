@@ -12,13 +12,14 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
 <script src="../pkgdown.js"></script><meta property="og:title" content="Getting Started with SBC">
+<meta property="og:description" content="SBC">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
 <![endif]--><script defer data-domain="hyunjimoon.github.io" src="https://plausible.io/js/script.js"></script>
 </head>
 <body data-spy="scroll" data-target="#toc">
-
+    
 
     <div class="container template-article">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -32,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.3.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.4.0.9000</span>
       </span>
     </div>
 
@@ -50,7 +51,7 @@
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
-
+     
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu">
@@ -94,19 +95,19 @@
 <li>
   <a href="https://twitter.com/mcmc_stan" class="external-link">
     <span class="fa fa-twitter"></span>
-
+     
   </a>
 </li>
 <li>
   <a href="https://github.com/hyunjimoon/SBC" class="external-link">
     <span class="fa fa-github"></span>
-
+     
   </a>
 </li>
 <li>
   <a href="http://discourse.mc-stan.org/" class="external-link">
     <span class="fa fa-users"></span>
-
+     
   </a>
 </li>
       </ul>
@@ -117,7 +118,7 @@
 </div>
 <!--/.navbar -->
 
-
+      
 
       </header><div class="row">
   <div class="col-md-9 contents">
@@ -126,7 +127,7 @@
                         <h4 data-toc-skip class="author">Hyunji Moon,
 Martin Modrák, Shinyoung Kim</h4>
             
-            <h4 data-toc-skip class="date">2025-02-14</h4>
+            <h4 data-toc-skip class="date">2025-08-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/SBC.Rmd" class="external-link"><code>vignettes/SBC.Rmd</code></a></small>
       <div class="hidden name"><code>SBC.Rmd</code></div>
@@ -147,8 +148,7 @@ model to data.</p>
 <p>The rough sketch of SBC is that we simulate some datasets and then
 for each simulated dataset:</p>
 <ol style="list-style-type: decimal">
-<li>Fit the model and obtain
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math>
+<li>Fit the model and obtain <span class="math inline">\(D\)</span>
 independent draws from the posterior.</li>
 <li>For each variable of interest, take the rank of the simulated value
 within the posterior draws
@@ -160,15 +160,12 @@ value</li>
 </ol>
 <p>It can be shown that if model matched the generator and algorithm
 works correctly, then for each variable, the ranks obtained in SBC
-should be uniformly distributed between
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0</mn><annotation encoding="application/x-tex">0</annotation></semantics></math>
-and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math>.
-This corresponds quite directly to claims like “the posterior 84%
-credible interval should contain the simulated value in 84% of
-simulations”, the rank uniformity represents this claim for all interval
-widths at once. The theory of SBC is fully described in <a href="https://arxiv.org/abs/2211.02383v1" class="external-link">Modrák et al.</a> which builds
-upon <a href="https://arxiv.org/abs/1804.06788" class="external-link">Talts et al.</a></p>
+should be uniformly distributed between <span class="math inline">\(0\)</span> and <span class="math inline">\(D\)</span>. This corresponds quite directly to
+claims like “the posterior 84% credible interval should contain the
+simulated value in 84% of simulations”, the rank uniformity represents
+this claim for all interval widths at once. The theory of SBC is fully
+described in <a href="https://arxiv.org/abs/2211.02383v1" class="external-link">Modrák et
+al.</a> which builds upon <a href="https://arxiv.org/abs/1804.06788" class="external-link">Talts et al.</a></p>
 <p>This opens two principal use-cases of SBC:</p>
 <ol style="list-style-type: lower-alpha">
 <li>We have an algorithm that we trust is correct and a generator and
@@ -298,7 +295,8 @@ functions to let us easily learn if our model works as expected.</p>
 simple poisson model. First we’ll setup and configure our
 environment.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://hyunjimoon.github.io/SBC/">SBC</a></span><span class="op">)</span>;</span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://hyunjimoon.github.io/SBC/">SBC</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">use_cmdstanr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"SBC.vignettes_cmdstanr"</span>, <span class="cn">TRUE</span><span class="op">)</span> <span class="co"># Set to false to use rstan instead</span></span>
 <span></span>
@@ -328,7 +326,13 @@ environment.</p>
 <span><span class="op">}</span></span>
 <span><span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.exists</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme_get.html" class="external-link">theme_set</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Run this _in the console_ to report progress for all computations to report progress for all computations</span></span>
+<span><span class="co"># see https://progressr.futureverse.org/ for more options</span></span>
+<span><span class="fu">progressr</span><span class="fu">::</span><span class="fu"><a href="https://progressr.futureverse.org/reference/handlers.html" class="external-link">handlers</a></span><span class="op">(</span>global <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="model-setup">Model Setup<a class="anchor" aria-label="anchor" href="#model-setup"></a>
 </h3>
@@ -336,7 +340,7 @@ environment.</p>
 <code>y ~ Poisson(lambda)</code>, where
 <code>lambda ~ Gamma(15, 5)</code>. We will use the following Stan
 model:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data{
   int N;
@@ -349,7 +353,7 @@ model{
   lambda ~ gamma(15, 5);
   y ~ poisson(lambda);
 }</code></pre>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">cmdstan_model</span> <span class="op">&lt;-</span> <span class="fu">cmdstanr</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
@@ -361,7 +365,7 @@ model{
 </h3>
 <p>Once we have defined the model, we can create a generator function
 which will generate prior and data draws:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># A generator function should return a named list containing elements "variables" and "generated"</span></span>
 <span></span>
 <span><span class="va">poisson_generator_single</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">{</span>  <span class="co"># N is the number of data points we are generating</span></span>
@@ -388,7 +392,7 @@ the data are already in the format expected by Stan.</p>
 <code>SBC_generator_function</code> and <code>generate_datasets</code>
 which takes a generator function and calls it repeatedly to create a
 valid <code>SBC_datasets</code> object.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">54882235</span><span class="op">)</span></span>
 <span><span class="va">n_sims</span> <span class="op">&lt;-</span> <span class="fl">100</span>  <span class="co"># Number of SBC iterations to run</span></span>
 <span></span>
@@ -411,7 +415,7 @@ or JAGS.</p>
 <p>Here we’ll just use the pre-defined cmdstan backend, in which we pass
 our compiled model and any additional arguments we would like to pass
 over to the sampling method:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">poisson_backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span></span>
 <span>    <span class="va">cmdstan_model</span>, iter_warmup <span class="op">=</span> <span class="fl">1000</span>, iter_sampling <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
@@ -425,12 +429,13 @@ over to the sampling method:</p>
 </h3>
 <p>we can then use <code>compute_SBC</code> to fit our simulations with
 the backend:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">poisson_dataset</span>, <span class="va">poisson_backend</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"results"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'results'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 94 (94%) fits had some steps rejected. Maximum number of rejections was 3.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (1%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.011.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 96 (96%) fits had some steps rejected. Maximum number of rejections was 3.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -443,24 +448,311 @@ but is often useful.</p>
 </h3>
 <p>We can now inspect the results to see if there were any errors and
 check individual stats:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results</span><span class="op">$</span><span class="va">stats</span></span></code></pre></div>
-<pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 100 × 15</span></span></span>
-<span><span class="co">##    sim_id variable simulated_value  rank z_score  mean median    sd   mad    q5</span></span>
-<span><span class="co">##     <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 1</span>      1 lambda              1.44    14  -<span style="color: #BB0000;">1.49</span>   1.73   1.72 0.193 0.195  1.43</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 2</span>      2 lambda              2.99    86  -<span style="color: #BB0000;">0.189</span>  3.04   3.03 0.255 0.250  2.63</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 3</span>      3 lambda              2.51    49  -<span style="color: #BB0000;">0.698</span>  2.68   2.67 0.251 0.249  2.29</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 4</span>      4 lambda              2.86    54  -<span style="color: #BB0000;">0.684</span>  3.04   3.03 0.258 0.259  2.64</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 5</span>      5 lambda              2.97   170   1.16   2.68   2.66 0.253 0.240  2.28</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 6</span>      6 lambda              2.54   160   0.848  2.35   2.34 0.228 0.222  2.00</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 7</span>      7 lambda              2.65    19  -<span style="color: #BB0000;">1.44</span>   3.02   3.02 0.261 0.255  2.60</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 8</span>      8 lambda              2.99   135   0.286  2.91   2.90 0.263 0.260  2.51</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;"> 9</span>      9 lambda              2.55    18  -<span style="color: #BB0000;">1.32</span>   2.88   2.87 0.248 0.247  2.49</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">10</span>     10 lambda              1.73     8  -<span style="color: #BB0000;">1.52</span>   2.05   2.04 0.211 0.204  1.70</span></span>
-<span><span class="co">## <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
-<span><span class="co">## <span style="color: #949494;"># ℹ 5 more variables: q95 &lt;dbl&gt;, rhat &lt;dbl&gt;, ess_bulk &lt;dbl&gt;, ess_tail &lt;dbl&gt;,</span></span></span>
-<span><span class="co">## <span style="color: #949494;">#   max_rank &lt;int&gt;</span></span></span></code></pre>
+<pre><code><span><span class="co">##     sim_id variable simulated_value rank      z_score     mean        sd</span></span>
+<span><span class="co">## 1        1   lambda        1.441812   13 -1.501694087 1.725853 0.1891470</span></span>
+<span><span class="co">## 2        2   lambda        2.991399   86 -0.188887934 3.039493 0.2546170</span></span>
+<span><span class="co">## 3        3   lambda        2.505585   49 -0.698130727 2.680618 0.2507169</span></span>
+<span><span class="co">## 4        4   lambda        2.863184   54 -0.683807732 3.039353 0.2576293</span></span>
+<span><span class="co">## 5        5   lambda        2.972115  170  1.158010949 2.679651 0.2525576</span></span>
+<span><span class="co">## 6        6   lambda        2.544888  160  0.847982761 2.351286 0.2283092</span></span>
+<span><span class="co">## 7        7   lambda        2.646566   19 -1.435321388 3.021170 0.2609897</span></span>
+<span><span class="co">## 8        8   lambda        2.988570  135  0.286440559 2.913205 0.2631121</span></span>
+<span><span class="co">## 9        9   lambda        2.554855   18 -1.318712834 2.881521 0.2477156</span></span>
+<span><span class="co">## 10      10   lambda        1.725117    8 -1.472702333 2.034624 0.2101624</span></span>
+<span><span class="co">## 11      11   lambda        1.983277   78 -0.326961775 2.051754 0.2094347</span></span>
+<span><span class="co">## 12      12   lambda        3.173095  113  0.133791039 3.137776 0.2639852</span></span>
+<span><span class="co">## 13      13   lambda        3.205621  198  2.500128948 2.579017 0.2506287</span></span>
+<span><span class="co">## 14      14   lambda        3.612096  173  1.063996007 3.328464 0.2665724</span></span>
+<span><span class="co">## 15      15   lambda        2.808949  168  1.052663180 2.558607 0.2378178</span></span>
+<span><span class="co">## 16      16   lambda        2.070563   39 -0.737282660 2.233066 0.2204075</span></span>
+<span><span class="co">## 17      17   lambda        2.779688  175  1.017966062 2.532166 0.2431538</span></span>
+<span><span class="co">## 18      18   lambda        2.925609   57 -0.396791487 3.026416 0.2540549</span></span>
+<span><span class="co">## 19      19   lambda        2.750356  163  0.771996557 2.572147 0.2308416</span></span>
+<span><span class="co">## 20      20   lambda        3.106723   24 -1.292459173 3.452304 0.2673831</span></span>
+<span><span class="co">## 21      21   lambda        3.412007  178  1.162445949 3.102721 0.2660655</span></span>
+<span><span class="co">## 22      22   lambda        3.616894  134  0.386958384 3.510529 0.2748741</span></span>
+<span><span class="co">## 23      23   lambda        2.294084  181  1.150986026 2.049403 0.2125836</span></span>
+<span><span class="co">## 24      24   lambda        2.116142   54 -0.659973413 2.264633 0.2249960</span></span>
+<span><span class="co">## 25      25   lambda        2.249235   70 -0.636187617 2.394124 0.2277471</span></span>
+<span><span class="co">## 26      26   lambda        2.687811  142  0.651437515 2.531350 0.2401782</span></span>
+<span><span class="co">## 27      27   lambda        1.752253   11 -1.655833148 2.108951 0.2154195</span></span>
+<span><span class="co">## 28      28   lambda        1.824980  148  0.627335305 1.707876 0.1866686</span></span>
+<span><span class="co">## 29      29   lambda        3.046774  119  0.192941536 2.997602 0.2548539</span></span>
+<span><span class="co">## 30      30   lambda        2.545681  128  0.392452970 2.453543 0.2347743</span></span>
+<span><span class="co">## 31      31   lambda        2.547563   39 -0.918523211 2.767952 0.2399379</span></span>
+<span><span class="co">## 32      32   lambda        2.530286  110 -0.031976145 2.537975 0.2404466</span></span>
+<span><span class="co">## 33      33   lambda        3.488554  198  3.043916402 2.715768 0.2538789</span></span>
+<span><span class="co">## 34      34   lambda        4.202627  196  2.496287925 3.500742 0.2811716</span></span>
+<span><span class="co">## 35      35   lambda        2.202380  119  0.291485119 2.139633 0.2152660</span></span>
+<span><span class="co">## 36      36   lambda        2.776523   48 -0.627618807 2.936541 0.2549593</span></span>
+<span><span class="co">## 37      37   lambda        4.745755  151  0.596548268 4.556775 0.3167897</span></span>
+<span><span class="co">## 38      38   lambda        2.926568  178  1.158966774 2.644426 0.2434423</span></span>
+<span><span class="co">## 39      39   lambda        3.207927   83 -0.282692174 3.283654 0.2678755</span></span>
+<span><span class="co">## 40      40   lambda        2.050516  118  0.221334899 2.004112 0.2096562</span></span>
+<span><span class="co">## 41      41   lambda        2.949112  101 -0.088324032 2.971600 0.2546051</span></span>
+<span><span class="co">## 42      42   lambda        2.027079   97 -0.141357389 2.056636 0.2090940</span></span>
+<span><span class="co">## 43      43   lambda        3.109239  131  0.543625486 2.969326 0.2573700</span></span>
+<span><span class="co">## 44      44   lambda        3.121440  182  1.361716605 2.781752 0.2494558</span></span>
+<span><span class="co">## 45      45   lambda        4.243259  132  0.571397898 4.076947 0.2910609</span></span>
+<span><span class="co">## 46      46   lambda        2.744712  196  1.725694537 2.366205 0.2193362</span></span>
+<span><span class="co">## 47      47   lambda        4.132018  199  3.505528124 3.235931 0.2556211</span></span>
+<span><span class="co">## 48      48   lambda        1.557847   24 -1.230794572 1.788938 0.1877573</span></span>
+<span><span class="co">## 49      49   lambda        2.532101   84 -0.168158392 2.572108 0.2379113</span></span>
+<span><span class="co">## 50      50   lambda        2.964897  146  0.560512317 2.824785 0.2499719</span></span>
+<span><span class="co">## 51      51   lambda        3.681536  161  0.798744318 3.466995 0.2685976</span></span>
+<span><span class="co">## 52      52   lambda        3.144808  119  0.193597909 3.094643 0.2591180</span></span>
+<span><span class="co">## 53      53   lambda        3.887949  163  0.889580436 3.644047 0.2741762</span></span>
+<span><span class="co">## 54      54   lambda        3.196185  161  1.013230448 2.935216 0.2575613</span></span>
+<span><span class="co">## 55      55   lambda        2.995181  146  0.465233319 2.874634 0.2591108</span></span>
+<span><span class="co">## 56      56   lambda        2.356170   60 -0.463845458 2.464982 0.2345870</span></span>
+<span><span class="co">## 57      57   lambda        2.292702    2 -2.002135379 2.798191 0.2524748</span></span>
+<span><span class="co">## 58      58   lambda        3.566893    6 -1.950857748 4.151991 0.2999184</span></span>
+<span><span class="co">## 59      59   lambda        3.373654   14 -1.529297940 3.820671 0.2923023</span></span>
+<span><span class="co">## 60      60   lambda        4.211833  117  0.285687477 4.126979 0.2970168</span></span>
+<span><span class="co">## 61      61   lambda        2.249955   75 -0.424211895 2.344588 0.2230796</span></span>
+<span><span class="co">## 62      62   lambda        1.990641  169  0.907181565 1.816890 0.1915280</span></span>
+<span><span class="co">## 63      63   lambda        2.588078   45 -0.824126352 2.795250 0.2513843</span></span>
+<span><span class="co">## 64      64   lambda        1.916143   36 -0.858133907 2.098943 0.2130208</span></span>
+<span><span class="co">## 65      65   lambda        1.432994   23 -1.283940633 1.675846 0.1891459</span></span>
+<span><span class="co">## 66      66   lambda        4.605845  105  0.221880843 4.535067 0.3189899</span></span>
+<span><span class="co">## 67      67   lambda        1.971748  177  1.403854791 1.702277 0.1919511</span></span>
+<span><span class="co">## 68      68   lambda        2.573467  143  0.714389461 2.413336 0.2241500</span></span>
+<span><span class="co">## 69      69   lambda        3.574121   56 -0.618650521 3.753693 0.2902633</span></span>
+<span><span class="co">## 70      70   lambda        3.301493   11 -1.539104657 3.743910 0.2874509</span></span>
+<span><span class="co">## 71      71   lambda        2.865513  116  0.139942995 2.829747 0.2555786</span></span>
+<span><span class="co">## 72      72   lambda        2.675924  125  0.270666958 2.607764 0.2518199</span></span>
+<span><span class="co">## 73      73   lambda        2.700097   70 -0.239242926 2.760478 0.2523851</span></span>
+<span><span class="co">## 74      74   lambda        2.287127   10 -1.741721959 2.711650 0.2437374</span></span>
+<span><span class="co">## 75      75   lambda        3.466282  189  1.907325909 2.959903 0.2654916</span></span>
+<span><span class="co">## 76      76   lambda        2.780579   26 -1.071945933 3.069806 0.2698142</span></span>
+<span><span class="co">## 77      77   lambda        2.711286  121  0.298966076 2.639061 0.2415853</span></span>
+<span><span class="co">## 78      78   lambda        3.704305  176  1.142914504 3.408947 0.2584253</span></span>
+<span><span class="co">## 79      79   lambda        2.137092   21 -1.244406493 2.419204 0.2267038</span></span>
+<span><span class="co">## 80      80   lambda        3.885904   71 -0.473028614 4.028637 0.3017438</span></span>
+<span><span class="co">## 81      81   lambda        2.975582  153  0.520945954 2.841588 0.2572129</span></span>
+<span><span class="co">## 82      82   lambda        2.555879  197  2.525528624 2.034529 0.2064320</span></span>
+<span><span class="co">## 83      83   lambda        1.714758   11 -1.623054828 2.063051 0.2145911</span></span>
+<span><span class="co">## 84      84   lambda        2.939516  148  0.731297356 2.755810 0.2512051</span></span>
+<span><span class="co">## 85      85   lambda        2.012372   78 -0.289527799 2.072870 0.2089526</span></span>
+<span><span class="co">## 86      86   lambda        2.042660  109  0.131531033 2.015090 0.2096073</span></span>
+<span><span class="co">## 87      87   lambda        2.831330  105 -0.001604659 2.831756 0.2656496</span></span>
+<span><span class="co">## 88      88   lambda        4.146054  104 -0.009810902 4.149050 0.3054299</span></span>
+<span><span class="co">## 89      89   lambda        4.269022  188  1.393655334 3.847800 0.3022428</span></span>
+<span><span class="co">## 90      90   lambda        2.674868  169  0.934662376 2.457930 0.2321039</span></span>
+<span><span class="co">## 91      91   lambda        2.638067   53 -0.597978687 2.789752 0.2536641</span></span>
+<span><span class="co">## 92      92   lambda        3.491849  160  0.834545540 3.270545 0.2651788</span></span>
+<span><span class="co">## 93      93   lambda        2.534526   66 -0.438036655 2.642202 0.2458164</span></span>
+<span><span class="co">## 94      94   lambda        3.659232  136  0.426876388 3.542485 0.2734903</span></span>
+<span><span class="co">## 95      95   lambda        2.892749   66 -0.522133631 3.030465 0.2637561</span></span>
+<span><span class="co">## 96      96   lambda        3.481138  121  0.301675259 3.399947 0.2691328</span></span>
+<span><span class="co">## 97      97   lambda        3.280706   68 -0.395256190 3.389850 0.2761353</span></span>
+<span><span class="co">## 98      98   lambda        2.830662  175  1.263187438 2.530392 0.2377085</span></span>
+<span><span class="co">## 99      99   lambda        4.738485   95 -0.139809747 4.783307 0.3205959</span></span>
+<span><span class="co">## 100    100   lambda        3.067411   66 -0.481830474 3.197087 0.2691335</span></span>
+<span><span class="co">##           q5   median      q95      rhat ess_bulk  ess_tail attributes max_rank</span></span>
+<span><span class="co">## 1   1.425542 1.725310 2.051346 1.0011869 660.0295  715.1319                 199</span></span>
+<span><span class="co">## 2   2.633600 3.031315 3.471290 0.9997378 723.2247  818.7563                 199</span></span>
+<span><span class="co">## 3   2.286277 2.668550 3.106196 0.9995790 653.5429  960.0598                 199</span></span>
+<span><span class="co">## 4   2.635808 3.033580 3.470293 1.0002172 819.4936 1003.8764                 199</span></span>
+<span><span class="co">## 5   2.278813 2.664300 3.119555 1.0016487 737.6552  984.2296                 199</span></span>
+<span><span class="co">## 6   1.996707 2.341710 2.742270 0.9997896 842.6717 1090.9653                 199</span></span>
+<span><span class="co">## 7   2.600472 3.017635 3.462150 1.0004873 760.8959  739.4559                 199</span></span>
+<span><span class="co">## 8   2.507262 2.895780 3.362985 1.0006535 533.3517  856.9942                 199</span></span>
+<span><span class="co">## 9   2.492170 2.873655 3.309812 1.0052057 744.3574 1074.7049                 199</span></span>
+<span><span class="co">## 10  1.713043 2.031755 2.390874 1.0054013 679.3340 1040.8612                 199</span></span>
+<span><span class="co">## 11  1.724270 2.042795 2.403703 1.0010527 815.0111  973.0837                 199</span></span>
+<span><span class="co">## 12  2.716921 3.130805 3.574737 1.0053059 651.7761 1039.7132                 199</span></span>
+<span><span class="co">## 13  2.183970 2.561650 3.017141 1.0026517 703.2212  811.6780                 199</span></span>
+<span><span class="co">## 14  2.888450 3.321515 3.765640 1.0026125 750.3075  840.0322                 199</span></span>
+<span><span class="co">## 15  2.175213 2.553435 2.969768 0.9998641 730.6925 1259.4481                 199</span></span>
+<span><span class="co">## 16  1.879628 2.222870 2.607362 1.0047340 516.6965 1040.3195                 199</span></span>
+<span><span class="co">## 17  2.144321 2.525805 2.946923 0.9995265 715.9406  920.1079                 199</span></span>
+<span><span class="co">## 18  2.623396 3.009830 3.461660 1.0012452 697.5614 1029.8202                 199</span></span>
+<span><span class="co">## 19  2.211069 2.568220 2.962087 1.0003297 751.0762 1065.1954                 199</span></span>
+<span><span class="co">## 20  3.005747 3.452150 3.900292 1.0000789 993.2648  935.2418                 199</span></span>
+<span><span class="co">## 21  2.704091 3.080630 3.572188 1.0001495 681.6749  948.6171                 199</span></span>
+<span><span class="co">## 22  3.075141 3.505210 3.979986 1.0003745 667.7095  758.5672                 199</span></span>
+<span><span class="co">## 23  1.709310 2.044630 2.428970 1.0001475 796.9757 1075.3850                 199</span></span>
+<span><span class="co">## 24  1.903339 2.252245 2.657170 1.0087929 708.9603 1041.2990                 199</span></span>
+<span><span class="co">## 25  2.026301 2.390120 2.775346 1.0029391 646.7598 1209.1364                 199</span></span>
+<span><span class="co">## 26  2.155518 2.522120 2.937612 1.0001582 715.5761  890.9293                 199</span></span>
+<span><span class="co">## 27  1.771833 2.105525 2.461035 0.9998778 767.3054 1031.3733                 199</span></span>
+<span><span class="co">## 28  1.409583 1.703375 2.025194 1.0006236 880.7755 1026.9417                 199</span></span>
+<span><span class="co">## 29  2.588206 2.989975 3.442743 1.0006011 905.0299  939.5602                 199</span></span>
+<span><span class="co">## 30  2.082984 2.448860 2.863097 0.9999949 658.9626 1112.4987                 199</span></span>
+<span><span class="co">## 31  2.391096 2.757415 3.182740 1.0000495 921.9282 1102.0187                 199</span></span>
+<span><span class="co">## 32  2.160176 2.523790 2.948411 0.9999317 787.3817 1127.8414                 199</span></span>
+<span><span class="co">## 33  2.305504 2.709085 3.144192 0.9997342 842.8924  798.3485                 199</span></span>
+<span><span class="co">## 34  3.060178 3.482410 3.988796 0.9998837 806.4903 1101.2251                 199</span></span>
+<span><span class="co">## 35  1.804955 2.131940 2.513515 0.9998412 768.2363 1065.1438                 199</span></span>
+<span><span class="co">## 36  2.527412 2.929765 3.358909 1.0006236 788.5764  878.1683                 199</span></span>
+<span><span class="co">## 37  4.059522 4.545045 5.090742 1.0013545 718.6773  977.0057                 199</span></span>
+<span><span class="co">## 38  2.247564 2.639940 3.055171 1.0003029 667.0379  954.3288                 199</span></span>
+<span><span class="co">## 39  2.859915 3.265925 3.749442 1.0113134 736.0217  919.8987                 199</span></span>
+<span><span class="co">## 40  1.669045 2.000295 2.345767 1.0085661 851.1195 1009.1286                 199</span></span>
+<span><span class="co">## 41  2.570919 2.960900 3.406436 1.0035349 798.4497 1012.2082                 199</span></span>
+<span><span class="co">## 42  1.707909 2.052685 2.410390 1.0021600 924.9461  805.3713                 199</span></span>
+<span><span class="co">## 43  2.565836 2.960190 3.406040 1.0010983 637.5778  997.6310                 199</span></span>
+<span><span class="co">## 44  2.378691 2.778855 3.204051 0.9995515 700.9183  950.1423                 199</span></span>
+<span><span class="co">## 45  3.606645 4.070870 4.571690 1.0048858 809.0206  967.6233                 199</span></span>
+<span><span class="co">## 46  2.016641 2.352885 2.737163 1.0007081 719.9356  922.7823                 199</span></span>
+<span><span class="co">## 47  2.840629 3.225550 3.671694 0.9995151 864.0128 1018.6007                 199</span></span>
+<span><span class="co">## 48  1.499041 1.784640 2.105972 1.0002198 827.7344  940.7343                 199</span></span>
+<span><span class="co">## 49  2.190192 2.568805 2.965094 1.0006513 712.4777  690.9827                 199</span></span>
+<span><span class="co">## 50  2.429369 2.813880 3.251746 0.9999529 800.9823  994.8016                 199</span></span>
+<span><span class="co">## 51  3.028606 3.459785 3.915139 1.0039387 643.1534  931.8337                 199</span></span>
+<span><span class="co">## 52  2.685204 3.092625 3.532625 1.0007379 727.3670  897.1089                 199</span></span>
+<span><span class="co">## 53  3.195210 3.636965 4.088961 1.0013633 720.6847  982.5962                 199</span></span>
+<span><span class="co">## 54  2.526422 2.919155 3.370417 1.0008260 769.3383  947.2193                 199</span></span>
+<span><span class="co">## 55  2.460466 2.856135 3.311713 1.0005429 940.9927  877.1722                 199</span></span>
+<span><span class="co">## 56  2.088611 2.460160 2.868999 1.0034291 739.7487  755.3741                 199</span></span>
+<span><span class="co">## 57  2.394655 2.794805 3.216873 1.0013400 745.4077 1204.6245                 199</span></span>
+<span><span class="co">## 58  3.655847 4.146495 4.671717 0.9997149 791.2195  821.9506                 199</span></span>
+<span><span class="co">## 59  3.338982 3.819130 4.297463 1.0004572 773.0375  822.5117                 199</span></span>
+<span><span class="co">## 60  3.659943 4.117970 4.621887 1.0012200 743.4275  920.1718                 199</span></span>
+<span><span class="co">## 61  1.997918 2.337445 2.725312 1.0015517 800.5474  992.6161                 199</span></span>
+<span><span class="co">## 62  1.509629 1.814020 2.147109 1.0016081 954.9923  855.9785                 199</span></span>
+<span><span class="co">## 63  2.404316 2.786740 3.224042 1.0001407 588.4572  879.4026                 199</span></span>
+<span><span class="co">## 64  1.760494 2.092000 2.456535 1.0001785 545.6342 1018.6007                 199</span></span>
+<span><span class="co">## 65  1.373037 1.667420 1.997669 1.0043744 791.7959  919.3614                 199</span></span>
+<span><span class="co">## 66  4.018374 4.530270 5.064019 1.0008219 638.0565  872.9338                 199</span></span>
+<span><span class="co">## 67  1.400203 1.691045 2.034384 0.9997568 842.8434  995.9205                 199</span></span>
+<span><span class="co">## 68  2.053593 2.414575 2.795053 1.0037357 763.3728 1005.0143                 199</span></span>
+<span><span class="co">## 69  3.269985 3.751370 4.242865 1.0037733 794.3672  853.1240                 199</span></span>
+<span><span class="co">## 70  3.284205 3.736505 4.223986 1.0009122 670.6007  772.5784                 199</span></span>
+<span><span class="co">## 71  2.427074 2.818530 3.261154 1.0009674 637.9633  852.9921                 199</span></span>
+<span><span class="co">## 72  2.215489 2.595775 3.033569 1.0003754 773.7432 1075.7196                 199</span></span>
+<span><span class="co">## 73  2.361864 2.751815 3.195270 0.9995269 668.6138  754.8831                 199</span></span>
+<span><span class="co">## 74  2.318596 2.692930 3.117669 1.0005643 732.1138 1261.6604                 199</span></span>
+<span><span class="co">## 75  2.527322 2.953010 3.403400 1.0045287 704.5385  851.0551                 199</span></span>
+<span><span class="co">## 76  2.647189 3.058175 3.533150 1.0005898 648.3222  954.0315                 199</span></span>
+<span><span class="co">## 77  2.253260 2.629410 3.045765 1.0010361 701.6761  882.7765                 199</span></span>
+<span><span class="co">## 78  2.995416 3.402950 3.852020 1.0076472 839.9925 1056.1061                 199</span></span>
+<span><span class="co">## 79  2.050113 2.420890 2.800033 1.0011415 846.4774  898.8490                 199</span></span>
+<span><span class="co">## 80  3.538894 4.015595 4.545651 1.0005755 791.5733  943.3290                 199</span></span>
+<span><span class="co">## 81  2.433290 2.836725 3.279304 0.9996790 632.0390 1077.6820                 199</span></span>
+<span><span class="co">## 82  1.703770 2.030265 2.380612 0.9998971 875.5376 1182.7928                 199</span></span>
+<span><span class="co">## 83  1.727612 2.053290 2.418300 1.0013763 826.5146 1087.3262                 199</span></span>
+<span><span class="co">## 84  2.351135 2.753480 3.172129 1.0000357 644.1129  935.7840                 199</span></span>
+<span><span class="co">## 85  1.745923 2.068240 2.430044 1.0001230 804.6764 1258.8233                 199</span></span>
+<span><span class="co">## 86  1.679003 2.008805 2.366873 0.9998991 761.3000  901.9266                 199</span></span>
+<span><span class="co">## 87  2.421136 2.818110 3.292978 1.0026520 686.2053  903.2702                 199</span></span>
+<span><span class="co">## 88  3.657878 4.137180 4.668840 0.9995274 676.0670 1068.8565                 199</span></span>
+<span><span class="co">## 89  3.352123 3.836910 4.349346 1.0008308 739.0588  798.1038                 199</span></span>
+<span><span class="co">## 90  2.067192 2.457640 2.856483 1.0006057 668.7194  667.8999                 199</span></span>
+<span><span class="co">## 91  2.389628 2.779020 3.232007 1.0007516 608.3822  773.1341                 199</span></span>
+<span><span class="co">## 92  2.854354 3.259910 3.727297 0.9996340 791.2937 1058.0783                 199</span></span>
+<span><span class="co">## 93  2.249837 2.634340 3.073669 1.0006354 932.8111  859.4093                 199</span></span>
+<span><span class="co">## 94  3.101970 3.538840 4.001970 1.0003342 651.7645  950.3954                 199</span></span>
+<span><span class="co">## 95  2.607559 3.018795 3.492941 1.0000664 680.9596  792.3254                 199</span></span>
+<span><span class="co">## 96  2.971889 3.388770 3.863469 1.0054110 713.5742 1032.3749                 199</span></span>
+<span><span class="co">## 97  2.951304 3.381640 3.856842 0.9998179 764.5710 1138.7384                 199</span></span>
+<span><span class="co">## 98  2.165190 2.520520 2.944158 1.0024905 711.3937  952.3345                 199</span></span>
+<span><span class="co">## 99  4.254724 4.779785 5.336192 1.0013898 635.3145  817.4980                 199</span></span>
+<span><span class="co">## 100 2.764843 3.194175 3.652710 1.0005225 627.0584  700.2526                 199</span></span>
+<span><span class="co">##     has_na</span></span>
+<span><span class="co">## 1    FALSE</span></span>
+<span><span class="co">## 2    FALSE</span></span>
+<span><span class="co">## 3    FALSE</span></span>
+<span><span class="co">## 4    FALSE</span></span>
+<span><span class="co">## 5    FALSE</span></span>
+<span><span class="co">## 6    FALSE</span></span>
+<span><span class="co">## 7    FALSE</span></span>
+<span><span class="co">## 8    FALSE</span></span>
+<span><span class="co">## 9    FALSE</span></span>
+<span><span class="co">## 10   FALSE</span></span>
+<span><span class="co">## 11   FALSE</span></span>
+<span><span class="co">## 12   FALSE</span></span>
+<span><span class="co">## 13   FALSE</span></span>
+<span><span class="co">## 14   FALSE</span></span>
+<span><span class="co">## 15   FALSE</span></span>
+<span><span class="co">## 16   FALSE</span></span>
+<span><span class="co">## 17   FALSE</span></span>
+<span><span class="co">## 18   FALSE</span></span>
+<span><span class="co">## 19   FALSE</span></span>
+<span><span class="co">## 20   FALSE</span></span>
+<span><span class="co">## 21   FALSE</span></span>
+<span><span class="co">## 22   FALSE</span></span>
+<span><span class="co">## 23   FALSE</span></span>
+<span><span class="co">## 24   FALSE</span></span>
+<span><span class="co">## 25   FALSE</span></span>
+<span><span class="co">## 26   FALSE</span></span>
+<span><span class="co">## 27   FALSE</span></span>
+<span><span class="co">## 28   FALSE</span></span>
+<span><span class="co">## 29   FALSE</span></span>
+<span><span class="co">## 30   FALSE</span></span>
+<span><span class="co">## 31   FALSE</span></span>
+<span><span class="co">## 32   FALSE</span></span>
+<span><span class="co">## 33   FALSE</span></span>
+<span><span class="co">## 34   FALSE</span></span>
+<span><span class="co">## 35   FALSE</span></span>
+<span><span class="co">## 36   FALSE</span></span>
+<span><span class="co">## 37   FALSE</span></span>
+<span><span class="co">## 38   FALSE</span></span>
+<span><span class="co">## 39   FALSE</span></span>
+<span><span class="co">## 40   FALSE</span></span>
+<span><span class="co">## 41   FALSE</span></span>
+<span><span class="co">## 42   FALSE</span></span>
+<span><span class="co">## 43   FALSE</span></span>
+<span><span class="co">## 44   FALSE</span></span>
+<span><span class="co">## 45   FALSE</span></span>
+<span><span class="co">## 46   FALSE</span></span>
+<span><span class="co">## 47   FALSE</span></span>
+<span><span class="co">## 48   FALSE</span></span>
+<span><span class="co">## 49   FALSE</span></span>
+<span><span class="co">## 50   FALSE</span></span>
+<span><span class="co">## 51   FALSE</span></span>
+<span><span class="co">## 52   FALSE</span></span>
+<span><span class="co">## 53   FALSE</span></span>
+<span><span class="co">## 54   FALSE</span></span>
+<span><span class="co">## 55   FALSE</span></span>
+<span><span class="co">## 56   FALSE</span></span>
+<span><span class="co">## 57   FALSE</span></span>
+<span><span class="co">## 58   FALSE</span></span>
+<span><span class="co">## 59   FALSE</span></span>
+<span><span class="co">## 60   FALSE</span></span>
+<span><span class="co">## 61   FALSE</span></span>
+<span><span class="co">## 62   FALSE</span></span>
+<span><span class="co">## 63   FALSE</span></span>
+<span><span class="co">## 64   FALSE</span></span>
+<span><span class="co">## 65   FALSE</span></span>
+<span><span class="co">## 66   FALSE</span></span>
+<span><span class="co">## 67   FALSE</span></span>
+<span><span class="co">## 68   FALSE</span></span>
+<span><span class="co">## 69   FALSE</span></span>
+<span><span class="co">## 70   FALSE</span></span>
+<span><span class="co">## 71   FALSE</span></span>
+<span><span class="co">## 72   FALSE</span></span>
+<span><span class="co">## 73   FALSE</span></span>
+<span><span class="co">## 74   FALSE</span></span>
+<span><span class="co">## 75   FALSE</span></span>
+<span><span class="co">## 76   FALSE</span></span>
+<span><span class="co">## 77   FALSE</span></span>
+<span><span class="co">## 78   FALSE</span></span>
+<span><span class="co">## 79   FALSE</span></span>
+<span><span class="co">## 80   FALSE</span></span>
+<span><span class="co">## 81   FALSE</span></span>
+<span><span class="co">## 82   FALSE</span></span>
+<span><span class="co">## 83   FALSE</span></span>
+<span><span class="co">## 84   FALSE</span></span>
+<span><span class="co">## 85   FALSE</span></span>
+<span><span class="co">## 86   FALSE</span></span>
+<span><span class="co">## 87   FALSE</span></span>
+<span><span class="co">## 88   FALSE</span></span>
+<span><span class="co">## 89   FALSE</span></span>
+<span><span class="co">## 90   FALSE</span></span>
+<span><span class="co">## 91   FALSE</span></span>
+<span><span class="co">## 92   FALSE</span></span>
+<span><span class="co">## 93   FALSE</span></span>
+<span><span class="co">## 94   FALSE</span></span>
+<span><span class="co">## 95   FALSE</span></span>
+<span><span class="co">## 96   FALSE</span></span>
+<span><span class="co">## 97   FALSE</span></span>
+<span><span class="co">## 98   FALSE</span></span>
+<span><span class="co">## 99   FALSE</span></span>
+<span><span class="co">## 100  FALSE</span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="plots">Plots<a class="anchor" aria-label="anchor" href="#plots"></a>
@@ -469,13 +761,13 @@ check individual stats:</p>
 are uniformly distributed. We can check the rank histogram and ECDF
 plots (see <code><a href="../articles/rank_visualizations.html">vignette("rank_visualizations")</a></code> for description
 of the plots):</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
 <p><img src="SBC_files/figure-html/rank_hist-1.png" width="700"></p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
 <p><img src="SBC_files/figure-html/ecdf-1.png" width="700"></p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
 <p><img src="SBC_files/figure-html/ecdf_diff-1.png" width="700"></p>
 <p>Since our simulator and model do match and Stan works well, we see
@@ -511,11 +803,9 @@ philosophy of statistics and understand SBC as a probabilistic unit test
 for your model. In this view, SBC tests a certain identity that we
 expect to hold if our system is implemented correctly, similarly how one
 could test an implementation of an arithmetical system by comparing the
-results of computing
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>+</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><annotation encoding="application/x-tex">(x + y)^2</annotation></semantics></math>
-and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><mn>2</mn><mi>x</mi><mi>y</mi><mo>+</mo><msup><mi>y</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">x^2 + 2xy + y^2</annotation></semantics></math>
-- any mismatch means the test failed.</p>
+results of computing <span class="math inline">\((x + y)^2\)</span> and
+<span class="math inline">\(x^2 + 2xy + y^2\)</span> - any mismatch
+means the test failed.</p>
 </div>
 <div class="section level2">
 <h2 id="where-to-go-next">Where to go next?<a class="anchor" aria-label="anchor" href="#where-to-go-next"></a>
@@ -542,7 +832,9 @@ storage facilities.</p>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
 
-      </div>
+        <nav id="toc" data-toggle="toc"><h2 data-toc-skip>Contents</h2>
+    </nav>
+</div>
 
 </div>
 
@@ -551,7 +843,7 @@ storage facilities.</p>
       <footer><div class="copyright">
   <p></p>
 <p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 
 <div class="pkgdown">
@@ -563,10 +855,10 @@ storage facilities.</p>
       </footer>
 </div>
 
+  
 
 
-
-
+  
 
   </body>
 </html>

@@ -3,7 +3,7 @@
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
 <![endif]--><script defer data-domain="hyunjimoon.github.io" src="https://plausible.io/js/script.js"></script></head><body data-spy="scroll" data-target="#toc">
-
+    
 
     <div class="container template-reference-topic">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.3.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.4.0.9000</span>
       </span>
     </div>
 
@@ -34,7 +34,7 @@
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
-
+     
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu"><li>
@@ -74,26 +74,26 @@
       </ul><ul class="nav navbar-nav navbar-right"><li>
   <a href="https://twitter.com/mcmc_stan" class="external-link">
     <span class="fa fa-twitter"></span>
-
+     
   </a>
 </li>
 <li>
   <a href="https://github.com/hyunjimoon/SBC" class="external-link">
     <span class="fa fa-github"></span>
-
+     
   </a>
 </li>
 <li>
   <a href="http://discourse.mc-stan.org/" class="external-link">
     <span class="fa fa-users"></span>
-
+     
   </a>
 </li>
       </ul></div><!--/.nav-collapse -->
   </div><!--/.container -->
 </div><!--/.navbar -->
 
-
+      
 
       </header><div class="row">
   <div class="col-md-9 contents">
@@ -126,13 +126,11 @@
 
     <div id="arguments">
     <h2>Arguments</h2>
-
-
-<dl><dt id="arg-datasets">datasets<a class="anchor" aria-label="anchor" href="#arg-datasets"></a></dt>
+    <dl><dt>datasets</dt>
 <dd><p>an object of class <code>SBC_datasets</code></p></dd>
 
 
-<dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
+<dt>backend</dt>
 <dd><p>the model + sampling algorithm. The built-in backends can be constructed
 using <code><a href="SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample()</a></code>, <code><a href="SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational()</a></code>,
 <code><a href="SBC_backend_rstan_sample.html">SBC_backend_rstan_sample()</a></code>, <code><a href="SBC_backend_rstan_optimizing.html">SBC_backend_rstan_optimizing()</a></code> and <code><a href="SBC_backend_brms.html">SBC_backend_brms()</a></code>.
@@ -140,13 +138,13 @@ using <code><a href="SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample
 <code><a href="SBC_fit_to_draws_matrix.html">SBC_fit_to_draws_matrix()</a></code> methods.</p></dd>
 
 
-<dt id="arg-cores-per-fit">cores_per_fit<a class="anchor" aria-label="anchor" href="#arg-cores-per-fit"></a></dt>
+<dt>cores_per_fit</dt>
 <dd><p>how many cores should the backend be allowed to use for a single fit?
 Defaults to the maximum number that does not produce more parallel chains
 than you have cores. See <code><a href="default_cores_per_fit.html">default_cores_per_fit()</a></code>.</p></dd>
 
 
-<dt id="arg-keep-fits">keep_fits<a class="anchor" aria-label="anchor" href="#arg-keep-fits"></a></dt>
+<dt>keep_fits</dt>
 <dd><p>boolean, when <code>FALSE</code> full fits are discarded from memory -
 reduces memory consumption and increases speed (when processing in parallel), but
 prevents you from inspecting the fits and using <code><a href="recompute_SBC_statistics.html">recompute_SBC_statistics()</a></code>.
@@ -155,18 +153,18 @@ Once the model is stable and you want to run a lot of iterations, we recommend s
 to <code>FALSE</code> (even for quite a simple model, 1000 fits can easily exhaust 32GB of RAM).</p></dd>
 
 
-<dt id="arg-thin-ranks">thin_ranks<a class="anchor" aria-label="anchor" href="#arg-thin-ranks"></a></dt>
+<dt>thin_ranks</dt>
 <dd><p>how much thinning should be applied to posterior draws before computing
 ranks for SBC. Should be large enough to avoid any noticeable autocorrelation of the
 thinned draws See details below.</p></dd>
 
 
-<dt id="arg-ensure-num-ranks-divisor">ensure_num_ranks_divisor<a class="anchor" aria-label="anchor" href="#arg-ensure-num-ranks-divisor"></a></dt>
+<dt>ensure_num_ranks_divisor</dt>
 <dd><p>Potentially drop some posterior samples to
 ensure that this number divides the total number of SBC ranks (see Details).</p></dd>
 
 
-<dt id="arg-chunk-size">chunk_size<a class="anchor" aria-label="anchor" href="#arg-chunk-size"></a></dt>
+<dt>chunk_size</dt>
 <dd><p>How many simulations within the <code>datasets</code> shall be processed in one batch
 by the same worker. Relevant only when using parallel processing.
 The larger the value, the smaller overhead there will be for parallel processing, but
@@ -177,23 +175,23 @@ You can use <code>options(SBC.min_chunk_size = value)</code> to set a minimum ch
 See documentation of <code>future.chunk.size</code> argument for <code><a href="https://future.apply.futureverse.org/reference/future_lapply.html" class="external-link">future.apply::future_lapply()</a></code> for more details.</p></dd>
 
 
-<dt id="arg-dquants">dquants<a class="anchor" aria-label="anchor" href="#arg-dquants"></a></dt>
+<dt>dquants</dt>
 <dd><p>Derived quantities to include in SBC. Use <code><a href="derived_quantities.html">derived_quantities()</a></code> to construct them.</p></dd>
 
 
-<dt id="arg-cache-mode">cache_mode<a class="anchor" aria-label="anchor" href="#arg-cache-mode"></a></dt>
+<dt>cache_mode</dt>
 <dd><p>Type of caching of results, currently the only supported modes are
 <code>"none"</code> (do not cache) and <code>"results"</code> where the whole results object is stored
 and recomputed only when the hash of the backend or dataset changes.</p></dd>
 
 
-<dt id="arg-cache-location">cache_location<a class="anchor" aria-label="anchor" href="#arg-cache-location"></a></dt>
+<dt>cache_location</dt>
 <dd><p>The filesystem location of cache. For <code>cache_mode = "results"</code>
 this should be a name of a single file. If the file name does not end with
 <code>.rds</code>, this extension is appended.</p></dd>
 
 
-<dt id="arg-globals">globals<a class="anchor" aria-label="anchor" href="#arg-globals"></a></dt>
+<dt>globals</dt>
 <dd><p>A list of names of objects that are defined
 in the global environment and need to present for the backend to work (
 if they are not already available in package).
@@ -201,20 +199,31 @@ It is added to the <code>globals</code> argument to <code><a href="https://futur
 objects available on all workers.</p></dd>
 
 
-<dt id="arg-gen-quants">gen_quants<a class="anchor" aria-label="anchor" href="#arg-gen-quants"></a></dt>
+<dt>gen_quants</dt>
 <dd><p>Deprecated, use dquants instead</p></dd>
 
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>An object of class <code><a href="SBC_results.html">SBC_results()</a></code>.</p>
+    
+
+<p>An object of class <code><a href="SBC_results.html">SBC_results()</a></code>.</p>
     </div>
     <div id="paralellization">
     <h2>Paralellization</h2>
     <p>Parallel processing is supported via the <code>future</code> package, for most uses, it is most sensible
 to just call <code>plan(multisession)</code> once in your R session and  all
 cores your computer will be used. For more details refer to the documentation
-of the <code>future</code> package.</p>
+of the <code>future</code> package.
+On some Linux systems, using <a href="https://future.mirai.futureverse.org/reference/mirai_multisession.html" class="external-link">future.mirai::mirai_multisession</a> may give
+performance boosts.</p>
+    </div>
+    <div id="progress-reporting">
+    <h2>Progress reporting</h2>
+    <p>This function supports progress reporting with the
+<a href="https://progressr.futureverse.org/" class="external-link"><code>progressr</code></a> package.
+Run <code>progressr::handlers(global = TRUE)</code> to enable progress reporting
+globally, see the <code>progressr</code> docs for more options.</p>
     </div>
     <div id="thinning">
     <h2>Thinning</h2>
@@ -258,7 +267,7 @@ pathologies while discarding at most a single sample.</p>
 
 
       <footer><div class="copyright">
-  <p></p><p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p></p><p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 
 <div class="pkgdown">
@@ -267,10 +276,10 @@ pathologies while discarding at most a single sample.</p>
 
       </footer></div>
 
+  
 
 
-
-
+  
 
   </body></html>
 

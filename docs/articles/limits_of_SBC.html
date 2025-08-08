@@ -12,13 +12,14 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
 <script src="../pkgdown.js"></script><meta property="og:title" content="Limits of SBC">
+<meta property="og:description" content="SBC">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
 <![endif]--><script defer data-domain="hyunjimoon.github.io" src="https://plausible.io/js/script.js"></script>
 </head>
 <body data-spy="scroll" data-target="#toc">
-
+    
 
     <div class="container template-article">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -32,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.3.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.4.0.9000</span>
       </span>
     </div>
 
@@ -50,7 +51,7 @@
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
-
+     
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu">
@@ -94,19 +95,19 @@
 <li>
   <a href="https://twitter.com/mcmc_stan" class="external-link">
     <span class="fa fa-twitter"></span>
-
+     
   </a>
 </li>
 <li>
   <a href="https://github.com/hyunjimoon/SBC" class="external-link">
     <span class="fa fa-github"></span>
-
+     
   </a>
 </li>
 <li>
   <a href="http://discourse.mc-stan.org/" class="external-link">
     <span class="fa fa-users"></span>
-
+     
   </a>
 </li>
       </ul>
@@ -117,7 +118,7 @@
 </div>
 <!--/.navbar -->
 
-
+      
 
       </header><div class="row">
   <div class="col-md-9 contents">
@@ -126,7 +127,7 @@
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2025-02-14</h4>
+            <h4 data-toc-skip class="date">2025-08-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/limits_of_SBC.Rmd" class="external-link"><code>vignettes/limits_of_SBC.Rmd</code></a></small>
       <div class="hidden name"><code>limits_of_SBC.Rmd</code></div>
@@ -178,6 +179,10 @@ additional examples at <a href="https://martinmodrak.github.io/sbc_test_quantiti
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme_get.html" class="external-link">theme_set</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Run this _in the console_ to report progress for all computations to report progress for all computations</span></span>
+<span><span class="co"># see https://progressr.futureverse.org/ for more options</span></span>
+<span><span class="fu">progressr</span><span class="fu">::</span><span class="fu"><a href="https://progressr.futureverse.org/reference/handlers.html" class="external-link">handlers</a></span><span class="op">(</span>global <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="sbc-and-minor-changes-to-model">SBC and minor changes to model<a class="anchor" aria-label="anchor" href="#sbc-and-minor-changes-to-model"></a>
 </h2>
@@ -187,7 +192,7 @@ additional examples at <a href="https://martinmodrak.github.io/sbc_test_quantiti
 likelihood, but use Student’s t distribution with 5 degrees of freedom
 to generate the data.</p>
 <p>To see the difference we’ll show the two densities</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5</span>, <span class="fl">5</span>, length.out <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">dens_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, density <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm</a></span><span class="op">(</span><span class="va">x</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, </span>
@@ -200,12 +205,12 @@ to generate the data.</p>
 <p><img src="limits_of_SBC_files/figure-html/dens_compare-1.png" width="700"></p>
 <p>As expected the t distribution has fatter tails, which is even better
 visible when looking at the logarithm of the density.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">dens_data</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">log_density</span>, color <span class="op">=</span> <span class="va">type</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>linewidth <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/log_dens_compare-1.png" width="700"></p>
 <p>Here is our Stan code for the simple normal model.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/minor_discrepancy.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N;
@@ -222,7 +227,7 @@ model {
   target += normal_lpdf(sigma | 0, 1);
   target += normal_lpdf(y | mu, sigma);
 }</code></pre>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">iter_warmup</span> <span class="op">&lt;-</span> <span class="fl">300</span></span>
 <span><span class="va">iter_sampling</span> <span class="op">&lt;-</span> <span class="fl">1000</span></span>
 <span></span>
@@ -240,7 +245,7 @@ model {
 <p>And here we simulate from a student’s t distribution. We scale the
 distribution so that <code>sigma</code> is the standard deviation of the
 distribution.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">single_sim_minor</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span>  <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
@@ -260,7 +265,7 @@ distribution.</p>
 <p>Can we see something by looking at the results of just the first 10
 simulations? (note that <code>SBC_datasets</code> objects support
 subsetting).</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_minor_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span>, <span class="va">backend_minor</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"minor_10"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -271,17 +276,17 @@ subsetting).</p>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>Not really…</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_minor_10</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_10_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_minor_10</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_10_plots-2.png" width="700"></p>
 <p>Will we have better luck with 100 simulations? (Note that we can use
 <code>bind_results</code> to combine multiple results, letting us start
 small, but not throw away the computation spent for the initial
 simulations)</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_minor_100</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span></span>
 <span>  <span class="va">results_minor_10</span>,</span>
 <span>  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">11</span><span class="op">:</span><span class="fl">100</span><span class="op">]</span>, <span class="va">backend_minor</span>, </span>
@@ -297,14 +302,14 @@ simulations)</p>
 <p>Here we see something suspicios with the <code>sigma</code> variable,
 but it is not very convincing (we switch to <code>ecdf_diff</code> as it
 looks better with more simulations).</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_minor_100</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_100_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_minor_100</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_100_plots-2.png" width="700"></p>
 <p>So let’s do additional 100 SBC steps</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_minor_200</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bind_results.html">bind_results</a></span><span class="op">(</span></span>
 <span>  <span class="va">results_minor_100</span>,</span>
 <span>  <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_minor</span><span class="op">[</span><span class="fl">101</span><span class="op">:</span><span class="fl">200</span><span class="op">]</span>, <span class="va">backend_minor</span>, </span>
@@ -319,10 +324,10 @@ looks better with more simulations).</p>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>OK, so this looks at least a bit conclusive, but still, the violation
 of uniformity is not very big.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_minor_200</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_200_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_minor_200</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_200_plots-2.png" width="700"></p>
 <p>If we used more data points per simulation (here we simulated just
@@ -334,16 +339,16 @@ meaningless (as the distributions are quite close). One way to look into
 this is to plot the posterior mean + central 90% interval against the
 simulated value via <code>plot_sim_estimated</code>. The estimates
 should cluster around the y=x line (blue), which they mostly do.</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">results_minor_200</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_200_sim_estimated-1.png" width="700"></p>
 <p>Another way to investigate this is the coverage plot, showing the
 attained coverage of various central credible intervals.</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage</a></span><span class="op">(</span><span class="va">results_minor_200</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_minor_200_coverage-1.png" width="700"></p>
 <p>Or we can even directly inspect some intervals of interest:</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">coverage</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">results_minor_200</span><span class="op">$</span><span class="va">stats</span>, width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>,<span class="fl">0.9</span>,<span class="fl">0.95</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">coverage</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 6 × 6</span></span></span>
@@ -355,7 +360,7 @@ attained coverage of various central credible intervals.</p>
 <span><span class="co">## <span style="color: #BCBCBC;">4</span> sigma     0.5               0.5   0.373    0.44    0.509</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">5</span> sigma     0.9               0.9   0.744    0.805   0.854</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">6</span> sigma     0.95              0.95  0.833    0.885   0.922</span></span></code></pre>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sigma_90_coverage_string</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span></span>
 <span>  <span class="va">coverage</span><span class="op">[</span><span class="va">coverage</span><span class="op">$</span><span class="va">variable</span> <span class="op">==</span> <span class="st">"sigma"</span> <span class="op">&amp;</span> <span class="va">coverage</span><span class="op">$</span><span class="va">width</span> <span class="op">==</span> <span class="fl">0.9</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ci_low"</span>,<span class="st">"ci_high"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  <span class="st">"%"</span>,</span>
@@ -378,7 +383,7 @@ posterior - so if prior does not influence posterior very much…</p>
 likelihood from your Stan model!</p>
 <p>Here we have a generator for a very simple model with gaussian
 likelihood:</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">single_sim_missing</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span>n <span class="op">=</span> <span class="va">N</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
@@ -394,7 +399,7 @@ likelihood:</p>
 <span><span class="va">datasets_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_missing</span>, n_sims <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></span></code></pre></div>
 <p>And here is a model that just completely ignores the data, but has
 the right prior:</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/missing_likelihood.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N;
@@ -408,7 +413,7 @@ parameters {
 model {
   target += normal_lpdf(mu | 0, 1);
 }</code></pre>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">iter_warmup</span> <span class="op">&lt;-</span> <span class="fl">300</span></span>
 <span><span class="va">iter_sampling</span> <span class="op">&lt;-</span> <span class="fl">1000</span></span>
 <span></span>
@@ -424,20 +429,20 @@ model {
 <span>    <span class="va">model_missing</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Now we’ll compute the results for 200 simulations:</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_missing</span>, <span class="va">backend_missing</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"missing"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'missing'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 17 (8%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.028.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 14 (7%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.019.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>And here are our rank plots:</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_missing</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_plots-2.png" width="700"></p>
 <p>It’s just nothing out of the ordinary.</p>
@@ -448,7 +453,7 @@ more we know about the variable after fitting the model. For this model,
 we can get the prior sd directly, but one can also use a (preferably
 large) <code>SBC_datasets</code> object to estimate it empirically for
 more complex models.</p>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prior_sd</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mu"</span> <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="co">#prior_sd &lt;- calculate_prior_sd(generate_datasets(generator_missing, 1000))</span></span>
 <span><span class="fu"><a href="../reference/plot_contraction.html">plot_contraction</a></span><span class="op">(</span><span class="va">results_missing</span>, <span class="va">prior_sd</span><span class="op">)</span></span></code></pre></div>
@@ -461,7 +466,7 @@ means that the model learns nothing useful on average about
 <code>plot_sim_estimated</code> showing that the posterior credible
 intervals don’t really change with changes to
 <code>simulated_value</code>.</p>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">results_missing</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_sim_estimated-1.png" width="700"></p>
 <p>There is however even more powerful method - and that is to include
@@ -469,7 +474,7 @@ the likelihood in the SBC. This is most easily done by adding a “derived
 quantity” to the SBC results - this is a function that is evaluated
 within the context of the variables AND data. And it can be added
 without recomputing the fits!</p>
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">normal_lpdf</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">y</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm</a></span><span class="op">(</span><span class="va">y</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="va">sigma</span>, log <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
@@ -480,16 +485,16 @@ without recomputing the fits!</p>
 <span><span class="va">results_missing_dq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/recompute_SBC_statistics.html">recompute_SBC_statistics</a></span><span class="op">(</span></span>
 <span>  <span class="va">results_missing</span>, <span class="va">datasets_missing</span>, </span>
 <span>  backend <span class="op">=</span> <span class="va">backend_missing</span>, dquants <span class="op">=</span> <span class="va">log_lik_dq</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">##  - 20 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.028.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 21 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.03.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>The rank plots for the <code>log_lik</code> quantity immediately
 shows a severe problem:</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing_dq</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_dq_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_missing_dq</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_dq_plots-2.png" width="700"></p>
 </div>
@@ -500,7 +505,7 @@ shows a severe problem:</p>
 (and missing something) - e.g. due to an indexing error. Turns out
 missing just one data point needs a lot of simulations to see, so we’ll
 write a model that ignores a full half of the data points.</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/partially_missing_likelihood.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data {
   int&lt;lower=0&gt; N;
@@ -521,7 +526,7 @@ model {
     target += normal_lpdf(y[n] | mu, 1);
   }
 }</code></pre>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">model_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/partially_missing_likelihood.stan"</span><span class="op">)</span></span>
 <span></span>
@@ -534,31 +539,31 @@ model {
 <span>    <span class="va">model_missing_2</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Let us use this model for the same set of simulations.</p>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_missing</span>, <span class="va">backend_missing_2</span>, dquants <span class="op">=</span> <span class="va">log_lik_dq</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"missing_2"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'missing_2'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 19 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.026.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 24 (12%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.026.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>The contraction plot would not show anything suspicious - we get
 decent contraction</p>
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_contraction.html">plot_contraction</a></span><span class="op">(</span><span class="va">results_missing_2</span>, <span class="va">prior_sd</span>, variables <span class="op">=</span> <span class="st">"mu"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_2_contraction-1.png" width="700"></p>
 <p>Similarly, our posterior estimates now cluster around the true
 values.</p>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">results_missing_2</span>, variables <span class="op">=</span> <span class="st">"mu"</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_2_sim_estimated-1.png" width="700"></p>
 <p>Now contraction is pretty high, and <code>mu</code> is behaving well,
 but our <code>log_lik</code> derived quantity shows a clear problem</p>
-<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_missing_2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_2_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb62"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_missing_2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_missing_2_plots-2.png" width="700"></p>
 <p>We could definitely find even smaller deviations than omitting half
@@ -574,24 +579,22 @@ problem by SBC - but it is possible.</p>
 </h2>
 <p>Here, we generate data using the multivariate normal distribution
 as:</p>
-<p><span class="math display">$$
+<p><span class="math display">\[
 \mathbf{\mu} \sim MVN(0, \mathbf{\Sigma})\\
 y \sim MVN(\mathbf{\mu}, \mathbf{\Sigma})\\
 \mathbf{\Sigma} = \left(\begin{matrix}
 1 &amp; 0.8 \\
 0.8 &amp; 1 \\
 \end{matrix}\right)
-$$</span></p>
+\]</span></p>
 <p>In this case the posterior has analytical solution and should also be
 multivariate normal - especially when the number of data points is
 small, the correlations in the prior should persist in the posterior.
-Here, we’ll assume we observe three realizations of
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>
-in a single fit.</p>
+Here, we’ll assume we observe three realizations of <span class="math inline">\(y\)</span> in a single fit.</p>
 <p>We however generate posterior samples from a set of independent
 normal distributions that happen to have the correct mean and standard
 deviation, just the correlation is missing.</p>
-<div class="sourceCode" id="cb62"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">546852</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">mvn_sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0.8</span>,<span class="fl">0.8</span>,<span class="fl">1</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
@@ -646,16 +649,16 @@ deviation, just the correlation is missing.</p>
 <pre><code><span><span class="co">## Results loaded from cache file 'corr'</span></span></code></pre>
 <p>Although the posterior is incorrect, the default univariate checks
 don’t show any problem even with 1000 simulations.</p>
-<div class="sourceCode" id="cb64"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_corr</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_corr-1.png" width="700"></p>
-<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_corr</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_corr-2.png" width="700"></p>
 <p>We can however add derived quantities that depend on both elements of
 mu. We’ll try their sum, difference, product and the multivarite normal
 log likelihood</p>
-<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dq_corr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/derived_quantities.html">derived_quantities</a></span><span class="op">(</span>sum <span class="op">=</span> <span class="va">mu</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">+</span> <span class="va">mu</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span>, </span>
 <span>                                diff <span class="op">=</span> <span class="va">mu</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">-</span> <span class="va">mu</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span>,</span>
 <span>                                prod <span class="op">=</span> <span class="va">mu</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="va">mu</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span>,</span>
@@ -672,10 +675,10 @@ log likelihood</p>
 different strength of signal. We’ll especially note that the log
 likelihood is once again a very good choice, while sum is probably the
 worst of those tested.</p>
-<div class="sourceCode" id="cb68"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb69"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_corr_dq</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_corr_dq-1.png" width="700"></p>
-<div class="sourceCode" id="cb69"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb70"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_corr_dq</span><span class="op">)</span></span></code></pre></div>
 <p><img src="limits_of_SBC_files/figure-html/results_corr_dq-2.png" width="700"></p>
 </div>
@@ -683,7 +686,9 @@ worst of those tested.</p>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
 
-      </div>
+        <nav id="toc" data-toggle="toc"><h2 data-toc-skip>Contents</h2>
+    </nav>
+</div>
 
 </div>
 
@@ -692,7 +697,7 @@ worst of those tested.</p>
       <footer><div class="copyright">
   <p></p>
 <p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 
 <div class="pkgdown">
@@ -704,10 +709,10 @@ worst of those tested.</p>
       </footer>
 </div>
 
+  
 
 
-
-
+  
 
   </body>
 </html>

@@ -12,13 +12,14 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
 <script src="../pkgdown.js"></script><meta property="og:title" content="Rejection sampling in simulations">
+<meta property="og:description" content="SBC">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
 <![endif]--><script defer data-domain="hyunjimoon.github.io" src="https://plausible.io/js/script.js"></script>
 </head>
 <body data-spy="scroll" data-target="#toc">
-
+    
 
     <div class="container template-article">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -32,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.3.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.4.0.9000</span>
       </span>
     </div>
 
@@ -50,7 +51,7 @@
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Other Packages
-
+     
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu">
@@ -94,19 +95,19 @@
 <li>
   <a href="https://twitter.com/mcmc_stan" class="external-link">
     <span class="fa fa-twitter"></span>
-
+     
   </a>
 </li>
 <li>
   <a href="https://github.com/hyunjimoon/SBC" class="external-link">
     <span class="fa fa-github"></span>
-
+     
   </a>
 </li>
 <li>
   <a href="http://discourse.mc-stan.org/" class="external-link">
     <span class="fa fa-users"></span>
-
+     
   </a>
 </li>
       </ul>
@@ -117,7 +118,7 @@
 </div>
 <!--/.navbar -->
 
-
+      
 
       </header><div class="row">
   <div class="col-md-9 contents">
@@ -126,7 +127,7 @@
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2025-02-14</h4>
+            <h4 data-toc-skip class="date">2025-08-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/rejection_sampling.Rmd" class="external-link"><code>vignettes/rejection_sampling.Rmd</code></a></small>
       <div class="hidden name"><code>rejection_sampling.Rmd</code></div>
@@ -148,9 +149,8 @@ Bürkner’s talk on SBC StanConnect</a> for more context.</p>
 <p>An alternative is to use <em>rejection sampling</em> i.e. we
 repeatedly generate a simulation and only accept it when it passes a
 certain condition we impose (e.g. that no observed count is larger than
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mn>8</mn></msup><annotation encoding="application/x-tex">10^8</annotation></semantics></math>).
-But does rejection sampling when generating simulations affect the
-validity of SBC?</p>
+<span class="math inline">\(10^8\)</span>). But does rejection sampling
+when generating simulations affect the validity of SBC?</p>
 <p>It turns out that it does not as long as the rejection criterion only
 uses observed data and not the unobserved variables.</p>
 <p>We’ll first walk through the math and then show examples of both OK
@@ -158,40 +158,31 @@ and problematic rejection sampling.</p>
 <div class="section level2">
 <h2 id="the-math">The math<a class="anchor" aria-label="anchor" href="#the-math"></a>
 </h2>
-<p>Let
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi>𝚊</mi><mi>𝚌</mi><mi>𝚌</mi><mi>𝚎</mi><mi>𝚙</mi><mi>𝚝</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathtt{accept}(y)</annotation></semantics></math>
-be the probability the the simulated data
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>
-is accepted. Note that
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝚊</mi><mi>𝚌</mi><mi>𝚌</mi><mi>𝚎</mi><mi>𝚙</mi><mi>𝚝</mi></mrow><annotation encoding="application/x-tex">\mathtt{accept}</annotation></semantics></math>
-uses only data as input and would usually be a 0-1 function if you have
-a clear idea what a “bad” dataset looks like, but could be probabilistic
-if you’re relying on finicky diagnostics.</p>
-<p>We define a variable
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>∼</mo><mtext mathvariant="normal">Bernoulli</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mi>𝚊</mi><mi>𝚌</mi><mi>𝚌</mi><mi>𝚎</mi><mi>𝚙</mi><mi>𝚝</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">a \sim \text{Bernoulli}(\mathtt{accept}(y))</annotation></semantics></math>.
-Given the parameter space
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Θ</mi><annotation encoding="application/x-tex">\Theta</annotation></semantics></math>
-and a specific
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>∈</mo><mi>Θ</mi></mrow><annotation encoding="application/x-tex">\theta \in \Theta</annotation></semantics></math>,
-this implies a joint distribution
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\pi(\theta, y, a)</annotation></semantics></math>
-that factorizes as
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>a</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo stretchy="false" form="prefix">|</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="prefix">|</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\pi(\theta, y, a) = \pi(a|y)\pi(y | \theta)\pi(\theta)</annotation></semantics></math>.
-We can then look at the posterior conditional on accepting a dataset to
-see the claimed invariance:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="prefix">|</mo><mi>y</mi><mo>,</mo><mi>a</mi><mo>=</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>=</mo><mn>1</mn><mo stretchy="false" form="prefix">|</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="prefix">|</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><msub><mo>∫</mo><mi>Θ</mi></msub><mi mathvariant="normal">d</mi><mover><mi>θ</mi><mo accent="true">̃</mo></mover><mspace width="0.222em"></mspace><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mo>=</mo><mn>1</mn><mo stretchy="false" form="prefix">|</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="prefix">|</mo><mover><mi>θ</mi><mo accent="true">̃</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̃</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><mfrac><mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="prefix">|</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><msub><mo>∫</mo><mi>Θ</mi></msub><mi mathvariant="normal">d</mi><mover><mi>θ</mi><mo accent="true">̃</mo></mover><mspace width="0.222em"></mspace><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="prefix">|</mo><mover><mi>θ</mi><mo accent="true">̃</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̃</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo>=</mo><mi>π</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="prefix">|</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">
+<p>Let <span class="math inline">\(\mathtt{accept}(y)\)</span> be the
+probability the the simulated data <span class="math inline">\(y\)</span> is accepted. Note that <span class="math inline">\(\mathtt{accept}\)</span> uses only data as input
+and would usually be a 0-1 function if you have a clear idea what a
+“bad” dataset looks like, but could be probabilistic if you’re relying
+on finicky diagnostics.</p>
+<p>We define a variable <span class="math inline">\(a \sim
+\text{Bernoulli}(\mathtt{accept}(y))\)</span>. Given the parameter space
+<span class="math inline">\(\Theta\)</span> and a specific <span class="math inline">\(\theta \in \Theta\)</span>, this implies a joint
+distribution <span class="math inline">\(\pi(\theta, y, a)\)</span> that
+factorizes as <span class="math inline">\(\pi(\theta, y, a) =
+\pi(a|y)\pi(y | \theta)\pi(\theta)\)</span>. We can then look at the
+posterior conditional on accepting a dataset to see the claimed
+invariance:</p>
+<p><span class="math display">\[
 \begin{equation}
-\pi(\theta | y, a = 1) = \frac{\pi(a = 1 | y) \pi(y | \theta)\pi(\theta)}{\int_\Theta \mathrm{d}\tilde\theta \: \pi(a = 1 | y) \pi(y | \tilde\theta)\pi(\tilde\theta)} = 
-\frac{\pi(y | \theta)\pi(\theta)}{\int_\Theta \mathrm{d}\tilde\theta \: \pi(y | \tilde\theta)\pi(\tilde\theta)} = \pi(\theta | y)
+\pi(\theta | y, a = 1) = \frac{\pi(a = 1 | y) \pi(y |
+\theta)\pi(\theta)}{\int_\Theta \mathrm{d}\tilde\theta \: \pi(a = 1 | y)
+\pi(y | \tilde\theta)\pi(\tilde\theta)} =
+\frac{\pi(y | \theta)\pi(\theta)}{\int_\Theta \mathrm{d}\tilde\theta \:
+\pi(y | \tilde\theta)\pi(\tilde\theta)} = \pi(\theta | y)
 \end{equation}
-</annotation></semantics></math></p>
+\]</span></p>
 <p>So whether we take rejection into account or not, the model will
-match the generating process. However, if
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝚊</mi><mi>𝚌</mi><mi>𝚌</mi><mi>𝚎</mi><mi>𝚙</mi><mi>𝚝</mi></mrow><annotation encoding="application/x-tex">\mathtt{accept}</annotation></semantics></math>
-also depended on
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math>,
-it would no longer contribute a constant and we’ll get a mismatch
-between the generator and model.</p>
+match the generating process. However, if <span class="math inline">\(\mathtt{accept}\)</span> also depended on <span class="math inline">\(\theta\)</span>, it would no longer contribute a
+constant and we’ll get a mismatch between the generator and model.</p>
 </div>
 <div class="section level2">
 <h2 id="practical-examples">Practical examples<a class="anchor" aria-label="anchor" href="#practical-examples"></a>
@@ -228,8 +219,12 @@ environment:</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme_get.html" class="external-link">theme_set</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>We’ll use a very simple model throughout this vignette:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Run this _in the console_ to report progress for all computations to report progress for all computations</span></span>
+<span><span class="co"># see https://progressr.futureverse.org/ for more options</span></span>
+<span><span class="fu">progressr</span><span class="fu">::</span><span class="fu"><a href="https://progressr.futureverse.org/reference/handlers.html" class="external-link">handlers</a></span><span class="op">(</span>global <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>We’ll use a very simple model throughout this vignette:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"stan/rejection_sampling.stan"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>data {
    int&lt;lower=0&gt; N;
@@ -244,7 +239,7 @@ model {
    mu ~ normal(0, 2);
    y ~ normal(mu, 1);
 }</code></pre>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/rejection_sampling.stan"</span><span class="op">)</span>, iter_warmup <span class="op">=</span> <span class="fl">800</span>, iter_sampling <span class="op">=</span> <span class="fl">800</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
@@ -254,7 +249,7 @@ model {
 <h3 id="no-rejections">No rejections<a class="anchor" aria-label="anchor" href="#no-rejections"></a>
 </h3>
 <p>First, we’ll use a generator that matches the model exactly.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
 <span><span class="va">generator</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>   <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">2</span><span class="op">)</span></span>
@@ -264,22 +259,22 @@ model {
 <span>   <span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>So we expect the SBC to pass even with a large number of fits.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2323455</span><span class="op">)</span></span>
 <span><span class="va">datasets</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator</span>, <span class="fl">1000</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets</span>, <span class="va">backend</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"no_rejections"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'no_rejections'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 2 (0%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.016.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (0%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.011.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/results1_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/results1_plots-2.png" width="700"></p>
 <p>Indeed, all looks good.</p>
@@ -289,7 +284,7 @@ model {
 </h3>
 <p>Now let us modify the generator to reject based on values of an
 unobserved variable.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">generator_reject_unobserved</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>   <span class="kw">repeat</span> <span class="op">{</span></span>
 <span>    <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">2</span><span class="op">)</span></span>
@@ -303,18 +298,18 @@ unobserved variable.</p>
 <span>   <span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>We don’t even need to run very many fits to see the problem.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">21455</span><span class="op">)</span></span>
 <span><span class="va">datasets_reject_unobserved</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_reject_unobserved</span>, <span class="fl">200</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_reject_unobserved</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_reject_unobserved</span>, <span class="va">backend</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"reject_unobserved"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'reject_unobserved'</span></span></code></pre>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_reject_unobserved</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/reject_unobserved_plots-1.png" width="700"></p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_reject_unobserved</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/reject_unobserved_plots-2.png" width="700"></p>
 <p>Indeed, we see a clear failure.</p>
@@ -327,7 +322,7 @@ theory result in just a constant change in posterior density and not
 affect SBC. (SBC will however then check only the non-rejected parts of
 the data space). We will do a relatively aggressive rejection scheme
 (reject more than 50% of simulations).</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">generator_reject_y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>   <span class="kw">repeat</span> <span class="op">{</span></span>
 <span>    <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">2</span><span class="op">)</span></span>
@@ -341,22 +336,22 @@ the data space). We will do a relatively aggressive rejection scheme
 <span>     generated <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>N <span class="op">=</span> <span class="va">N</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span></span>
 <span>   <span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">369654</span><span class="op">)</span></span>
 <span><span class="va">datasets_reject_y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="va">generator_reject_y</span>, <span class="fl">1000</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_reject_y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_reject_y</span>, <span class="va">backend</span>, keep_fits <span class="op">=</span> <span class="cn">FALSE</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"reject_y"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'reject_y'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 2 (0%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.011.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (0%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.011.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_reject_y</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/reject_y_plot-1.png" width="700"></p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_reject_y</span><span class="op">)</span></span></code></pre></div>
 <p><img src="rejection_sampling_files/figure-html/reject_y_plot-2.png" width="700"></p>
 <p>We see that even with quite heavy rejection based on y, SBC to a high
@@ -380,7 +375,9 @@ not be rejected by the same criteria.</p>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
 
-      </div>
+        <nav id="toc" data-toggle="toc"><h2 data-toc-skip>Contents</h2>
+    </nav>
+</div>
 
 </div>
 
@@ -389,7 +386,7 @@ not be rejected by the same criteria.</p>
       <footer><div class="copyright">
   <p></p>
 <p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 
 <div class="pkgdown">
@@ -401,10 +398,10 @@ not be rejected by the same criteria.</p>
       </footer>
 </div>
 
+  
 
 
-
-
+  
 
   </body>
 </html>
