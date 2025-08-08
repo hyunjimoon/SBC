@@ -4,6 +4,9 @@
 # See https://math.stackexchange.com/a/5085538/423833 for derivation that it
 # is generalized gamma distribution. Here we test this is correct.
 
+library(ggplot2)
+theme_set(theme_minimal())
+
 N_sims <- 100
 df <- 5
 z <- rnorm(N_sims)

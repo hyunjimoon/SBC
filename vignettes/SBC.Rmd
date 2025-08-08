@@ -129,7 +129,8 @@ In this vignette we will demonstrate how the interface is used with a simple poi
 setup and configure our environment.
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
-library(SBC);
+library(SBC)
+library(ggplot2)
 
 use_cmdstanr <- getOption("SBC.vignettes_cmdstanr", TRUE) # Set to false to use rstan instead
 
@@ -161,6 +162,7 @@ if(!dir.exists(cache_dir)) {
   dir.create(cache_dir)
 }
 
+theme_set(theme_minimal())
 ```
 
 ```{r enable progressr, eval = FALSE}

@@ -1,7 +1,7 @@
 #' A backend that just calls a function.
 #'
 #' If the function returns a `draws_matrix` object, no other
-#' work is necessary to make it work with SBC.
+#' work is necessary to make it work with SBC. Useful for quick tests.
 #'
 #' @param func the function that will be called in [SBC_fit()]
 #' @param generated_arg name of the argument of `func` that will receive the
