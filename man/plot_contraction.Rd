@@ -2,6 +2,7 @@
 % Please edit documentation in R/plot.R
 \name{plot_contraction}
 \alias{plot_contraction}
+\alias{plot_contraction.data.frame}
 \title{Prior/posterior contraction plot.}
 \usage{
 plot_contraction(
@@ -10,6 +11,17 @@ plot_contraction(
   variables = NULL,
   scale = "sd",
   alpha = 0.8,
+  ...,
+  parameters = NULL
+)
+
+\method{plot_contraction}{data.frame}(
+  x,
+  prior_sd,
+  variables = NULL,
+  scale = "sd",
+  alpha = 0.8,
+  show_hidden = FALSE,
   parameters = NULL
 )
 }
@@ -29,6 +41,9 @@ or \code{"var"} for variance.}
 \item{alpha}{the alpha for the points}
 
 \item{parameters}{DEPRECATED, use \code{variables} instead.}
+
+\item{show_hidden}{Show variables marked with \code{\link[=hidden_var_attribute]{hidden_var_attribute()}}
+(by default, those are not shown, available only when \code{x} is a data.frame)}
 }
 \value{
 a ggplot2 plot object

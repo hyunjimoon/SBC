@@ -27,13 +27,35 @@ SBC_results <- function(stats,
   )
 }
 
+
 compute_default_diagnostics <- function(stats) {
-  dplyr::summarise(dplyr::group_by(stats, sim_id),
+  if(is.null(stats$attributes)) {
+    stats$attributes <- ""
+  }
+  eligible_for_check <- function(value, attributes) {
+    value[!is.na(value)
+          | !attribute_present_stats(possibly_constant_var_attribute(), attributes)
+          ]
+  }
+
+  should_check_na <- function(attributes) {
+    !attribute_present_stats(na_valid_var_attribute(), attributes)
+  }
+
+  val <- dplyr::summarise(dplyr::group_by(stats, sim_id),
                    n_vars = dplyr::n(),
-                   max_rhat = max(c(-Inf, rhat)),
-                   min_ess_bulk = min(c(Inf, ess_bulk)),
-                   min_ess_tail = min(c(Inf, ess_tail)),
-                   min_ess_to_rank = min(c(Inf, ess_tail / max_rank)))
+                   n_has_na = sum(has_na & should_check_na(attributes)),
+                   n_na_rhat = sum(is.na(eligible_for_check(rhat, attributes))),
+                   n_na_ess_bulk = sum(is.na(eligible_for_check(ess_bulk, attributes))),
+                   n_na_ess_tail = sum(is.na(eligible_for_check(ess_tail, attributes))),
+                   max_rhat = max(c(-Inf, eligible_for_check(rhat, attributes)), na.rm = TRUE),
+                   min_ess_bulk = min(c(Inf, eligible_for_check(ess_bulk, attributes))),
+                   min_ess_tail = min(c(Inf, eligible_for_check(ess_tail, attributes))),
+                   min_ess_to_rank = min(c(Inf, eligible_for_check(ess_tail / max_rank, attributes))),
+                   .groups = "drop"
+                   )
+
+  return(val)
 }
 
 #' @export
@@ -171,7 +193,7 @@ bind_results <- function(...) {
 
   # Ensure unique sim_ids
   max_ids <- as.numeric(purrr::map(stats_list, function(x) max(x$sim_id)))
-  shifts <- c(0, max_ids[1:(length(max_ids)) - 1]) # Shift of IDs per dataset
+  shifts <- cumsum(c(0, max_ids[1:(length(max_ids) - 1)])) # Shift of IDs per dataset
 
   shift_sim_id <- function(x, shift) {
     if(is.null(x)) {
@@ -297,6 +319,15 @@ compute_results <- function(...) {
 #'  to just call `plan(multisession)` once in your R session and  all
 #'  cores your computer will be used. For more details refer to the documentation
 #'  of the `future` package.
+#'  On some Linux systems, using [future.mirai::mirai_multisession] may give
+#'  performance boosts.
+#'
+#' # Progress reporting
+#'
+#' This function supports progress reporting with the
+#' [`progressr`](https://progressr.futureverse.org/) package.
+#' Run `progressr::handlers(global = TRUE)` to enable progress reporting
+#' globally, see the `progressr` docs for more options.
 #'
 #' # Thinning
 #'
@@ -412,6 +443,11 @@ compute_SBC <- function(datasets, backend,
     }
 
     backend_hash <- SBC_backend_hash_for_cache(backend)
+
+    # Standardize datasets for hash
+    if(is.null(datasets$var_attributes)) {
+      datasets$var_attributes <- NULL
+    }
     data_hash <- rlang::hash(datasets)
 
     # Ensure backwards compatibility of cache
@@ -503,15 +539,23 @@ compute_SBC <- function(datasets, backend,
     future.globals <- bind_globals(globals, dq_globals)
   }
 
+  if(requireNamespace("progressr", quietly = TRUE)) {
+    progressor <- progressr::progressor(along = vars_and_generated_list)
+  } else {
+    progressor <- NULL
+  }
+
   results_raw <- future.apply::future_lapply(
     vars_and_generated_list, SBC:::compute_SBC_single,
     backend = backend, cores = cores_per_fit,
     keep_fit = keep_fits, thin_ranks = thin_ranks,
     ensure_num_ranks_divisor = ensure_num_ranks_divisor,
     dquants = dquants,
+    var_attributes = datasets$var_attributes,
     future.seed = TRUE,
     future.globals = future.globals,
-    future.chunk.size = chunk_size)
+    future.chunk.size = chunk_size,
+    progressor = progressor)
 
   # Combine, check and summarise
   fits <- rep(list(NULL), length(datasets))
@@ -597,8 +641,9 @@ compute_SBC <- function(datasets, backend,
   } else {
     # Return dummy stats that let the rest of the code work.
     stats <- data.frame(sim_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
-                        ess_tail = numeric(0),
-                        rank = integer(0), simulated_value = numeric(0), max_rank = integer(0))
+                        ess_tail = numeric(0), has_na = logical(0),
+                        rank = integer(0), simulated_value = numeric(0), max_rank = integer(0),
+                        attributes = character(0))
   }
 
   default_diagnostics <-  tryCatch(
@@ -692,12 +737,18 @@ capture_all_outputs <- function(expr) {
 
 # Re-emit what was captured with capture_all_outputs
 reemit_captured <- function(captured) {
-  cat(captured$output, sep = "\n")
-  for(m in 1:length(captured$messages)) {
-    message(captured$messages[m], appendLF = FALSE)
+  if(!is.null(captured$output)) {
+    cat(captured$output, sep = "\n")
   }
-  for(w in 1:length(captured$warnings)) {
-    warning(captured$warnings[w])
+  if(!is.null(captured$messages)) {
+    for(m in 1:length(captured$messages)) {
+      message(captured$messages[m], appendLF = FALSE)
+    }
+  }
+  if(!is.null(captured$warnings)) {
+    for(w in 1:length(captured$warnings)) {
+      warning(captured$warnings[w])
+    }
   }
 }
 
@@ -705,7 +756,9 @@ reemit_captured <- function(captured) {
 compute_SBC_single <- function(vars_and_generated, backend, cores,
                                keep_fit, thin_ranks,
                                ensure_num_ranks_divisor,
-                               dquants) {
+                               dquants,
+                               var_attributes,
+                               progressor = NULL) {
 
   variables <- vars_and_generated$variables
   generated <- vars_and_generated$generated
@@ -733,6 +786,7 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
           res$fit, variables = variables, thin_ranks = thin_ranks,
           ensure_num_ranks_divisor = ensure_num_ranks_divisor,
           generated = generated, dquants = dquants,
+          var_attributes = var_attributes,
           backend = backend)
 
         res$backend_diagnostics <- SBC::SBC_fit_to_diagnostics(
@@ -763,6 +817,9 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
     res$fit <- NULL
   }
 
+  if(!is.null(progressor)) {
+    progressor()
+  }
   res
 }
 
@@ -780,6 +837,7 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
                                        ensure_num_ranks_divisor,
                                        dquants,
                                        backend,
+                                       var_attributes = NULL,
                                        gen_quants = NULL) {
 
   if(!is.null(gen_quants)) {
@@ -806,25 +864,55 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
 
   # Make sure the order of variables matches
   variables <- posterior::subset_draws(variables, variable = shared_vars)
-
-
   fit_matrix <- posterior::subset_draws(fit_matrix, variable = shared_vars)
 
   fit_thinned <- posterior::thin_draws(fit_matrix, thin_ranks)
 
 
+  stats <- data.frame(variable = shared_vars,
+                      mean = NA,
+                      sd = NA,
+                      q5 = NA,
+                      median = NA,
+                      q95 = NA,
+                      rhat = NA,
+                      ess_bulk = NA,
+                      ess_tail = NA)
 
-  if(SBC_backend_iid_draws(backend)) {
-    stats <- posterior::summarise_draws(fit_matrix, posterior::default_summary_measures())
-    ## iid draws have the bestest diagnostics by construction
-    stats$rhat <- 1
-    stats$ess_bulk <- posterior::ndraws(fit_matrix)
-    stats$ess_tail <- posterior::ndraws(fit_matrix)
-  } else {
-    stats <- posterior::summarise_draws(fit_matrix)
+  na_valid <- attribute_present(na_valid_var_attribute(), shared_vars, var_attributes)
+  inf_valid <- attribute_present(inf_valid_var_attribute(), shared_vars, var_attributes)
+  for(i in 1:length(shared_vars)) {
+    var <- shared_vars[i]
+    var_draws <- fit_matrix[,var]
+    stats$mean[i] <- mean(var_draws, na.rm = na_valid[i])
+    stats$sd[i] <- sd(var_draws, na.rm = na_valid[i])
+    stats$q5[i] <- quantile(var_draws, prob = 0.05, na.rm = na_valid[i])
+    stats$median[i] <- median(var_draws, na.rm = na_valid[i])
+    stats$q95[i] <- quantile(var_draws, prob = 0.95, na.rm = na_valid[i])
+
+    if(SBC_backend_iid_draws(backend)) {
+      ## iid draws have the bestest diagnostics by construction
+      stats$rhat[i] <- 1
+      stats$ess_bulk[i] <- posterior::ndraws(fit_matrix)
+      stats$ess_tail[i] <- posterior::ndraws(fit_matrix)
+    } else {
+      draws_for_diags <- var_draws
+      if(inf_valid[i]) {
+        finite_draws <- draws_for_diags[is.finite(draws_for_diags)]
+        draws_for_diags[draws_for_diags == -Inf] <- min(finite_draws) - 1
+        draws_for_diags[draws_for_diags == +Inf] <- max(finite_draws) + 1
+      }
+      if(na_valid[i]) {
+        draws_for_diags[is.na(draws_for_diags)] <- median(draws_for_diags)
+      }
+      stats$rhat[i] <- posterior::rhat(draws_for_diags)
+      stats$ess_bulk[i] <- posterior::ess_bulk(draws_for_diags)
+      stats$ess_tail[i] <- posterior::ess_tail(draws_for_diags)
+    }
   }
 
   stats$simulated_value <- as.numeric(variables)
+  stats$attributes <- var_attributes_to_attributes_column(var_attributes, stats$variable)
 
   # Ensure number of ranks divisible by ensure_num_ranks_divisor
   # Note that the number of ranks is the number of samples + 1
@@ -847,6 +935,20 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
   stats$rank <- ranks
   stats$max_rank <- attr(ranks, "max_rank")
   stats$z_score <- (stats$simulated_value - stats$mean) / stats$sd
+  stats$has_na <- as.logical(apply(fit_thinned, MARGIN = 2, FUN = \(x) any(is.na(x))))
+
+  variables_dbl <- as.numeric(variables)
+  names(variables_dbl) <- posterior::variables(variables)
+  cdf_df <- SBC_posterior_cdf(fit, variables_dbl)
+  cdf_df <- validate_cdf_df(cdf_df, stats$variable)
+  if(!is.null(cdf_df)) {
+    stats <- tryCatch(
+      dplyr::left_join(stats, cdf_df, by = "variable",
+                              unmatched = "error",
+                              relationship = "one-to-one"),
+      error = function(e) { warning("Error when joining posterior CDF and stats default per-variable diagnostics. ", e); stats }
+      )
+  }
 
   stats <- dplyr::select(
     stats, variable, simulated_value, rank, z_score, tidyselect::everything())
@@ -957,6 +1059,7 @@ recompute_SBC_statistics <- function(old_results, datasets, backend,
                                                         thin_ranks = thin_ranks,
                                                         ensure_num_ranks_divisor = ensure_num_ranks_divisor,
                                                         dquants = dquants,
+                                                        var_attributes = datasets$var_attributes,
                                                         backend = backend)
       new_stats_list[[i]]$sim_id <- i
       new_stats_list[[i]] <- dplyr::select(new_stats_list[[i]], sim_id, tidyselect::everything())
@@ -994,13 +1097,13 @@ rdunif <- function(n, a, b) {
 #' Calculate ranks given variable values within a posterior distribution.
 #'
 #' When there are ties (e.g. for discrete variables), the rank is currently drawn stochastically
-#' among the ties. NA is assumed to be potentially equal to any value (Issue #78)
+#' among the ties. Depending on `na_lowest`,
+#' NA is assumed to be equal to any value.
 #' @param variables a vector of values to check
 #' @param dm draws_matrix of the fit (assumed to be already thinned if that was necessary)
 #' @param params DEPRECATED. Use `variables` instead.
 #' @export
 calculate_ranks_draws_matrix <- function(variables, dm, params = NULL) {
-  #TODO validate input
 
   if(!is.null(params)) {
     warning("The `params` argument is deprecated use `variables` instead.")
@@ -1009,7 +1112,11 @@ calculate_ranks_draws_matrix <- function(variables, dm, params = NULL) {
     }
   }
 
+  stopifnot(posterior::is_draws_matrix(dm))
+  stopifnot(posterior::nvariables(dm) == length(variables))
+
   max_rank <- posterior::ndraws(dm)
+  nvars <- posterior::nvariables(dm)
 
   less_matrix <- sweep(dm, MARGIN = 2, STATS = variables, FUN = "<")
   rank_min <- colSums(less_matrix, na.rm = TRUE)
@@ -1129,8 +1236,16 @@ summary.SBC_results <- function(x) {
     n_fits = length(x$fits),
     n_errors = sum(!purrr::map_lgl(x$errors, is.null)),
     n_warnings = sum(purrr::map_lgl(x$messages, ~ !is.null(.x) && any(x$type == "warning"))),
+
+    # ifelse required for backwards compatibility with caches from 0.3 or below
+    n_has_na = if("n_has_na" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_has_na > 0) }  else {  0 },
+    n_na_rhat = if("n_na_rhat" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_rhat > 0) }  else {  0 },
+    n_na_ess_tail = if("n_na_ess_tail" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_ess_tail > 0) }  else {  0 },
+    n_na_ess_bulk = if("n_na_ess_bulk" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_ess_bulk > 0) }  else {  0 },
+
     n_high_rhat = sum(is.na(x$default_diagnostics$max_rhat) | x$default_diagnostics$max_rhat > 1.01),
     max_max_rhat = max(c(-Inf, x$default_diagnostics$max_rhat)),
+
     n_low_ess_to_rank = sum(is.na(x$default_diagnostics$min_ess_to_rank) | x$default_diagnostics$min_ess_to_rank < 0.5),
     min_min_ess_bulk = min(c(Inf, x$default_diagnostics$min_ess_bulk)),
     min_min_ess_tail = min(c(Inf, x$default_diagnostics$min_ess_tail))
@@ -1144,6 +1259,11 @@ summary.SBC_results <- function(x) {
     summ,
     class = "SBC_results_summary"
   )
+}
+
+#' @export
+print.SBC_results <- function(x) {
+  print(summary(x))
 }
 
 #' @export
@@ -1166,6 +1286,35 @@ get_diagnostic_messages.SBC_results_summary <- function(x) {
     message_list[[i]] <- data.frame(ok = TRUE, message = "No fits gave warnings.")
   }
   i <- i + 1
+
+  if(x$n_has_na > 0) {
+    msg <- paste0(x$n_has_na, " (", round(100 * x$n_has_na / x$n_fits), "%) fits had some NAs in variables/samples.\n ",
+                  "If this is expected, mark the variable with `na_valid_var_attribute()` or `na_lowest_var_attribute()`\n",
+                  "to specify NA handling and suppress this message.")
+    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
+    i <- i + 1
+  }
+  if(x$n_na_rhat > 0) {
+    msg <- paste0(x$n_na_rhat, " (", round(100 * x$n_na_rhat / x$n_fits), "%) fits had NA Rhat.\n ",
+                  "This likely means all posterior draws were equal for some variable.\n",
+                  "If this is expected, mark the variable `possibly_constant_var_attribute()` to suppress this message.")
+    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
+    i <- i + 1
+  }
+  if(x$n_na_ess_bulk > 0) {
+    msg <- paste0(x$n_na_ess_bulk, " (", round(100 * x$n_na_ess_bulk / x$n_fits), "%) fits had NA ess_bulk.\n ",
+                  "This likely means all posterior draws were equal for some variable in some chains.\n",
+                  "If this is expected, mark the variable `possibly_constant_var_attribute()` to suppress this message.")
+    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
+    i <- i + 1
+  }
+  if(x$n_na_ess_tail > 0) {
+    msg <- paste0(x$n_na_ess_tail, " (", round(100 * x$n_na_ess_tail / x$n_fits), "%) fits had NA ess_tail.\n",
+                  "This likely means all posterior draws were equal for some variable in some chains.\n",
+                  "If this is expected, mark the variable `possibly_constant_var_attribute()` to suppress this message.")
+    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
+    i <- i + 1
+  }
 
   if(x$n_high_rhat > 0) {
     msg <- paste0(x$n_high_rhat, " (", round(100 * x$n_high_rhat / x$n_fits), "%) fits had at least one Rhat > 1.01. ",

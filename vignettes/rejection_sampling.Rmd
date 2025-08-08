@@ -89,6 +89,13 @@ theme_set(theme_minimal())
 ```
 
 
+```{r enable progressr, eval = FALSE}
+# Run this # Run this _in the console_ to report progress for all computations to report progress for all computations
+# see https://progressr.futureverse.org/ for more options
+progressr::handlers(global = TRUE)
+```
+
+
 We'll use a very simple model throughout this vignette:
 
 

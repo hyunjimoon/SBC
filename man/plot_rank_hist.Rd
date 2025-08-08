@@ -2,6 +2,7 @@
 % Please edit documentation in R/plot.R
 \name{plot_rank_hist}
 \alias{plot_rank_hist}
+\alias{plot_rank_hist.data.frame}
 \title{Plot rank histogram of an SBC results.}
 \usage{
 plot_rank_hist(
@@ -10,6 +11,16 @@ plot_rank_hist(
   bins = NULL,
   prob = 0.95,
   ...,
+  parameters = NULL
+)
+
+\method{plot_rank_hist}{data.frame}(
+  x,
+  variables = NULL,
+  bins = NULL,
+  prob = 0.95,
+  max_rank = x$max_rank,
+  show_hidden = FALSE,
   parameters = NULL
 )
 }
@@ -22,6 +33,8 @@ plot_rank_hist(
 it is determined by \code{\link[=guess_rank_hist_bins]{guess_rank_hist_bins()}}.}
 
 \item{prob}{The width of the approximate confidence interval shown.}
+
+\item{show_hidden}{Show variables marked with \code{\link[=hidden_var_attribute]{hidden_var_attribute()}} (by default, those are not shown)}
 }
 \description{
 The expected uniform distribution and an approximate confidence interval

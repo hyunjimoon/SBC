@@ -42,6 +42,13 @@ if(!dir.exists(cache_dir)) {
 theme_set(theme_minimal())
 ```
 
+```{r enable progressr, eval = FALSE}
+# Run this # Run this _in the console_ to report progress for all computations to report progress for all computations
+# see https://progressr.futureverse.org/ for more options
+progressr::handlers(global = TRUE)
+```
+
+
 Below are three different Stan codes for implementing a simple linear regression. Not all of them are correct - can you see which are wrong?
 
 ```{r, comment = ""}

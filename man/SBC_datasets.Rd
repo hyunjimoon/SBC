@@ -4,7 +4,7 @@
 \alias{SBC_datasets}
 \title{Create new \code{SBC_datasets} object.}
 \usage{
-SBC_datasets(variables, generated, parameters = NULL)
+SBC_datasets(variables, generated, var_attributes = NULL, parameters = NULL)
 }
 \arguments{
 \item{variables}{draws of "true" values of unobserved parameters or other derived variables.

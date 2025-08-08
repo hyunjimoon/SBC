@@ -84,6 +84,15 @@ Parallel processing is supported via the \code{future} package, for most uses, i
 to just call \code{plan(multisession)} once in your R session and  all
 cores your computer will be used. For more details refer to the documentation
 of the \code{future} package.
+On some Linux systems, using \link[future.mirai:mirai_multisession]{future.mirai::mirai_multisession} may give
+performance boosts.
+}
+
+\section{Progress reporting}{
+This function supports progress reporting with the
+\href{https://progressr.futureverse.org/}{\code{progressr}} package.
+Run \code{progressr::handlers(global = TRUE)} to enable progress reporting
+globally, see the \code{progressr} docs for more options.
 }
 
 \section{Thinning}{

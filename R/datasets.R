@@ -1,4 +1,4 @@
-new_SBC_datasets <- function(variables, generated, parameters = NULL) {
+new_SBC_datasets <- function(variables, generated, var_attributes = NULL, parameters = NULL) {
   if(!is.null(parameters)) {
     warning("The `parameters` argument is deprecated use `variables` instead.")
     if(missing(variables)) {
@@ -6,9 +6,12 @@ new_SBC_datasets <- function(variables, generated, parameters = NULL) {
     }
   }
 
-  structure(list(variables = variables,
-                 generated = generated),
+  unvalidated <- structure(list(variables = variables,
+                 generated = generated,
+                 var_attributes = var_attributes),
             class = "SBC_datasets")
+
+  return(validate_SBC_datasets(unvalidated))
 }
 
 #' @export
@@ -37,6 +40,20 @@ validate_SBC_datasets <- function(x) {
     stop("Needs equal no. of draws for variables and length of generated")
   }
 
+  x$var_attributes <- validate_var_attributes(x$var_attributes)
+
+  if(!is.null(x$var_attributes)) {
+    varnames_no_arrays <- unique(variable_names_to_var_attributes_names(posterior::variables(x$variables)))
+    unrecognized_names <- setdiff(names(x$var_attributes), varnames_no_arrays)
+    if(length(unrecognized_names) > 0) {
+      message(paste0(unrecognized_names, collapse = ", "))
+      stop("Some names of elements of `var_attributes` do not correspond to a name of a variable.\n",
+           "Note that arrays are treated as a single variable and attributes must match the name.\n",
+           "without brackets.")
+    }
+  }
+
+
   x
 }
 
@@ -51,16 +68,15 @@ validate_SBC_datasets <- function(x) {
 #' (e.g. list of values for Stan-based backends, a data frame for `SBC_backend_brms`)
 #' @param parameters DEPRECATED. Use variables instead.
 #' @export
-SBC_datasets <- function(variables, generated, parameters = NULL) {
+SBC_datasets <- function(variables, generated, var_attributes = NULL, parameters = NULL) {
   if(!is.null(parameters)) {
     warning("The `parameters` argument is deprecated use `variables` instead.")
     if(missing(variables)) {
       variables <- parameters
     }
   }
-  x <-  new_SBC_datasets(variables, generated)
-  validate_SBC_datasets(x)
-  x
+  x <- new_SBC_datasets(variables, generated, var_attributes)
+  return(x)
 }
 
 #' @export
@@ -74,8 +90,10 @@ length.SBC_datasets <- function(x) {
 #' @export
 `[.SBC_datasets` <- function(x, indices) {
   validate_SBC_datasets(x)
-  new_SBC_datasets(posterior::subset_draws(x$variables, draw = indices, unique = FALSE),
-                   x$generated[indices])
+  res <- new_SBC_datasets(posterior::subset_draws(x$variables, draw = indices, unique = FALSE),
+                   x$generated[indices],
+                   var_attributes = x$var_attributes)
+  return(res)
 }
 
 #' Combine multiple datasets together.
@@ -84,14 +102,26 @@ length.SBC_datasets <- function(x) {
 bind_datasets <- function(...) {
   args <- list(...)
 
+  if(length(args) == 0) {
+    stop("Must bind at least 1 dataset")
+  }
+
   purrr::walk(args, validate_SBC_datasets)
-  #TODO check identical par names
+  #TODO check identical par names (throws error implicitly in bind_draws)
 
   variables_list <- purrr::map(args, function(x) x$variables)
   generated_list <- purrr::map(args, function(x) x$generated)
 
+  var_attributes_list <- purrr::map(args, function(x) x$var_attributes)
+  purrr::walk(var_attributes_list, \(attr) {
+    if(!identical(attr, var_attributes_list[[1]])) {
+      stop("All var_attributes of datasets to be bound must be identical")
+    }
+  })
+
   new_SBC_datasets(do.call(posterior::bind_draws, c(variables_list, list(along = "draw"))),
-                   do.call(c, generated_list))
+                   do.call(c, generated_list),
+                   var_attributes = var_attributes_list[[1]])
 }
 
 #' Generate datasets.
@@ -101,7 +131,6 @@ bind_datasets <- function(...) {
 #' @param n_sims the number of simulated datasets to use
 #' @param n_datasets DEPRECATED, use `n_sims` instead.
 #' @return object of class `SBC_datasets`
-#' TODO: seed
 #' @export
 generate_datasets <- function(generator, n_sims, n_datasets = NULL) {
   UseMethod("generate_datasets")
@@ -109,14 +138,24 @@ generate_datasets <- function(generator, n_sims, n_datasets = NULL) {
 
 #' Generate datasets via a function that creates a single dataset.
 #'
+#'
+#' The generator supports progress reporting with the
+#' [`progressr`](https://progressr.futureverse.org/) package.
+#' Run `progressr::handlers(global = TRUE)` to enable progress reporting
+#' globally, see the `progressr` docs for more options.
+#'
+#'
 #' @param f function returning a list with elements `variables`
 #' (prior draws, a list or anything that can be converted to `draws_rvars`) and
 #' `generated` (observed dataset, ready to be passed to backend)
+#' @param future.chunk.size if finite, datasets will be generated in parallel using
+#' the `future` package with this chunk size (see [future.apply::future_lapply]). Defaults to the `SBC.generator_chunk_size` option, which
+#' defaults to +Inf (no paralellism).
 #' @param ... Additional arguments passed to `f`
 #'@export
-SBC_generator_function <- function(f, ...) {
+SBC_generator_function <- function(f, future.chunk.size = getOption("SBC.generator_chunk_size", +Inf), future.globals = TRUE ,...) {
   stopifnot(is.function(f))
-  structure(list(f = f, args = list(...)), class = "SBC_generator_function")
+  structure(list(f = f, future.chunk.size = future.chunk.size, future.globals = future.globals, args = list(...)), class = "SBC_generator_function")
 }
 
 
@@ -128,16 +167,25 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
       n_sims <- n_datasets
     }
   }
-  variables_list <- list()
-  generated <- list()
+
+  stopifnot(n_sims >= 1)
+
   warned_parameters <- FALSE
-  for(iter in 1:n_sims){
+
+  if(requireNamespace("progressr", quietly = TRUE)) {
+    progressor <- progressr::progressor(n_sims)
+  } else {
+    progressor <- NULL
+  }
+
+
+  generate_single <- function() {
     generator_output <- do.call(generator$f, generator$args)
     # Ensuring backwards compatibility
     if(!is.null(generator_output$parameters)) {
       if(!warned_parameters) {
         warning("Generator function returns a list with element `parameters`, which is deprecated. Return `variables` instead.")
-        warned_parameters <- TRUE
+        warned_parameters <<- TRUE
       }
       if(is.null(generator_output$variables)) {
         generator_output$variables <- generator_output$parameters
@@ -148,8 +196,9 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
        is.null(generator_output$variables) ||
        is.null(generator_output$generated)) {
       stop(SBC_error("SBC_datasets_error",
-      "The generating function has to return a list with elements `variables`
-      (that can be converted to `draws_rvars`) and `generated`"))
+                     "The generating function has to return a list with elements `variables`
+      (that can be converted to `draws_rvars`) and `generated`.
+      Optionally a `var_attributes` element can also be returned."))
     }
 
     varnames <- names(generator_output$variables)
@@ -185,22 +234,58 @@ generate_datasets.SBC_generator_function <- function(generator, n_sims, n_datase
 
     vars_rvars <-
       do.call(
-      posterior::draws_rvars,
-      purrr::map(generator_output$variables,
-                 ~ posterior::rvar(array(.x, dim = c(1, guess_dims(.x))), dimnames = guess_dimnames(.x))
-                 )
+        posterior::draws_rvars,
+        purrr::map(generator_output$variables,
+                   ~ posterior::rvar(array(.x, dim = c(1, guess_dims(.x))), dimnames = guess_dimnames(.x))
+        )
       )
-    variables_list[[iter]] <- posterior::as_draws_matrix(vars_rvars)
-    if(posterior::ndraws(variables_list[[iter]]) != 1) {
+
+    vars_dm <- posterior::as_draws_matrix(vars_rvars)
+    if(posterior::ndraws(vars_dm) != 1) {
       stop("The `variables` element of the generator output must contain only
       a single draw")
     }
-    generated[[iter]] <- generator_output$generated
+    generator_output$variables <- vars_dm
+
+    if(!is.null(progressor)) {
+      progressor()
+    }
+
+    return(generator_output)
   }
 
-  variables <- do.call(posterior::bind_draws, args = c(variables_list, list(along = "draw")))
+  if(is.finite(generator$future.chunk.size)) {
+    all_outputs <- future.apply::future_replicate(n_sims, generate_single(),
+                                                  future.chunk.size = generator$future.chunk.size,
+                                                  future.globals = generator$future.globals,
+                                                  simplify = FALSE)
+  } else {
+    all_outputs <- replicate(n_sims, generate_single(), simplify = FALSE)
+  }
 
-  SBC_datasets(variables, generated)
+  variables_dm_list <- purrr::map(all_outputs, \(x) x$variables)
+  generated <- purrr::map(all_outputs, \(x) x$generated)
+
+  # Process var_attributes
+  var_attributes <- all_outputs[[1]]$var_attributes
+  if(n_sims >= 2) {
+    for (iter in 2:n_sims) {
+      if (is.null(var_attributes) != is.null(all_outputs[[iter]]$var_attributes)) {
+        stop("Some simulations returned $var_attributes, while others did not.")
+      }
+      if (!is.null(var_attributes) &&
+          !identical(var_attributes, all_outputs[[iter]]$var_attributes)) {
+        stop(
+          "Some simulations returned different $var_attributes than others.
+             Attributes must be identical for all simulations."
+        )
+      }
+    }
+  }
+
+  variables <- do.call(posterior::bind_draws, args = c(variables_dm_list, list(along = "draw")))
+
+  SBC_datasets(variables, generated, var_attributes = var_attributes)
 }
 
 #' Wrap a function the creates a complete dataset.

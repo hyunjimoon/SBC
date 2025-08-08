@@ -2,10 +2,10 @@
 # Note that this function is memoized in .onLoad
 adjust_gamma <- function(N, L, K=N, conf_level=0.95) {
   if (any(c(K, N, L) < 1)) {
-    abort("Parameters 'N', 'L' and 'K' must be positive integers.")
+    stop("Parameters 'N', 'L' and 'K' must be positive integers.")
   }
   if (conf_level >= 1 || conf_level <= 0) {
-    abort("Value of 'conf_level' must be in (0,1).")
+    stop("Value of 'conf_level' must be in (0,1).")
   }
   if (L==1) {
     gamma <- adjust_gamma_optimize(N, K, conf_level)
@@ -227,7 +227,7 @@ empirical_coverage <- function(stats, width, prob = 0.95, interval_type = "centr
   }
 
 
-  long <- dplyr::full_join(stats_trimmed, data.frame(width = width), by = character())
+  long <- dplyr::cross_join(stats_trimmed, data.frame(width = width))
   long <- dplyr::mutate(long,
                         n_ranks_covered = round((max_rank + 1) * width),
                         low_rank = get_low_rank(max_rank, n_ranks_covered),

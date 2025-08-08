@@ -15,6 +15,7 @@ plot_ecdf(
   alpha = 0.33,
   combine_variables = NULL,
   ecdf_alpha = NULL,
+  show_hidden = FALSE,
   ...,
   parameters = NULL
 )
@@ -29,6 +30,7 @@ plot_ecdf_diff(
   alpha = 0.33,
   combine_variables = NULL,
   ecdf_alpha = NULL,
+  show_hidden = FALSE,
   ...,
   parameters = NULL
 )
@@ -62,6 +64,9 @@ can also be specified (see \link{combine-functions}).}
 a function taking the number of variables that were combined (when \code{combine_variables}
 is specified) and returns a number. By default, plots showing many
 ECDFs will have reduced alpha.}
+
+\item{show_hidden}{Show variables marked with \code{\link[=hidden_var_attribute]{hidden_var_attribute()}}
+(by default, those are not shown, available only when \code{x} is a data.frame)}
 
 \item{...}{additional arguments passed to \code{\link[=data_for_ecdf_plots]{data_for_ecdf_plots()}}.
 Most notably, if \code{x} is matrix, a \code{max_rank} parameter needs to be given.}
