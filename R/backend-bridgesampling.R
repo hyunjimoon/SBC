@@ -31,7 +31,7 @@ SBC_fit_to_bridge_sampler.default <- function(backend, fit, generated, ...) {
 
 #' @export
 SBC_fit_to_bridge_sampler.SBC_backend_rstan_sample <- function(backend, fit, generated, ...) {
-  warning("Need to figure out how to  update @.MISC in stanfit to work with cache")
+  library(rstan)
   bridgesampling::bridge_sampler(fit, ...)
 }
 

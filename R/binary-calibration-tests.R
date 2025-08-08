@@ -203,7 +203,12 @@ gaffke_p <- function(probs, mu = 0.5, alpha = 0.05, B = 10000, alternative = c("
 #' @details The test is expected to be valid for any bounded distribution without further
 #' assumptions. The test has been proven valid only for special cases but
 #' no counterexample is known despite some efforts in the literature to find
-#' some.
+#' some. The test also provides way more power (and tighter confidence intervals)
+#' than other non-parametric tests --- in fact its power converges
+#' quite quickly to that of the t-test.
+#'
+#' In SBC the test is useful for testing the data-averaged posterior
+#' for binary variables.
 #'
 #' @description Test a null hypothesis about the mean of i.i.d. samples.
 #' The test is based on Gaffke 2005, though a more detailed analysis and
@@ -240,7 +245,7 @@ gaffke_test <- function(x, mu = 0.5, alpha = 0.05, lb = 0, ub = 1, B = 10000, al
   x_scaled <- (x - lb) / (ub - lb)
   mu_scaled <- (mu - lb) / (ub - lb)
   m <- gaffke_m(x_scaled, B = B)
-  p <- gaffke_p_from_m(m, mu_scaled, alternative = alternative)
+  p <- gaffke_p_from_m(m, mu_scaled, B = B, alternative = alternative)
   ci <- gaffke_ci_from_m(m, alpha = alpha)
   attr(ci, "conf.level") <- 1 - alpha
 

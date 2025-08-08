@@ -55,7 +55,12 @@ exposition can be found in Learned-Miller & Thomas 2020.
 The test is expected to be valid for any bounded distribution without further
 assumptions. The test has been proven valid only for special cases but
 no counterexample is known despite some efforts in the literature to find
-some.
+some. The test also provides way more power (and tighter confidence intervals)
+than other non-parametric tests --- in fact its power converges
+quite quickly to that of the t-test.
+
+In SBC the test is useful for testing the data-averaged posterior
+for binary variables.
 }
 \references{
 Gaffke, N. (2005).

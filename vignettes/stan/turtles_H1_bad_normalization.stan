@@ -22,7 +22,6 @@ transformed parameters {
 
 model {
   // priors
-  target += -normal_lccdf(0 | 0, 1); //norm. constant for the sigma prior
   target += normal_lpdf(sigma | 0, 1);
 
   target += normal_lpdf(alpha0_raw | 0, 1);

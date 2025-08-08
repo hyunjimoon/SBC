@@ -64,7 +64,8 @@ variable_names_to_var_attributes_names <- function(variable_names) {
 #' made for the resulting NAs in rhat and ESS checks.
 #'
 #' `binary_var_attribute` marks the attribute as a binary variable (0 or 1)
-#' and thus eligible for some special visualisations (TODO).
+#' and thus eligible for some special handling and visualisations
+#' (e.g., [binary_probabilites_from_stats()], [binary_calibration_from_bp()]).
 #'
 #' `hidden_var_attribute` will hide the variable in default visualisations,
 #' unless the variable is explicitly mentioned.

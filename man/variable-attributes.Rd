@@ -41,7 +41,8 @@ posterior draws identical is possible and thus no warnings should be
 made for the resulting NAs in rhat and ESS checks.
 
 \code{binary_var_attribute} marks the attribute as a binary variable (0 or 1)
-and thus eligible for some special visualisations (TODO).
+and thus eligible for some special handling and visualisations
+(e.g., \code{\link[=binary_probabilites_from_stats]{binary_probabilites_from_stats()}}, \code{\link[=binary_calibration_from_bp]{binary_calibration_from_bp()}}).
 
 \code{hidden_var_attribute} will hide the variable in default visualisations,
 unless the variable is explicitly mentioned.
