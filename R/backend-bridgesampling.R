@@ -14,7 +14,17 @@ SBC_backend_bridgesampling <- function(backend_H0, backend_H1, model_var = "mode
 }
 
 #' Convert a fit for a given backend into a bridge sampler object.
+#'
+#' @description
+#' Users should typically not call this method and instead let
+#' [SBC_backend_bridgesampling()] to call it for them.
+#'
+#'
+#' @param backend the underlying backend
+#' @param fit corresponding to the backend
+#' @param generated
 #' @param ... passed to [bridgesampling::bridge_sampler()].
+#' @returns an object of class `bridge` or `bridge_list`.
 #' @seealso [bridgesampling::bridge_sampler()]
 #' @export
 SBC_fit_to_bridge_sampler <- function(backend, fit, generated, ...) {

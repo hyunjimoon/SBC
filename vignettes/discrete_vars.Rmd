@@ -110,7 +110,7 @@ generate_single_sim_1 <- function(T, r_e, r_l) {
     ),
     # Letting SBC know that the s parameter can potentially
     # be drawn as all constants 
-    var_attributes = list(
+    var_attributes = var_attributes(
       s = possibly_constant_var_attribute()
     )
   )
@@ -207,7 +207,7 @@ generate_single_sim_2 <- function(T, r_e, r_l) {
     ),
     # Letting SBC know that the s parameter can potentially
     # be drawn as all constants 
-    var_attributes = list(
+    var_attributes = var_attributes(
       s = possibly_constant_var_attribute()
     )
   )

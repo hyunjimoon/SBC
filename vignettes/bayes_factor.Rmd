@@ -23,7 +23,7 @@ y &\sim \pi_\text{obs}^i(\theta_i)
 \end{aligned}
 $$
 
-The same model is also implied whenver we do Bayesian model averaging (BMA).
+The same model is also implied whenever we do Bayesian model averaging (BMA).
 The Bayes factor is fully determined by the posterior distribution of the model index
 $i$ in this larger model:
 
@@ -52,9 +52,7 @@ library(ggplot2)
 library(bridgesampling)
 library(dplyr)
 library(tidyr)
-library(calibrationband)
 
-use_cmdstanr <- FALSE
 library(rstan)
 rstan_options(auto_write = TRUE)
 
@@ -227,7 +225,7 @@ ds_turtles <- SBC_datasets_for_bf(ds_turtles_m0, ds_turtles_m1)
 
 Let us now build a `bridgesampling` backend --- this will take backends
 based on the individual models as arguments. The backend in question
-need to implement the `SBC_fit_to_bridge_sampler` S3 method. Out of the
+need to implement the `SBC_fit_to_bridge_sampler()` S3 method. Out of the
 box, this is supported by `SBC_backend_rstan_sample()` and `SBC_backend_brms()`.
 Note that we keep
 a pretty high number of iterations as `bridgesampling` needs that (the specific
@@ -258,19 +256,23 @@ res_turtles_bad <- compute_SBC(ds_turtles, backend_turtles_bad,
 Lets look at the default SBC diagnostics. Note that the plot by default
 combines all parameters that are present in at least a single model. 
 It then uses the implied BMA supermodel to get draws of the parameters (when
-a parameter is not present in the model, all its draws are assumed to be lower
-than all possible real numbers when the parameter is present), i.e. the
-corresponding plot combines the correctness of the model index with the
+a parameter is not present in the model, all its draws are assumed to be `-Inf`).
+This means that any SBC diagnostics for model parameters combines the 
+correctness of the model index (and hence Bayes factor) with the
 correctness of the individual model posteriors.
 
 For clarity, we combine all the random effects in a 
 single panel:
 
-```{r}
+```{r ecdf-bad}
 plot_ecdf_diff(res_turtles_bad, combine_variables = combine_array_elements)
 ```
 
-OK, this is not great, but also not completely terrible. 
+OK, this is not great, but not completely conclusive --- given the number
+of variables, some ECDFs being borderline outside the expected range is possible
+even when the model works as expected. If we had no better tools, it would make 
+sense to run more simulations at this point. But we do have better tools.
+
 How about binary prediction calibration? Let's look at 
 calibration plot (the default type relies on `reliabilitydiag::reliabilitydiag()`
 and especially with smaller number of simulations, using `region.method = "resampling"`
@@ -278,11 +280,11 @@ is more reliable than the default approximation for the uncertainty region).
 The histogram at the bottom shows the distribution of observed posterior
 model probabilities.
 
-```{r}
+```{r calib-bad}
 plot_binary_calibration(res_turtles_bad, region.method = "resampling")
 ```
 
-Thats very clearly bad (the observed calibration is the black line, while the blue area is a 
+That is very clearly bad (the observed calibration is the black line, while the blue area is a 
 confidence region assuming the probabilities are calibrated, we get miscalibration in multiple regions). We may also run a formal miscalibration test --- we first extract
 the binary probabilities and then pass them to the test:
 
@@ -306,14 +308,14 @@ brier_resampling_test(bp_bad$prob, bp_bad$simulated_value)
 
 Finally, we may also look at the data-averaged posterior. If we believe we made
 enough simulations for the 
-central limit theorem has already kicked in, the highest sensitivity is
+central limit theorem to kick in, the highest sensitivity is
 achieved by one sample t-test (we simulated with prior model probability = 0.5):
 
 ```{r}
 t.test(bp_bad$prob, mu = 0.5)
 ```
 
-Also very bad. In the cases where we are wary of the CLT, we may also run the Gaffke test,
+Also very bad. In the cases where we are not sure the CLT holds (small number of simulations + "ugly" distribution of posterior model probabilities), we may also run the Gaffke test,
 which makes no assumptions about the distribution of posterior model probabilities
 beyond them being bounded between 0 and 1:
 
@@ -333,10 +335,11 @@ using `SBC_datasets_for_bf` to generate the datasets, is that we can use the
 same simulations to also do SBC for individual models (this and other
 special handling is achieved internally via setting `var_attributes()`):
 
-```{r}
+```{r ecdf-bad-split}
 stats_split_bad <- split_SBC_results_for_bf(res_turtles_bad)
-plot_ecdf_diff(stats_split_bad$stats_H0)
-plot_ecdf_diff(stats_split_bad$stats_H1, combine_variables = combine_array_elements)
+plot_ecdf_diff(stats_split_bad$stats_H0) + ggtitle("M0")
+plot_ecdf_diff(stats_split_bad$stats_H1, 
+               combine_variables = combine_array_elements) + ggtitle("M1")  
 ```
 
 Those don't look bad (though we don't have a ton of simulation for each to be
@@ -361,9 +364,10 @@ or binary prediction calibration, but will (with enough simulation and
 good test quantities) be detected by SBC.
 
 [Tsukamura and Okada (2024)](https://doi.org/10.1007/s00407-022-00298-3) have noted
-that many Stan models do not include proper normalization for bounded
+that many published Stan models do not include proper normalization for bounded
 parameters and all of those models could thus produce incorrect Bayes factors
-if used with `bridgesampling`.
+if used with `bridgesampling`, so this is a compuational problem
+one can expect to actually see in the wild.
 
 ## Correct model
 
@@ -395,7 +399,7 @@ res_turtles <- compute_SBC(ds_turtles, backend_turtles,
 
 
 
-```{r}
+```{r ecdf-ok}
 plot_ecdf_diff(res_turtles, combine_variables = combine_array_elements)
 ```
 
@@ -405,7 +409,7 @@ is in fact correct and `bridgesampling` works for this problem)
 
 Similarly, binary prediction calibration also looks almost good
 
-```{r}
+```{r calib-ok}
 plot_binary_calibration(res_turtles, region.method = "resampling")
 ```
 
@@ -427,4 +431,6 @@ t.test(bp$prob, mu = 0.5)
 gaffke_test(bp$prob, mu = 0.5)
 ```
 
-So no problems here.
+So no problems here, up to the resolution available with `r N_sims` simulations.
+In practice, we would recommend running more simulations for thorough checks,
+but this is just an example that should compute in reasonable time.

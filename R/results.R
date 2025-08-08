@@ -66,7 +66,9 @@ validate_SBC_results <- function(x) {
     stop("SBC_results object has to have a 'stats' field of type data.frame")
   }
 
-  # Ensure backwards compatibility
+  # Ensure backwards compatibility of results (important to keep caches
+  # valid and intact)
+  # From 0.3
   if("dataset_id" %in% names(x$stats)) {
     x$stats <- dplyr::rename(x$stats, sim_id = dataset_id)
   }
@@ -75,6 +77,21 @@ validate_SBC_results <- function(x) {
     x$stats <- dplyr::rename(x$stats, variable = parameter)
   }
 
+  # From 0.4
+  if(!("has_na" %in% names(x$stats))) {
+    x$stats$has_na <- FALSE
+  }
+
+  if(!("attributes" %in% names(x$stats))) {
+    x$stats$attributes <- NA_character_
+  }
+
+  if("mad" %in% names(x$stats)) {
+    x$stats <- dplyr::select(x$stats, -mad)
+  }
+
+
+  # Check validity
   if(!is.list(x$fits)) {
     stop("SBC_results object has to have a 'fits' field of type list")
   }
@@ -88,10 +105,18 @@ validate_SBC_results <- function(x) {
   }
 
   # Ensure backwards compatibility
+  # From 0.3
   if("parameter" %in% names(x$default_diagnostics)) {
     x$stats <- dplyr::rename(x$stats, variable = parameter)
   }
 
+  # From 0.4
+  new_default_diagnostics <- c("n_has_na", "n_na_rhat", "n_na_ess_bulk", "n_na_ess_tail")
+  for(nd in new_default_diagnostics) {
+    if(!(nd %in% names(x$default_diagnostics))) {
+      x$default_diagnostics[[nd]] <- 0
+    }
+  }
 
   if(!is.list(x$errors)) {
     stop("SBC_results object has to have an 'errors' field of type list")
@@ -179,7 +204,7 @@ validate_SBC_results <- function(x) {
 bind_results <- function(...) {
   args <- list(...)
 
-  purrr::walk(args, validate_SBC_results)
+  args <- purrr::map(args, validate_SBC_results)
 
 
   stats_list <- purrr::map(args, function(x) x$stats)

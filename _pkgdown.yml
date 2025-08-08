@@ -72,6 +72,7 @@ articles:
       - brms
       - discrete_vars
       - rejection_sampling
+      - bayes_factor
 
 reference:
 - title: Datasets
@@ -80,11 +81,13 @@ reference:
   - contains("dataset")
   - starts_with("SBC_generator_")
   - calculate_prior_sd
+  - contains("attribute")
 - title: Backends
   desc: Represent various inference engines you can use with SBC.
 - contents:
   - starts_with("SBC_backend")
   - starts_with("SBC_fit")
+  - starts_with("SBC_posterior_cdf")
 - title: Computation & results
   desc: Functions related to running the SBC computation and handling the results.
 - contents:
@@ -100,6 +103,9 @@ reference:
   - contains("diagnostic")
   - default_chunk_size
   - default_cores_per_fit
+  - binary_probabilities_from_stats
+  - cached_fit_filename
+  - get_stats_for_submodel
 - title: Plotting & Summarising
   desc: Plotting and summarising results
 - contents:
@@ -107,6 +113,8 @@ reference:
   - guess_rank_hist_bins
   - empirical_coverage
   - starts_with("combine_")
+  - starts_with("gaffke_")
+  - ends_with("resampling_test")
 - title: Examples
   desc: Functions to let you easily test the pacakge
 - contents:

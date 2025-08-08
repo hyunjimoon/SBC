@@ -142,7 +142,7 @@ binary_calibration_base <- function(prob, outcome, uncertainty_prob = 0.95, type
 calibration_prob_hist_geom <- function(calib_df) {
   geom_histogram(
     data = attr(calib_df, "bp"),
-    aes(x = prob, y = stat(count / sum(count))),
+    aes(x = prob, y = after_stat(count / sum(count))),
     inherit.aes = FALSE,
     bins = attr(calib_df, "bins"),
     boundary = 0,
