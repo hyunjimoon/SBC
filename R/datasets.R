@@ -90,6 +90,10 @@ length.SBC_datasets <- function(x) {
 #' @export
 `[.SBC_datasets` <- function(x, indices) {
   validate_SBC_datasets(x)
+  if(is.logical(indices)) {
+    stopifnot(length(indices) == length(x))
+    indices <- which(indices)
+  }
   res <- new_SBC_datasets(posterior::subset_draws(x$variables, draw = indices, unique = FALSE),
                    x$generated[indices],
                    var_attributes = x$var_attributes)

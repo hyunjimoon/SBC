@@ -22,7 +22,7 @@ SBC_backend_bridgesampling <- function(backend_H0, backend_H1, model_var = "mode
 #'
 #' @param backend the underlying backend
 #' @param fit corresponding to the backend
-#' @param generated
+#' @param generated the generated data used to fit the underlying model
 #' @param ... passed to [bridgesampling::bridge_sampler()].
 #' @returns an object of class `bridge` or `bridge_list`.
 #' @seealso [bridgesampling::bridge_sampler()]
@@ -75,6 +75,11 @@ SBC_fit_bridgesampling_to_prob1 <- function(fit, log.p = FALSE) {
     log_bf_01 <- bf_res$bf_median_based
   } else {
     log_bf_01 <- bf_res$bf
+  }
+  if(is.na(log_bf_01)) {
+    print(fit$bridge_H0)
+    print(fit$bridge_H1)
+    stop("Bayes factor is NA.")
   }
   prior_log <- log(fit$prior_prob1) - log1p( -fit$prior_prob1)
   prob1 <- plogis(-log_bf_01 + prior_log, log.p = log.p)

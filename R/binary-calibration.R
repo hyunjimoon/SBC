@@ -43,16 +43,22 @@ binary_probabilities_from_stats <- function(stats) {
 #' it needs to be a `data.frame` with columns `variable`, `prob` and `simulated_value`.
 #' @param type the type of calibration uncertainty bands to compute, see details.
 #' @param alpha the level associated with the confidence intervals reports
+#' @param region.position for `type ="reliabilitydiag"` we may choose whether
+#' the uncertainty interval surrounds the estimate (`region.position = "estimate"`)
+#' or the null distribution (`region.position = "diagonal"`)
 #' @param ... additional arguments passed to
 #'  [reliabilitydiag::reliabilitydiag()] or [calibrationband::calibration_bands()]
 #'
 #' @details
-#' When `type = "reliabilitydiag"`, the intervals are for the null distribution
-#' assuming perfect calibration using [reliabilitydiag::reliabilitydiag()].
+#' When `type = "reliabilitydiag"`, the intervals are based on
+#' [reliabilitydiag::reliabilitydiag()] and depending on `region.position`
+#' can be centered on the null distribution of perfect calibration or on the
+#' estimated calibration.
 #' When `type = "calibrationband"` the intervals
-#' are around the observed calibration using [calibrationband::calibration_bands()]
+#' are around the estimated calibration using [calibrationband::calibration_bands()]
 #' --- in our experience the `calibrationband`
-#' method has less sensitivity to detect miscalibration.
+#' method has less sensitivity to detect miscalibration, but they require
+#' somewhat weaker assumptions.
 #'
 #' @returns `binary_calibration_from_bp` returns a `data.frame` with columns `variable`, `prob`, `estimate`, `low` and `high`,
 #' for each variable, it contains an estimate + confidence interval across a range
@@ -63,18 +69,18 @@ binary_probabilities_from_stats <- function(stats) {
 #'
 #' @rdname binary_calibration
 #' @export
-binary_calibration_from_bp <- function(bp, type = c("reliabilitydiag", "calibrationband"), alpha = 0.05, ...) {
+binary_calibration_from_bp <- function(bp, type = c("reliabilitydiag", "calibrationband"), alpha = 0.05, ..., region.position = NULL) {
 
   bp_grouped <- dplyr::group_by(bp, variable)
-  res <- dplyr::reframe(bp_grouped, binary_calibration_base(prob, simulated_value, type = type, uncertainty_prob = 1 - alpha, ...))
+  res <- dplyr::reframe(bp_grouped, binary_calibration_base(prob, simulated_value, type = type, uncertainty_prob = 1 - alpha, region.position = region.position, ...))
 
   max_sims <- max(dplyr::tally(bp_grouped)$n)
   attr(res, "bp") <- bp
-  attr(res, "bins") <- min(100, max_sims / 10)
+  attr(res, "bins") <- max(2, min(100, max_sims / 10))
   return(res)
 }
 
-binary_calibration_base <- function(prob, outcome, uncertainty_prob = 0.95, type = c("reliabilitydiag", "calibrationband"), ...) {
+binary_calibration_base <- function(prob, outcome, uncertainty_prob = 0.95, type = c("reliabilitydiag", "calibrationband"), ..., region.position = NULL) {
   stopifnot(is.numeric(prob))
   stopifnot((is.numeric(outcome) || is.logical(outcome) || is.integer(outcome)))
   outcome <- as.numeric(outcome)
@@ -89,22 +95,40 @@ binary_calibration_base <- function(prob, outcome, uncertainty_prob = 0.95, type
 
   type <- match.arg(type)
   if(type == "reliabilitydiag") {
+    list_args <- list(...)
+    if(is.null(region.position)) {
+      region.position <- "diagonal"
+    }
+
+
     require_package_version("reliabilitydiag", "0.2.1", "to compute binary calibration with the type 'reliabilitydiag'.")
     rel_diag <- reliabilitydiag::reliabilitydiag(
       x = prob,
       y = outcome,
       region.level = uncertainty_prob,
+      region.position = region.position,
       ...
     )
     res <- data.frame(prob = rel_diag$x$regions$x, low = rel_diag$x$regions$lower, high = rel_diag$x$regions$upper)
     res$estimate <- approx(x = c(rel_diag$x$bins$x_min, rel_diag$x$bins$x_max),
                            y = rep(rel_diag$x$bins$CEP_pav, times = 2),
                            xout = res$prob)$y
-    res$interval_type = "null"
+
+    if(region.position == "diagonal") {
+      res$interval_type = "null"
+    } else if(region.position == "estimate") {
+      res$interval_type = "estimate"
+    } else {
+      stop("unrecognized region.position")
+    }
 
     return(res)
   } else if(type == "calibrationband") {
     require_package_version("calibrationband", "0.2", "to compute binary calibration with the type 'calibrationband'.")
+
+    if(!is.null(region.position) && region.position != "estimate") {
+      stop("calibrationband only supports region.position = 'estimate'")
+    }
     # Need to remove extreme indices because they cause crashes in the package
     extreme_indices <- prob < 1e-10 | prob > 1 - 1e-10
     extreme_indices_mismatch <- extreme_indices & round(prob) != outcome
@@ -130,7 +154,7 @@ binary_calibration_base <- function(prob, outcome, uncertainty_prob = 0.95, type
     estimate_isoy <- c(0, data_estimate_raw$isoy, 1)
 
     res$estimate <- approx(estimate_x, estimate_isoy, xout = res$prob, ties = "mean")$y
-    res$interval_type = "observed"
+    res$interval_type = "estimate"
 
     return(res)
   } else {
@@ -155,7 +179,7 @@ calibration_prob_hist_geom <- function(calib_df) {
 #' be overlaid with the calibration curve.
 #' @rdname binary_calibration
 #' @export
-plot_binary_calibration_diff <- function(x, type = c("reliabilitydiag", "calibrationband"), alpha = 0.05, ..., prob_histogram = TRUE) {
+plot_binary_calibration_diff <- function(x, type = c("reliabilitydiag", "calibrationband"), alpha = 0.05, ..., region.position = NULL, prob_histogram = TRUE) {
    UseMethod("plot_binary_calibration_diff", x)
 }
 
@@ -170,8 +194,8 @@ plot_binary_calibration_diff.SBC_results <- function(res, ...) {
 
 #' @rdname binary_calibration
 #' @export
-plot_binary_calibration_diff.data.frame <- function(bp, type = c("reliabilitydiag", "calibrationband"), alpha = 0.05, ..., prob_histogram = TRUE) {
-  calib_df <- binary_calibration_from_bp(bp, type = type, alpha = alpha, ...)
+plot_binary_calibration_diff.data.frame <- function(bp, type = c("reliabilitydiag", "calibrationband"), alpha = 0.05, ..., region.position = NULL, prob_histogram = TRUE) {
+  calib_df <- binary_calibration_from_bp(bp, type = type, alpha = alpha, region.position = region.position, ...)
 
   if(prob_histogram) {
     hist_geom <- calibration_prob_hist_geom(calib_df)
@@ -183,7 +207,7 @@ plot_binary_calibration_diff.data.frame <- function(bp, type = c("reliabilitydia
     hist_geom +
     geom_segment(x = 0, y = 0, xend = 1, yend = 0, color = "skyblue1", size = 2) +
     geom_ribbon(aes(fill = interval_type), alpha = 0.33) +
-    scale_fill_manual(values = c("null" = "skyblue1", "observed" = "black"), guide = "none") +
+    scale_fill_manual(values = c("null" = "skyblue1", "estimate" = "black"), guide = "none") +
     geom_line() + facet_wrap(~variable)
 }
 
@@ -192,7 +216,7 @@ plot_binary_calibration_diff.data.frame <- function(bp, type = c("reliabilitydia
 #' be overlaid with the calibration curve.
 #' @rdname binary_calibration
 #' @export
-plot_binary_calibration <- function(x, type = c("reliabilitydiag", "calibrationband"), alpha = 0.05, ..., prob_histogram = TRUE) {
+plot_binary_calibration <- function(x, type = c("reliabilitydiag", "calibrationband"), alpha = 0.05, ..., region.position = NULL, prob_histogram = TRUE) {
   UseMethod("plot_binary_calibration", x)
 }
 
@@ -207,8 +231,8 @@ plot_binary_calibration.SBC_results <- function(res, ...) {
 
 #' @rdname binary_calibration
 #' @export
-plot_binary_calibration.data.frame <- function(bp, type = c("reliabilitydiag", "calibrationband"), ..., prob_histogram = TRUE) {
-  calib_df <- binary_calibration_from_bp(bp, type = type, ...)
+plot_binary_calibration.data.frame <- function(bp, type = c("reliabilitydiag", "calibrationband"), ..., region.position = NULL, prob_histogram = TRUE) {
+  calib_df <- binary_calibration_from_bp(bp, type = type, ..., region.position = region.position)
 
   if(prob_histogram) {
     hist_geom <- calibration_prob_hist_geom(calib_df)
@@ -221,6 +245,6 @@ plot_binary_calibration.data.frame <- function(bp, type = c("reliabilitydiag", "
     hist_geom +
     geom_segment(x = 0, y = 0, xend = 1, yend = 1, color = "skyblue1", size = 2) +
     geom_ribbon(aes(fill = interval_type), alpha = 0.33) +
-    scale_fill_manual(values = c("null" = "skyblue1", "observed" = "black"), guide = "none") +
+    scale_fill_manual(values = c("null" = "skyblue1", "estimate" = "black"), guide = "none") +
     geom_line() + facet_wrap(~variable) + coord_fixed()
 }
