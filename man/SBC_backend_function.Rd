@@ -31,7 +31,7 @@ distribute draws (will be returned by \code{\link[=SBC_backend_iid_draws]{SBC_ba
 }
 \description{
 If the function returns a \code{draws_matrix} object, no other
-work is necessary to make it work with SBC.
+work is necessary to make it work with SBC. Useful for quick tests.
 }
 \examples{
 # Generate t-distributed variables as a ratio of standard normal (z)
@@ -39,6 +39,9 @@ work is necessary to make it work with SBC.
 # What is the conditional distribution of z if t is observed?
 # See https://math.stackexchange.com/a/5085538/423833 for derivation that it
 # is generalized gamma distribution. Here we test this is correct.
+
+library(ggplot2)
+theme_set(theme_minimal())
 
 N_sims <- 100
 df <- 5

@@ -14,7 +14,8 @@ binary_calibration_from_bp(
   bp,
   type = c("reliabilitydiag", "calibrationband"),
   alpha = 0.05,
-  ...
+  ...,
+  region.position = NULL
 )
 
 plot_binary_calibration_diff(
@@ -22,6 +23,7 @@ plot_binary_calibration_diff(
   type = c("reliabilitydiag", "calibrationband"),
   alpha = 0.05,
   ...,
+  region.position = NULL,
   prob_histogram = TRUE
 )
 
@@ -32,6 +34,7 @@ plot_binary_calibration_diff(
   type = c("reliabilitydiag", "calibrationband"),
   alpha = 0.05,
   ...,
+  region.position = NULL,
   prob_histogram = TRUE
 )
 
@@ -40,6 +43,7 @@ plot_binary_calibration(
   type = c("reliabilitydiag", "calibrationband"),
   alpha = 0.05,
   ...,
+  region.position = NULL,
   prob_histogram = TRUE
 )
 
@@ -49,6 +53,7 @@ plot_binary_calibration(
   bp,
   type = c("reliabilitydiag", "calibrationband"),
   ...,
+  region.position = NULL,
   prob_histogram = TRUE
 )
 }
@@ -63,6 +68,10 @@ it needs to be a \code{data.frame} with columns \code{variable}, \code{prob} and
 
 \item{...}{additional arguments passed to
 \code{\link[reliabilitydiag:reliabilitydiag]{reliabilitydiag::reliabilitydiag()}} or \code{\link[calibrationband:calibration_bands]{calibrationband::calibration_bands()}}}
+
+\item{region.position}{for \code{type ="reliabilitydiag"} we may choose whether
+the uncertainty interval surrounds the estimate (\code{region.position = "estimate"})
+or the null distribution (\code{region.position = "diagonal"})}
 
 \item{prob_histogram}{Whether a histogram of the observed probabilities should
 be overlaid with the calibration curve.}
@@ -81,10 +90,13 @@ Obtain estimate of binary prediction calibration and the associated
 uncertainty interval for further processing or plot it directly.
 }
 \details{
-When \code{type = "reliabilitydiag"}, the intervals are for the null distribution
-assuming perfect calibration using \code{\link[reliabilitydiag:reliabilitydiag]{reliabilitydiag::reliabilitydiag()}}.
+When \code{type = "reliabilitydiag"}, the intervals are based on
+\code{\link[reliabilitydiag:reliabilitydiag]{reliabilitydiag::reliabilitydiag()}} and depending on \code{region.position}
+can be centered on the null distribution of perfect calibration or on the
+estimated calibration.
 When \code{type = "calibrationband"} the intervals
-are around the observed calibration using \code{\link[calibrationband:calibration_bands]{calibrationband::calibration_bands()}}
+are around the estimated calibration using \code{\link[calibrationband:calibration_bands]{calibrationband::calibration_bands()}}
 --- in our experience the \code{calibrationband}
-method has less sensitivity to detect miscalibration.
+method has less sensitivity to detect miscalibration, but they require
+somewhat weaker assumptions.
 }

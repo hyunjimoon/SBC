@@ -7,10 +7,20 @@
 SBC_fit_to_bridge_sampler(backend, fit, generated, ...)
 }
 \arguments{
+\item{backend}{the underlying backend}
+
+\item{fit}{corresponding to the backend}
+
+\item{generated}{the generated data used to fit the underlying model}
+
 \item{...}{passed to \code{\link[bridgesampling:bridge_sampler]{bridgesampling::bridge_sampler()}}.}
 }
+\value{
+an object of class \code{bridge} or \code{bridge_list}.
+}
 \description{
-Convert a fit for a given backend into a bridge sampler object.
+Users should typically not call this method and instead let
+\code{\link[=SBC_backend_bridgesampling]{SBC_backend_bridgesampling()}} to call it for them.
 }
 \seealso{
 \code{\link[bridgesampling:bridge_sampler]{bridgesampling::bridge_sampler()}}
