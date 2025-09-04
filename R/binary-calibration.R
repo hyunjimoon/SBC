@@ -76,7 +76,7 @@ binary_calibration_from_bp <- function(bp, type = c("reliabilitydiag", "calibrat
 
   max_sims <- max(dplyr::tally(bp_grouped)$n)
   attr(res, "bp") <- bp
-  attr(res, "bins") <- max(2, min(100, max_sims / 10))
+  attr(res, "bins") <- max(2, min(100, ceiling(max_sims / 10)))
   return(res)
 }
 
