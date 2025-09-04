@@ -692,7 +692,8 @@ compute_SBC <- function(datasets, backend,
              error = function(e) { warning("Error when saving cache file: ", e) })
   }
 
-  check_all_SBC_diagnostics(res)
+  tryCatch(check_all_SBC_diagnostics(res),
+           error = function(e) { warning("Error when getting diagnostics: ", e) })
 
   res
 }

@@ -152,7 +152,7 @@ gaffke_ci_from_m <- function(m, alpha = 0.05) {
 #' @rdname gaffke_test
 #' @export
 gaffke_ci <- function(probs, B = 10000, alpha = 0.05) {
-  m <- gaffke_m(probs, B, alpha)
+  m <- gaffke_m(probs, B)
   gaffke_ci_from_m(m, alpha)
 }
 
@@ -186,7 +186,7 @@ gaffke_p_from_m <- function(m, mu, B, alternative = c("two.sided", "less", "grea
 gaffke_p <- function(probs, mu = 0.5, alpha = 0.05, B = 10000, alternative = c("two.sided", "less", "greater")) {
   alternative <- match.arg(alternative)
 
-  m <- gaffke_m(probs, B, alpha)
+  m <- gaffke_m(probs, B)
   gaffke_p_from_m(m, mu, B, alternative)
 }
 

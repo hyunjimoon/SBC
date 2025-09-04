@@ -150,15 +150,81 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
 
   if(!is.null(diags0)) {
     names(diags0) <- paste0(names(diags0), "_H0")
+    diags0$.H0_class <- class(diags0)[1]
     diags_bs <- cbind(diags_bs, diags0)
   }
 
   if(!is.null(diags1)) {
     names(diags1) <- paste0(names(diags1), "_H1")
+    diags1$.H1_class <- class(diags1)[1]
     diags_bs <- cbind(diags_bs, diags1)
   }
 
+  class(diags_bs) <- c("SBC_bridgesampling_diagnostics", class(diags_bs))
   return(diags_bs)
+}
+
+#' @export
+summary.SBC_bridgesampling_diagnostics <- function(x) {
+  summ <- list(
+    n_fits = nrow(x),
+    n_large_error_H0 = sum(x$bs_error_H0 >= 5, na.rm = TRUE),
+    n_large_error_H1 = sum(x$bs_error_H1 >= 5, na.rm = TRUE)
+  )
+
+  process_submodel_diags <- function(i) {
+    class_column <- paste0(".H",i,"_class")
+    if(!is.null(x[[class_column]])) {
+      unique_class <- unique(x[[class_column]])
+      if(length(unique_class) > 1) {
+        warning(paste0("Differing H", i,"_class in diagnostics not supported, ignoring."))
+      } else {
+        if(unique_class != "data.frame") {
+          H_diags <-
+            dplyr::rename_with(
+              dplyr::select(x, tidyselect::ends_with(paste0("_H",i)) & !tidyselect::starts_with("bs_error")),
+              \(name) gsub(paste0("_H",i,"$"), "", name))
+
+          class(H_diags) <- c(unique_class, class(H_diags))
+          return(summary(H_diags))
+        }
+      }
+    }
+    NULL
+  }
+
+  summ$H0_summary <- process_submodel_diags(0)
+  summ$H1_summary <- process_submodel_diags(1)
+
+  structure(summ, class = "SBC_bridgesampling_diagnostics_summary")
+}
+
+#' @export
+get_diagnostic_messages.SBC_bridgesampling_diagnostics <- function(x) {
+  get_diagnostic_messages(summary(x))
+}
+
+
+#' @export
+get_diagnostic_messages.SBC_bridgesampling_diagnostics_summary <- function(x) {
+  SBC_diagnostic_messages(
+    rbind(
+      data.frame(ok = x$n_large_error_H0 == 0,
+                 message = paste0( x$n_large_error_H0, " (", round(100 * x$n_large_error_H0 / x$n_fits),
+                                   "%) of fits had large relative error of marginal likelihood for H0.")),
+      data.frame(ok = x$n_large_error_H1 == 0,
+                 message = paste0( x$n_large_error_H1, " (", round(100 * x$n_large_error_H0 / x$n_fits),
+                                   "%) of fits had large relative error of marginal likelihood for H1.")),
+      dplyr::mutate(
+        get_diagnostic_messages(x$H0_summary),
+        message = paste0("H0: ", message)
+      ),
+      dplyr::mutate(
+        get_diagnostic_messages(x$H1_summary),
+        message = paste0("H1: ", message)
+      )
+    )
+  )
 }
 
 #' @export
