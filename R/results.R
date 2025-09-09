@@ -1261,7 +1261,7 @@ summary.SBC_results <- function(x) {
   summ <- list(
     n_fits = length(x$fits),
     n_errors = sum(!purrr::map_lgl(x$errors, is.null)),
-    n_warnings = sum(purrr::map_lgl(x$messages, ~ !is.null(.x) && any(x$type == "warning"))),
+    n_warnings = sum(!purrr::map_lgl(x$warnings, is.null)),
 
     # ifelse required for backwards compatibility with caches from 0.3 or below
     n_has_na = if("n_has_na" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_has_na > 0) }  else {  0 },
@@ -1306,7 +1306,7 @@ get_diagnostic_messages.SBC_results_summary <- function(x) {
   i <- i + 1
 
   if(x$n_warnings > 0) {
-    msg <- paste0(x$n_warnings, " (", round(100 * x$n_warnings / x$n_fits), "%) fits gave warnings. Inspect $messages to see them.")
+    msg <- paste0(x$n_warnings, " (", round(100 * x$n_warnings / x$n_fits), "%) fits gave warnings. Inspect $warnings to see them.")
     message_list[[i]] <- data.frame(ok = TRUE, message = msg)
   } else {
     message_list[[i]] <- data.frame(ok = TRUE, message = "No fits gave warnings.")
