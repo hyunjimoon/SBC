@@ -29,13 +29,23 @@ SBC_results <- function(stats,
 
 
 compute_default_diagnostics <- function(stats) {
+  # Putting default values to make previously cached results valid
   if(is.null(stats$attributes)) {
     stats$attributes <- ""
   }
-  eligible_for_check <- function(value, attributes) {
-    value[!is.na(value)
-          | !attribute_present_stats(possibly_constant_var_attribute(), attributes)
-          ]
+  if(is.null(stats$all_na)) {
+    stats$all_na <- rep(FALSE, nrow(stats))
+  }
+  if(is.null(stats$all_inf)) {
+    stats$all_inf <- rep(FALSE, nrow(stats))
+  }
+
+  eligible_for_check <- function(value, all_inf, all_na, attributes) {
+    exclude_for_possibly_constant <- (is.na(value)
+                       & attribute_present_stats(possibly_constant_var_attribute(), attributes))
+    exclude_for_all_na <- all_na & attribute_present_stats(na_valid_var_attribute(), attributes)
+    exclude_for_all_inf <- all_inf & attribute_present_stats(inf_valid_var_attribute(), attributes)
+    value[(!exclude_for_possibly_constant) & (!exclude_for_all_na) & (!exclude_for_all_inf)]
   }
 
   should_check_na <- function(attributes) {
@@ -45,13 +55,13 @@ compute_default_diagnostics <- function(stats) {
   val <- dplyr::summarise(dplyr::group_by(stats, sim_id),
                    n_vars = dplyr::n(),
                    n_has_na = sum(has_na & should_check_na(attributes)),
-                   n_na_rhat = sum(is.na(eligible_for_check(rhat, attributes))),
-                   n_na_ess_bulk = sum(is.na(eligible_for_check(ess_bulk, attributes))),
-                   n_na_ess_tail = sum(is.na(eligible_for_check(ess_tail, attributes))),
-                   max_rhat = max(c(-Inf, eligible_for_check(rhat, attributes)), na.rm = TRUE),
-                   min_ess_bulk = min(c(Inf, eligible_for_check(ess_bulk, attributes))),
-                   min_ess_tail = min(c(Inf, eligible_for_check(ess_tail, attributes))),
-                   min_ess_to_rank = min(c(Inf, eligible_for_check(ess_tail / max_rank, attributes))),
+                   n_na_rhat = sum(is.na(eligible_for_check(rhat, all_inf, all_na, attributes))),
+                   n_na_ess_bulk = sum(is.na(eligible_for_check(ess_bulk, all_inf, all_na, attributes))),
+                   n_na_ess_tail = sum(is.na(eligible_for_check(ess_tail, all_inf, all_na, attributes))),
+                   max_rhat = max(c(-Inf, eligible_for_check(rhat, all_inf, all_na, attributes)), na.rm = TRUE),
+                   min_ess_bulk = min(c(Inf, eligible_for_check(ess_bulk, all_inf, all_na, attributes))),
+                   min_ess_tail = min(c(Inf, eligible_for_check(ess_tail, all_inf, all_na, attributes))),
+                   min_ess_to_rank = min(c(Inf, eligible_for_check(ess_tail / max_rank, all_inf, all_na, attributes))),
                    .groups = "drop"
                    )
 
@@ -332,6 +342,14 @@ NULL
 compute_results <- function(...) {
   warning("compute_results() is deprecated, use compute_SBC instead.")
   compute_SBC(...)
+}
+
+# A simple vector that can serve as stats when those cannot be computed
+dummy_stats <- function() {
+  data.frame(sim_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
+             ess_tail = numeric(0), has_na = logical(0),
+             rank = integer(0), simulated_value = numeric(0), max_rank = integer(0),
+             attributes = character(0))
 }
 
 #' Fit datasets and evaluate diagnostics and SBC metrics.
@@ -665,15 +683,13 @@ compute_SBC <- function(datasets, backend,
                 iid_draws = SBC_backend_iid_draws(backend))
   } else {
     # Return dummy stats that let the rest of the code work.
-    stats <- data.frame(sim_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
-                        ess_tail = numeric(0), has_na = logical(0),
-                        rank = integer(0), simulated_value = numeric(0), max_rank = integer(0),
-                        attributes = character(0))
+    stats <- dummy_stats()
   }
 
   default_diagnostics <-  tryCatch(
     { compute_default_diagnostics(stats) },
-    error = function(e) { warning("Error when computing default per-variable diagnostics. ", e); NULL })
+    error = function(e) { warning("Error when computing default per-variable diagnostics. ", e);
+      compute_default_diagnostics(dummy_stats())})
 
 
   res <- SBC_results(stats = stats, fits = fits, outputs = outputs,
@@ -910,11 +926,19 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
   for(i in 1:length(shared_vars)) {
     var <- shared_vars[i]
     var_draws <- fit_matrix[,var]
-    stats$mean[i] <- mean(var_draws, na.rm = na_valid[i])
-    stats$sd[i] <- sd(var_draws, na.rm = na_valid[i])
-    stats$q5[i] <- quantile(var_draws, prob = 0.05, na.rm = na_valid[i])
-    stats$median[i] <- median(var_draws, na.rm = na_valid[i])
-    stats$q95[i] <- quantile(var_draws, prob = 0.95, na.rm = na_valid[i])
+    if(!na_valid[i] & any(is.na(var_draws))) {
+      stats$mean[i] <- NA_real_
+      stats$sd[i] <- NA_real_
+      stats$q5[i] <- NA_real_
+      stats$median[i] <- NA_real_
+      stats$q95[i] <- NA_real_
+    } else {
+      stats$mean[i] <- mean(var_draws, na.rm = TRUE)
+      stats$sd[i] <- sd(var_draws, na.rm = TRUE)
+      stats$q5[i] <- quantile(var_draws, prob = 0.05, na.rm = TRUE)
+      stats$median[i] <- median(var_draws, na.rm = TRUE)
+      stats$q95[i] <- quantile(var_draws, prob = 0.95, na.rm = TRUE)
+    }
 
     if(SBC_backend_iid_draws(backend)) {
       ## iid draws have the bestest diagnostics by construction
@@ -925,11 +949,13 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
       draws_for_diags <- var_draws
       if(inf_valid[i]) {
         finite_draws <- draws_for_diags[is.finite(draws_for_diags)]
-        draws_for_diags[draws_for_diags == -Inf] <- min(finite_draws) - 1
-        draws_for_diags[draws_for_diags == +Inf] <- max(finite_draws) + 1
+        if(length(finite_draws) > 0) {
+          draws_for_diags[draws_for_diags == -Inf] <- min(finite_draws) - 1
+          draws_for_diags[draws_for_diags == +Inf] <- max(finite_draws) + 1
+        }
       }
       if(na_valid[i]) {
-        draws_for_diags[is.na(draws_for_diags)] <- median(draws_for_diags)
+        draws_for_diags[is.na(draws_for_diags)] <- median(draws_for_diags, na.rm = TRUE)
       }
       stats$rhat[i] <- posterior::rhat(draws_for_diags)
       stats$ess_bulk[i] <- posterior::ess_bulk(draws_for_diags)
@@ -962,6 +988,8 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
   stats$max_rank <- attr(ranks, "max_rank")
   stats$z_score <- (stats$simulated_value - stats$mean) / stats$sd
   stats$has_na <- as.logical(apply(fit_thinned, MARGIN = 2, FUN = \(x) any(is.na(x))))
+  stats$all_na <- as.logical(apply(fit_thinned, MARGIN = 2, FUN = \(x) all(is.na(x))))
+  stats$all_inf <- as.logical(apply(fit_thinned, MARGIN = 2, FUN = \(x) all(is.infinite(x))))
 
   variables_dbl <- as.numeric(variables)
   names(variables_dbl) <- posterior::variables(variables)

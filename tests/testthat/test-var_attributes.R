@@ -94,3 +94,80 @@ test_that("remove_attribute_from_stats", {
   expect_identical(remove_attribute_from_stats("ab(44)", "a,b,cab,ab(44)"), "a,b,cab")
   expect_identical(remove_attribute_from_stats("ab(44)", "a,b,cab,ab(21)"), "a,b,cab,ab(21)")
 })
+
+
+test_that("compute_default_diagnostics_and_attributes", {
+  example_fit <- posterior::draws_matrix(only_inf = rep(Inf, 300),
+                                         one_inf = c(Inf, rnorm(299)),
+                                         only_NA = rep(NA, 300),
+                                         one_NA = c(NA, rnorm(299)))
+
+  variables <- posterior::draws_matrix(only_inf = Inf,
+                                       one_inf = 0,
+                                       only_NA = NA,
+                                       one_NA = 0)
+
+
+  stats_no_attr <-
+    SBC_statistics_from_single_fit(example_fit, variables = variables,
+                                 generated = list(),
+                                 thin_ranks = 1,
+                                 ensure_num_ranks_divisor = 1,
+                                 dquants = NULL,
+                                 backend = NULL
+                                 )
+
+  expect_identical(is.na(stats_no_attr$q5), c(F, F, T, T))
+  expect_identical(is.na(stats_no_attr$rhat), c(T, F, T, T))
+  expect_identical(is.na(stats_no_attr$ess_bulk), c(T, F, T, T))
+  expect_identical(is.na(stats_no_attr$ess_tail), c(T, T, T, T))
+
+  expect_identical(stats_no_attr$has_na, c(F, F, T, T))
+  expect_identical(stats_no_attr$all_inf, c(T, F, F, F))
+
+  stats_attr <-
+    SBC_statistics_from_single_fit(example_fit, variables = variables,
+                                 generated = list(),
+                                 thin_ranks = 1,
+                                 ensure_num_ranks_divisor = 1,
+                                 dquants = NULL,
+                                 backend = NULL,
+                                 var_attributes = var_attributes(
+                                   only_inf = inf_valid_var_attribute(),
+                                   one_inf = inf_valid_var_attribute(),
+                                   only_NA = na_valid_var_attribute(),
+                                   one_NA = na_valid_var_attribute())
+  )
+
+
+  expect_identical(is.na(stats_attr$q5), c(F, F, T, F))
+  expect_identical(is.na(stats_attr$rhat), c(T, F, T, F))
+  expect_identical(is.na(stats_attr$ess_bulk), c(T, F, T, F))
+  expect_identical(is.na(stats_attr$ess_tail), c(T, F, T, F))
+
+  expect_identical(stats_attr$has_na, c(F, F, T, T))
+  expect_identical(stats_attr$all_inf, c(T, F, F, F))
+
+
+  stats_no_attr$sim_id <- 1
+  diag_no_attr <- compute_default_diagnostics(stats_no_attr)
+  expect_equal(diag_no_attr$n_has_na, 2)
+  expect_equal(diag_no_attr$n_na_rhat, 3)
+  expect_equal(diag_no_attr$n_na_ess_bulk, 3)
+  expect_equal(diag_no_attr$n_na_ess_tail, 4)
+  expect_true(is.na(diag_no_attr$min_ess_bulk))
+  expect_true(is.na(diag_no_attr$min_ess_tail))
+  expect_true(is.na(diag_no_attr$min_ess_to_rank))
+
+  stats_attr$sim_id <- 1
+  diag_attr <- compute_default_diagnostics(stats_attr)
+  expect_equal(diag_attr$n_has_na, 0)
+  expect_equal(diag_attr$n_na_rhat, 0)
+  expect_equal(diag_attr$n_na_ess_bulk, 0)
+  expect_equal(diag_attr$n_na_ess_tail, 0)
+  expect_false(is.na(diag_attr$min_ess_bulk))
+  expect_false(is.na(diag_attr$min_ess_tail))
+  expect_false(is.na(diag_attr$min_ess_to_rank))
+
+
+})
