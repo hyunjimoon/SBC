@@ -162,9 +162,9 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
 }
 
 #' @export
-SBC_diagnostics_types.SBC_backend_bridgesampling <- function(backend) {
+SBC_backend_diagnostics_types.SBC_backend_bridgesampling <- function(backend) {
   submodel_diags <- function(backend, i) {
-     types_sub <- SBC_diagnostics_types(backend)
+     types_sub <- SBC_backend_diagnostics_types(backend)
      types_mapped <- purrr::map(types_sub,
                                 \(diag) SBC_submodel_diagnostic(paste0("H", i), diag))
      names(types_mapped) <- paste0(names(types_sub, "_H", i))

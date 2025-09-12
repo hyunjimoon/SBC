@@ -54,7 +54,7 @@ SBC_fit_to_diagnostics.stanfit <- function(fit, fit_output, fit_messages, fit_wa
 }
 
 #' @export
-SBC_diagnostics_types.SBC_backend_rstan_sample <- function(backend) {
+SBC_backend_diagnostics_types.SBC_backend_rstan_sample <- function(backend) {
   SBC_nuts_diagnostic_types
 }
 
@@ -159,7 +159,7 @@ SBC_fit_to_diagnostics.RStanOptimizingFit <- function(fit, fit_output, fit_messa
 }
 
 #' @export
-SBC_diagnostics_types.SBC_backend_rstan_optimizing <- function(backend) {
+SBC_backend_diagnostics_types.SBC_backend_rstan_optimizing <- function(backend) {
   list(
     n_attempts = SBC_count_diagnostic("attempts to produce usable Hessian", report = "max", lower_thresh = 1),
     time = SBC_numeric_diagnostic("time", report = "max")

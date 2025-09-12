@@ -1,10 +1,10 @@
 SBC_nuts_diagnostic_types <- function() {
   list(
-    max_chain_time = SBC_numeric_diagnostic("maximum time per chain", report = "max"),
+    max_chain_time = SBC_numeric_diagnostic("maximum time per chain", report = "max", digits = 0),
     n_divergent = SBC_count_diagnostic("divergences", report = "max", lower_thresh = 0),
     n_max_treedepth = SBC_count_diagnostic("iterations that saturated max treedepth", lower_thresh = 0, label_short = "max treedepths"),
     n_rejects = SBC_count_diagnostic("steps rejected", report = "max", lower_thresh = 0),
-    min_bfmi = SBC_numeric_diagnostic("E-BFMI", report = "min", upper_thresh = 0.2),
+    min_bfmi = SBC_numeric_diagnostic("E-BFMI", report = "min", upper_thresh = 0.2, digits = 3),
     n_failed_chains = SBC_count_diagnostic("failed chains", lower_thresh = 0)
   )
 }

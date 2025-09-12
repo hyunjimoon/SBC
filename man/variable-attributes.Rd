@@ -56,7 +56,8 @@ attribute also changes the ESS/Rhat computation to ignore NAs.
 \code{inf_valid_var_attribute} means infinity values may appear in the samples
 (this is useful e.g. to note that the parameter is actually not present for the
 given draw). Setting this
-attribute also changes the ESS/Rhat computation to ignore infinities.
+attribute also changes the ESS/Rhat computation to ignore infinities. It
+is also assume that it is OK if \emph{all} of the draws are infinity.
 
 \code{submodel_var_attribute} signals that the parameter belongs to a submodel
 which can be extracted individually

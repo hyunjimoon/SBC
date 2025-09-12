@@ -96,7 +96,7 @@ SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages, fi
 }
 
 #' @export
-SBC_diagnostics_types.CmdStanMCMC <- function(backend) {
+SBC_backend_diagnostics_types.CmdStanMCMC <- function(backend) {
   SBC_nuts_diagnostic_types()
 }
 

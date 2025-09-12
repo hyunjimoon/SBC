@@ -99,12 +99,12 @@ SBC_fit_to_diagnostics.default <- function(fit, fit_output, fit_messages, fit_wa
 }
 
 #' @export
-SBC_diagnostics_types <- function(backend) {
+SBC_backend_diagnostics_types <- function(backend) {
   UseMethod("SBC_fit_to_diagnostics")
 }
 
 #' @export
-SBC_diagnostics_types.default <- function(backend) {
+SBC_backend_diagnostics_types.default <- function(backend) {
   list()
 }
 
