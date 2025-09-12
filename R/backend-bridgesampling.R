@@ -150,18 +150,34 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
 
   if(!is.null(diags0)) {
     names(diags0) <- paste0(names(diags0), "_H0")
-    diags0$.H0_class <- class(diags0)[1]
     diags_bs <- cbind(diags_bs, diags0)
   }
 
   if(!is.null(diags1)) {
     names(diags1) <- paste0(names(diags1), "_H1")
-    diags1$.H1_class <- class(diags1)[1]
     diags_bs <- cbind(diags_bs, diags1)
   }
 
-  class(diags_bs) <- c("SBC_bridgesampling_diagnostics", class(diags_bs))
   return(diags_bs)
+}
+
+#' @export
+SBC_diagnostics_types.SBC_backend_bridgesampling <- function(backend) {
+  submodel_diags <- function(backend, i) {
+     types_sub <- SBC_diagnostics_types(backend)
+     types_mapped <- purrr::map(types_sub,
+                                \(diag) SBC_submodel_diagnostic(paste0("H", i), diag))
+     names(types_mapped) <- paste0(names(types_sub, "_H", i))
+  }
+
+  c(
+    list(
+      bs_error_H0 = SBC_numeric_diagnostic("relative error of marginal likelihood for H0", report = "max", lower_thresh = 5),
+      bs_error_H1 = SBC_numeric_diagnostic("relative error of marginal likelihood for H1", report = "max", lower_thresh = 5)
+    ),
+    submodel_diags(backend$backend_H0, 0),
+    submodel_diags(backend$backend_H1, 1)
+  )
 }
 
 #' @export

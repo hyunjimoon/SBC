@@ -1,3 +1,15 @@
+SBC_nuts_diagnostic_types <- function() {
+  list(
+    max_chain_time = SBC_numeric_diagnostic("maximum time per chain", report = "max"),
+    n_divergent = SBC_count_diagnostic("divergences", report = "max", lower_thresh = 0),
+    n_max_treedepth = SBC_count_diagnostic("iterations that saturated max treedepth", lower_thresh = 0, label_short = "max treedepths"),
+    n_rejects = SBC_count_diagnostic("steps rejected", report = "max", lower_thresh = 0),
+    min_bfmi = SBC_numeric_diagnostic("E-BFMI", report = "min", upper_thresh = 0.2),
+    n_failed_chains = SBC_count_diagnostic("failed chains", lower_thresh = 0)
+  )
+}
+
+
 #' @export
 summary.SBC_nuts_diagnostics <- function(diagnostics) {
   summ <- list(
@@ -133,6 +145,16 @@ print.SBC_nuts_diagnostics_summary <- function(x) {
   msg <- get_diagnostic_messages(x)
   print(msg)
   invisible(x)
+}
+
+
+#' @export
+SBC_ADVI_diagnostics_types <- function() {
+  list(
+    elbo_converged = SBC_logical_diagnostic("ELBO converged", error_value = FALSE),
+    n_rejects = SBC_count_diagnostic("some steps rejected", report = "max", lower_thresh = 0),
+    time = SBC_numeric_diagnostic("time", report = "max")
+  )
 }
 
 

@@ -50,8 +50,12 @@ SBC_fit_to_diagnostics.stanfit <- function(fit, fit_output, fit_messages, fit_wa
     n_rejects = sum(grepl("reject", fit_messages)) + sum(grepl("reject", fit_warnings))
   )
 
-  class(res) <- c("SBC_nuts_diagnostics", class(res))
   res
+}
+
+#' @export
+SBC_diagnostics_types.SBC_backend_rstan_sample <- function(backend) {
+  SBC_nuts_diagnostic_types
 }
 
 #' @export
@@ -152,6 +156,14 @@ SBC_fit_to_diagnostics.RStanOptimizingFit <- function(fit, fit_output, fit_messa
 
   class(res) <- c("SBC_RStanOptimizing_diagnostics", class(res))
   res
+}
+
+#' @export
+SBC_diagnostics_types.SBC_backend_rstan_optimizing <- function(backend) {
+  list(
+    n_attempts = SBC_count_diagnostic("attempts to produce usable Hessian", report = "max", lower_thresh = 1),
+    time = SBC_numeric_diagnostic("time", report = "max")
+  )
 }
 
 #' @export

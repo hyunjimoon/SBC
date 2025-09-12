@@ -83,16 +83,21 @@ SBC_fit_to_draws_matrix.CmdStanMCMC <- function(fit) {
 
 #' @export
 SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages, fit_warnings) {
+  diag_summary <- fit$diagnostic_summary()
   res <- data.frame(
     max_chain_time = max(fit$time()$chains[,"total"]),
     n_failed_chains = fit$num_chains() - sum(fit$return_codes() == 0),
-    n_divergent = sum(fit$sampler_diagnostics()[, , "divergent__"]),
-    n_max_treedepth =  sum(fit$sampler_diagnostics()[, , "treedepth__"] == fit$metadata()$max_treedepth),
+    n_divergent = sum(diag_summary$num_divergent),
+    n_max_treedepth =  sum(diag_summary$num_max_treedepth),
+    min_bfmi = min(diag_summary$ebfmi),
     n_rejects = sum(grepl("reject", fit_messages)) + sum(grepl("reject", fit_warnings))
-    #
-  ) # TODO: add min_bfmi once https://github.com/stan-dev/cmdstanr/pull/500/ is merged
-  class(res) <- c("SBC_nuts_diagnostics", class(res))
+  )
   res
+}
+
+#' @export
+SBC_diagnostics_types.CmdStanMCMC <- function(backend) {
+  SBC_nuts_diagnostic_types()
 }
 
 #' Backend based on variational approximation via `cmdstanr`.
@@ -195,4 +200,9 @@ SBC_fit_to_diagnostics.CmdStanVB <- function(fit, fit_output, fit_messages, fit_
 
   class(res) <- c("SBC_ADVI_diagnostics", class(res))
   res
+}
+
+#' @export
+SBC_nuts_diagnostic_types.CmdStanVB <- function(backend) {
+  SBC_ADVI_diagnostics_types()
 }

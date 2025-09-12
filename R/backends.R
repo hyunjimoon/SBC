@@ -98,6 +98,17 @@ SBC_fit_to_diagnostics.default <- function(fit, fit_output, fit_messages, fit_wa
   NULL
 }
 
+#' @export
+SBC_diagnostics_types <- function(backend) {
+  UseMethod("SBC_fit_to_diagnostics")
+}
+
+#' @export
+SBC_diagnostics_types.default <- function(backend) {
+  list()
+}
+
+
 #' Get hash used to identify cached results.
 #'
 #' S3 generic that allows backends to override how a hash is computed. By default `rlang::hash()`
