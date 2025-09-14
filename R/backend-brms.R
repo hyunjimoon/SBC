@@ -127,11 +127,6 @@ SBC_fit_to_diagnostics.brmsfit <- function(fit, fit_output, fit_messages, fit_wa
 }
 
 #' @export
-SBC_backend_diagnostics_types.SBC_backend_brms <- function(backend) {
-  SBC_backend_diagnostics_types(backend$stan_backend)
-}
-
-#' @export
 SBC_backend_iid_draws.SBC_backend_brms <- function(backend) {
   SBC_backend_iid_draws(backend$stan_backend)
 }

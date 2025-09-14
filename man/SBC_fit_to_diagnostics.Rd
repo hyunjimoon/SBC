@@ -21,5 +21,5 @@ an single row \code{data.frame} that includes diagnostics or NULL, if no diagnos
 \description{
 The diagnostics object has to be a \code{data.frame} but may
 inherit additional classes - in particular it may be useful
-for the returning object to implement \code{\link[=get_diagnostic_messages]{get_diagnostic_messages()}}.
+for the returning object to implement \code{\link[=diagnostic_types]{diagnostic_types()}}.
 }

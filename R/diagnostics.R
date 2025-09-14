@@ -25,7 +25,7 @@ SBC_count_diagnostic <- function(label, error_above = 0, label_short = NULL, hin
 
 
 #' @export
-SBC_logical_diagnostic <- function(label, error_value, hint) {
+SBC_logical_diagnostic <- function(label, error_value, hint = "") {
   structure(list(label = label,
                  error_value = error_value,
                  hint = hint),
@@ -40,14 +40,14 @@ SBC_submodel_diagnostic <- function(prefix, diag) {
 }
 
 #' @export
-SBC_get_diagnostic_messages <- function(diagnostic, values) {
-  UseMethod("SBC_get_diagnostic_messages")
+SBC_get_diagnostic_messages_single <- function(diagnostic, values) {
+  UseMethod("SBC_get_diagnostic_messages_single")
 }
 
 
 
 #' @export
-SBC_get_diagnostic_messages.SBC_numeric_diagnostic <- function(diagnostic, values) {
+SBC_get_diagnostic_messages_single.SBC_numeric_diagnostic <- function(diagnostic, values) {
   stopifnot(is.numeric(values) || is.integer(values))
 
 
@@ -98,7 +98,7 @@ SBC_get_diagnostic_messages.SBC_numeric_diagnostic <- function(diagnostic, value
 }
 
 #' @export
-SBC_get_diagnostic_messages.SBC_count_diagnostic <- function(diagnostic, values) {
+SBC_get_diagnostic_messages_single.SBC_count_diagnostic <- function(diagnostic, values) {
   stopifnot(is.numeric(values) || is.integer(values))
   stopifnot(all(as.integer(values) == values))
 
@@ -125,9 +125,9 @@ SBC_get_diagnostic_messages.SBC_count_diagnostic <- function(diagnostic, values)
 }
 
 #' @export
-SBC_get_diagnostic_messages.SBC_logical_diagnostic <- function(diagnostic, values) {
+SBC_get_diagnostic_messages_single.SBC_logical_diagnostic <- function(diagnostic, values) {
   stopifnot(is.logical(values))
-  ok_vec <- (values == diagnostic$ok_value)
+  ok_vec <- (values != diagnostic$error_value)
   if(all(ok_vec)) {
     msg <- data.frame(ok = TRUE, message = paste0("No fits ", diagnostic$label,"."))
   } else {
@@ -141,8 +141,28 @@ SBC_get_diagnostic_messages.SBC_logical_diagnostic <- function(diagnostic, value
 
 
 #' @export
-SBC_get_diagnostic_messages.SBC_submodel_diagnostic <- function(diagnostic, values) {
-  stop("TODO")
+SBC_get_diagnostic_messages_single.SBC_submodel_diagnostic <- function(diagnostic, values) {
+  msgs <- SBC_get_diagnostic_messages_single(diagnostic$diag, values)
+  msgs$message <- paste0(prefix,": ", msgs$message)
+  msgs
 }
 
+#' @export
+SBC_get_all_diagnostic_messages <- function(diags, types) {
+  shared_names <- intersect(names(diags), names(types))
 
+  missing_types <- names(diags)[!(names(diags) %in% names(types))]
+  missing_diags <- names(types)[!(names(types) %in% names(diags))]
+  if(length(missing_types) > 0) {
+    warning("Following diagnostics have missing type: ", paste0(missing_types, collapse = ", "))
+  }
+  if(length(missing_diags) > 0) {
+    warning("Following declared diacnostic types have no values available: ", paste0(missing_diags, collapse = ", "))
+  }
+
+  diags_shared <- diags[shared_names]
+  types_shared <- types[shared_names]
+
+  msgs <- purrr::map2_dfr(types_shared, diags_shared, SBC_get_diagnostic_messages_single)
+  msgs
+}

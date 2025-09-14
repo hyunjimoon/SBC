@@ -92,13 +92,10 @@ SBC_fit_to_diagnostics.CmdStanMCMC <- function(fit, fit_output, fit_messages, fi
     min_bfmi = min(diag_summary$ebfmi),
     n_rejects = sum(grepl("reject", fit_messages)) + sum(grepl("reject", fit_warnings))
   )
+  class(res) <- c("SBC_nuts_diagnostics", class(res))
   res
 }
 
-#' @export
-SBC_backend_diagnostics_types.CmdStanMCMC <- function(backend) {
-  SBC_nuts_diagnostic_types()
-}
 
 #' Backend based on variational approximation via `cmdstanr`.
 #'

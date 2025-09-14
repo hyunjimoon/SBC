@@ -126,6 +126,8 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
   diags0 <- SBC_fit_to_diagnostics(fit$fit0, fit_output, fit_messages, fit_warnings)
   diags1 <- SBC_fit_to_diagnostics(fit$fit1, fit_output, fit_messages, fit_warnings)
 
+  warning("TODO: convergence failures")
+
   prob1 <- SBC_fit_bridgesampling_to_prob1(fit)
   log_prob1 <- SBC_fit_bridgesampling_to_prob1(fit, log.p = TRUE)
 
@@ -158,88 +160,60 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
     diags_bs <- cbind(diags_bs, diags1)
   }
 
+  class(diags_bs) <- c("SBC_bridgesampling_diagnostics", class(diags_bs))
+  attr(diags_bs, "submodel_classes") <- list(H0 = class(diags0), H1 = class(diags1))
   return(diags_bs)
 }
 
 #' @export
-SBC_backend_diagnostics_types.SBC_backend_bridgesampling <- function(backend) {
-  submodel_diags <- function(backend, i) {
-     types_sub <- SBC_backend_diagnostics_types(backend)
-     types_mapped <- purrr::map(types_sub,
-                                \(diag) SBC_submodel_diagnostic(paste0("H", i), diag))
-     names(types_mapped) <- paste0(names(types_sub, "_H", i))
+diagnostic_types.SBC_bridgesampling_diagnostics <- function(diags) {
+  submodel_classes <- attr(diags, "submodel_classes", exact = TRUE)
+  if(is.null(submodel_classes) ||
+     !is.list(submodel_classes) || !identical(names(submodel_classes), c("H0", "H1"))) {
+    warning(
+r"(The 'submodel_classes' attribute of an SBC_bridgesampling_diagnostics data.frame
+is not set or is in incorrect format.
+Maybe you have modified the $backend_diagnostics element of SBC_results?
+If not, please file an issue at https://github.com/hyunjimoon/SBC/issues/
+)")
+    submodel_diags <- list()
+  } else {
+    get_submodel_diags <- function(i) {
+      bs_specific_diags <- list()
+      bs_specific_diags[[paste0("bs_error_H", i)]] <-
+        SBC_numeric_diagnostic(paste0("relative error of marginal likelihood for H", i), report = "max", lower_thresh = 5)
+
+      H_diags_selected <-
+          dplyr::select(diags, tidyselect::ends_with(paste0("_H",i)) & !tidyselect::all_of(c("prob_H1", names(bs_specific_diags))))
+
+      H_diags <- dplyr::rename_with(
+        H_diags_selected,
+        \(name) gsub(paste0("_H",i,"$"), "", name))
+
+
+      class(H_diags) <- submodel_classes[[paste0("H",i)]]
+      types_sub <- diagnostic_types(H_diags)
+      types_mapped <- purrr::map(types_sub,
+                                 \(diag) SBC_submodel_diagnostic(paste0("H", i), diag))
+      names(types_mapped) <- paste0(names(types_sub, "_H", i))
+      c(
+        types_mapped,
+        bs_specific_diags
+      )
+    }
+
+    submodel_diags <- c(
+      get_submodel_diags(0),
+      get_submodel_diags(1)
+    )
+
   }
 
   c(
     list(
-      bs_error_H0 = SBC_numeric_diagnostic("relative error of marginal likelihood for H0", report = "max", lower_thresh = 5),
-      bs_error_H1 = SBC_numeric_diagnostic("relative error of marginal likelihood for H1", report = "max", lower_thresh = 5)
+      prob_H1 = SBC_numeric_diagnostic("posterior probability of H1", report = "quantiles")
     ),
-    submodel_diags(backend$backend_H0, 0),
-    submodel_diags(backend$backend_H1, 1)
-  )
-}
-
-#' @export
-summary.SBC_bridgesampling_diagnostics <- function(x) {
-  summ <- list(
-    n_fits = nrow(x),
-    n_large_error_H0 = sum(x$bs_error_H0 >= 5, na.rm = TRUE),
-    n_large_error_H1 = sum(x$bs_error_H1 >= 5, na.rm = TRUE)
-  )
-
-  process_submodel_diags <- function(i) {
-    class_column <- paste0(".H",i,"_class")
-    if(!is.null(x[[class_column]])) {
-      unique_class <- unique(x[[class_column]])
-      if(length(unique_class) > 1) {
-        warning(paste0("Differing H", i,"_class in diagnostics not supported, ignoring."))
-      } else {
-        if(unique_class != "data.frame") {
-          H_diags <-
-            dplyr::rename_with(
-              dplyr::select(x, tidyselect::ends_with(paste0("_H",i)) & !tidyselect::starts_with("bs_error")),
-              \(name) gsub(paste0("_H",i,"$"), "", name))
-
-          class(H_diags) <- c(unique_class, class(H_diags))
-          return(summary(H_diags))
-        }
-      }
-    }
-    NULL
-  }
-
-  summ$H0_summary <- process_submodel_diags(0)
-  summ$H1_summary <- process_submodel_diags(1)
-
-  structure(summ, class = "SBC_bridgesampling_diagnostics_summary")
-}
-
-#' @export
-get_diagnostic_messages.SBC_bridgesampling_diagnostics <- function(x) {
-  get_diagnostic_messages(summary(x))
-}
-
-
-#' @export
-get_diagnostic_messages.SBC_bridgesampling_diagnostics_summary <- function(x) {
-  SBC_diagnostic_messages(
-    rbind(
-      data.frame(ok = x$n_large_error_H0 == 0,
-                 message = paste0( x$n_large_error_H0, " (", round(100 * x$n_large_error_H0 / x$n_fits),
-                                   "%) of fits had large relative error of marginal likelihood for H0.")),
-      data.frame(ok = x$n_large_error_H1 == 0,
-                 message = paste0( x$n_large_error_H1, " (", round(100 * x$n_large_error_H0 / x$n_fits),
-                                   "%) of fits had large relative error of marginal likelihood for H1.")),
-      dplyr::mutate(
-        get_diagnostic_messages(x$H0_summary),
-        message = paste0("H0: ", message)
-      ),
-      dplyr::mutate(
-        get_diagnostic_messages(x$H1_summary),
-        message = paste0("H1: ", message)
-      )
-    )
+    submodel_diags
   )
 }
 

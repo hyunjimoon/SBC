@@ -8,7 +8,6 @@ SBC_results(
   stats,
   fits,
   backend_diagnostics,
-  backend_diagnostics_types,
   default_diagnostics,
   outputs,
   messages,

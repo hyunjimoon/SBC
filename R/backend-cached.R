@@ -105,11 +105,6 @@ SBC_fit_to_bridge_sampler.SBC_backend_cached <- function(backend, fit, generated
   }
 }
 
-#' @export
-SBC_backend_diagnostics_types.SBC_backend_cached <- function(backend) {
-  SBC_backend_diagnostics_types(backend$backend)
-}
-
 #' Allows the backend to do any pre-/post- processing on a fit stored to / loaded from cache.
 #'
 #' This is useful e.g. to provide a live `stanmodel` instance to an rstan fit,
