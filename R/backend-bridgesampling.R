@@ -181,7 +181,7 @@ If not, please file an issue at https://github.com/hyunjimoon/SBC/issues/
     get_submodel_diags <- function(i) {
       bs_specific_diags <- list()
       bs_specific_diags[[paste0("bs_error_H", i)]] <-
-        SBC_numeric_diagnostic(paste0("relative error of marginal likelihood for H", i), report = "max", lower_thresh = 5)
+        numeric_diagnostic(paste0("relative error of marginal likelihood for H", i), report = "max", lower_thresh = 5)
 
       H_diags_selected <-
           dplyr::select(diags, tidyselect::ends_with(paste0("_H",i)) & !tidyselect::all_of(c("prob_H1", names(bs_specific_diags))))
@@ -194,7 +194,7 @@ If not, please file an issue at https://github.com/hyunjimoon/SBC/issues/
       class(H_diags) <- submodel_classes[[paste0("H",i)]]
       types_sub <- diagnostic_types(H_diags)
       types_mapped <- purrr::map(types_sub,
-                                 \(diag) SBC_submodel_diagnostic(paste0("H", i), diag))
+                                 \(diag) submodel_diagnostic(paste0("H", i), diag))
       names(types_mapped) <- paste0(names(types_sub, "_H", i))
       c(
         types_mapped,
@@ -211,7 +211,7 @@ If not, please file an issue at https://github.com/hyunjimoon/SBC/issues/
 
   c(
     list(
-      prob_H1 = SBC_numeric_diagnostic("posterior probability of H1", report = "quantiles")
+      prob_H1 = numeric_diagnostic("posterior probability of H1", report = "quantiles")
     ),
     submodel_diags
   )

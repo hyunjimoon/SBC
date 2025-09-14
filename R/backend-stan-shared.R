@@ -1,12 +1,12 @@
 #' @export
 diagnostic_types.SBC_nuts_diagnostics <- function(diags) {
   list(
-    max_chain_time = SBC_numeric_diagnostic("maximum time per chain", report = "max", digits = 0),
-    n_divergent = SBC_count_diagnostic("divergences", report = "max", error_above = 0),
-    n_max_treedepth = SBC_count_diagnostic("iterations that saturated max treedepth", error_above = 0, label_short = "max treedepths"),
-    n_rejects = SBC_count_diagnostic("steps rejected", report = "max", error_above = 0),
-    min_bfmi = SBC_numeric_diagnostic("E-BFMI", report = "min", error_below = 0.2, digits = 3),
-    n_failed_chains = SBC_count_diagnostic("failed chains", error_above = 0)
+    max_chain_time = numeric_diagnostic("maximum time per chain", report = "max", digits = 0),
+    n_divergent = count_diagnostic("divergences", report = "max", error_above = 0),
+    n_max_treedepth = count_diagnostic("iterations that saturated max treedepth", error_above = 0, label_short = "max treedepths"),
+    n_rejects = count_diagnostic("steps rejected", report = "max", error_above = 0),
+    min_bfmi = numeric_diagnostic("E-BFMI", report = "min", error_below = 0.2, digits = 3),
+    n_failed_chains = count_diagnostic("failed chains", error_above = 0)
   )
 }
 
@@ -54,9 +54,9 @@ get_expected_max_rhat <- function(n_vars, prob = 0.99, approx_sd = 0.005) {
 #' @export
 diagnostic_types.SBC_ADVI_diagnostics <- function(diags) {
   list(
-    elbo_converged = SBC_logical_diagnostic("ELBO converged", error_value = FALSE),
-    n_rejects = SBC_count_diagnostic("some steps rejected", report = "max", lower_thresh = 0),
-    time = SBC_numeric_diagnostic("time", report = "max")
+    elbo_converged = logical_diagnostic("ELBO converged", error_value = FALSE),
+    n_rejects = count_diagnostic("some steps rejected", report = "max", lower_thresh = 0),
+    time = numeric_diagnostic("time", report = "max")
   )
 }
 

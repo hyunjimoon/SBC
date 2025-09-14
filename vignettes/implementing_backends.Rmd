@@ -256,8 +256,8 @@ this should return a named list where each element describes a single diagnostic
 ```{r}
 diagnostic_types.SBC_glm_diagnostics <- function(x) {
   list(
-    probs_0_1 = SBC_logical_diagnostic("had 0/1 probabilities", error_value = TRUE),
-    converged = SBC_logical_diagnostic("had convergence problems", error_value = FALSE)
+    probs_0_1 = logical_diagnostic("had 0/1 probabilities", error_value = TRUE),
+    converged = logical_diagnostic("had convergence problems", error_value = FALSE)
   )
 }
 ```

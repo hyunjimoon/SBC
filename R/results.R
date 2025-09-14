@@ -1169,8 +1169,8 @@ SBC_results_base_diagnostics <- function(results) {
 
 SBC_results_base_diagnostic_types <- function() {
   list(
-    has_error = SBC_logical_diagnostic("produced error", TRUE, hint = "Inspect $errors for the full messages."),
-    has_warning = SBC_logical_diagnostic("gave warning", TRUE, hint = "Inspect $warnings for the full messages.")
+    has_error = logical_diagnostic("produced error", TRUE, hint = "Inspect $errors for the full messages."),
+    has_warning = logical_diagnostic("gave warning", TRUE, hint = "Inspect $warnings for the full messages.")
   )
 }
 
@@ -1220,16 +1220,16 @@ default_diagnostics_types <- function() {
                           "If this is expected, mark the variable `possibly_constant_var_attribute()` to suppress this message.")
   c(
     list(
-      n_has_na = SBC_count_diagnostic("had some NAs in variables/samples",
+      n_has_na = count_diagnostic("had some NAs in variables/samples",
                                       hint = "If this is expected, mark the variable with `na_valid_var_attribute()` to suppress this message."),
-      n_na_rhat = SBC_count_diagnostic("had NA Rhat",
+      n_na_rhat = count_diagnostic("had NA Rhat",
                                        hint = possibly_constant_hint),
-      n_na_ess_bulk = SBC_count_diagnostic("had NA ess_bulk", hint = possibly_constant_hint),
-      n_na_ess_tail = SBC_count_diagnostic("had NA ess_tail"),
-      max_rhat = SBC_numeric_diagnostic("maximum Rhat", label_short = "Rhat", report = "max", error_above = 1.01, allow_na = TRUE, digits = 3),
-      min_ess_bulk = SBC_numeric_diagnostic("bulk ESS", report = "min", allow_na = TRUE, digits = 0),
-      min_ess_tail = SBC_numeric_diagnostic("tail ESS", report = "min", allow_na = TRUE, digits = 0),
-      min_ess_to_rank = SBC_numeric_diagnostic("tail ESS / maximum rank", report = "min", allow_na = TRUE, error_below = 0.5,
+      n_na_ess_bulk = count_diagnostic("had NA ess_bulk", hint = possibly_constant_hint),
+      n_na_ess_tail = count_diagnostic("had NA ess_tail"),
+      max_rhat = numeric_diagnostic("maximum Rhat", label_short = "Rhat", report = "max", error_above = 1.01, allow_na = TRUE, digits = 3),
+      min_ess_bulk = numeric_diagnostic("bulk ESS", report = "min", allow_na = TRUE, digits = 0),
+      min_ess_tail = numeric_diagnostic("tail ESS", report = "min", allow_na = TRUE, digits = 0),
+      min_ess_to_rank = numeric_diagnostic("tail ESS / maximum rank", report = "min", allow_na = TRUE, error_below = 0.5,
                                                hint = "This potentially skews the rank statistics.\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) \nor number of posterior draws (by refitting) might help.")
     )
   )
@@ -1254,18 +1254,18 @@ SBC_results_diagnostics <- function(results) {
 #' @export
 SBC_results_diagnostic_messages <- function(results) {
 
-  base_messages <- SBC_get_all_diagnostic_messages(
+  base_messages <- get_all_diagnostic_messages(
     SBC_results_base_diagnostics(results),
     SBC_results_base_diagnostic_types())
 
   default_diags_mod <- dplyr::select(results$default_diagnostics, -n_vars)
-  default_messages <- SBC_get_all_diagnostic_messages(
+  default_messages <- get_all_diagnostic_messages(
     default_diags_mod,
     default_diagnostics_types()
   )
 
   if(!is.null(results$backend_diagnostics)) {
-    backend_messages <- SBC_get_all_diagnostic_messages(results$backend_diagnostics,
+    backend_messages <- get_all_diagnostic_messages(results$backend_diagnostics,
                                                         diagnostic_types(results$backend_diagnostics))
   } else {
     backend_messages <- NULL

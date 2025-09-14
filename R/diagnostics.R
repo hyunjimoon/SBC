@@ -1,5 +1,5 @@
 #' @export
-SBC_numeric_diagnostic <- function(label, report = NULL, error_above = Inf, error_below = -Inf, allow_na = FALSE, label_short = NULL,
+numeric_diagnostic <- function(label, report = NULL, error_above = Inf, error_below = -Inf, allow_na = FALSE, label_short = NULL,
                                    hint = "", digits = 2) {
   if(is.null(label_short)) {
     label_short <- label
@@ -12,7 +12,7 @@ SBC_numeric_diagnostic <- function(label, report = NULL, error_above = Inf, erro
 }
 
 #' @export
-SBC_count_diagnostic <- function(label, error_above = 0, label_short = NULL, hint = "") {
+count_diagnostic <- function(label, error_above = 0, label_short = NULL, hint = "") {
   if(is.null(label_short)) {
     label_short <- label
   }
@@ -25,7 +25,7 @@ SBC_count_diagnostic <- function(label, error_above = 0, label_short = NULL, hin
 
 
 #' @export
-SBC_logical_diagnostic <- function(label, error_value, hint = "") {
+logical_diagnostic <- function(label, error_value, hint = "") {
   structure(list(label = label,
                  error_value = error_value,
                  hint = hint),
@@ -33,21 +33,27 @@ SBC_logical_diagnostic <- function(label, error_value, hint = "") {
 }
 
 #' @export
-SBC_submodel_diagnostic <- function(prefix, diag) {
+submodel_diagnostic <- function(prefix, diag) {
   structure(list(prefix = prefix,
                  diag = diag),
             class = "SBC_submodel_diagnostic")
 }
 
 #' @export
-SBC_get_diagnostic_messages_single <- function(diagnostic, values) {
-  UseMethod("SBC_get_diagnostic_messages_single")
+default_diagnostic <- function(col_name) {
+  structure(list(col_name = col_name),
+            class = "SBC_default_diagnostic")
+}
+
+#' @export
+get_diagnostic_messages_single <- function(diagnostic, values) {
+  UseMethod("get_diagnostic_messages_single")
 }
 
 
 
 #' @export
-SBC_get_diagnostic_messages_single.SBC_numeric_diagnostic <- function(diagnostic, values) {
+get_diagnostic_messages_single.SBC_numeric_diagnostic <- function(diagnostic, values) {
   stopifnot(is.numeric(values) || is.integer(values))
 
 
@@ -98,7 +104,7 @@ SBC_get_diagnostic_messages_single.SBC_numeric_diagnostic <- function(diagnostic
 }
 
 #' @export
-SBC_get_diagnostic_messages_single.SBC_count_diagnostic <- function(diagnostic, values) {
+get_diagnostic_messages_single.SBC_count_diagnostic <- function(diagnostic, values) {
   stopifnot(is.numeric(values) || is.integer(values))
   stopifnot(all(as.integer(values) == values))
 
@@ -125,7 +131,7 @@ SBC_get_diagnostic_messages_single.SBC_count_diagnostic <- function(diagnostic, 
 }
 
 #' @export
-SBC_get_diagnostic_messages_single.SBC_logical_diagnostic <- function(diagnostic, values) {
+get_diagnostic_messages_single.SBC_logical_diagnostic <- function(diagnostic, values) {
   stopifnot(is.logical(values))
   ok_vec <- (values != diagnostic$error_value)
   if(all(ok_vec)) {
@@ -141,28 +147,54 @@ SBC_get_diagnostic_messages_single.SBC_logical_diagnostic <- function(diagnostic
 
 
 #' @export
-SBC_get_diagnostic_messages_single.SBC_submodel_diagnostic <- function(diagnostic, values) {
-  msgs <- SBC_get_diagnostic_messages_single(diagnostic$diag, values)
+get_diagnostic_messages_single.SBC_submodel_diagnostic <- function(diagnostic, values) {
+  msgs <- get_diagnostic_messages_single(diagnostic$diag, values)
   msgs$message <- paste0(prefix,": ", msgs$message)
   msgs
 }
 
 #' @export
-SBC_get_all_diagnostic_messages <- function(diags, types) {
+get_diagnostic_messages_single.SBC_default_diagnostic <- function(diagnostic, values) {
+  if(is.logical(values)) {
+    n_true <- sum(values, na.rm = TRUE)
+    n_na <- sum(is.na(values))
+    data.frame(ok = TRUE, message =
+                 paste0(diagnostic$col_name, ": ", n_true, " (", round(100 * n_true / length(values)), "%) true, ",
+                        n_na, " (", round(100 * n_na / length(values)), "%) NA, "))
+  } else if(is.numeric(values) || is.integer(values)) {
+    n_na <- sum(is.na(values))
+    data.frame(ok = TRUE, message =
+                 paste0(diagnostic$col_name, ": min = ", min(values, na.rm = TRUE), " max = ", max(values, na.rm = TRUE), ", ",
+                        n_na, " (", round(100 * n_na / length(values)), "%) NA, "))
+
+  } else{
+    tab <- sort(table(values, useNA = "ifany"), decreasing = TRUE)
+    if(length(tab) <= 4) {
+      tab_str <- paste0(names(tab), " - ", tab, " (", round(100 * tab / length(values)), "%)", collapse = ", ")
+    } else {
+      tab_str <- paste0(length(tab), " values. Most common: ", names(tab)[1], " - ", tab[1], " (", round(100 * tab[1] / length(values)), "%)")
+    }
+    data.frame(ok = TRUE,
+               message = paste0(diagnostic$col_name, ": ", tab_str))
+  }
+}
+
+#' @export
+get_all_diagnostic_messages <- function(diags, types) {
   shared_names <- intersect(names(diags), names(types))
 
-  missing_types <- names(diags)[!(names(diags) %in% names(types))]
+  missing_types <- names(diags)[!(names(diags) %in% c("sim_id", names(types)))]
+  types_default <- purrr::map(missing_types, default_diagnostic)
+  names(types_default) <- missing_types
+
   missing_diags <- names(types)[!(names(types) %in% names(diags))]
-  if(length(missing_types) > 0) {
-    warning("Following diagnostics have missing type: ", paste0(missing_types, collapse = ", "))
-  }
   if(length(missing_diags) > 0) {
     warning("Following declared diacnostic types have no values available: ", paste0(missing_diags, collapse = ", "))
   }
 
-  diags_shared <- diags[shared_names]
-  types_shared <- types[shared_names]
+  diags_used <- c(diags[shared_names], diags[missing_types])
+  types_used <- c(types[shared_names], types_default)
 
-  msgs <- purrr::map2_dfr(types_shared, diags_shared, SBC_get_diagnostic_messages_single)
+  msgs <- purrr::map2_dfr(types_used, diags_used, get_diagnostic_messages_single)
   msgs
 }

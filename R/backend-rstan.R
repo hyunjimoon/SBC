@@ -157,8 +157,8 @@ SBC_fit_to_diagnostics.RStanOptimizingFit <- function(fit, fit_output, fit_messa
 #' @export
 diagnostic_types.SBC_RStanOptimizing_diagnostics <- function(diags) {
   list(
-    n_attempts = SBC_count_diagnostic("attempts to produce usable Hessian", report = "max", lower_thresh = 1),
-    time = SBC_numeric_diagnostic("time", report = "max")
+    n_attempts = count_diagnostic("attempts to produce usable Hessian", report = "max", lower_thresh = 1),
+    time = numeric_diagnostic("time", report = "max")
   )
 }
 
