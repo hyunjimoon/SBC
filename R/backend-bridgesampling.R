@@ -127,6 +127,8 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
   diags1 <- SBC_fit_to_diagnostics(fit$fit1, fit_output, fit_messages, fit_warnings)
 
   warning("TODO: convergence failures")
+  # "209 of the 30000 log_prob() evaluations on the proposal draws produced -Inf/Inf."
+
 
   prob1 <- SBC_fit_bridgesampling_to_prob1(fit)
   log_prob1 <- SBC_fit_bridgesampling_to_prob1(fit, log.p = TRUE)
@@ -181,10 +183,10 @@ If not, please file an issue at https://github.com/hyunjimoon/SBC/issues/
     get_submodel_diags <- function(i) {
       bs_specific_diags <- list()
       bs_specific_diags[[paste0("bs_error_H", i)]] <-
-        numeric_diagnostic(paste0("relative error of marginal likelihood for H", i), report = "max", lower_thresh = 5)
+        numeric_diagnostic(paste0("relative error of marginal likelihood for H", i), report = "max", error_above = 5)
 
       H_diags_selected <-
-          dplyr::select(diags, tidyselect::ends_with(paste0("_H",i)) & !tidyselect::all_of(c("prob_H1", names(bs_specific_diags))))
+          dplyr::select(diags, tidyselect::ends_with(paste0("_H",i)) & !tidyselect::all_of(c("prob_H1", "log_prob_H1", names(bs_specific_diags))))
 
       H_diags <- dplyr::rename_with(
         H_diags_selected,
@@ -195,7 +197,7 @@ If not, please file an issue at https://github.com/hyunjimoon/SBC/issues/
       types_sub <- diagnostic_types(H_diags)
       types_mapped <- purrr::map(types_sub,
                                  \(diag) submodel_diagnostic(paste0("H", i), diag))
-      names(types_mapped) <- paste0(names(types_sub, "_H", i))
+      names(types_mapped) <- paste0(names(types_sub), "_H", i)
       c(
         types_mapped,
         bs_specific_diags
@@ -211,10 +213,42 @@ If not, please file an issue at https://github.com/hyunjimoon/SBC/issues/
 
   c(
     list(
-      prob_H1 = numeric_diagnostic("posterior probability of H1", report = "quantiles")
+      prob_H1 = numeric_diagnostic("posterior probability of H1", report = "quantiles"),
+      log_prob_H1 = skip_diagnostic()
     ),
     submodel_diags
   )
+}
+
+#' Custom rbind implementation maintainig information about submodels
+#' @exportS3Method base::rbind
+rbind.SBC_bridgesampling_diagnostics <- function(...) {
+
+  args <- list(...)
+
+  # Working around the special dispatch for rbind
+  args_class_removed <- purrr::map(args, \(x) { class(x) <- setdiff(class(x), "SBC_bridgesampling_diagnostics"); x })
+  res <- do.call(rbind, args_class_removed)
+  class(res) <- c("SBC_bridgesampling_diagnostics", class(res))
+
+  submodel_classes_list <- purrr::map(args, \(x) attr(x, "submodel_classes", exact = TRUE))
+  unique_submodel_classes <- unique(submodel_classes_list)
+  if(length(unique_submodel_classes) > 1) {
+    warning("Non-unique submodel classes when binding diagnostics")
+  }
+  submodel_classes <- unique_submodel_classes[[1]]
+  if(!is.null(submodel_classes)) {
+    attr(res, "submodel_classes") <- submodel_classes
+  }
+  res
+}
+
+#' Custom select implementation maintainig information about submodels
+#' @exportS3Method dplyr::select
+select.SBC_bridgesampling_diagnostics <- function(diags, ...) {
+  selected <- NextMethod()
+  attr(selected, "submodel_classes") <- attr(diags, "submodel_classes")
+  selected
 }
 
 #' @export

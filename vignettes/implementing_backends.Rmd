@@ -233,7 +233,7 @@ For this reason, SBC package will capture all output, warnings and messages
 that the backend produced and our implementation can then inspect and process
 all of the output. This can be achieved by implementing the `SBC_fit_to_diagnostics()`
 generic for our fit object. This method should return a single row `data.frame`
-that contains any diagnostics. 
+that contains any diagnostics.
 This is our implementation for the `glm` class:
 
 
@@ -248,19 +248,29 @@ SBC_fit_to_diagnostics.glm <- function(fit, fit_output, fit_messages, fit_warnin
 }
 ```
 
-If we want to automatically signal problems with the diagnostics, we
-need to let SBC know when a diagnostic is bad. We do this by
-implementing the `diagnostic_types()` generic for our backend ---
+We have added an extra class (`SBC_glm_diagnostics`) to the result to let us
+provide additional functionality for the diagnostics. Otherwise there is no
+way for the `SBC` package to know that for `probs_0_1` problems 
+are signalled by `TRUE` value while for `converged` problems are signalled by
+`FALSE` value.
+
+Specifically, to provide nice reporting and automatically signal problems with 
+the diagnostics, we can implement the `diagnostic_types()` generic for the class
+of the results ---
 this should return a named list where each element describes a single diagnostic:
 
 ```{r}
 diagnostic_types.SBC_glm_diagnostics <- function(x) {
   list(
-    probs_0_1 = logical_diagnostic("had 0/1 probabilities", error_value = TRUE),
-    converged = logical_diagnostic("had convergence problems", error_value = FALSE)
+    probs_0_1 = logical_diagnostic(error_label = "had 0/1 probabilities", error_value = TRUE),
+    converged = logical_diagnostic(error_label = "had convergence problems", error_value = FALSE)
   )
 }
 ```
+
+You typically want to the predefined functions like `logical_diagnostic()`, 
+`numeric_diagnostic()` and `count_diagnostic()` for most typical diagnostic
+values.
 
 ```{r}
 #TODO implement CDFs once there more use for them

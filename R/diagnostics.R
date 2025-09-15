@@ -1,4 +1,9 @@
 #' @export
+get_diagnostic_messages_single <- function(diagnostic, values) {
+  UseMethod("get_diagnostic_messages_single")
+}
+
+#' @export
 numeric_diagnostic <- function(label, report = NULL, error_above = Inf, error_below = -Inf, allow_na = FALSE, label_short = NULL,
                                    hint = "", digits = 2) {
   if(is.null(label_short)) {
@@ -10,46 +15,6 @@ numeric_diagnostic <- function(label, report = NULL, error_above = Inf, error_be
                  label_short = label_short, hint = hint, digits = digits),
             class = "SBC_numeric_diagnostic")
 }
-
-#' @export
-count_diagnostic <- function(label, error_above = 0, label_short = NULL, hint = "") {
-  if(is.null(label_short)) {
-    label_short <- label
-  }
-  structure(list(label = label,
-                 error_above = error_above,
-                 label_short = label_short,
-                 hint = hint),
-            class = "SBC_count_diagnostic")
-}
-
-
-#' @export
-logical_diagnostic <- function(label, error_value, hint = "") {
-  structure(list(label = label,
-                 error_value = error_value,
-                 hint = hint),
-            class = "SBC_logical_diagnostic")
-}
-
-#' @export
-submodel_diagnostic <- function(prefix, diag) {
-  structure(list(prefix = prefix,
-                 diag = diag),
-            class = "SBC_submodel_diagnostic")
-}
-
-#' @export
-default_diagnostic <- function(col_name) {
-  structure(list(col_name = col_name),
-            class = "SBC_default_diagnostic")
-}
-
-#' @export
-get_diagnostic_messages_single <- function(diagnostic, values) {
-  UseMethod("get_diagnostic_messages_single")
-}
-
 
 
 #' @export
@@ -83,6 +48,11 @@ get_diagnostic_messages_single.SBC_numeric_diagnostic <- function(diagnostic, va
     report <- paste0("Maximum ", label_for_report, " was ", round(max(values), digits = diagnostic$digits), ". ")
   } else if(diagnostic$report == "min") {
     report <- paste0("Minimum ", label_for_report, " was ", round(min(values), digits = diagnostic$digits), ". ")
+  } else if(diagnostic$report == "quantiles") {
+    quantiles <- round(quantile(values, probs = c(0.05, 0.5, 0.95)), digits = diagnostic$digits)
+    report <- paste0(label_for_report, " Q.05 = ", quantiles[1],", median = ", quantiles[2], ", Q.95 = ", quantiles[3], ". ")
+  } else {
+    stop(paste0("Unrecognized 'report' value: ", report))
   }
 
 
@@ -103,6 +73,19 @@ get_diagnostic_messages_single.SBC_numeric_diagnostic <- function(diagnostic, va
   msg
 }
 
+
+#' @export
+count_diagnostic <- function(label, error_above = 0, label_short = NULL, hint = "") {
+  if(is.null(label_short)) {
+    label_short <- label
+  }
+  structure(list(label = label,
+                 error_above = error_above,
+                 label_short = label_short,
+                 hint = hint),
+            class = "SBC_count_diagnostic")
+}
+
 #' @export
 get_diagnostic_messages_single.SBC_count_diagnostic <- function(diagnostic, values) {
   stopifnot(is.numeric(values) || is.integer(values))
@@ -110,24 +93,43 @@ get_diagnostic_messages_single.SBC_count_diagnostic <- function(diagnostic, valu
 
   any_above_thresh <- any(values > diagnostic$error_above, na.rm = TRUE)
 
-  if(diagnostic$error_above == 0) {
-    threshold_summary <- "some"
+  report <- paste0("Maximum number of ", diagnostic$label_short, " was ", max(values, na.rm = TRUE), ". ")
+
+  if (diagnostic$error_above == Inf) {
+    ok_message <- report
+    threshold_summary <- "some "
   } else {
-    threshold_summary <- paste0("> ", diagnostic$error_above)
+    if (diagnostic$error_above == 0) {
+      threshold_summary <- ""
+      ok_message <- paste0( "No fits had ",
+              threshold_summary, diagnostic$label, ".")
+    } else {
+      threshold_summary <- paste0("> ", diagnostic$error_above, " ")
+      ok_message <- paste0( "No fits had ",
+              threshold_summary, diagnostic$label, ". ", report)
+    }
   }
+
 
   if(any_above_thresh) {
     n_above <- sum(values > diagnostic$error_above, na.rm = TRUE)
     msg <- data.frame(ok = FALSE,
                       message = paste0( n_above, " (", round(100 * n_above / length(values)), "%) fits had ",
-                                        threshold_summary," ", diagnostic$label, ". Maximum number of ", diagnostic$label_short, " was ", max(values, na.rm = TRUE), ". ", diagnostic$hint))
+                                        threshold_summary, diagnostic$label, ". ", report, diagnostic$hint))
   } else {
     msg <- data.frame(ok = TRUE,
-                      message = paste0( "No fits had ",
-                                        threshold_summary," ", diagnostic$label, "."))
+                      message = ok_message)
   }
 
   msg
+}
+
+#' @export
+logical_diagnostic <- function(error_label, error_value, hint = "") {
+  structure(list(error_label = error_label,
+                 error_value = error_value,
+                 hint = hint),
+            class = "SBC_logical_diagnostic")
 }
 
 #' @export
@@ -135,22 +137,34 @@ get_diagnostic_messages_single.SBC_logical_diagnostic <- function(diagnostic, va
   stopifnot(is.logical(values))
   ok_vec <- (values != diagnostic$error_value)
   if(all(ok_vec)) {
-    msg <- data.frame(ok = TRUE, message = paste0("No fits ", diagnostic$label,"."))
+    msg <- data.frame(ok = TRUE, message = paste0("No fits ", diagnostic$error_label,"."))
   } else {
     n_fail <- sum(!ok_vec)
     msg <- data.frame(ok = FALSE,
                       message = paste0( n_fail, " (", round(100 * n_fail / length(values)), "%) fits ",
-                                        diagnostic$label,". ", diagnostic$hint))
-
+                                        diagnostic$error_label,". ", diagnostic$hint))
   }
 }
 
+#' @export
+submodel_diagnostic <- function(prefix, diag) {
+  structure(list(prefix = prefix,
+                 diag = diag),
+            class = "SBC_submodel_diagnostic")
+}
 
 #' @export
 get_diagnostic_messages_single.SBC_submodel_diagnostic <- function(diagnostic, values) {
   msgs <- get_diagnostic_messages_single(diagnostic$diag, values)
-  msgs$message <- paste0(prefix,": ", msgs$message)
+  msgs$message <- paste0(diagnostic$prefix,": ", msgs$message)
   msgs
+}
+
+
+#' @export
+default_diagnostic <- function(col_name) {
+  structure(list(col_name = col_name),
+            class = "SBC_default_diagnostic")
 }
 
 #' @export
@@ -158,13 +172,13 @@ get_diagnostic_messages_single.SBC_default_diagnostic <- function(diagnostic, va
   if(is.logical(values)) {
     n_true <- sum(values, na.rm = TRUE)
     n_na <- sum(is.na(values))
-    data.frame(ok = TRUE, message =
+    data.frame(ok = NA, message =
                  paste0(diagnostic$col_name, ": ", n_true, " (", round(100 * n_true / length(values)), "%) true, ",
                         n_na, " (", round(100 * n_na / length(values)), "%) NA, "))
   } else if(is.numeric(values) || is.integer(values)) {
     n_na <- sum(is.na(values))
-    data.frame(ok = TRUE, message =
-                 paste0(diagnostic$col_name, ": min = ", min(values, na.rm = TRUE), " max = ", max(values, na.rm = TRUE), ", ",
+    data.frame(ok = NA, message =
+                 paste0(diagnostic$col_name, ": min = ", round(min(values, na.rm = TRUE), digits = 3), ", max = ", round(max(values, na.rm = TRUE, digits = 3)), ", ",
                         n_na, " (", round(100 * n_na / length(values)), "%) NA, "))
 
   } else{
@@ -174,10 +188,22 @@ get_diagnostic_messages_single.SBC_default_diagnostic <- function(diagnostic, va
     } else {
       tab_str <- paste0(length(tab), " values. Most common: ", names(tab)[1], " - ", tab[1], " (", round(100 * tab[1] / length(values)), "%)")
     }
-    data.frame(ok = TRUE,
+    data.frame(ok = NA,
                message = paste0(diagnostic$col_name, ": ", tab_str))
   }
 }
+
+# A diagnostic that is ignored for summaries and messages
+#' @export
+skip_diagnostic <- function() {
+  structure(list(), class = "SBC_skip_diagnostic")
+}
+
+#' @export
+get_diagnostic_messages_single.SBC_skip_diagnostic <- function(diagnostic, values) {
+  data.frame(ok = logical(), message = character())
+}
+
 
 #' @export
 get_all_diagnostic_messages <- function(diags, types) {

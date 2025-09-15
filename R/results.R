@@ -1220,12 +1220,17 @@ default_diagnostics_types <- function() {
                           "If this is expected, mark the variable `possibly_constant_var_attribute()` to suppress this message.")
   c(
     list(
-      n_has_na = count_diagnostic("had some NAs in variables/samples",
+      n_has_na = count_diagnostic("some NAs in variables/samples",
+                                  error_above = 0,
                                       hint = "If this is expected, mark the variable with `na_valid_var_attribute()` to suppress this message."),
-      n_na_rhat = count_diagnostic("had NA Rhat",
+      n_na_rhat = count_diagnostic("NA Rhat",
+                                   error_above = 0,
+                                   hint = possibly_constant_hint),
+      n_na_ess_bulk = count_diagnostic("NA ess_bulk",
+                                       error_above = 0,
                                        hint = possibly_constant_hint),
-      n_na_ess_bulk = count_diagnostic("had NA ess_bulk", hint = possibly_constant_hint),
-      n_na_ess_tail = count_diagnostic("had NA ess_tail"),
+      n_na_ess_tail = count_diagnostic("NA ess_tail",
+                                       error_above = 0),
       max_rhat = numeric_diagnostic("maximum Rhat", label_short = "Rhat", report = "max", error_above = 1.01, allow_na = TRUE, digits = 3),
       min_ess_bulk = numeric_diagnostic("bulk ESS", report = "min", allow_na = TRUE, digits = 0),
       min_ess_tail = numeric_diagnostic("tail ESS", report = "min", allow_na = TRUE, digits = 0),
@@ -1285,7 +1290,10 @@ check_all_SBC_diagnostics <- function(results) {
   msg <- SBC_results_diagnostic_messages(results)
   msg_problems <- dplyr::filter(msg, !ok)
 
-  purrr::walk(msg_problems$message, function(m) { message(" - ", m, appendLF = FALSE) })
+  purrr::walk(msg_problems$message, function(m) { message(" - ", m, appendLF = TRUE) })
+
+  msg_unknown <- dplyr::filter(msg, is.na(ok))
+  purrr::walk(msg_unknown$message, function(m) { cat(" - [???] ", m, "\n") })
 
   all_ok <- all(msg$ok)
 
@@ -1318,7 +1326,20 @@ print.SBC_results <- function(x) {
 print.SBC_results_summary <- function(x) {
   cat("SBC_results with", x$n_fits, "total fits.\n")
 
-  cat(paste0(" - ", x$messages$message, collapse = "\n"))
+  if(requireNamespace("crayon", quietly = TRUE)) {
+    status_string <- dplyr::case_when(
+      is.na(x$messages$ok) ~ crayon::yellow("[???]"),
+      x$messages$ok ~ crayon::green("[OK]"),
+      TRUE ~ crayon::red("[BAD]")
+    )
+  } else {
+    status_string <- dplyr::case_when(
+      is.na(x$messages$ok) ~ "[???]",
+      x$messages$ok ~ "[OK]",
+      TRUE ~ "[BAD]"
+    )
+  }
+  cat(paste0(" - ", status_string, " ", x$messages$message, collapse = "\n"))
 
   if(!all(x$messages$ok)) {
     message("Not all diagnostics are OK.\nYou can learn more by inspecting $default_diagnostics, ",
