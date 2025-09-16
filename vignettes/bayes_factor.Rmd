@@ -1,12 +1,12 @@
 ---
-title: "SBC for bayes factors (with rstan and bridgesampling)"
+title: "SBC for Bayes factors (with rstan and bridgesampling)"
 author: "Martin Modrák"
 date: "`r Sys.Date()`"
 output: 
   rmarkdown::html_vignette:
     toc: yes
 vignette: >
-  %\VignetteIndexEntry{SBC for bayes factors (with rstan and bridgesampling)}
+  %\VignetteIndexEntry{SBC for Bayes factors (with rstan and bridgesampling)}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
@@ -234,7 +234,9 @@ numbers are taken straight from `bridgesampling` documentation).
 One more trick we showcase is that we can cache individual model fits, if
 we wrap a backend with `SBC_backend_cached()`. Since we will reuse the same
 H0 model later, we will do this here just for the H0 model. Obviously everything
-will also work without caching.
+will also work without caching. For H1, some datasets cause divergences,
+and we are lazy to fully fix that issue, so we instead increase `adapt_delta` and
+`max_treedepth` (effectively avoiding the problem by using more compute).
 
 ```{r}
 iter <- 15500
@@ -245,13 +247,17 @@ backend_turtles_bad <- SBC_backend_bridgesampling(
     fit_cache_dir,
     SBC_backend_rstan_sample(m_H0, iter = iter, warmup = warmup, init = init)
     ),
-  SBC_backend_rstan_sample(m_H1_bad, iter = iter, warmup = warmup, init = init)
+  SBC_backend_rstan_sample(m_H1_bad, iter = iter, warmup = warmup, init = init,
+                           control = list(adapt_delta = 0.99, max_treedepth = 12))
 )
 res_turtles_bad <- compute_SBC(ds_turtles, backend_turtles_bad, 
                            keep_fits = FALSE,
                            cache_mode = "results",
                            cache_location = file.path(cache_dir, "turtles_bad.rds"))
 ```
+
+We have a small number of fits with small number of divergences, which we will
+ignore for now.
 
 Lets look at the default SBC diagnostics. Note that the plot by default
 combines all parameters that are present in at least a single model. 
@@ -366,7 +372,7 @@ good test quantities) be detected by SBC.
 [Tsukamura and Okada (2024)](https://doi.org/10.1007/s00407-022-00298-3) have noted
 that many published Stan models do not include proper normalization for bounded
 parameters and all of those models could thus produce incorrect Bayes factors
-if used with `bridgesampling`, so this is a compuational problem
+if used with `bridgesampling`, so this is a computational problem
 one can expect to actually see in the wild.
 
 ## Correct model
@@ -389,7 +395,8 @@ backend_turtles <- SBC_backend_bridgesampling(
     fit_cache_dir,
     SBC_backend_rstan_sample(m_H0, iter = iter, warmup = warmup, init = init)
     ),
-  SBC_backend_rstan_sample(m_H1, iter = iter, warmup = warmup, init = init)
+  SBC_backend_rstan_sample(m_H1, iter = iter, warmup = warmup, init = init, 
+                           control = list(adapt_delta = 0.99, max_treedepth = 12))
 )
 res_turtles <- compute_SBC(ds_turtles, backend_turtles, 
                            keep_fits = FALSE,
@@ -397,6 +404,7 @@ res_turtles <- compute_SBC(ds_turtles, backend_turtles,
                            cache_location = file.path(cache_dir, "turtles.rds"))
 ```
 
+we got a small number of divergences, which we will ignore here
 
 
 ```{r ecdf-ok}

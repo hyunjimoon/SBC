@@ -144,7 +144,7 @@ res_poisson <-
     cache_mode = "results", cache_location = file.path(cache_dir, "poisson"))
 ```
 
-Even with the quite high precision afforded by 1000 simulations, the ECDF diff plot and the ranks show no problems - the model is quite well calibrated, although the wavy shape of the ECDF suggest a minor overconfidence of the approximation:
+Even with the quite high precision afforded by 1000 simulations, the ECDF diff plot and the ranks show no problems - the model is quite well calibrated, although the wavy shape of the ECDF suggest a potential minor overconfidence of the approximation:
 
 ```{r ecdf_rank_poisson}
 plot_ecdf_diff(res_poisson)

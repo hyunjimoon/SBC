@@ -199,7 +199,3 @@ SBC_fit_to_diagnostics.CmdStanVB <- function(fit, fit_output, fit_messages, fit_
   res
 }
 
-#' @export
-SBC_nuts_diagnostic_types.CmdStanVB <- function(backend) {
-  SBC_ADVI_diagnostics_types()
-}

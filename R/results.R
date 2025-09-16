@@ -756,6 +756,23 @@ reemit_captured <- function(captured) {
   }
 }
 
+# Add a given prefix to all captured content
+prefix_captured <- function(captured, prefix) {
+  process_single <- function(x) {
+    if(is.null(x)) {
+      NULL
+    } else {
+      paste0(prefix, x)
+    }
+
+  }
+
+  list(result = captured$res,
+       messages = process_single(captured$messages),
+       warnings = process_single(captured$warnings),
+       output = process_single(captured$output))
+}
+
 # See `compute_SBC` for docs for the function arguments
 compute_SBC_single <- function(vars_and_generated, backend, cores,
                                keep_fit, thin_ranks,
@@ -1169,8 +1186,8 @@ SBC_results_base_diagnostics <- function(results) {
 
 SBC_results_base_diagnostic_types <- function() {
   list(
-    has_error = logical_diagnostic("produced error", TRUE, hint = "Inspect $errors for the full messages."),
-    has_warning = logical_diagnostic("gave warning", TRUE, hint = "Inspect $warnings for the full messages.")
+    has_error = logical_diagnostic(ok_value = FALSE, true_label = "produced error", hint = "Inspect $errors for the full messages."),
+    has_warning = logical_diagnostic(ok_value = FALSE, true_label = "gave warning", hint = "Inspect $warnings for the full messages.")
   )
 }
 
@@ -1215,28 +1232,56 @@ compute_default_diagnostics <- function(stats) {
 }
 
 #'@export
-default_diagnostics_types <- function() {
-  possibly_constant_hint <- paste0("This likely means all posterior draws were equal for some variable.\n",
-                          "If this is expected, mark the variable `possibly_constant_var_attribute()` to suppress this message.")
-  c(
-    list(
-      n_has_na = count_diagnostic("some NAs in variables/samples",
-                                  error_above = 0,
-                                      hint = "If this is expected, mark the variable with `na_valid_var_attribute()` to suppress this message."),
+default_diagnostics_types <- function(results) {
+  def_diags <- results$default_diagnostics
+  unique_ess_bulk <- unique(def_diags$min_ess_bulk)
+  unique_ess_tail <- unique(def_diags$min_ess_tail)
+
+  iid_draws <- all(def_diags$max_rhat == 1) && length(unique_ess_bulk) == 1 &&
+    length(unique_ess_tail) == 1 && identical(unique_ess_bulk, unique_ess_tail)
+
+  always_on_diags <- list(
+    n_has_na = count_diagnostic(
+      "NAs in some variables/samples",
+      label_short = "variables with NAs",
+      error_above = 0, error_only = TRUE,
+      hint = "If this is expected, mark the variable with `na_valid_var_attribute()` to suppress this message."
+    )
+  )
+
+  if(iid_draws) {
+    mixing_diags <- list(n_na_rhat = skip_diagnostic(),
+                         n_na_ess_bulk = skip_diagnostic(),
+                         n_na_ess_tail = skip_diagnostic(),
+                         max_rhat = skip_diagnostic(),
+                         min_ess_bulk = skip_diagnostic(),
+                         min_ess_tail = skip_diagnostic(),
+                         min_ess_to_rank = skip_diagnostic())
+  } else {
+    possibly_constant_hint <- paste0("This likely means all posterior draws were equal for some variable.\n",
+                                     "If this is expected, mark the variable `possibly_constant_var_attribute()` to suppress this message.")
+
+    mixing_diags <- list(
       n_na_rhat = count_diagnostic("NA Rhat",
-                                   error_above = 0,
+                                   error_above = 0, error_only = TRUE,
                                    hint = possibly_constant_hint),
       n_na_ess_bulk = count_diagnostic("NA ess_bulk",
-                                       error_above = 0,
+                                       error_above = 0, error_only = TRUE,
                                        hint = possibly_constant_hint),
-      n_na_ess_tail = count_diagnostic("NA ess_tail",
+      n_na_ess_tail = count_diagnostic("NA ess_tail", error_only = TRUE,
                                        error_above = 0),
       max_rhat = numeric_diagnostic("maximum Rhat", label_short = "Rhat", report = "max", error_above = 1.01, allow_na = TRUE, digits = 3),
       min_ess_bulk = numeric_diagnostic("bulk ESS", report = "min", allow_na = TRUE, digits = 0),
       min_ess_tail = numeric_diagnostic("tail ESS", report = "min", allow_na = TRUE, digits = 0),
       min_ess_to_rank = numeric_diagnostic("tail ESS / maximum rank", report = "min", allow_na = TRUE, error_below = 0.5,
-                                               hint = "This potentially skews the rank statistics.\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) \nor number of posterior draws (by refitting) might help.")
+                                           hint = "This potentially skews the rank statistics.\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) \nor number of posterior draws (by refitting) might help.")
     )
+
+  }
+
+  c(
+    always_on_diags,
+    mixing_diags
   )
 }
 
@@ -1244,15 +1289,20 @@ default_diagnostics_types <- function() {
 #' @export
 SBC_results_diagnostics <- function(results) {
   base <- SBC_results_base_diagnostics(results)
+
+  if(!is.null(results$backend_diagnostics)) {
+    stopifnot(identical(base$sim_id, results$backend_diagnostics$sim_id))
+    diags <- cbind(base, dplyr::select(results$backend_diagnostics, -sim_id))
+  } else {
+    diags <- base
+  }
+
   stopifnot(identical(base$sim_id, results$default_diagnostics$sim_id))
   default_mod <- dplyr::select(results$default_diagnostics,
                                -sim_id, -n_vars)
 
-  diags <- cbind(base, default_mod)
-  if(!is.null(results$backend_diagnostics)) {
-    stopifnot(identical(base$sim_id, results$backend_diagnostics$sim_id))
-    diags <- cbind(diags, dplyr::select(results$backend_diagnostics, -sim_id))
-  }
+  diags <- cbind(diags, default_mod)
+
   diags
 }
 
@@ -1266,7 +1316,7 @@ SBC_results_diagnostic_messages <- function(results) {
   default_diags_mod <- dplyr::select(results$default_diagnostics, -n_vars)
   default_messages <- get_all_diagnostic_messages(
     default_diags_mod,
-    default_diagnostics_types()
+    default_diagnostics_types(results)
   )
 
   if(!is.null(results$backend_diagnostics)) {
@@ -1278,21 +1328,28 @@ SBC_results_diagnostic_messages <- function(results) {
 
 
   rbind(base_messages,
-        default_messages,
-        backend_messages)
+        backend_messages,
+        default_messages
+        )
 }
 
 
-#' @rdname check_all_SBC_diagnostics
+#' Check diagnostics for an SBC results object.
+#'
+#' Produces a message for each failed check.
 #' @export
 #' @return TRUE if all checks are OK, FALSE otherwise.
 check_all_SBC_diagnostics <- function(results) {
   msg <- SBC_results_diagnostic_messages(results)
-  msg_problems <- dplyr::filter(msg, !ok)
+
+  msg$message <- gsub("\n", "\n   ", msg$message, fixed = TRUE)
+
+
+  msg_problems <- dplyr::filter(msg, type == "bad")
 
   purrr::walk(msg_problems$message, function(m) { message(" - ", m, appendLF = TRUE) })
 
-  msg_unknown <- dplyr::filter(msg, is.na(ok))
+  msg_unknown <- dplyr::filter(msg, is.na(type))
   purrr::walk(msg_unknown$message, function(m) { cat(" - [???] ", m, "\n") })
 
   all_ok <- all(msg$ok)
@@ -1328,18 +1385,25 @@ print.SBC_results_summary <- function(x) {
 
   if(requireNamespace("crayon", quietly = TRUE)) {
     status_string <- dplyr::case_when(
-      is.na(x$messages$ok) ~ crayon::yellow("[???]"),
-      x$messages$ok ~ crayon::green("[OK]"),
-      TRUE ~ crayon::red("[BAD]")
+      is.na(x$messages$type) ~ crayon::yellow("[???]"),
+      x$messages$type == "info" ~ "[INFO]",
+      x$messages$type == "ok" ~ crayon::green("[OK]"),
+      x$messages$type == "bad" ~ crayon::red("[BAD]"),
+      TRUE ~ crayon::red(paste0("[", x$messages$type, "]"))
     )
   } else {
     status_string <- dplyr::case_when(
-      is.na(x$messages$ok) ~ "[???]",
-      x$messages$ok ~ "[OK]",
-      TRUE ~ "[BAD]"
+      is.na(x$messages$type) ~ "[???]",
+      x$messages$type == "info" ~ "[INFO]",
+      x$messages$type == "ok" ~ "[OK]",
+      x$messages$type == "bad" ~ "[BAD]",
+      TRUE ~ paste0("[", x$messages$type, "]")
     )
   }
-  cat(paste0(" - ", status_string, " ", x$messages$message, collapse = "\n"))
+
+  messages_indent <- gsub("\n", "\n   ", x$messages$message, fixed = TRUE)
+
+  cat(paste0(" - ", status_string, " ", messages_indent, collapse = "\n"))
 
   if(!all(x$messages$ok)) {
     message("Not all diagnostics are OK.\nYou can learn more by inspecting $default_diagnostics, ",

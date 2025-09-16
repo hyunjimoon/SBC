@@ -262,15 +262,16 @@ this should return a named list where each element describes a single diagnostic
 ```{r}
 diagnostic_types.SBC_glm_diagnostics <- function(x) {
   list(
-    probs_0_1 = logical_diagnostic(error_label = "had 0/1 probabilities", error_value = TRUE),
-    converged = logical_diagnostic(error_label = "had convergence problems", error_value = FALSE)
+    probs_0_1 = logical_diagnostic(ok_value = FALSE, true_label = "had 0/1 probabilities"),
+    converged = logical_diagnostic(ok_value = TRUE, true_label = "converged", false_label = "did not converge")
   )
 }
 ```
 
-You typically want to the predefined functions like `logical_diagnostic()`, 
-`numeric_diagnostic()` and `count_diagnostic()` for most typical diagnostic
-values.
+You typically want to use the predefined functions like `logical_diagnostic()`, 
+`numeric_diagnostic()` and `count_diagnostic()` for your diagnostic
+values, but you can in principle declare your own reporting method (see
+the source for the current methods for examples).
 
 ```{r}
 #TODO implement CDFs once there more use for them

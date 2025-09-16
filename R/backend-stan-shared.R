@@ -59,7 +59,7 @@ get_expected_max_rhat <- function(n_vars, prob = 0.99, approx_sd = 0.005) {
 #' @export
 diagnostic_types.SBC_ADVI_diagnostics <- function(diags) {
   list(
-    elbo_converged = logical_diagnostic("ELBO converged", error_value = FALSE),
+    elbo_converged = logical_diagnostic(ok_value = TRUE, true_label = "ELBO converged", false_label = "ELBO not converged"),
     n_rejects = count_diagnostic("some steps rejected", error_above = 0),
     time = numeric_diagnostic("time", report = "max")
   )
