@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.4.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0.9000</span>
       </span>
     </div>
 
@@ -127,7 +127,7 @@
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2025-08-08</h4>
+            <h4 data-toc-skip class="date">2025-09-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/indexing.Rmd" class="external-link"><code>vignettes/indexing.Rmd</code></a></small>
       <div class="hidden name"><code>indexing.Rmd</code></div>
@@ -151,7 +151,7 @@ yourself.</p>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/" class="external-link">rstan</a></span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://mc-stan.org/rstan/reference/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># Setup caching of results</span></span>
@@ -256,9 +256,9 @@ against simulated data.</p>
 <span>  <span class="va">backend_regression_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="va">model_regression_2</span>, iter_warmup <span class="op">=</span> <span class="fl">400</span>, iter_sampling <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span>
 <span>  <span class="va">backend_regression_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="va">model_regression_3</span>, iter_warmup <span class="op">=</span> <span class="fl">400</span>, iter_sampling <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="va">model_regression_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/regression1.stan"</span><span class="op">)</span></span>
-<span>  <span class="va">model_regression_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/regression2.stan"</span><span class="op">)</span></span>
-<span>  <span class="va">model_regression_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/regression3.stan"</span><span class="op">)</span></span>
+<span>  <span class="va">model_regression_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/regression1.stan"</span><span class="op">)</span></span>
+<span>  <span class="va">model_regression_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/regression2.stan"</span><span class="op">)</span></span>
+<span>  <span class="va">model_regression_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/regression3.stan"</span><span class="op">)</span></span>
 <span></span>
 <span>  </span>
 <span>  <span class="va">backend_regression_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span><span class="va">model_regression_1</span>, iter <span class="op">=</span> <span class="fl">900</span>, warmup <span class="op">=</span> <span class="fl">400</span><span class="op">)</span></span>
@@ -308,45 +308,44 @@ this will still let us see big problems (but not subtle issues)</p>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"regression1"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'regression1'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.011.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 6 (60%) fits had some steps rejected. Maximum number of rejections was 2.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 5 (50%) fits had steps rejected. Maximum number of steps rejected was 2.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_regression_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_regression</span>, <span class="va">backend_regression_2</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"regression2"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'regression2'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 5 (50%) fits had some steps rejected. Maximum number of rejections was 2.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 6 (60%) fits had steps rejected. Maximum number of steps rejected was 2.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_regression_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_regression</span>, <span class="va">backend_regression_3</span>, </span>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"regression3"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'regression3'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 6 (60%) fits had some steps rejected. Maximum number of rejections was 2.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 6 (60%) fits had steps rejected. Maximum number of steps rejected was 2.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>Here we also use the caching feature to avoid recomputing the fits
 when recompiling this vignette. In practice, caching is not necessary
 but is often useful.</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_regression_1</span><span class="op">)</span></span></code></pre></div>
 <p><img src="indexing_files/figure-html/plots_regression1-1.png" width="700"></p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_regression_1</span><span class="op">)</span></span></code></pre></div>
 <p><img src="indexing_files/figure-html/plots_regression1-2.png" width="700"></p>
 <p>As far as a quick SBC can see the first code is OK. You could verify
 further with more iterations but we tested the model for you and it is
 OK (although the implementation is not the best one).</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_regression_2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="indexing_files/figure-html/plots_regression2-1.png" width="700"></p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_regression_2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="indexing_files/figure-html/plots_regression2-2.png" width="700"></p>
 <p>But the second model is actually not looking good. In fact there is
@@ -356,10 +355,10 @@ an indexing bug. The problem is the line
 to the <code>sigma</code> variable (reusing the same <code>x</code>
 element leads to more similar predictions for each row, so
 <code>sigma</code> needs to be inflated to accommodate this)</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf</a></span><span class="op">(</span><span class="va">results_regression_3</span><span class="op">)</span></span></code></pre></div>
 <p><img src="indexing_files/figure-html/plots_regression3-1.png" width="700"></p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_regression_3</span><span class="op">)</span></span></code></pre></div>
 <p><img src="indexing_files/figure-html/plots_regression3-2.png" width="700"></p>
 <p>And the third model looks OK once again - and in fact we are pretty
@@ -376,7 +375,7 @@ sure it is also completely correct.</p>
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
+<p>Developed by Martin Modrák, Shinyoung Kim, Angie.H Moon, Teemu Säilynoja.</p>
 <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 

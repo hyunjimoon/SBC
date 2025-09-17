@@ -49,10 +49,10 @@ SBC_fit_to_diagnostics.stanfit <- function(fit, fit_output, fit_messages, fit_wa
     min_bfmi = min(rstan::get_bfmi(fit)),
     n_rejects = sum(grepl("reject", fit_messages)) + sum(grepl("reject", fit_warnings))
   )
-
   class(res) <- c("SBC_nuts_diagnostics", class(res))
   res
 }
+
 
 #' @export
 SBC_backend_hash_for_cache.SBC_backend_rstan_sample <- function(backend) {
@@ -155,31 +155,10 @@ SBC_fit_to_diagnostics.RStanOptimizingFit <- function(fit, fit_output, fit_messa
 }
 
 #' @export
-summary.SBC_RStanOptimizing_diagnostics <- function(x) {
-  summ <- list(
-    n_fits = nrow(x),
-    max_time = max(x$time),
-    n_multiple_attempts = sum(x$n_attempts > 1)
-  )
-
-  structure(summ, class = "SBC_RStanOptimizing_diagnostics_summary")
-}
-
-#' @export
-get_diagnostic_messages.SBC_RStanOptimizing_diagnostics <- function(x) {
-  get_diagnostic_messages(summary(x))
-}
-
-
-#' @export
-get_diagnostic_messages.SBC_RStanOptimizing_diagnostics_summary <- function(x) {
-  SBC_diagnostic_messages(
-    rbind(
-      data.frame(ok = TRUE, message = paste0("Maximum time was ", x$max_time, " sec.")),
-      data.frame(ok = x$n_multiple_attempts == 0,
-                 message = paste0( x$n_multiple_attempts, " (", round(100 * x$n_multiple_attempts / x$n_fits),
-                                   "%) of fits required multiple attempts to produce usable Hessian."))
-    )
+diagnostic_types.SBC_RStanOptimizing_diagnostics <- function(diags) {
+  list(
+    n_attempts = count_diagnostic("attempts to produce usable Hessian", error_above = 1),
+    time = numeric_diagnostic("time", report = "max")
   )
 }
 

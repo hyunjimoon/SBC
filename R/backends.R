@@ -81,7 +81,7 @@ validate_cdf_df <- function(cdf_df, valid_variables) {
 #'
 #' The diagnostics object has to be a `data.frame` but may
 #' inherit additional classes - in particular it may be useful
-#' for the returning object to implement [get_diagnostic_messages()].
+#' for the returning object to implement [diagnostic_types()].
 #'
 #' @param fit The fit returned by `SBC_fit`
 #' @param fit_output a character string capturing what the backend wrote to stdout
@@ -97,6 +97,17 @@ SBC_fit_to_diagnostics <- function(fit, fit_output, fit_messages, fit_warnings) 
 SBC_fit_to_diagnostics.default <- function(fit, fit_output, fit_messages, fit_warnings) {
   NULL
 }
+
+#' @export
+diagnostic_types <- function(diags) {
+  UseMethod("diagnostic_types")
+}
+
+#' @export
+diagnostic_types.default <- function(diags) {
+  list()
+}
+
 
 #' Get hash used to identify cached results.
 #'

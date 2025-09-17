@@ -80,7 +80,8 @@ variable_names_to_var_attributes_names <- function(variable_names) {
 #' `inf_valid_var_attribute` means infinity values may appear in the samples
 #' (this is useful e.g. to note that the parameter is actually not present for the
 #' given draw). Setting this
-#' attribute also changes the ESS/Rhat computation to ignore infinities.
+#' attribute also changes the ESS/Rhat computation to ignore infinities. It
+#' is also assume that it is OK if _all_ of the draws are infinity.
 #'
 #' `submodel_var_attribute` signals that the parameter belongs to a submodel
 #' which can be extracted individually

@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.4.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0.9000</span>
       </span>
     </div>
 
@@ -127,7 +127,7 @@
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2025-08-08</h4>
+            <h4 data-toc-skip class="date">2025-09-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/limits_of_SBC.Rmd" class="external-link"><code>vignettes/limits_of_SBC.Rmd</code></a></small>
       <div class="hidden name"><code>limits_of_SBC.Rmd</code></div>
@@ -155,7 +155,7 @@ additional examples at <a href="https://martinmodrak.github.io/sbc_test_quantiti
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/" class="external-link">rstan</a></span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://mc-stan.org/rstan/reference/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
@@ -237,7 +237,7 @@ model {
 <span>  <span class="va">backend_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span></span>
 <span>    <span class="va">model_minor</span>, iter_warmup <span class="op">=</span> <span class="va">iter_warmup</span>, iter_sampling <span class="op">=</span> <span class="va">iter_sampling</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="va">model_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/minor_discrepancy.stan"</span><span class="op">)</span></span>
+<span>  <span class="va">model_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/minor_discrepancy.stan"</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="va">backend_minor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span></span>
 <span>    <span class="va">model_minor</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
@@ -270,8 +270,8 @@ subsetting).</p>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"minor_10"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'minor_10'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 2 (20%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.014.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (10%) fits had some steps rejected. Maximum number of rejections was 1.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (10%) fits had steps rejected. Maximum number of steps rejected was 1.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 3 (30%) fits had maximum Rhat &gt; 1.01. Maximum Rhat was 1.016.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -294,8 +294,8 @@ simulations)</p>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"minor_90"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'minor_90'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 3 (3%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.014.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 17 (19%) fits had some steps rejected. Maximum number of rejections was 1.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 17 (19%) fits had steps rejected. Maximum number of steps rejected was 1.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 3 (3%) fits had maximum Rhat &gt; 1.01. Maximum Rhat was 1.014.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -317,8 +317,8 @@ looks better with more simulations).</p>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"minor_next_100"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'minor_next_100'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 8 (8%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.025.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 11 (11%) fits had some steps rejected. Maximum number of rejections was 1.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 11 (11%) fits had steps rejected. Maximum number of steps rejected was 1.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 6 (6%) fits had maximum Rhat &gt; 1.01. Maximum Rhat was 1.019.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -354,11 +354,11 @@ attained coverage of various central credible intervals.</p>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 6 × 6</span></span></span>
 <span><span class="co">##   variable width width_represented ci_low estimate ci_high</span></span>
 <span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">1</span> mu        0.5               0.5   0.402    0.47    0.539</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu        0.9               0.9   0.845    0.895   0.930</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span> mu        0.5               0.5   0.397    0.465   0.534</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu        0.9               0.9   0.851    0.9     0.934</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">3</span> mu        0.95              0.95  0.923    0.96    0.979</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">4</span> sigma     0.5               0.5   0.373    0.44    0.509</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">5</span> sigma     0.9               0.9   0.744    0.805   0.854</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">5</span> sigma     0.9               0.9   0.739    0.8     0.849</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">6</span> sigma     0.95              0.95  0.833    0.885   0.922</span></span></code></pre>
 <div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sigma_90_coverage_string</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span></span>
@@ -423,7 +423,7 @@ model {
 <span>  <span class="va">backend_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span></span>
 <span>    <span class="va">model_missing</span>, iter_warmup <span class="op">=</span> <span class="va">iter_warmup</span>, iter_sampling <span class="op">=</span> <span class="va">iter_sampling</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="va">model_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/missing_likelihood.stan"</span><span class="op">)</span></span>
+<span>  <span class="va">model_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/missing_likelihood.stan"</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="va">backend_missing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span></span>
 <span>    <span class="va">model_missing</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
@@ -434,7 +434,7 @@ model {
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"missing"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'missing'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 14 (7%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.019.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 14 (7%) fits had maximum Rhat &gt; 1.01. Maximum Rhat was 1.019.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -485,7 +485,7 @@ without recomputing the fits!</p>
 <span><span class="va">results_missing_dq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/recompute_SBC_statistics.html">recompute_SBC_statistics</a></span><span class="op">(</span></span>
 <span>  <span class="va">results_missing</span>, <span class="va">datasets_missing</span>, </span>
 <span>  backend <span class="op">=</span> <span class="va">backend_missing</span>, dquants <span class="op">=</span> <span class="va">log_lik_dq</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">##  - 21 (10%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.03.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 21 (10%) fits had maximum Rhat &gt; 1.01. Maximum Rhat was 1.03.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -533,7 +533,7 @@ model {
 <span>  <span class="va">backend_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span></span>
 <span>    <span class="va">model_missing_2</span>, iter_warmup <span class="op">=</span> <span class="va">iter_warmup</span>, iter_sampling <span class="op">=</span> <span class="va">iter_sampling</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="va">model_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/partially_missing_likelihood.stan"</span><span class="op">)</span></span>
+<span>  <span class="va">model_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/partially_missing_likelihood.stan"</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="va">backend_missing_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span></span>
 <span>    <span class="va">model_missing_2</span>, iter <span class="op">=</span> <span class="va">iter_sampling</span> <span class="op">+</span> <span class="va">iter_warmup</span>, warmup <span class="op">=</span> <span class="va">iter_warmup</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
@@ -544,7 +544,7 @@ model {
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"missing_2"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'missing_2'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 24 (12%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.026.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 24 (12%) fits had maximum Rhat &gt; 1.01. Maximum Rhat was 1.026.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -696,7 +696,7 @@ worst of those tested.</p>
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
+<p>Developed by Martin Modrák, Shinyoung Kim, Angie.H Moon, Teemu Säilynoja.</p>
 <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 

@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.4.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0.9000</span>
       </span>
     </div>
 
@@ -128,7 +128,7 @@ frequentist approximations</h1>
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2025-08-08</h4>
+            <h4 data-toc-skip class="date">2025-09-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/implementing_backends.Rmd" class="external-link"><code>vignettes/implementing_backends.Rmd</code></a></small>
       <div class="hidden name"><code>implementing_backends.Rmd</code></div>
@@ -353,74 +353,41 @@ messages that the backend produced and our implementation can then
 inspect and process all of the output. This can be achieved by
 implementing the <code><a href="../reference/SBC_fit_to_diagnostics.html">SBC_fit_to_diagnostics()</a></code> generic for our
 fit object. This method should return a single row
-<code>data.frame</code> that contains any diagnostics. Additionally, it
-is often useful to add a custom class to the results to allow for
-automatic summaries (we’ll get there). This is our implementation for
-the <code>glm</code> class:</p>
+<code>data.frame</code> that contains any diagnostics. This is our
+implementation for the <code>glm</code> class:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">SBC_fit_to_diagnostics.glm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">fit</span>, <span class="va">fit_output</span>, <span class="va">fit_messages</span>, <span class="va">fit_warnings</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>    probs_0_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/any.html" class="external-link">any</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"fitted probabilities numerically 0 or 1 occurred"</span>, <span class="va">fit_warnings</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>    converged <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">converged</span></span>
 <span>  <span class="op">)</span></span>
-<span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"SBC_glm_diagnostics"</span>, <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="va">res</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>Having a custom class let’s us implement a <code>summary</code>
-implementation for our diagnostics:</p>
+<p>We have added an extra class (<code>SBC_glm_diagnostics</code>) to
+the result to let us provide additional functionality for the
+diagnostics. Otherwise there is no way for the <code>SBC</code> package
+to know that for <code>probs_0_1</code> problems are signalled by
+<code>TRUE</code> value while for <code>converged</code> problems are
+signalled by <code>FALSE</code> value.</p>
+<p>Specifically, to provide nice reporting and automatically signal
+problems with the diagnostics, we can implement the
+<code>diagnostic_types()</code> generic for the class of the results —
+this should return a named list where each element describes a single
+diagnostic:</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">summary.SBC_glm_diagnostics</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">summ</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    n_fits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,</span>
-<span>    n_probs_0_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">probs_0_1</span><span class="op">)</span>,</span>
-<span>    n_not_converged <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="op">!</span><span class="va">x</span><span class="op">$</span><span class="va">converged</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">diagnostic_types.SBC_glm_diagnostics</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    probs_0_1 <span class="op">=</span> <span class="fu">logical_diagnostic</span><span class="op">(</span>ok_value <span class="op">=</span> <span class="cn">FALSE</span>, true_label <span class="op">=</span> <span class="st">"had 0/1 probabilities"</span><span class="op">)</span>,</span>
+<span>    converged <span class="op">=</span> <span class="fu">logical_diagnostic</span><span class="op">(</span>ok_value <span class="op">=</span> <span class="cn">TRUE</span>, true_label <span class="op">=</span> <span class="st">"converged"</span>, false_label <span class="op">=</span> <span class="st">"did not converge"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
-<span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/structure.html" class="external-link">structure</a></span><span class="op">(</span><span class="va">summ</span>, class <span class="op">=</span> <span class="st">"SBC_glm_diagnostics_summary"</span><span class="op">)</span>  </span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>and we can then implement the <code><a href="../reference/get_diagnostic_messages.html">get_diagnostic_messages()</a></code>
-generic, which takes an object and returns a list of messages
-potentially signalling problems - any messages that signal problems are
-then reported automatically to the user. The OK messages are also
-reported when calling <code>summary</code> on an
-<code>SBC_results</code> object.</p>
-<p>We’ll use our <code>summary</code> implementation for
-<code>SBC_glm_diagnostics</code> to create the messages:</p>
+<p>You typically want to use the predefined functions like
+<code>logical_diagnostic()</code>, <code>numeric_diagnostic()</code> and
+<code>count_diagnostic()</code> for your diagnostic values, but you can
+in principle declare your own reporting method (see the source for the
+current methods for examples).</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">get_diagnostic_messages.SBC_glm_diagnostics</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="../reference/get_diagnostic_messages.html">get_diagnostic_messages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span></span>
-<span><span class="va">get_diagnostic_messages.SBC_glm_diagnostics_summary</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">message_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="kw">if</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">n_probs_0_1</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">message_list</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> </span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">TRUE</span>, message <span class="op">=</span> <span class="st">"No fit had 0/1 probabilities."</span><span class="op">)</span></span>
-<span>  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>    <span class="va">message_list</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> </span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">FALSE</span>, </span>
-<span>                 message <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span></span>
-<span>                   <span class="va">x</span><span class="op">$</span><span class="va">n_probs_0_1</span>, <span class="st">" ("</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">x</span><span class="op">$</span><span class="va">n_probs_0_1</span> <span class="op">/</span> <span class="va">x</span><span class="op">$</span><span class="va">n_fits</span><span class="op">)</span>, </span>
-<span>                   <span class="st">"%) of fits had 0/1 probabilities."</span><span class="op">)</span><span class="op">)</span>    </span>
-<span>  <span class="op">}</span></span>
-<span>  </span>
-<span>  <span class="kw">if</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">n_not_converged</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">message_list</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> </span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">TRUE</span>, message <span class="op">=</span> <span class="st">"All fits converged."</span><span class="op">)</span></span>
-<span>  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>    <span class="va">message_list</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> </span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>ok <span class="op">=</span> <span class="cn">FALSE</span>, </span>
-<span>                 message <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span></span>
-<span>                   <span class="va">x</span><span class="op">$</span><span class="va">n_not_converged</span>, <span class="st">" ("</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">x</span><span class="op">$</span><span class="va">n_not_converged</span> <span class="op">/</span> <span class="va">x</span><span class="op">$</span><span class="va">n_fits</span><span class="op">)</span>, </span>
-<span>                   <span class="st">"%) of fits did not converge."</span><span class="op">)</span><span class="op">)</span>    </span>
-<span>  <span class="op">}</span>  </span>
-<span>  </span>
-<span>  <span class="fu">SBC_diagnostic_messages</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">message_list</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#TODO implement CDFs once there more use for them</span></span></code></pre></div>
 <p>Finally, some backend objects are complex and may differ between R
 sessions, even if they represent the same backend (Stan backends are a
@@ -490,7 +457,7 @@ new coefficients and outcome data. Below is a simple implementation with
 normal priors on the intercept and predictors. Note that we do some <a href="https://hyunjimoon.github.io/SBC/articles/rejection_sampling.html">rejection
 sampling</a> here to avoid using simulations where the generated
 response is the same or almost the same for all rows.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">generator_single_logistic</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">formula</span>, </span>
 <span>                                      <span class="va">template_data</span>, </span>
 <span>                                      <span class="va">intercept_prior_loc</span> <span class="op">=</span> <span class="fl">0</span>,</span>
@@ -507,7 +474,7 @@ response is the same or almost the same for all rows.</p>
 <span>  <span class="kw">repeat</span> <span class="op">{</span></span>
 <span>    <span class="va">coefs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>, <span class="va">predictor_prior_loc</span>, sd <span class="op">=</span> <span class="va">predictor_prior_width</span><span class="op">)</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">coefs</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span></span>
-<span>    <span class="kw">if</span><span class="op">(</span><span class="st">"(Intercept)"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">coefs</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">if</span><span class="op">(</span><span class="st">"(Intercept)"</span> <span class="op"><a href="https://mc-stan.org/posterior/reference/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">coefs</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>      <span class="va">coefs</span><span class="op">[</span><span class="st">"(Intercept)"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">intercept_prior_loc</span>, sd <span class="op">=</span> <span class="va">intercept_prior_width</span><span class="op">)</span></span>
 <span>    <span class="op">}</span></span>
 <span>    </span>
@@ -543,7 +510,7 @@ to Prevent Post-ERCP Pancreatitis, New England Journal of Medicine,
 <p>We’ll start by testing our approximate computation with the simplest
 analysis - the primary binary outcome predicted only by the treatment
 (the <code>rx</code> column in the data):</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">formula_indo_simple</span> <span class="op">&lt;-</span> <span class="va">outcome</span> <span class="op">~</span> <span class="va">rx</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">6524243</span><span class="op">)</span></span>
 <span><span class="va">datasets_indo_simple</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span></span>
@@ -553,25 +520,25 @@ analysis - the primary binary outcome predicted only by the treatment
 <span>  n_sims <span class="op">=</span> <span class="fl">500</span><span class="op">)</span> </span>
 <span></span>
 <span><span class="va">backend_indo_simple</span> <span class="op">&lt;-</span> <span class="fu">SBC_backend_glm</span><span class="op">(</span>formula <span class="op">=</span> <span class="va">formula_indo_simple</span>, family <span class="op">=</span> <span class="st">"binomial"</span><span class="op">)</span> </span></code></pre></div>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res_indo_simple</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_indo_simple</span>, <span class="va">backend_indo_simple</span>,</span>
 <span>                                   cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_simple"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'indo_simple'</span></span></code></pre>
 <p>The rank plots look good:</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">)</span></span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">)</span></span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_ranks-2.png" width="700"></p>
 <p>The coverages are close to nominal:</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_coverage.html">plot_coverage_diff</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">)</span></span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_sim_coverage-1.png" width="700"></p>
 <p>we can make this precise by inspecting the same results
 numerically:</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stats_effect</span> <span class="op">&lt;-</span> <span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">[</span><span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">variable</span> <span class="op">==</span> <span class="st">"rx1_indomethacin"</span>,<span class="op">]</span></span>
 <span><span class="va">main_eff_coverage</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/empirical_coverage.html">empirical_coverage</a></span><span class="op">(</span><span class="va">stats_effect</span>, width <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>,<span class="fl">0.9</span>, <span class="fl">0.95</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">main_eff_coverage</span></span></code></pre></div>
@@ -587,13 +554,13 @@ using more simulations would let us make this more precise, but for now
 we are happy that there clearly is no substantial discrepancy.</p>
 <p>We may want to also look at how tight estimates we get - looking
 directly gives us a somewhat unhelpful plot:</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">)</span></span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_sim_est_ugly-1.png" width="700"></p>
 <p>There is a simulation where the posterior uncertainty is very large.
 This corresponds to observed data where the outcome is the same for all
 rows where the treatment was used:</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">biggest_sd_sim</span> <span class="op">&lt;-</span> <span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">sim_id</span><span class="op">[</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/which.min.html" class="external-link">which.max</a></span><span class="op">(</span><span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">sd</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">datasets_indo_simple</span><span class="op">$</span><span class="va">generated</span><span class="op">[[</span><span class="va">biggest_sd_sim</span><span class="op">]</span><span class="op">]</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"outcome"</span>, <span class="st">"rx"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
@@ -603,7 +570,7 @@ rows where the treatment was used:</p>
 <span><span class="co">##       1       281            295</span></span></code></pre>
 <p>Filtering the extreme simulations out, we see that most commonly, we
 get a decently precise estimate.</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stats_filtered</span> <span class="op">&lt;-</span> <span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">[</span><span class="va">res_indo_simple</span><span class="op">$</span><span class="va">stats</span><span class="op">$</span><span class="va">sd</span> <span class="op">&lt;</span> <span class="fl">200</span>, <span class="op">]</span></span>
 <span><span class="fu"><a href="../reference/plot_sim_estimated.html">plot_sim_estimated</a></span><span class="op">(</span><span class="va">stats_filtered</span>, alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_sim_est-1.png" width="700"></p>
@@ -620,7 +587,7 @@ standardize the age to be centered at 50 and divide by 10 to make the
 <span class="math inline">\(N(0,1)\)</span> prior on the age coefficient
 have a sensible scale. To make matters worse, we further subsample the
 data to contain only 100 rows.</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">21645222</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">indo_rct_complex</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/droplevels.html" class="external-link">droplevels</a></span><span class="op">(</span></span>
@@ -640,13 +607,14 @@ data to contain only 100 rows.</p>
 <span></span>
 <span><span class="va">backend_indo_complex</span> <span class="op">&lt;-</span> <span class="fu">SBC_backend_glm</span><span class="op">(</span>formula <span class="op">=</span> <span class="va">formula_indo_complex</span>, family <span class="op">=</span> <span class="st">"binomial"</span><span class="op">)</span> </span></code></pre></div>
 <p>Now we are ready to run SBC:</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res_indo_complex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_indo_complex</span>, <span class="va">backend_indo_complex</span>,</span>
 <span>                                   cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_complex"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'indo_complex'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 19 (4%) of fits had 0/1 probabilities.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 2 (0%) of fits did not converge.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 19 (4%) fits gave warning. Inspect $warnings for the full messages.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 19 (4%) fits had 0/1 probabilities.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 2 (0%) fits did not converge.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -701,17 +669,18 @@ here:</p>
 <span>                                   cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_complex_narrow"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'indo_complex_narrow'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 169 (34%) of fits had 0/1 probabilities.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 2 (0%) of fits did not converge.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 169 (34%) fits gave warning. Inspect $warnings for the full messages.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 169 (34%) fits had 0/1 probabilities.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 2 (0%) fits did not converge.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>This is enough to make basically all the variables poorly
 calibrated:</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_indo_complex_narrow</span><span class="op">)</span></span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_complex_narrow_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_indo_complex_narrow</span><span class="op">)</span></span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_complex_narrow_ranks-2.png" width="700"></p>
 </div>
@@ -720,7 +689,7 @@ calibrated:</p>
 </h3>
 <p>To make the analysis complete, we’ll also return to the simple,
 well-informed model, but use narrow priors.</p>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">3289542</span><span class="op">)</span></span>
 <span><span class="va">datasets_indo_simple_narrow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_datasets.html">generate_datasets</a></span><span class="op">(</span><span class="fu"><a href="../reference/SBC_generator_function.html">SBC_generator_function</a></span><span class="op">(</span></span>
 <span>  <span class="va">generator_single_logistic</span>, </span>
@@ -731,7 +700,7 @@ well-informed model, but use narrow priors.</p>
 <span>  predictor_prior_loc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span>,</span>
 <span>  predictor_prior_width <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
 <span>  n_sims <span class="op">=</span> <span class="fl">500</span><span class="op">)</span> </span></code></pre></div>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res_indo_simple_narrow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span><span class="va">datasets_indo_simple_narrow</span>, <span class="va">backend_indo_simple</span>,</span>
 <span>                                   cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                                   cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>,<span class="st">"indo_simple_narrow"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -739,10 +708,10 @@ well-informed model, but use narrow priors.</p>
 <p>Turns out that in this case, the likelihood is sometimes not enough
 to completely overwhelm the prior and the main treatment effect is
 poorly calibrated:</p>
-<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">res_indo_simple_narrow</span><span class="op">)</span></span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_narrow_ranks-1.png" width="700"></p>
-<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_indo_simple_narrow</span><span class="op">)</span></span></code></pre></div>
 <p><img src="implementing_backends_files/figure-html/indo_simple_narrow_ranks-2.png" width="700"></p>
 </div>
@@ -773,7 +742,7 @@ so well - but SBC can tell us when it works and when it fails.</p>
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
+<p>Developed by Martin Modrák, Shinyoung Kim, Angie.H Moon, Teemu Säilynoja.</p>
 <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 

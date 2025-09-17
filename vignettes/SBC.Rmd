@@ -264,7 +264,7 @@ In practice, caching is not necessary but is often useful.
 We can now inspect the results to see if there were any errors and check individual stats:
 
 ```{r}
-results$stats
+dplyr::select(results$stats, sim_id:ess_tail) # Hiding some less useful statistics for clarity
 ```
 
 ### Plots

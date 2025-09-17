@@ -256,3 +256,7 @@ test_that("SBC_statistics_from_single_fit", {
     expect_equal(unique(res_ensure7$max_rank), 97)
 
 })
+
+test_that("dummy_stats", {
+  expect_no_error(compute_default_diagnostics(dummy_stats()))
+})

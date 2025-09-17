@@ -283,10 +283,10 @@
     <loc>https://hyunjimoon.github.io/SBC/reference/generated_quantities.html</loc>
   </url>
   <url>
-    <loc>https://hyunjimoon.github.io/SBC/reference/get_diagnostic_messages.default.html</loc>
+    <loc>https://hyunjimoon.github.io/SBC/reference/diagnostic_types.default.html</loc>
   </url>
   <url>
-    <loc>https://hyunjimoon.github.io/SBC/reference/get_diagnostic_messages.html</loc>
+    <loc>https://hyunjimoon.github.io/SBC/reference/diagnostic_types.html</loc>
   </url>
   <url>
     <loc>https://hyunjimoon.github.io/SBC/reference/get_stats_for_submodel.html</loc>

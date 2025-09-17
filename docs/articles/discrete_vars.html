@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.4.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0.9000</span>
       </span>
     </div>
 
@@ -128,7 +128,7 @@ JAGS</h1>
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2025-08-08</h4>
+            <h4 data-toc-skip class="date">2025-09-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/discrete_vars.Rmd" class="external-link"><code>vignettes/discrete_vars.Rmd</code></a></small>
       <div class="hidden name"><code>discrete_vars.Rmd</code></div>
@@ -256,7 +256,8 @@ generated quantities {
 <span>      y <span class="op">=</span> <span class="va">y</span></span>
 <span>    <span class="op">)</span>,</span>
 <span>    <span class="co"># Letting SBC know that the s parameter can potentially</span></span>
-<span>    <span class="co"># be drawn as all constants </span></span>
+<span>    <span class="co"># be drawn as all draws identical (if s is well informed by data)</span></span>
+<span>    <span class="co"># and this should not trigger warnings</span></span>
 <span>    var_attributes <span class="op">=</span> <span class="fu"><a href="../reference/variable-attributes.html">var_attributes</a></span><span class="op">(</span></span>
 <span>      s <span class="op">=</span> <span class="fu"><a href="../reference/variable-attributes.html">possibly_constant_var_attribute</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>    <span class="op">)</span></span>
@@ -284,11 +285,10 @@ this.</p>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model1"</span><span class="op">)</span>,</span>
 <span>                    dquants <span class="op">=</span> <span class="va">log_lik_dq</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'model1'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (3%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
-<span><span class="co">## the rank statistics. The lowest tail ESS was 156.</span></span>
-<span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
-<span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 2 (7%) fits had divergent transitions. Maximum number of divergences was 2.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 2 (7%) fits had divergences. Maximum number of divergences was 2.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (3%) fits had tail ESS / maximum rank &lt; 0.5. Minimum tail ESS / maximum rank was 0.39. This potentially skews the rank statistics.</span></span>
+<span><span class="co">##     If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
+<span><span class="co">##    or number of posterior draws (by refitting) might help.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -300,7 +300,8 @@ parameter are extreme - many ranks of 0 and <em>extreme</em> z-scores,
 including -Infinity. Seing just one or two such fits should be enough to
 convince us that there is something fundamentally wrong.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">results_1</span><span class="op">$</span><span class="va">stats</span>, <span class="va">variable</span> <span class="op">==</span> <span class="st">"s"</span><span class="op">)</span> </span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">stats_s</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">results_1</span><span class="op">$</span><span class="va">stats</span>, <span class="va">variable</span> <span class="op">==</span> <span class="st">"s"</span><span class="op">)</span> </span>
+<span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">stats_s</span>, <span class="va">sim_id</span><span class="op">:</span><span class="va">ess_tail</span><span class="op">)</span> <span class="co"># Hiding some less useful statistics for clarity</span></span></code></pre></div>
 <pre><code><span><span class="co">##    sim_id variable simulated_value rank      z_score    mean         sd q5</span></span>
 <span><span class="co">## 1       1        s               3  198  -0.02513039 3.04025 1.60164642  1</span></span>
 <span><span class="co">## 2       2        s               1   25  -1.87063891 2.03000 0.55061402  1</span></span>
@@ -332,37 +333,37 @@ convince us that there is something fundamentally wrong.</p>
 <span><span class="co">## 28     28        s               3    0         -Inf 4.00000 0.00000000  4</span></span>
 <span><span class="co">## 29     29        s               4    4  -3.56749357 4.97200 0.27246020  5</span></span>
 <span><span class="co">## 30     30        s               1    4  -1.39051691 2.25450 0.90218248  1</span></span>
-<span><span class="co">##    median q95      rhat  ess_bulk  ess_tail        attributes max_rank has_na</span></span>
-<span><span class="co">## 1       3   5 1.0001472  960.1297        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 2       2   3 0.9998128 1400.4890  887.7721 possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 3       5   5 0.9997579 2376.7389        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 4       3   4 1.0000908 1090.4292 1117.9399 possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 5       3   4 0.9998188 2981.9423 2683.8788 possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 6       1   5 1.0036613 1166.8487        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 7       4   4        NA        NA        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 8       3   5 0.9999413 2969.6936        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 9       3   3 0.9997509 3870.2781 4008.0221 possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 10      3   3 1.0001209 4123.9995 4073.9620 possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 11      5   5 0.9998265 3068.1264        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 12      2   4 1.0001338 1839.3131 1208.6369 possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 13      1   5 1.0015456  372.2029        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 14      2   2 1.0002332 3469.7957 3094.8514 possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 15      3   5 0.9998561 2411.3315        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 16      5   5 0.9998223 1767.4101        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 17      4   5 1.0004377 1165.0950        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 18      4   5 0.9999092 2587.4329        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 19      3   5 1.0013922 1480.6382        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 20      3   4 0.9997843 3031.8315 1861.1172 possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 21      4   5 1.0021130  426.1324        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 22      5   5 1.0028079 2498.9440        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 23      3   5 1.0009141 2999.7228        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 24      2   3 0.9997871 2815.0432 2413.4425 possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 25      4   4 1.0018197 3183.2795 3168.0850 possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 26      2   5 1.0008354 2386.0106        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 27      1   5 0.9997617 1161.8534        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 28      4   4        NA        NA        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 29      5   5 0.9997645 1020.1639        NA possibly_constant      399  FALSE</span></span>
-<span><span class="co">## 30      2   5 1.0018580  827.6593        NA possibly_constant      399  FALSE</span></span></code></pre>
+<span><span class="co">##    median q95      rhat  ess_bulk  ess_tail</span></span>
+<span><span class="co">## 1       3   5 1.0001472  960.1297        NA</span></span>
+<span><span class="co">## 2       2   3 0.9998128 1400.4890  887.7721</span></span>
+<span><span class="co">## 3       5   5 0.9997579 2376.7389        NA</span></span>
+<span><span class="co">## 4       3   4 1.0000908 1090.4292 1117.9399</span></span>
+<span><span class="co">## 5       3   4 0.9998188 2981.9423 2683.8788</span></span>
+<span><span class="co">## 6       1   5 1.0036613 1166.8487        NA</span></span>
+<span><span class="co">## 7       4   4        NA        NA        NA</span></span>
+<span><span class="co">## 8       3   5 0.9999413 2969.6936        NA</span></span>
+<span><span class="co">## 9       3   3 0.9997509 3870.2781 4008.0221</span></span>
+<span><span class="co">## 10      3   3 1.0001209 4123.9995 4073.9620</span></span>
+<span><span class="co">## 11      5   5 0.9998265 3068.1264        NA</span></span>
+<span><span class="co">## 12      2   4 1.0001338 1839.3131 1208.6369</span></span>
+<span><span class="co">## 13      1   5 1.0015456  372.2029        NA</span></span>
+<span><span class="co">## 14      2   2 1.0002332 3469.7957 3094.8514</span></span>
+<span><span class="co">## 15      3   5 0.9998561 2411.3315        NA</span></span>
+<span><span class="co">## 16      5   5 0.9998223 1767.4101        NA</span></span>
+<span><span class="co">## 17      4   5 1.0004377 1165.0950        NA</span></span>
+<span><span class="co">## 18      4   5 0.9999092 2587.4329        NA</span></span>
+<span><span class="co">## 19      3   5 1.0013922 1480.6382        NA</span></span>
+<span><span class="co">## 20      3   4 0.9997843 3031.8315 1861.1172</span></span>
+<span><span class="co">## 21      4   5 1.0021130  426.1324        NA</span></span>
+<span><span class="co">## 22      5   5 1.0028079 2498.9440        NA</span></span>
+<span><span class="co">## 23      3   5 1.0009141 2999.7228        NA</span></span>
+<span><span class="co">## 24      2   3 0.9997871 2815.0432 2413.4425</span></span>
+<span><span class="co">## 25      4   4 1.0018197 3183.2795 3168.0850</span></span>
+<span><span class="co">## 26      2   5 1.0008354 2386.0106        NA</span></span>
+<span><span class="co">## 27      1   5 0.9997617 1161.8534        NA</span></span>
+<span><span class="co">## 28      4   4        NA        NA        NA</span></span>
+<span><span class="co">## 29      5   5 0.9997645 1020.1639        NA</span></span>
+<span><span class="co">## 30      2   5 1.0018580  827.6593        NA</span></span></code></pre>
 <p>Inspecting the statistics shows that quite often, the model is quite
 sure of the value of <code>s</code> while the simulated value is just
 one less.</p>
@@ -439,7 +440,7 @@ simulator to match the model:</p>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model2"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'model2'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 3 (10%) fits had divergent transitions. Maximum number of divergences was 7.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 3 (10%) fits had divergences. Maximum number of divergences was 7.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -459,12 +460,11 @@ model behaves well.</p>
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"model3"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'model3'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 3 (3%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.035.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 5 (5%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
-<span><span class="co">## the rank statistics. The lowest tail ESS was 21.</span></span>
-<span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
-<span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 7 (7%) fits had divergent transitions. Maximum number of divergences was 103.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 7 (7%) fits had divergences. Maximum number of divergences was 103.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 3 (3%) fits had maximum Rhat &gt; 1.01. Maximum Rhat was 1.035.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 5 (5%) fits had tail ESS / maximum rank &lt; 0.5. Minimum tail ESS / maximum rank was 0.05. This potentially skews the rank statistics.</span></span>
+<span><span class="co">##     If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
+<span><span class="co">##    or number of posterior draws (by refitting) might help.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -599,20 +599,18 @@ representation:</p>
 <span>                        cache_mode <span class="op">=</span> <span class="st">"results"</span>,</span>
 <span>                        cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir_jags</span>, <span class="st">"rjags_marginalized"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'rjags_marginalized'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (1%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.017.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (1%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
-<span><span class="co">## the rank statistics. The lowest tail ESS was 127.</span></span>
-<span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
-<span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (1%) fits had tail ESS / maximum rank &lt; 0.5. Minimum tail ESS / maximum rank was 0.32. This potentially skews the rank statistics.</span></span>
+<span><span class="co">##     If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
+<span><span class="co">##    or number of posterior draws (by refitting) might help.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
 <p>And the ranks plots look good, so we indeed probably did succeed in
 correctly marginalizing the <code>s</code> parameter!</p>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_rank_hist.html">plot_rank_hist</a></span><span class="op">(</span><span class="va">results_jags_marginalized</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/ranks_jags_marginalized-1.png" width="700"></p>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">results_jags_marginalized</span><span class="op">)</span></span></code></pre></div>
 <p><img src="discrete_vars_files/figure-html/ranks_jags_marginalized-2.png" width="700"></p>
 </div>
@@ -630,7 +628,7 @@ correctly marginalizing the <code>s</code> parameter!</p>
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
+<p>Developed by Martin Modrák, Shinyoung Kim, Angie.H Moon, Teemu Säilynoja.</p>
 <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 

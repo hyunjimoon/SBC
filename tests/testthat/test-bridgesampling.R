@@ -49,3 +49,39 @@ test_that("combine_var_attributes_for_bf", {
     )
   )
 })
+
+
+test_that("bridgesampling_diagnostics_special_treatment", {
+  diags1 <- structure(data.frame(sim_id = 1L, prob_H1 = 0.5, test_H0 = 0.1, test_H1 = 0.5), class = c("SBC_bridgesampling_diagnostics", "data.frame"))
+  attr(diags1, "submodel_classes") <- list("H0" = c("test_class", "data.frame"), "H1" = c("test_class2", "data.frame"))
+  diags2 <- structure(data.frame(sim_id = 2L, prob_H1 = 0.3, test_H0 = 0.3, test_H1 = 0.3), class = c("SBC_bridgesampling_diagnostics", "data.frame"))
+  attr(diags2, "submodel_classes") <- list("H0" = c("test_class", "data.frame"), "H1" = c("test_class2", "data.frame"))
+  diags3 <- structure(data.frame(sim_id = 3L, prob_H1 = 0.1, test_H0 = 0.5, test_H1 = 0.1), class = c("SBC_bridgesampling_diagnostics", "data.frame"))
+  attr(diags3, "submodel_classes") <- list("H0" = c("test_class", "data.frame"), "H1" = c("test_class2", "data.frame"))
+
+  diags_bound <- rbind(diags1, diags2, diags3)
+
+  diags_expected <- structure(data.frame(sim_id = 1:3, prob_H1 = c(0.5, 0.3,0.1), test_H0 = c(0.1, 0.3, 0.5), test_H1 = c(0.5, 0.3, 0.1)), class = c("SBC_bridgesampling_diagnostics", "data.frame"))
+  attr(diags_expected, "submodel_classes") <- list("H0" = c("test_class", "data.frame"), "H1" = c("test_class2", "data.frame"))
+
+  expect_identical(diags_bound, diags_expected)
+
+  diags_mismatched <- structure(data.frame(sim_id = 4L, prob_H1 = 1, test_H0 = 1, test_H1 = 1), class = c("SBC_bridgesampling_diagnostics", "data.frame"))
+  attr(diags_mismatched, "submodel_classes") <- list("H0" = c("other_class", "data.frame"), "H1" = c("test_class2", "data.frame"))
+
+  diags_bound_mismatch <- expect_warning(rbind(diags1, diags2, diags3, diags_mismatched), "Non-unique submodel classes")
+
+  diags_expected_mismatch <- structure(data.frame(sim_id = 1:4, prob_H1 = c(0.5, 0.3,0.1, 1), test_H0 = c(0.1, 0.3, 0.5, 1), test_H1 = c(0.5, 0.3, 0.1, 1)), class = c("SBC_bridgesampling_diagnostics", "data.frame"))
+  attr(diags_expected_mismatch, "submodel_classes") <- list("H0" = c("test_class", "data.frame"), "H1" = c("test_class2", "data.frame"))
+
+  expect_identical(diags_bound_mismatch, diags_expected_mismatch)
+
+  library(dplyr)
+  diags_selected <- select(diags_bound, -sim_id)
+  diags_selected_expected <- select(as.data.frame(diags_bound), -sim_id)
+  class(diags_selected_expected) <- c("SBC_bridgesampling_diagnostics", "data.frame")
+  attr(diags_selected_expected, "submodel_classes") <- list("H0" = c("test_class", "data.frame"), "H1" = c("test_class2", "data.frame"))
+
+  expect_identical(diags_selected, diags_selected_expected)
+
+})

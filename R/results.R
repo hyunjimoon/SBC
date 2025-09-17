@@ -19,7 +19,8 @@ SBC_results <- function(stats,
                         outputs,
                         messages,
                         warnings,
-                        errors) {
+                        errors
+                        ) {
   validate_SBC_results(
     structure(list(stats = stats, fits = fits, backend_diagnostics = backend_diagnostics,
                    outputs = outputs, messages = messages, warnings = warnings,
@@ -28,35 +29,6 @@ SBC_results <- function(stats,
 }
 
 
-compute_default_diagnostics <- function(stats) {
-  if(is.null(stats$attributes)) {
-    stats$attributes <- ""
-  }
-  eligible_for_check <- function(value, attributes) {
-    value[!is.na(value)
-          | !attribute_present_stats(possibly_constant_var_attribute(), attributes)
-          ]
-  }
-
-  should_check_na <- function(attributes) {
-    !attribute_present_stats(na_valid_var_attribute(), attributes)
-  }
-
-  val <- dplyr::summarise(dplyr::group_by(stats, sim_id),
-                   n_vars = dplyr::n(),
-                   n_has_na = sum(has_na & should_check_na(attributes)),
-                   n_na_rhat = sum(is.na(eligible_for_check(rhat, attributes))),
-                   n_na_ess_bulk = sum(is.na(eligible_for_check(ess_bulk, attributes))),
-                   n_na_ess_tail = sum(is.na(eligible_for_check(ess_tail, attributes))),
-                   max_rhat = max(c(-Inf, eligible_for_check(rhat, attributes)), na.rm = TRUE),
-                   min_ess_bulk = min(c(Inf, eligible_for_check(ess_bulk, attributes))),
-                   min_ess_tail = min(c(Inf, eligible_for_check(ess_tail, attributes))),
-                   min_ess_to_rank = min(c(Inf, eligible_for_check(ess_tail / max_rank, attributes))),
-                   .groups = "drop"
-                   )
-
-  return(val)
-}
 
 #' @export
 validate_SBC_results <- function(x) {
@@ -332,6 +304,14 @@ NULL
 compute_results <- function(...) {
   warning("compute_results() is deprecated, use compute_SBC instead.")
   compute_SBC(...)
+}
+
+# A simple vector that can serve as stats when those cannot be computed
+dummy_stats <- function() {
+  data.frame(sim_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
+             ess_tail = numeric(0), has_na = logical(0),
+             rank = integer(0), simulated_value = numeric(0), max_rank = integer(0),
+             attributes = character(0))
 }
 
 #' Fit datasets and evaluate diagnostics and SBC metrics.
@@ -665,15 +645,13 @@ compute_SBC <- function(datasets, backend,
                 iid_draws = SBC_backend_iid_draws(backend))
   } else {
     # Return dummy stats that let the rest of the code work.
-    stats <- data.frame(sim_id = integer(0), rhat = numeric(0), ess_bulk = numeric(0),
-                        ess_tail = numeric(0), has_na = logical(0),
-                        rank = integer(0), simulated_value = numeric(0), max_rank = integer(0),
-                        attributes = character(0))
+    stats <- dummy_stats()
   }
 
   default_diagnostics <-  tryCatch(
     { compute_default_diagnostics(stats) },
-    error = function(e) { warning("Error when computing default per-variable diagnostics. ", e); NULL })
+    error = function(e) { warning("Error when computing default per-variable diagnostics. ", e);
+      compute_default_diagnostics(dummy_stats())})
 
 
   res <- SBC_results(stats = stats, fits = fits, outputs = outputs,
@@ -776,6 +754,23 @@ reemit_captured <- function(captured) {
       warning(captured$warnings[w])
     }
   }
+}
+
+# Add a given prefix to all captured content
+prefix_captured <- function(captured, prefix) {
+  process_single <- function(x) {
+    if(is.null(x)) {
+      NULL
+    } else {
+      paste0(prefix, x)
+    }
+
+  }
+
+  list(result = captured$res,
+       messages = process_single(captured$messages),
+       warnings = process_single(captured$warnings),
+       output = process_single(captured$output))
 }
 
 # See `compute_SBC` for docs for the function arguments
@@ -910,11 +905,19 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
   for(i in 1:length(shared_vars)) {
     var <- shared_vars[i]
     var_draws <- fit_matrix[,var]
-    stats$mean[i] <- mean(var_draws, na.rm = na_valid[i])
-    stats$sd[i] <- sd(var_draws, na.rm = na_valid[i])
-    stats$q5[i] <- quantile(var_draws, prob = 0.05, na.rm = na_valid[i])
-    stats$median[i] <- median(var_draws, na.rm = na_valid[i])
-    stats$q95[i] <- quantile(var_draws, prob = 0.95, na.rm = na_valid[i])
+    if(!na_valid[i] & any(is.na(var_draws))) {
+      stats$mean[i] <- NA_real_
+      stats$sd[i] <- NA_real_
+      stats$q5[i] <- NA_real_
+      stats$median[i] <- NA_real_
+      stats$q95[i] <- NA_real_
+    } else {
+      stats$mean[i] <- mean(var_draws, na.rm = TRUE)
+      stats$sd[i] <- sd(var_draws, na.rm = TRUE)
+      stats$q5[i] <- quantile(var_draws, prob = 0.05, na.rm = TRUE)
+      stats$median[i] <- median(var_draws, na.rm = TRUE)
+      stats$q95[i] <- quantile(var_draws, prob = 0.95, na.rm = TRUE)
+    }
 
     if(SBC_backend_iid_draws(backend)) {
       ## iid draws have the bestest diagnostics by construction
@@ -925,11 +928,13 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
       draws_for_diags <- var_draws
       if(inf_valid[i]) {
         finite_draws <- draws_for_diags[is.finite(draws_for_diags)]
-        draws_for_diags[draws_for_diags == -Inf] <- min(finite_draws) - 1
-        draws_for_diags[draws_for_diags == +Inf] <- max(finite_draws) + 1
+        if(length(finite_draws) > 0) {
+          draws_for_diags[draws_for_diags == -Inf] <- min(finite_draws) - 1
+          draws_for_diags[draws_for_diags == +Inf] <- max(finite_draws) + 1
+        }
       }
       if(na_valid[i]) {
-        draws_for_diags[is.na(draws_for_diags)] <- median(draws_for_diags)
+        draws_for_diags[is.na(draws_for_diags)] <- median(draws_for_diags, na.rm = TRUE)
       }
       stats$rhat[i] <- posterior::rhat(draws_for_diags)
       stats$ess_bulk[i] <- posterior::ess_bulk(draws_for_diags)
@@ -962,6 +967,8 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
   stats$max_rank <- attr(ranks, "max_rank")
   stats$z_score <- (stats$simulated_value - stats$mean) / stats$sd
   stats$has_na <- as.logical(apply(fit_thinned, MARGIN = 2, FUN = \(x) any(is.na(x))))
+  stats$all_na <- as.logical(apply(fit_thinned, MARGIN = 2, FUN = \(x) all(is.na(x))))
+  stats$all_inf <- as.logical(apply(fit_thinned, MARGIN = 2, FUN = \(x) all(is.infinite(x))))
 
   variables_dbl <- as.numeric(variables)
   names(variables_dbl) <- posterior::variables(variables)
@@ -1169,118 +1176,198 @@ calculate_sds_draws_matrix <- function(dm) {
 }
 
 
+SBC_results_base_diagnostics <- function(results) {
+  data.frame(
+    sim_id = 1:length(results$fits),
+    has_error = !purrr::map_lgl(results$errors, is.null),
+    has_warning = !purrr::map_lgl(results$warnings, is.null)
+  )
+}
+
+SBC_results_base_diagnostic_types <- function() {
+  list(
+    has_error = logical_diagnostic(ok_value = FALSE, true_label = "produced error", hint = "Inspect $errors for the full messages."),
+    has_warning = logical_diagnostic(ok_value = FALSE, true_label = "gave warning", hint = "Inspect $warnings for the full messages.")
+  )
+}
+
+compute_default_diagnostics <- function(stats) {
+  # Putting default values to make previously cached results valid
+  if(is.null(stats$attributes)) {
+    stats$attributes <- ""
+  }
+  if(is.null(stats$all_na)) {
+    stats$all_na <- rep(FALSE, nrow(stats))
+  }
+  if(is.null(stats$all_inf)) {
+    stats$all_inf <- rep(FALSE, nrow(stats))
+  }
+
+  eligible_for_check <- function(value, all_inf, all_na, attributes) {
+    exclude_for_possibly_constant <- (is.na(value)
+                                      & attribute_present_stats(possibly_constant_var_attribute(), attributes))
+    exclude_for_all_na <- all_na & attribute_present_stats(na_valid_var_attribute(), attributes)
+    exclude_for_all_inf <- all_inf & attribute_present_stats(inf_valid_var_attribute(), attributes)
+    value[(!exclude_for_possibly_constant) & (!exclude_for_all_na) & (!exclude_for_all_inf)]
+  }
+
+  should_check_na <- function(attributes) {
+    !attribute_present_stats(na_valid_var_attribute(), attributes)
+  }
+
+  val <- dplyr::summarise(dplyr::group_by(stats, sim_id),
+                          n_vars = dplyr::n(),
+                          n_has_na = sum(has_na & should_check_na(attributes)),
+                          n_na_rhat = sum(is.na(eligible_for_check(rhat, all_inf, all_na, attributes))),
+                          n_na_ess_bulk = sum(is.na(eligible_for_check(ess_bulk, all_inf, all_na, attributes))),
+                          n_na_ess_tail = sum(is.na(eligible_for_check(ess_tail, all_inf, all_na, attributes))),
+                          max_rhat = max(c(-Inf, eligible_for_check(rhat, all_inf, all_na, attributes)), na.rm = TRUE),
+                          min_ess_bulk = min(c(Inf, eligible_for_check(ess_bulk, all_inf, all_na, attributes))),
+                          min_ess_tail = min(c(Inf, eligible_for_check(ess_tail, all_inf, all_na, attributes))),
+                          min_ess_to_rank = min(c(Inf, eligible_for_check(ess_tail / max_rank, all_inf, all_na, attributes))),
+                          .groups = "drop"
+  )
+
+  return(val)
+}
+
+#'@export
+default_diagnostics_types <- function(results) {
+  def_diags <- results$default_diagnostics
+  unique_ess_bulk <- unique(def_diags$min_ess_bulk)
+  unique_ess_tail <- unique(def_diags$min_ess_tail)
+
+  iid_draws <- all(def_diags$max_rhat == 1) && length(unique_ess_bulk) == 1 &&
+    length(unique_ess_tail) == 1 && identical(unique_ess_bulk, unique_ess_tail)
+
+  always_on_diags <- list(
+    n_has_na = count_diagnostic(
+      "NAs in some variables/samples",
+      label_short = "variables with NAs",
+      error_above = 0, error_only = TRUE,
+      hint = "If this is expected, mark the variable with `na_valid_var_attribute()` to suppress this message."
+    )
+  )
+
+  if(iid_draws) {
+    mixing_diags <- list(n_na_rhat = skip_diagnostic(),
+                         n_na_ess_bulk = skip_diagnostic(),
+                         n_na_ess_tail = skip_diagnostic(),
+                         max_rhat = skip_diagnostic(),
+                         min_ess_bulk = skip_diagnostic(),
+                         min_ess_tail = skip_diagnostic(),
+                         min_ess_to_rank = skip_diagnostic())
+  } else {
+    possibly_constant_hint <- paste0("This likely means all posterior draws were equal for some variable.\n",
+                                     "If this is expected, mark the variable `possibly_constant_var_attribute()` to suppress this message.")
+
+    mixing_diags <- list(
+      n_na_rhat = count_diagnostic("NA Rhat",
+                                   error_above = 0, error_only = TRUE,
+                                   hint = possibly_constant_hint),
+      n_na_ess_bulk = count_diagnostic("NA ess_bulk",
+                                       error_above = 0, error_only = TRUE,
+                                       hint = possibly_constant_hint),
+      n_na_ess_tail = count_diagnostic("NA ess_tail", error_only = TRUE,
+                                       error_above = 0),
+      max_rhat = numeric_diagnostic("maximum Rhat", label_short = "Rhat", report = "max", error_above = 1.01, allow_na = TRUE, digits = 3),
+      min_ess_bulk = numeric_diagnostic("bulk ESS", report = "min", allow_na = TRUE, digits = 0),
+      min_ess_tail = numeric_diagnostic("tail ESS", report = "min", allow_na = TRUE, digits = 0),
+      min_ess_to_rank = numeric_diagnostic("tail ESS / maximum rank", report = "min", allow_na = TRUE, error_below = 0.5,
+                                           hint = "This potentially skews the rank statistics.\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) \nor number of posterior draws (by refitting) might help.")
+    )
+
+  }
+
+  c(
+    always_on_diags,
+    mixing_diags
+  )
+}
+
+
 #' @export
-SBC_diagnostic_messages <- function(message_df) {
-  if(!inherits(message_df, "SBC_diagnostic_messages")) {
-    class(message_df) <- c("SBC_diagnostic_messages", class(message_df))
-  }
-  validate_diagnostic_messages(message_df)
-}
+SBC_results_diagnostics <- function(results) {
+  base <- SBC_results_base_diagnostics(results)
 
-validate_diagnostic_messages <- function(x) {
-  stopifnot(is.data.frame(x))
-  stopifnot(inherits(x, "SBC_diagnostic_messages"))
-  if(!identical(sort(names(x)), c("message", "ok"))) {
-    stop("Diagnostic messages have to have columns 'message' and 'ok' and no other")
+  if(!is.null(results$backend_diagnostics)) {
+    stopifnot(identical(base$sim_id, results$backend_diagnostics$sim_id))
+    diags <- cbind(base, dplyr::select(results$backend_diagnostics, -sim_id))
+  } else {
+    diags <- base
   }
 
-  x
+  stopifnot(identical(base$sim_id, results$default_diagnostics$sim_id))
+  default_mod <- dplyr::select(results$default_diagnostics,
+                               -sim_id, -n_vars)
+
+  diags <- cbind(diags, default_mod)
+
+  diags
 }
 
 #' @export
-print.SBC_diagnostic_messages <- function(x, include_ok = TRUE, print_func = cat) {
-  x <- validate_diagnostic_messages(x)
-  if(!include_ok) {
-    x <- dplyr::filter(x, !ok)
+SBC_results_diagnostic_messages <- function(results) {
+
+  base_messages <- get_all_diagnostic_messages(
+    SBC_results_base_diagnostics(results),
+    SBC_results_base_diagnostic_types())
+
+  default_diags_mod <- dplyr::select(results$default_diagnostics, -n_vars)
+  default_messages <- get_all_diagnostic_messages(
+    default_diags_mod,
+    default_diagnostics_types(results)
+  )
+
+  if(!is.null(results$backend_diagnostics)) {
+    backend_messages <- get_all_diagnostic_messages(results$backend_diagnostics,
+                                                        diagnostic_types(results$backend_diagnostics))
+  } else {
+    backend_messages <- NULL
   }
 
-  if(nrow(x) > 0) {
-    for(i in 1:nrow(x)) {
-      print_func(paste0(" - ", x$message[i], "\n"))
-    }
-  }
+
+  rbind(base_messages,
+        backend_messages,
+        default_messages
+        )
 }
 
-#' Get diagnostic messages for `SBC_results` or other objects.
+
+#' Check diagnostics for an SBC results object.
 #'
-#' @export
-#' @return An object of class `SBC_diagnostic_messages`, inheriting a data.frame.
-get_diagnostic_messages <- function(x) {
-  UseMethod("get_diagnostic_messages")
-}
-
-
-#' @export
-#' @rdname get_diagnostic_messages
-get_diagnostic_messages.default <- function(x) {
-  SBC_diagnostic_messages(data.frame(message = character(0), ok = logical(0)))
-}
-
-
-#' Check diagnostics and issue warnings when those fail.
-#'
-#' @rdname check_all_SBC_diagnostics
+#' Produces a message for each failed check.
 #' @export
 #' @return TRUE if all checks are OK, FALSE otherwise.
-check_all_SBC_diagnostics <- function(x) {
-  UseMethod("check_all_SBC_diagnostics")
-}
+check_all_SBC_diagnostics <- function(results) {
+  msg <- SBC_results_diagnostic_messages(results)
 
-#' @export
-#' @rdname check_all_SBC_diagnostics
-check_all_SBC_diagnostics.default <- function(x) {
-  if(!is.null(x)) {
-    msg <- get_diagnostic_messages(x)
-    print(msg, include_ok = FALSE, print_func = function(m) { message(m, appendLF = FALSE) })
-    invisible(all(msg$ok))
-  } else {
-    invisible(TRUE)
-  }
-}
+  msg$message <- gsub("\n", "\n   ", msg$message, fixed = TRUE)
 
-#' @rdname check_all_SBC_diagnostics
-#' @export
-check_all_SBC_diagnostics.SBC_results <- function(x) {
-  res <- NextMethod()
-  if(!res) {
+
+  msg_problems <- dplyr::filter(msg, type == "bad")
+
+  purrr::walk(msg_problems$message, function(m) { message(" - ", m, appendLF = TRUE) })
+
+  msg_unknown <- dplyr::filter(msg, is.na(type))
+  purrr::walk(msg_unknown$message, function(m) { cat(" - [???] ", m, "\n") })
+
+  all_ok <- !any(msg$type == "bad")
+
+  if(!all_ok) {
     message("Not all diagnostics are OK.\nYou can learn more by inspecting $default_diagnostics, ",
             "$backend_diagnostics \nand/or investigating $outputs/$messages/$warnings for detailed output from the backend.")
   }
-  res
+  invisible(all_ok)
 }
-
-#' @export
-get_diagnostic_messages.SBC_results <- function(x) {
-  get_diagnostic_messages(summary(x))
-}
-
 
 
 #' @export
 summary.SBC_results <- function(x) {
   summ <- list(
     n_fits = length(x$fits),
-    n_errors = sum(!purrr::map_lgl(x$errors, is.null)),
-    n_warnings = sum(!purrr::map_lgl(x$warnings, is.null)),
-
-    # ifelse required for backwards compatibility with caches from 0.3 or below
-    n_has_na = if("n_has_na" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_has_na > 0) }  else {  0 },
-    n_na_rhat = if("n_na_rhat" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_rhat > 0) }  else {  0 },
-    n_na_ess_tail = if("n_na_ess_tail" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_ess_tail > 0) }  else {  0 },
-    n_na_ess_bulk = if("n_na_ess_bulk" %in% names(x$default_diagnostics)) { sum(x$default_diagnostics$n_na_ess_bulk > 0) }  else {  0 },
-
-    n_high_rhat = sum(is.na(x$default_diagnostics$max_rhat) | x$default_diagnostics$max_rhat > 1.01),
-    max_max_rhat = max(c(-Inf, x$default_diagnostics$max_rhat)),
-
-    n_low_ess_to_rank = sum(is.na(x$default_diagnostics$min_ess_to_rank) | x$default_diagnostics$min_ess_to_rank < 0.5),
-    min_min_ess_bulk = min(c(Inf, x$default_diagnostics$min_ess_bulk)),
-    min_min_ess_tail = min(c(Inf, x$default_diagnostics$min_ess_tail))
+    messages = SBC_results_diagnostic_messages(x)
   )
-  if(!is.null(x$backend_diagnostics)) {
-    summ$backend_diagnostics <- summary(x$backend_diagnostics)
-  } else {
-    summ$backend_diagnostics <- NULL
-  }
   structure(
     summ,
     class = "SBC_results_summary"
@@ -1293,93 +1380,34 @@ print.SBC_results <- function(x) {
 }
 
 #' @export
-get_diagnostic_messages.SBC_results_summary <- function(x) {
-
-  message_list <- list()
-  i <- 1
-  if(x$n_errors > 0) {
-    msg <- paste0(x$n_errors, " (", round(100 * x$n_errors / x$n_fits), "%) fits resulted in an error.")
-    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
-  } else {
-    message_list[[i]] <- data.frame(ok = TRUE, message = "No fits had errors.")
-  }
-  i <- i + 1
-
-  if(x$n_warnings > 0) {
-    msg <- paste0(x$n_warnings, " (", round(100 * x$n_warnings / x$n_fits), "%) fits gave warnings. Inspect $warnings to see them.")
-    message_list[[i]] <- data.frame(ok = TRUE, message = msg)
-  } else {
-    message_list[[i]] <- data.frame(ok = TRUE, message = "No fits gave warnings.")
-  }
-  i <- i + 1
-
-  if(x$n_has_na > 0) {
-    msg <- paste0(x$n_has_na, " (", round(100 * x$n_has_na / x$n_fits), "%) fits had some NAs in variables/samples.\n ",
-                  "If this is expected, mark the variable with `na_valid_var_attribute()` or `na_lowest_var_attribute()`\n",
-                  "to specify NA handling and suppress this message.")
-    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
-    i <- i + 1
-  }
-  if(x$n_na_rhat > 0) {
-    msg <- paste0(x$n_na_rhat, " (", round(100 * x$n_na_rhat / x$n_fits), "%) fits had NA Rhat.\n ",
-                  "This likely means all posterior draws were equal for some variable.\n",
-                  "If this is expected, mark the variable `possibly_constant_var_attribute()` to suppress this message.")
-    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
-    i <- i + 1
-  }
-  if(x$n_na_ess_bulk > 0) {
-    msg <- paste0(x$n_na_ess_bulk, " (", round(100 * x$n_na_ess_bulk / x$n_fits), "%) fits had NA ess_bulk.\n ",
-                  "This likely means all posterior draws were equal for some variable in some chains.\n",
-                  "If this is expected, mark the variable `possibly_constant_var_attribute()` to suppress this message.")
-    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
-    i <- i + 1
-  }
-  if(x$n_na_ess_tail > 0) {
-    msg <- paste0(x$n_na_ess_tail, " (", round(100 * x$n_na_ess_tail / x$n_fits), "%) fits had NA ess_tail.\n",
-                  "This likely means all posterior draws were equal for some variable in some chains.\n",
-                  "If this is expected, mark the variable `possibly_constant_var_attribute()` to suppress this message.")
-    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
-    i <- i + 1
-  }
-
-  if(x$n_high_rhat > 0) {
-    msg <- paste0(x$n_high_rhat, " (", round(100 * x$n_high_rhat / x$n_fits), "%) fits had at least one Rhat > 1.01. ",
-                  "Largest Rhat was ",round(x$max_max_rhat, 3), ".")
-    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
-  } else {
-    message_list[[i]] <- data.frame(ok = TRUE, message = "No fits had Rhat > 1.01.")
-  }
-  i <- i + 1
-
-  if(x$n_low_ess_to_rank > 0) {
-    msg <- paste0(x$n_low_ess_to_rank, " (", round(100 * x$n_low_ess_to_rank / x$n_fits), "%) fits had tail ESS undefined or less than ",
-                  "half of the maximum rank, potentially skewing \nthe rank statistics. The lowest tail ESS was ", round(x$min_min_ess_tail),
-                  ".\n If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) \nor number of posterior draws (by refitting) might help.")
-    message_list[[i]] <- data.frame(ok = FALSE, message = msg)
-  } else {
-    message_list[[i]] <- data.frame(ok = TRUE, message = "All fits had tail ESS > half of the maximum rank.")
-  }
-  i <- i + 1
-
-  message_list[[i]] <- data.frame(ok = TRUE, message = paste0("The lowest bulk ESS was ", round(x$min_min_ess_bulk)))
-  i <-  i + 1
-
-  if(!is.null(x$backend_diagnostics)) {
-    message_list[[i]] <- get_diagnostic_messages(x$backend_diagnostics)
-    i <- i + 1
-  }
-
-  SBC_diagnostic_messages(do.call(rbind, message_list))
-}
-
-#' @export
 print.SBC_results_summary <- function(x) {
   cat("SBC_results with", x$n_fits, "total fits.\n")
 
-  msg <- get_diagnostic_messages(x)
-  print(msg)
+  if(requireNamespace("crayon", quietly = TRUE)) {
+    status_string <- dplyr::case_when(
+      is.na(x$messages$type) ~ crayon::yellow("[???]"),
+      x$messages$type == "info" ~ "[INFO]",
+      x$messages$type == "ok" ~ crayon::green("[OK]"),
+      x$messages$type == "bad" ~ crayon::red("[BAD]"),
+      TRUE ~ crayon::red(paste0("[", x$messages$type, "]"))
+    )
+  } else {
+    status_string <- dplyr::case_when(
+      is.na(x$messages$type) ~ "[???]",
+      x$messages$type == "info" ~ "[INFO]",
+      x$messages$type == "ok" ~ "[OK]",
+      x$messages$type == "bad" ~ "[BAD]",
+      TRUE ~ paste0("[", x$messages$type, "]")
+    )
+  }
 
-  if(!all(msg$ok)) {
+  messages_indent <- gsub("\n", "\n   ", x$messages$message, fixed = TRUE)
+
+  cat(paste0(" - ", status_string, " ", messages_indent, collapse = "\n"))
+
+  all_ok <- !any(x$messages$type == "bad")
+
+  if(!all_ok) {
     message("Not all diagnostics are OK.\nYou can learn more by inspecting $default_diagnostics, ",
             "$backend_diagnostics \nand/or investigating $outputs/$messages/$warnings for detailed output from the backend.")
   }

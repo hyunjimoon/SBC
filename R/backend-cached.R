@@ -133,3 +133,4 @@ SBC_backend_postprocess_cached_fit.default <- function(backend, generated, fit) 
 SBC_backend_preprocess_fit_for_cache.default <- function(backend, generated, fit) {
   return(fit)
 }
+

@@ -100,7 +100,7 @@ generator)
 ```{r}
 backend <- SBC_backend_brms_from_generator(generator, chains = 1, thin = 1,
                             warmup = 500, iter = 1500,               
-                            inits = 0.1)
+                            init = 0.1)
 
 # More verbose alternative that results in exactly the same backend:
 # backend <- SBC_backend_brms(y ~ x, template_data = template_data, prior = priors, warmup = 500, iter = 1000, chains = 1, thin = 1
