@@ -579,9 +579,9 @@ ggsave(file.path(cache_dir, "sbcworkflow_logistic_first_results.pdf"), combined,
 At this point, we could use more simulations to see if the discrepancy is real. But this is also a good opportunity to introduce additional ways to diagnose mismatches between the Stan code and the simulator. A simple diagnostic is to plot the simulated values against posterior estimates, which can be done via the [plot_sim_estimated()] function.
 
 ```{r logistic_first_sim_estimated}
-logistic_first_sim_estimated <- plot_sim_estimated(results_logistic_first_10) + labs(x = "Simulated value", y = "Mean, 95% CI")
+logistic_first_sim_estimated <- plot_sim_estimated(results_logistic_first_10) + labs(x = "Simulated value", y = "Mean, 90% CI") + coord_flip()
 logistic_first_sim_estimated
-ggsave(file.path(cache_dir, "sbcworkflow_logistic_first_sim_estimated.pdf"), logistic_first_sim_estimated, width = 6, height = 1.8)
+ggsave(file.path(cache_dir, "sbcworkflow_logistic_first_sim_estimated.pdf"), logistic_first_sim_estimated, width = 6, height = 2.2)
 ```
 
 One thing that immediately stands out is that the posterior inferences for `alpha` seem to be independent of the simulated value.  Indeed, in our Stan code, `alpha` never enters the likelihood part of the model: where we have ``X * beta` we should have had `alpha + X * beta`.
@@ -858,7 +858,7 @@ dataset_combined <- generate_datasets(generator_combined, 200)
 ```{r}
 results_combined <- compute_SBC(dataset_combined, backend_combined, 
                     keep_fits = FALSE, cache_mode = "results", 
-                    cache_location = file.path(cache_dir, "combined"))
+                    cache_location = file.path(cache_dir, "combined_book"))
 ```
 
 We get some amount of divergent transitions, but the ranks look pretty good:
@@ -973,7 +973,7 @@ dataset_combined_reject <- generate_datasets(generator_combined_reject, 200)
 ```{r}
 results_combined_reject <- compute_SBC(dataset_combined_reject, backend_combined, 
                     keep_fits = FALSE, cache_mode = "results", 
-                    cache_location = file.path(cache_dir, "combined_reject"))
+                    cache_location = file.path(cache_dir, "combined_reject_book"))
 ```
 
 No more divergences! And the ranks look nice.
@@ -1007,7 +1007,7 @@ results_combined_reject_more <- bind_results(
   results_combined_reject,
   compute_SBC(dataset_combined_reject_more, backend_combined, 
                     keep_fits = FALSE, cache_mode = "results", 
-                    cache_location = file.path(cache_dir, "combined_reject_more"))
+                    cache_location = file.path(cache_dir, "combined_reject_book_more"))
 )
 ```
 
@@ -1039,7 +1039,7 @@ Still, this might warrant further investigation if small discrepancies in `mu` a
 Finally, we can also use this simulation exercise to understand what would we be likely to learn from an experiment matching the simulations (50 observations, 3 predictors) and plot the true values (simulated by the generator) against estimated mean + 90% posterior credible interval:
 
 ```{r sim_estimated_final}
-sim_estimated_final <- plot_sim_estimated(results_combined_reject_more, alpha = 0.2)
+sim_estimated_final <- plot_sim_estimated(results_combined_reject_more, alpha = 0.2) + labs(x = "Simulated value", y = "Mean, 90% CI") + coord_flip()
 sim_estimated_final
 ggsave(file.path(cache_dir, "sbcworkflow_sim_estimated_final.pdf"), sim_estimated_final)
 ```
