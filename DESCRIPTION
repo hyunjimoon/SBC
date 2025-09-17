@@ -1,8 +1,14 @@
 Package: SBC
 Title: Simulation Based Calibration for Bayesian models
-Version: 0.4.0.9000
+Version: 0.5.0.9000
 Authors@R: 
-    c(person(given = "Shinyoung",
+    c(
+    person(given = "Martin",
+           family = "Modrák",
+           role = c("aut"),
+           email = "martin.modrak@biomed.cas.cz",
+           comment = c(ORCID= "0000-0002-8886-7797")),
+    person(given = "Shinyoung",
            family = "Kim",
            role = c("aut"),
            email = "tttllshin@gmail.com",
@@ -12,11 +18,6 @@ Authors@R:
            role = c("aut", "cre"),
            email = "amoon@mit.edu",
            comment = c()),
-    person(given = "Martin",
-           family = "Modrák",
-           role = c("aut"),
-           email = "martin.modrak@biomed.cas.cz",
-           comment = c(ORCID= "0000-0002-8886-7797")),
     person(given = "Teemu",
            family = "Säilynoja",
            role = "aut"),
