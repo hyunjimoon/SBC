@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.4.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0.9000</span>
       </span>
     </div>
 
@@ -127,7 +127,7 @@
                         <h4 data-toc-skip class="author">Hyunji Moon,
 Martin Modrák</h4>
             
-            <h4 data-toc-skip class="date">2025-08-08</h4>
+            <h4 data-toc-skip class="date">2025-09-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/computational_algorithm1.Rmd" class="external-link"><code>vignettes/computational_algorithm1.Rmd</code></a></small>
       <div class="hidden name"><code>computational_algorithm1.Rmd</code></div>
@@ -189,7 +189,7 @@ model.</p>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/" class="external-link">rstan</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://mc-stan.org/rstan/reference/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/rstan/man/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
@@ -277,8 +277,8 @@ simulations.</p>
 <pre><code><span><span class="co">## Results loaded from cache file 'poisson'</span></span></code></pre>
 <p>Even with the quite high precision afforded by 1000 simulations, the
 ECDF diff plot and the ranks show no problems - the model is quite well
-calibrated, although the wavy shape of the ECDF suggest a minor
-overconfidence of the approximation:</p>
+calibrated, although the wavy shape of the ECDF suggest a potential
+minor overconfidence of the approximation:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ECDF-plots.html">plot_ecdf_diff</a></span><span class="op">(</span><span class="va">res_poisson</span><span class="op">)</span></span></code></pre></div>
 <p><img src="computational_algorithm1_files/figure-html/ecdf_rank_poisson-1.png" width="700"></p>
@@ -340,7 +340,7 @@ this is currently implemented only in <code>rstan</code> and not for
 the Hessian of the optimizing fit).</p>
 <p>So let us build an optimizing backend</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">model_poisson_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">model_poisson_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/poisson.stan"</span><span class="op">)</span></span>
 <span><span class="va">backend_poisson_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_optimizing.html">SBC_backend_rstan_optimizing</a></span><span class="op">(</span><span class="va">model_poisson_rstan</span><span class="op">)</span></span></code></pre></div>
 <p>and use it to fit the same datasets - first to the one with
 <code>N = 20</code>.</p>
@@ -638,10 +638,10 @@ central 90% interval</p>
 <pre><code><span><span class="co">## <span style="color: #949494;"># A tibble: 8 × 3</span></span></span>
 <span><span class="co">##   variable      ci_low ci_high</span></span>
 <span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.846   0.904</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.882   0.932</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.868   0.922</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.868   0.922</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.849   0.906</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.877   0.929</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.866   0.920</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.866   0.920</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.853   0.909</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.853   0.909</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.900   0.946</span></span>
@@ -667,7 +667,7 @@ that.</p>
 <span>  <span class="fu"><a href="../reference/SBC_backend_cmdstan_variational.html">SBC_backend_cmdstan_variational</a></span><span class="op">(</span><span class="va">model_HMM</span>, tol_rel_obj <span class="op">=</span> <span class="fl">0.001</span>, n_retries_init <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
 <span>  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_lowtol"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'hmm_lowtol'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 17 (3%) of fits did not converge.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 19 (4%) fits ELBO not converged.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -701,11 +701,11 @@ interval.</p>
 <span><span class="co">##   variable      ci_low ci_high</span></span>
 <span><span class="co">##   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">1</span> mu_background  0.822   0.884</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.838   0.897</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.877   0.929</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.877   0.929</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.825   0.886</span></span>
-<span><span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.825   0.886</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">2</span> mu_signal      0.835   0.895</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">3</span> rho[1]         0.879   0.930</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">4</span> rho[2]         0.879   0.930</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">5</span> t1[1]          0.827   0.888</span></span>
+<span><span class="co">## <span style="color: #BCBCBC;">6</span> t1[2]          0.827   0.888</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">7</span> t2[1]          0.844   0.902</span></span>
 <span><span class="co">## <span style="color: #BCBCBC;">8</span> t2[2]          0.844   0.902</span></span></code></pre>
 <p>This variant has somewhat lower overall mismatch, but tends to be
@@ -720,14 +720,14 @@ optimizng backend and run it.</p>
 <div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">SBC</span><span class="fu">:::</span><span class="fu">require_package_version</span><span class="op">(</span><span class="st">"rstan"</span>, <span class="st">"2.26"</span>, <span class="st">"The models in the following sections need more recent rstan than what is available on CRAN - use https://mc-stan.org/r-packages/ to get it"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">model_HMM_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson.stan"</span><span class="op">)</span></span>
+<span><span class="va">model_HMM_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson.stan"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">res_hmm_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span></span>
 <span>  <span class="va">ds_hmm_all</span>, </span>
 <span>  <span class="fu"><a href="../reference/SBC_backend_rstan_optimizing.html">SBC_backend_rstan_optimizing</a></span><span class="op">(</span><span class="va">model_HMM_rstan</span>, n_retries_hessian <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
 <span>  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_optimizing"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'hmm_optimizing'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (0%) of fits required multiple attempts to produce usable Hessian.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (0%) fits had &gt; 1 attempts to produce usable Hessian. Maximum number of attempts to produce usable Hessian was 2.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -761,12 +761,11 @@ comparison, we run full MCMC with Stan for the same datasets.</p>
 <span>  keep_fits <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  cache_mode <span class="op">=</span> <span class="st">"results"</span>, cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"hmm_sample"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'hmm_sample'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (2%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.019.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (2%) fits had tail ESS undefined or less than half of the maximum rank, potentially skewing </span></span>
-<span><span class="co">## the rank statistics. The lowest tail ESS was 126.</span></span>
-<span><span class="co">##  If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
-<span><span class="co">## or number of posterior draws (by refitting) might help.</span></span></code></pre>
-<pre><code><span><span class="co">##  - 2 (4%) fits had divergent transitions. Maximum number of divergences was 119.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (2%) fits had divergences. Maximum number of divergences was 78.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (2%) fits had maximum Rhat &gt; 1.01. Maximum Rhat was 1.022.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (2%) fits had tail ESS / maximum rank &lt; 0.5. Minimum tail ESS / maximum rank was 0.05. This potentially skews the rank statistics.</span></span>
+<span><span class="co">##     If the fits look good otherwise, increasing `thin_ranks` (via recompute_SBC_statistics) </span></span>
+<span><span class="co">##    or number of posterior draws (by refitting) might help.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -816,7 +815,7 @@ performance advantage variational inference had over sampling for this
 model. However, both the fullrank and meanfield approximations provide
 not-terrible estimates and are noticeably faster than sampling.
 Optimizing is by far the fastest as the longest time observed is just
-0.16 seconds.</p>
+3.84 seconds.</p>
 </div>
 </div>
 <div class="section level2">
@@ -987,7 +986,7 @@ the ADVI algorithm is unable to handle well.</p>
 <p><img src="computational_algorithm1_files/figure-html/hmm_ordered_fullrank_ecdf_ranks-2.png" width="700"></p>
 <p>To have a complete overview we may also try the optimizing fit:</p>
 <div class="sourceCode" id="cb92"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">model_HMM_ordered_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson_ordered.stan"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">model_HMM_ordered_rstan</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/hmm_poisson_ordered.stan"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">res_hmm_ordered_optimizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_SBC.html">compute_SBC</a></span><span class="op">(</span></span>
 <span>  <span class="va">ds_hmm_ordered</span>, </span>
@@ -1058,7 +1057,7 @@ Inference <a href="http://proceedings.mlr.press/v80/yao18a/yao18a.pdf" class="ex
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
+<p>Developed by Martin Modrák, Shinyoung Kim, Angie.H Moon, Teemu Säilynoja.</p>
 <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 

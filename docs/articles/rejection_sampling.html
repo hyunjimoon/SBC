@@ -33,7 +33,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">SBC</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.4.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.5.0.9000</span>
       </span>
     </div>
 
@@ -127,7 +127,7 @@
                         <h4 data-toc-skip class="author">Martin
 Modrák</h4>
             
-            <h4 data-toc-skip class="date">2025-08-08</h4>
+            <h4 data-toc-skip class="date">2025-09-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/hyunjimoon/SBC/blob/HEAD/vignettes/rejection_sampling.Rmd" class="external-link"><code>vignettes/rejection_sampling.Rmd</code></a></small>
       <div class="hidden name"><code>rejection_sampling.Rmd</code></div>
@@ -198,7 +198,7 @@ environment:</p>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a></span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/rstan/" class="external-link">rstan</a></span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://mc-stan.org/rstan/reference/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/rstan/man/rstan_options.html" class="external-link">rstan_options</a></span><span class="op">(</span>auto_write <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mc-stan.org/posterior/" class="external-link">posterior</a></span><span class="op">)</span></span>
@@ -243,7 +243,7 @@ model {
 <code class="sourceCode R"><span><span class="kw">if</span><span class="op">(</span><span class="va">use_cmdstanr</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_cmdstan_sample.html">SBC_backend_cmdstan_sample</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/cmdstanr/reference/cmdstan_model.html" class="external-link">cmdstan_model</a></span><span class="op">(</span><span class="st">"stan/rejection_sampling.stan"</span><span class="op">)</span>, iter_warmup <span class="op">=</span> <span class="fl">800</span>, iter_sampling <span class="op">=</span> <span class="fl">800</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span><span class="fu"><a href="https://mc-stan.org/rstan/reference/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/rejection_sampling.stan"</span><span class="op">)</span>, iter <span class="op">=</span> <span class="fl">1600</span>, warmup <span class="op">=</span> <span class="fl">800</span><span class="op">)</span></span>
+<span>  <span class="va">backend</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SBC_backend_rstan_sample.html">SBC_backend_rstan_sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/rstan/man/stan_model.html" class="external-link">stan_model</a></span><span class="op">(</span><span class="st">"stan/rejection_sampling.stan"</span><span class="op">)</span>, iter <span class="op">=</span> <span class="fl">1600</span>, warmup <span class="op">=</span> <span class="fl">800</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="no-rejections">No rejections<a class="anchor" aria-label="anchor" href="#no-rejections"></a>
@@ -267,7 +267,7 @@ model {
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"no_rejections"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'no_rejections'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (0%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.011.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (0%) fits had maximum Rhat &gt; 1.01. Maximum Rhat was 1.011.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -344,7 +344,7 @@ the data space). We will do a relatively aggressive rejection scheme
 <span>                    cache_mode <span class="op">=</span> <span class="st">"results"</span>, </span>
 <span>                    cache_location <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"reject_y"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Results loaded from cache file 'reject_y'</span></span></code></pre>
-<pre><code><span><span class="co">##  - 1 (0%) fits had at least one Rhat &gt; 1.01. Largest Rhat was 1.011.</span></span></code></pre>
+<pre><code><span><span class="co">##  - 1 (0%) fits had maximum Rhat &gt; 1.01. Maximum Rhat was 1.011.</span></span></code></pre>
 <pre><code><span><span class="co">## Not all diagnostics are OK.</span></span>
 <span><span class="co">## You can learn more by inspecting $default_diagnostics, $backend_diagnostics </span></span>
 <span><span class="co">## and/or investigating $outputs/$messages/$warnings for detailed output from the backend.</span></span></code></pre>
@@ -385,7 +385,7 @@ not be rejected by the same criteria.</p>
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Shinyoung Kim, Angie.H Moon, Martin Modrák, Teemu Säilynoja.</p>
+<p>Developed by Martin Modrák, Shinyoung Kim, Angie.H Moon, Teemu Säilynoja.</p>
 <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 
