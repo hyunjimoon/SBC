@@ -154,7 +154,8 @@ In practice, caching is not necessary but is often useful.
 We can quickly note that the statistics for the `s` parameter are extreme - many ranks of 0 and _extreme_ z-scores, including -Infinity. Seing just one or two such fits should be enough to convince us that there is something fundamentally wrong.
 
 ```{r}
-dplyr::filter(results_1$stats, variable == "s") 
+stats_s <- dplyr::filter(results_1$stats, variable == "s") 
+dplyr::select(stats_s, sim_id:ess_tail) # Hiding some less useful statistics for clarity
 ```
 
 

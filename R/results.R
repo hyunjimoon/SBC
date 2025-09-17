@@ -1352,7 +1352,7 @@ check_all_SBC_diagnostics <- function(results) {
   msg_unknown <- dplyr::filter(msg, is.na(type))
   purrr::walk(msg_unknown$message, function(m) { cat(" - [???] ", m, "\n") })
 
-  all_ok <- all(msg$ok)
+  all_ok <- !any(msg$type == "bad")
 
   if(!all_ok) {
     message("Not all diagnostics are OK.\nYou can learn more by inspecting $default_diagnostics, ",
@@ -1405,7 +1405,9 @@ print.SBC_results_summary <- function(x) {
 
   cat(paste0(" - ", status_string, " ", messages_indent, collapse = "\n"))
 
-  if(!all(x$messages$ok)) {
+  all_ok <- !any(x$messages$type == "bad")
+
+  if(!all_ok) {
     message("Not all diagnostics are OK.\nYou can learn more by inspecting $default_diagnostics, ",
             "$backend_diagnostics \nand/or investigating $outputs/$messages/$warnings for detailed output from the backend.")
   }

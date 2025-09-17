@@ -33,7 +33,7 @@ BF_{i,j}\frac{\text{Pr}(\mathcal{M}_i)}{\text{Pr}(\mathcal{M}_j)}
 $$
 
 This means, we can run SBC for this larger model! The results also naturally
-generlize to multiple models.
+generalize to multiple models.
 
 Additionally, we may also employ diagnostics specific for binary variables,
 like testing if the predictions are _calibrated_, e.g. that whenever posterior
@@ -44,7 +44,7 @@ posterior model probability is equal to the prior model probability.
 ## Setting up
 
 Let's setup the environment (`bridgesampling` currently works only with `rstan`,
-so we cannot use `cmdstanr` as do in other vignettes):
+so we cannot use `cmdstanr` as we do in other vignettes):
 
 ```{r setup, message=FALSE,warning=FALSE, results="hide"}
 library(SBC)
