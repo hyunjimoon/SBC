@@ -6,11 +6,11 @@
 models.}
 \usage{
 SBC_backend_bridgesampling(
-  backend_H0,
-  backend_H1,
+  ...,
   model_var = "model",
-  prior_prob1 = 0.5,
-  ...
+  prior_probs = NULL,
+  prior_prob1 = NULL,
+  bridgesampling_args = list()
 )
 }
 \arguments{

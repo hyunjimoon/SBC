@@ -2,10 +2,10 @@
 % Please edit documentation in R/backend-bridgesampling.R
 \name{select.SBC_bridgesampling_diagnostics}
 \alias{select.SBC_bridgesampling_diagnostics}
-\title{Custom select implementation maintainig information about submodels}
+\title{Custom select implementation maintaining information about submodels}
 \usage{
 \method{select}{SBC_bridgesampling_diagnostics}(diags, ...)
 }
 \description{
-Custom select implementation maintainig information about submodels
+Custom select implementation maintaining information about submodels
 }

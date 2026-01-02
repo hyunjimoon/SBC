@@ -157,6 +157,18 @@ attribute_present_stats <- function(attribute, x) {
   grepl(paste0("(^|,) *\\Q",attribute,"\\E *($|,)"), x)
 }
 
+#' Extract arguments of a given attribute from the `$stats` element of the results
+#' @export
+#'
+extract_attribute_arguments_stats <- function(attribute_name, x) {
+  stopifnot(is.character(attribute_name))
+  stopifnot(length(attribute_name) == 1)
+  attribute_present_with_arguments <- grepl(paste0("(^|,) *\\Q",attribute_name,"\\E\\([^)]*\\) *($|,)"), x)
+  removed_left <- gsub(paste0("^.*\\Q",attribute_name,"\\E\\("), "", x)
+  removed_right <- gsub("\\).*$", "", removed_left)
+  dplyr::if_else(attribute_present_with_arguments, removed_right, NA_character_)
+}
+
 
 var_attributes_to_attributes_column <- function(var_attr, variables) {
   var_attr_names <- variable_names_to_var_attributes_names(variables)

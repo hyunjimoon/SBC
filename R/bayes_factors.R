@@ -1,67 +1,77 @@
 # Note: needs to be kept in sync with combine_var_attributes_for_bf
-combine_draws_matrix_for_bf <- function(dm0, dm1, model_draws, NA_raw_dm = FALSE, model_var = "model") {
-  stopifnot(all(model_draws %in% c(0,1)))
-  stopifnot(posterior::is_draws_matrix(dm0))
-  stopifnot(posterior::is_draws_matrix(dm1))
+combine_draws_matrix_for_bf <- function(dm_list, model_draws, NA_raw_dm = FALSE, model_var = "model") {
+  stopifnot(length(dm_list) >= 2)
+  stopifnot(all(model_draws %in% seq(0, length(dm_list) - 1)))
+  stopifnot(all(purrr::map_lgl(dm_list, posterior::is_draws_matrix)))
   stopifnot(is.character(model_var) & length(model_var) == 1)
 
-  stopifnot(posterior::ndraws(dm0) == posterior::ndraws(dm1))
-  stopifnot(posterior::ndraws(dm0) == length(model_draws))
-
-  dm0_raw <- dm0
-  if(NA_raw_dm) {
-    dm0_raw[model_draws == 1,] <- NA
+  dm_n_draws <- purrr::map_int(dm_list, posterior::ndraws)
+  if(length(unique(dm_n_draws)) > 1) {
+    stop("Not all elements of dm_list have the same number of draws")
   }
-  posterior::variables(dm0_raw) <- paste0(".m0.",posterior::variables(dm0))
+  stopifnot(dm_n_draws[1] == length(model_draws))
 
-  dm1_raw <- dm1
-  if(NA_raw_dm) {
-    dm1_raw[model_draws == 0,] <- NA
+  dm_list <- unname(dm_list)
+
+  process_single_dm_raw <- function(dm, index_p1) {
+    dm_raw <- dm
+    if(NA_raw_dm) {
+      dm_raw[model_draws + 1 != index_p1,] <- NA
+    }
+    posterior::variables(dm_raw) <- paste0(".m", index_p1 - 1, ".",posterior::variables(dm))
+    dm_raw
   }
-  posterior::variables(dm1_raw) <- paste0(".m1.",posterior::variables(dm1))
+  dm_raw_list <- purrr::imap(dm_list, process_single_dm_raw)
+
+  pairs_index_by_model <- matrix(nrow = length(model_draws), ncol = 2)
+  pairs_index_by_model[, 1] <- 1:length(model_draws)
+  pairs_index_by_model[, 2] <- model_draws + 1
 
 
   dm_model <- posterior::draws_matrix(model = model_draws)
   posterior::variables(dm_model) <- model_var
+  if(length(dm_list) > 2) {
+    dm_is_model_raw <- matrix(0, nrow = length(model_draws), ncol = length(dm_list))
+    dm_is_model_raw[pairs_index_by_model] <- 1
+    colnames(dm_is_model_raw) <- paste0("is_", model_var, 0:(length(dm_list) - 1))
+    dm_model <- posterior::bind_draws(dm_model, posterior::as_draws_matrix(dm_is_model_raw))
+  }
 
-  all_variables_names <- unique(c(posterior::variables(dm0), posterior::variables(dm1)))
+  all_variables_names <- unique(do.call(c, purrr::map(dm_list, posterior::variables)))
   list_all_vars <- list()
 
   param_not_present <- -Inf
 
   for(v in all_variables_names) {
-    if(v %in% posterior::variables(dm0)) {
-      var0 <- as.numeric(dm0[, v])
-    } else {
-      var0 <- param_not_present
+    var_matrix <- matrix(nrow = length(model_draws), ncol = length(dm_list))
+    for(m in 1:length(dm_list)) {
+      if(v %in% posterior::variables(dm_list[[m]])) {
+        var_matrix[, m] <- as.numeric(dm_list[[m]][, v])
+      } else {
+        var_matrix[, m] <- param_not_present
+      }
     }
-    if(v %in% posterior::variables(dm1)) {
-      var1 <- as.numeric(dm1[, v])
-    } else {
-      var1 <- param_not_present
-    }
-    list_all_vars[[v]] <- dplyr::if_else(model_draws == 0, var0, var1)
+    list_all_vars[[v]] <- var_matrix[pairs_index_by_model]
   }
   all_vars <- do.call(posterior::draws_matrix, list_all_vars)
-  posterior::bind_draws(
-    dm_model,
-    all_vars,
-    dm0_raw,
-    dm1_raw)
+
+  all_dm <- c(list(dm_model, all_vars), dm_raw_list)
+  do.call(posterior::bind_draws, all_dm)
 }
 
 # Note: needs to be kept in sync with combine_draws_matrix_for_bf
-combine_var_attributes_for_bf <- function(dm0, dm1, var_attr0, var_attr1, model_var = "model") {
-  stopifnot(posterior::is_draws_matrix(dm0))
-  stopifnot(posterior::is_draws_matrix(dm1))
+combine_var_attributes_for_bf <- function(dm_list, var_attr_list, model_var = "model") {
+  stopifnot(length(dm_list) == length(var_attr_list))
+  stopifnot(length(dm_list) >= 2)
+  stopifnot(all(purrr::map_lgl(dm_list, posterior::is_draws_matrix)))
 
-  var_attr0 <- validate_var_attributes(var_attr0)
-  var_attr1 <- validate_var_attributes(var_attr1)
+
+  var_attr_list <- purrr::map(var_attr_list, validate_var_attributes)
 
   stopifnot(is.character(model_var) & length(model_var) == 1)
 
 
-  raw_attrs <- function(dm, orig_attr, model_id) {
+  raw_attrs_single <- function(dm, orig_attr, model_id) {
     attr_names <- variable_names_to_var_attributes_names(posterior::variables(dm))
 
     new_attr_vec <- c(hidden_var_attribute(), submodel_var_attribute(model_id))
@@ -74,60 +84,98 @@ combine_var_attributes_for_bf <- function(dm0, dm1, var_attr0, var_attr1, model_
     return(attr_combined)
   }
 
-  raw_attr0 <- raw_attrs(dm0, var_attr0, 0)
-  raw_attr1 <- raw_attrs(dm1, var_attr1, 1)
+  raw_attr_list <- purrr::pmap(list(dm = dm_list, orig_attr = var_attr_list, model_id = 0:(length(dm_list) - 1)),
+                               raw_attrs_single)
 
-  single_model_attr_names <- variable_names_to_var_attributes_names(c(
-    setdiff(posterior::variables(dm0), posterior::variables(dm1)),
-    setdiff(posterior::variables(dm1), posterior::variables(dm0))
-  ))
-  single_model_attr <- var_attributes_from_list(single_model_attr_names, list(inf_valid_var_attribute()))
+  shared_attr_names <- intersect(posterior::variables(dm_list[[1]]), posterior::variables(dm_list[[2]]))
+  if(length(dm_list) > 2) {
+    for(i in 3:length(dm_list)) {
+      shared_attr_names <- intersect(shared_attr_names, posterior::variables(dm_list[[i]]))
+    }
+  }
 
-  attr_model <- var_attributes(model = c(binary_var_attribute(), possibly_constant_var_attribute()))
-  names(attr_model) <- model_var
+  not_shared_attr_single <- function(dm) {
+    setdiff(posterior::variables(dm), shared_attr_names)
+  }
+
+  not_shared_attr_names <- variable_names_to_var_attributes_names(unique(do.call(
+    c, purrr::map(dm_list, not_shared_attr_single)
+  )))
+
+  not_shared_attr <- var_attributes_from_list(not_shared_attr_names, list(inf_valid_var_attribute()))
+
+  if(length(dm_list) == 2) {
+    attr_model <- var_attributes(model = c(binary_var_attribute(), possibly_constant_var_attribute()))
+    names(attr_model) <- model_var
+  } else {
+    attrs_list <- c(list(possibly_constant_var_attribute()),
+                    rep(list(
+                      c(binary_var_attribute(), possibly_constant_var_attribute())
+                    ), times = length(dm_list)))
+    attr_names <- c(model_var, paste0("is_", model_var, 0:(length(dm_list) - 1)))
+    attr_model <- var_attributes_from_list(attr_names, attrs_list)
+  }
+
+  all_attr_list <- c(list(attr_model, not_shared_attr), var_attr_list, raw_attr_list)
 
   return(
-    combine_var_attributes(attr_model,
-                           single_model_attr,
-                           var_attr0,
-                           var_attr1,
-                           raw_attr0,
-                           raw_attr1
-    )
+    do.call(combine_var_attributes, all_attr_list)
   )
 }
 
-#' Combine two datasets to check Bayes factor computation.
+#' Combine two or more datasets to check Bayes factor computation.
 #'
 #' @description
-#' Merge two datasets of the same length, each generated by a different model. The "true" model
+#' Merge two or more datasets of the same length, each generated by a different model. The "true" model
 #' will be chosen randomly for each dataset.
 #'
 #' @details The merged dataset will keep track of all parameters and later allow
 #' splitting results with [`split_SBC_results_for_bf()`], to this, a number of
-#' submodel-specific variables will be stored, but makred as
+#' submodel-specific variables will be stored, but marked as
 #' [`hidden_var_attribute()`] to not clutter default visualisations.
 #' @export
-SBC_datasets_for_bf <- function(datasets_H0, datasets_H1, prob_H1 = 0.5, model_var = "model") {
-  validate_SBC_datasets(datasets_H0)
-  validate_SBC_datasets(datasets_H1)
-  stopifnot(length(datasets_H0) == length(datasets_H1))
+SBC_datasets_for_bf <- function(..., probs = NULL, model_var = "model", prob_H1 = NULL) {
+  all_datasets <- purrr::map(list(...), validate_SBC_datasets)
 
-  model_draws <- rbinom(length(datasets_H0), size = 1, prob = prob_H1)
-  combined_variables <- combine_draws_matrix_for_bf(datasets_H0$variables, datasets_H1$variables,
+  if(!is.null(prob_H1)) {
+    stopifnot(length(all_datasets) == 2)
+    stopifnot(is.null(probs))
+    probs <- c(1 - prob_H1, prob_H1)
+  }
+
+  if(is.null(probs)) {
+    probs <- rep(1 / length(all_datasets), times = length(all_datasets))
+  } else {
+    stopifnot(is.numeric(probs))
+    stopifnot(length(probs) == length(all_datasets))
+  }
+
+  all_lengths <- purrr::map_dbl(all_datasets, length)
+  n_sims <- unique(all_lengths)
+  if(length(n_sims) != 1) {
+    stop("Datasets have different sizes")
+  }
+
+  if(length(all_datasets) == 2) {
+    # Keep old code for this case to prevent invalidation of caches
+    model_draws <- rbinom(n_sims, size = 1, prob = probs[2])
+  } else {
+    model_draws <-  sample(0:(length(all_datasets) - 1), size = n_sims, prob =  probs, replace = TRUE)
+  }
+  all_variables <- purrr::map(all_datasets, \(x) x$variables)
+  combined_variables <- combine_draws_matrix_for_bf(all_variables,
                                                     model_draws,
                                                     NA_raw_dm = TRUE,
                                                     model_var = model_var)
 
-  combined_var_attributes <- combine_var_attributes_for_bf(datasets_H0$variables, datasets_H1$variables,
-                                                           datasets_H0$var_attributes, datasets_H1$var_attributes,
+  all_var_attributes <- purrr::map(all_datasets, \(x) x$var_attributes)
+  combined_var_attributes <- combine_var_attributes_for_bf(all_variables,
+                                                           all_var_attributes,
                                                            model_var = model_var)
 
-  combined_generated <- datasets_H0$generated
-  for(i in 1:length(datasets_H0)) {
-    if(model_draws[i] == 1) {
-      combined_generated[[i]] <- datasets_H1$generated[[i]]
-    }
+  combined_generated <- list()
+  for(i in 1:n_sims) {
+    combined_generated[[i]] <- all_datasets[[model_draws[i] + 1]]$generated[[i]]
   }
 
   SBC_datasets(combined_variables, combined_generated, combined_var_attributes)
@@ -157,21 +205,39 @@ get_stats_for_submodel <- function(stats, submodel_id) {
 #' corresponding model was chosen.
 #' @export
 split_SBC_results_for_bf <- function(results_bf) {
-  stats <- results_bf$stats
-  list(
-    stats_H0 = get_stats_for_submodel(stats, 0),
-    stats_H1 = get_stats_for_submodel(stats, 1)
-  )
+  all_submodels <- as.integer(extract_attribute_arguments_stats("submodel", results_bf$stats$attributes))
+#  }
+  unique_submodels <- sort(unique(all_submodels[!is.na(all_submodels)]))
+  if(length(unique_submodels) <= 1) {
+    stop("At least two different submodels need to be marked in the stats")
+  }
+  split_res <- list()
+  for(submodel_id in unique_submodels) {
+    split_res[[paste0("stats_H", submodel_id)]] <- get_stats_for_submodel(results_bf$stats, submodel_id)
+  }
+  split_res
 }
 
 # Constructs a CDF data.frame for SBC_posterior_cdf from posterior probability
 # of a binary variable.
-binary_to_cdf <- function(variables, prob1, simulated_value) {
+binary_to_cdf <- function(variable_name, prob1, simulated_value) {
   if(!all(simulated_value %in% c(0,1))) {
     warning("binary_to_cdf expects the simulated_value to be either 0 or 1")
   }
-  data.frame(variable = variables,
-             cdf_low = dplyr::if_else(simulated_value == 0, 0, prob1),
-             cdf_high = dplyr::if_else(simulated_value == 0, prob1, 1))
+  discrete_to_cdf(variable_name, c(1 - prob1, prob1), simulated_value)
 }
 
+# Constructs a CDF data.frame for SBC_posterior_cdf from posterior probability
+# of a discrete variable.
+discrete_to_cdf <- function(variable_name, probs, simulated_value) {
+  max_val <- length(probs) - 1
+  if(!all(simulated_value %in% 0:max_val)) {
+    warning(paste0("discrete_to_cdf expects the simulated_value to be an integer between 0 and ", max_val))
+  }
+  stopifnot(abs(sum(probs) - 1) < 1e-7)
+  cdf_low <- c(0, cumsum(probs))
+  cdf_high <- c(cumsum(probs[1:(length(probs) - 1)]), 1)
+  data.frame(variable = variable_name,
+             cdf_low = cdf_low[simulated_value + 1],
+             cdf_high = cdf_high[simulated_value + 1])
+}

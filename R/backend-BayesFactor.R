@@ -86,7 +86,7 @@ SBC_fit_to_draws_matrix.SBC_fit_extractBF_comparison <- function(fit) {
   draws1 <- posterior::merge_chains(SBC_fit_to_draws_matrix(fit$fit1))
 
   if(posterior::ndraws(draws0) != posterior::ndraws(draws1)) {
-    warning("Unequal number of draws for each bridgesampling fit. Will subset to the smaller number.")
+    warning("Unequal number of draws for each extractBF fit. Will subset to the smaller number.")
     if(posterior::ndraws(draws0) > posterior::ndraws(draws1)) {
       draws0 <- posterior::subset_draws(draws0, draw = 1:posterior::ndraws(draws1))
     } else {
@@ -100,7 +100,7 @@ SBC_fit_to_draws_matrix.SBC_fit_extractBF_comparison <- function(fit) {
 
   model_draws <- rbinom(n = total_draws, size = 1, prob = prob1)
 
-  combined_draws <- SBC:::combine_draws_matrix_for_bf(draws0, draws1, model_draws, model_var = fit$model_var)
+  combined_draws <- SBC:::combine_draws_matrix_for_bf(list(draws0, draws1), model_draws, model_var = fit$model_var)
 
   return(combined_draws)
 }

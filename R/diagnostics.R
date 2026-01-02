@@ -48,6 +48,8 @@ get_diagnostic_messages_single.SBC_numeric_diagnostic <- function(diagnostic, va
 
   if(is.null(diagnostic$report)) {
     report <- ""
+  } else if(length(values) == 0) {
+    report <- "No values available"
   } else if(diagnostic$report == "max") {
     report <- paste0("Maximum ", label_for_report, " was ", round(max(values, na.rm = TRUE), digits = diagnostic$digits), unit, ". ")
   } else if(diagnostic$report == "min") {

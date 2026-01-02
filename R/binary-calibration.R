@@ -27,7 +27,7 @@ binary_probabilities_from_stats <- function(stats) {
     stop("For binary variables either the cdf_low needs to be 0 or the cdf_high needs to be 1")
   }
 
-  stats <- dplyr::mutate(stats, prob = if_else(cdf_low == 0, cdf_high, cdf_low))
+  stats <- dplyr::mutate(stats, prob = if_else(cdf_low == 0, 1 - cdf_high, 1 - cdf_low))
 
   return(stats)
 }
@@ -166,7 +166,7 @@ binary_calibration_base <- function(prob, outcome, uncertainty_prob = 0.95, type
 calibration_prob_hist_geom <- function(calib_df) {
   geom_histogram(
     data = attr(calib_df, "bp"),
-    aes(x = prob, y = after_stat(count / sum(count))),
+    aes(x = prob, y = after_stat(width * density)), # Making each subplot sum to 1, following https://github.com/donaldtmcknight/Proportional-histograms-and-density-plots-in-ggplot/blob/main/Tutorial_git.md#511-grouped-histogram-where-each-group-sums-to-1
     inherit.aes = FALSE,
     bins = attr(calib_df, "bins"),
     boundary = 0,

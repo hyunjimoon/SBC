@@ -43,3 +43,8 @@ require_brms_version <- function(purpose) {
 require_cmdstanr_version <- function(purpose) {
   require_package_version("cmdstanr", "0.4.0", purpose)
 }
+
+log_sum_exp <- function(x) {
+  m <- max(x)
+  m + log(sum(exp(x - m)))
+}

@@ -11,6 +11,8 @@
 #' in the global environment and need to present for the gen. quants. to evaluate.
 #' It is added to the `globals` argument to [future::future()], to make those
 #' objects available on all workers.
+#' @param .var_attributes a [var_attributes()] object providing attributes for
+#' the derived quantities, if necessary
 #' @examples
 #'# Derived quantity computing the total log likelihood of a normal distribution
 #'# with known sd = 1
@@ -24,10 +26,11 @@
 #'                                 .globals = "normal_lpdf" )
 #'
 #' @export
-derived_quantities <- function(..., .globals = list()) {
+derived_quantities <- function(..., .var_attributes = var_attributes(), .globals = list()) {
   structure(rlang::enquos(..., .named = TRUE),
             class = "SBC_derived_quantities",
-            globals = .globals
+            globals = .globals,
+            var_attributes = .var_attributes
             )
 }
 
@@ -45,11 +48,17 @@ validate_derived_quantities <- function(x) {
 #' @title Combine two lists of derived quantities
 #' @export
 bind_derived_quantities <- function(dq1, dq2) {
+  if(is.null(dq1)) {
+    return(dq2)
+  } else if(is.null(dq2)) {
+    return(dq1)
+  }
   validate_derived_quantities(dq1)
   validate_derived_quantities(dq2)
   structure(c(dq1, dq2),
             class = "SBC_derived_quantities",
-            globals = bind_globals(attr(dq1, "globals"), attr(dq2, "globals")))
+            globals = bind_globals(attr(dq1, "globals"), attr(dq2, "globals")),
+            var_attributes = combine_var_attributes(attr(dq1, "var_attributes"), attr(dq2, "var_attributes")))
 }
 
 #'@title Compute derived quantities based on given data and posterior draws.
@@ -87,7 +96,11 @@ compute_dquants <- function(draws, generated, dquants, gen_quants = NULL) {
   do.call(posterior::draws_rvars, rvars)
 }
 
-
+#' Get the [var_attributes()] object associated with the derived quantities
+#' @export
+dquants_var_attributes <- function(dquants) {
+  return(attr(dquants, "var_attributes", exact = TRUE))
+}
 
 #' @title Create a definition of derived quantities evaluated in R.
 #' @description Delegates directly to `derived_quantities()`.

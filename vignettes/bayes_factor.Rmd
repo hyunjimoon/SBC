@@ -79,7 +79,7 @@ theme_set(theme_minimal())
 
 
 ```{r enable progressr, eval = FALSE}
-# Run this _in the console_ to report progress for all computations to report progress for all computations
+# Run this _in the console_ to report progress for all computations
 # see https://progressr.futureverse.org/ for more options
 progressr::handlers(global = TRUE)
 ```
@@ -395,8 +395,11 @@ backend_turtles <- SBC_backend_bridgesampling(
     fit_cache_dir,
     SBC_backend_rstan_sample(m_H0, iter = iter, warmup = warmup, init = init)
     ),
-  SBC_backend_rstan_sample(m_H1, iter = iter, warmup = warmup, init = init, 
+  SBC_backend_cached(
+    fit_cache_dir,
+    SBC_backend_rstan_sample(m_H1, iter = iter, warmup = warmup, init = init, 
                            control = list(adapt_delta = 0.99, max_treedepth = 12))
+  )
 )
 res_turtles <- compute_SBC(ds_turtles, backend_turtles, 
                            keep_fits = FALSE,
@@ -442,3 +445,164 @@ gaffke_test(bp$prob, mu = 0.5)
 So no problems here, up to the resolution available with `r N_sims` simulations.
 In practice, we would recommend running more simulations for thorough checks,
 but this is just an example that should compute in reasonable time.
+
+## Multiple models
+
+To showcase comparisons of more than two models, we finally add a fixed-effect model as another comparison, the model code is:
+
+```{r, comment = ""}
+cat(readLines("stan/turtles_H2.stan"), sep = "\n")
+```
+
+```{r}
+m_H2 <- stan_model("stan/turtles_H2.stan")
+```
+
+We also need to write a simulator for this version of the model:
+
+```{r h2-sim}
+sim_turtles_H2 <- function(N, C) {
+  stopifnot(N >= 3 * C)
+
+  ## Rejection sampling to avoid low-variability datasets
+  for(i in 1:200) {
+
+    alpha0_raw <- rnorm(1) 
+    alpha1_raw <- rnorm(1) 
+    alpha0 <- sqrt(10) * alpha0_raw
+    alpha1 <- sqrt(10) * alpha1_raw
+    
+    clutch <- rep(1:C, length.out = N)
+    x <- rnorm(N) / 3  
+    
+    
+    b_clutch_raw <- rnorm(C - 1)
+    b_clutch <- c(b_clutch_raw, 0)
+      
+    predictor <- alpha0 + alpha1 * x + b_clutch[clutch]
+
+    log_prior <- dnorm(alpha0_raw, log = TRUE) +
+      dnorm(alpha1_raw, log = TRUE) + 
+        sum(dnorm(b_clutch_raw, log = TRUE))
+    
+    prob <- pnorm(predictor)
+    y <- rbinom(N, p = prob, size = 1)
+    if(mean(y == 0) < 0.9 && mean(y == 1) < 0.9) {
+      break
+    }
+  }
+  if(i >= 200) {
+    warning("Could not generate nice dataset")
+  }
+  
+  log_lik_predictor <- sum(dbinom(y, size = 1, p = prob, log = TRUE))
+  
+  variables <- list(
+      alpha0 = alpha0,
+      alpha1 = alpha1,
+      b = b_clutch,
+      lp__ = log_prior + log_lik_predictor
+    )
+  
+  list(
+    generated = list(
+      N = N,
+      y = y,
+      x = x,
+      C = C,
+      clutch = clutch
+    ),
+    variables = variables,
+    var_attributes = var_attributes(b = possibly_constant_var_attribute())
+  )
+}
+```
+
+
+```{r multiple-generate-ds}
+set.seed(1324854)
+ds_turtles_m2 <- generate_datasets(SBC_generator_function(sim_turtles_H2, N = N, C = C), n_sims = N_sims)
+ds_turtles_3 <- SBC_datasets_for_bf(ds_turtles_m0, ds_turtles_m1, ds_turtles_m2)
+```
+
+
+Now lets run SBC with all three (we just give more arguments to the relevant functions defining backends and combining datasets):
+
+```{r multiple-fit}
+backend_turtles_3 <- SBC_backend_bridgesampling(
+  SBC_backend_cached(
+    fit_cache_dir,
+    SBC_backend_rstan_sample(m_H0, iter = iter, warmup = warmup, init = init)
+    ),
+  SBC_backend_cached(
+    fit_cache_dir,
+    SBC_backend_rstan_sample(m_H1, iter = iter, warmup = warmup, init = init, 
+                           control = list(adapt_delta = 0.99, max_treedepth = 12))
+  ),
+  SBC_backend_cached(
+    fit_cache_dir,
+    SBC_backend_rstan_sample(m_H2, iter = iter, warmup = warmup, init = init)  
+  )
+)
+
+res_turtles_3 <- compute_SBC(ds_turtles_3, backend_turtles_3, 
+                           keep_fits = FALSE,
+                           cache_mode = "results",
+                           cache_location = file.path(cache_dir, "turtles_3.rds"))
+```
+
+we got a small number of divergences for the H1, which we will ignore here as we did previously, ECDF plots look good. Note that we the `model` variable now has three values (and thus cannot be used with binary calibration), but the backend automatically add 4 binary variables: one indicator for each model and then another one as indicator for the model with highest probability.
+
+
+```{r ecdf-multiple}
+plot_ecdf_diff(res_turtles_3, combine_variables = combine_array_elements)
+```
+
+
+Similarly, binary prediction calibration also looks good for all of those four variables.
+
+
+
+```{r calib-multiple}
+plot_binary_calibration(res_turtles_3, region.method = "resampling")
+```
+
+Formal miscalibration tests also shows no problems for any of the variables:
+
+```{r}
+bp_3 <- binary_probabilities_from_stats(res_turtles_3$stats)
+for(bp_var in unique(bp_3$variable)) {
+  cat("=====", bp_var, "=====\n")
+  bp_3_selected <- bp_3 |> filter(variable == bp_var)
+  print(miscalibration_resampling_test(bp_3_selected$prob, bp_3_selected$simulated_value))
+  print(brier_resampling_test(bp_3_selected$prob, bp_3_selected$simulated_value))
+}
+```
+
+
+And that data-averaged posterior? Both with t-test and the Gaffke test and for all variables, we see
+no problems and reasonably tight confidence intervals centered at the expected
+value of 0.5.
+
+```{r}
+for(bp_var in unique(bp_3$variable)) {
+  cat("=====", bp_var, "=====\n")
+  print(t.test(bp$prob, mu = 0.5))
+  print(gaffke_test(bp$prob, mu = 0.5))
+}
+```
+
+
+Finally, we can also split the results into results for individual models (just now with even fewer fits per model) - which all look good!
+
+
+```{r ecdf-3-split}
+stats_split_3 <- split_SBC_results_for_bf(res_turtles_3)
+plot_ecdf_diff(stats_split_3$stats_H0) + ggtitle("M0")
+plot_ecdf_diff(stats_split_3$stats_H1, 
+               combine_variables = combine_array_elements) + ggtitle("M1")  
+plot_ecdf_diff(stats_split_3$stats_H2, 
+               combine_variables = combine_array_elements) + ggtitle("M2")  
+```
+
+

@@ -53,6 +53,19 @@ SBC_posterior_cdf.default <- function(fit, variables) {
   NULL
 }
 
+#' @return A [derived_quantities()] object or NULL if there are none
+#' @export
+SBC_fit_specific_dquants <- function(fit) {
+  UseMethod("SBC_fit_specific_dquants")
+}
+
+
+#' @rdname SBC_fit_specific_dquants
+#' @export
+SBC_fit_specific_dquants.default <- function(fit) {
+  NULL
+}
+
 #' Validate the results of a SBC_posterior_cdf call.
 #' @keywords internal
 validate_cdf_df <- function(cdf_df, valid_variables) {
@@ -66,6 +79,9 @@ validate_cdf_df <- function(cdf_df, valid_variables) {
     if(!(("cdf_low" %in% names(cdf_df)) || !("cdf_high" %in% names(cdf_df)))) {
       if(!("cdf" %in% names(cdf_df))) {
         stop("Result of SBC_posterior_cdf must either have a 'cdf' column or both a 'cdf_low' and a 'cdf_high' column.")
+      } else {
+        cdf_df$cdf_low <- cdf_df$cdf
+        cdf_df$cdf_high <- cdf_df$cdf
       }
     }
     unknown_vars <- cdf_df$variable[!(cdf_df$variable %in% valid_variables)]

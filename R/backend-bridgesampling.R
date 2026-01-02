@@ -3,13 +3,28 @@
 #'
 #' @param ... passed to [bridgesampling::bridge_sampler()].
 #' @export
-SBC_backend_bridgesampling <- function(backend_H0, backend_H1, model_var = "model", prior_prob1 = 0.5, ...) {
+SBC_backend_bridgesampling <- function(..., model_var = "model", prior_probs = NULL, prior_prob1 = NULL, bridgesampling_args = list()) {
+
   require_package_version("bridgesampling", version = "1.0", purpose = " to use the bridgesampling SBC backend")
-  structure(list(backend_H0 = backend_H0,
-                 backend_H1 = backend_H1,
+
+  all_backends <- list(...)
+  if(!is.null(prior_prob1)) {
+    stopifnot(length(all_backends) == 2)
+    stopifnot(is.null(prior_probs))
+    prior_probs <- c(1 - prior_prob1, prior_prob1)
+  }
+
+  if(is.null(prior_probs)) {
+    prior_probs <- rep(1 / length(all_backends), times = length(all_backends))
+  } else {
+    stopifnot(is.numeric(prior_probs))
+    stopifnot(length(prior_probs) == length(all_datasets))
+  }
+
+  structure(list(all_backends = all_backends,
                  model_var = model_var,
-                 prior_prob1 = prior_prob1,
-                 bridgesampling_args = list(...)),
+                 prior_probs = prior_probs,
+                 bridgesampling_args = bridgesampling_args),
             class = "SBC_backend_bridgesampling")
 }
 
@@ -84,66 +99,112 @@ SBC_fit.SBC_backend_bridgesampling <- function(backend, generated, cores) {
     list(fit = fit_with_outputs$res, bridge = bridge_with_outputs$res)
   }
 
-  fit_bridge_0 <- fit_single(backend$backend_H0, 0)
-  fit_bridge_1 <- fit_single(backend$backend_H1, 1)
+  fit_bridges <- purrr::map2(backend$all_backends, 0:(length(backend$all_backends) - 1), fit_single)
+
+  fits <- purrr::map(fit_bridges, \(x) x$fit)
+  bridges <- purrr::map(fit_bridges, \(x) x$bridge)
 
   structure(list(
-    fit0 = fit_bridge_0$fit,
-    fit1 = fit_bridge_1$fit,
-    bridge_H0 = fit_bridge_0$bridge,
-    bridge_H1 = fit_bridge_1$bridge,
+    fits = fits,
+    bridges = bridges,
     model_var = backend$model_var,
-    prior_prob1 = backend$prior_prob1
+    prior_probs = backend$prior_probs
   ), class = "SBC_fit_bridgesampling")
 }
 
-SBC_fit_bridgesampling_to_prob1 <- function(fit, log.p = FALSE) {
-  bf_res <- bridgesampling::bf(fit$bridge_H0, fit$bridge_H1, log = TRUE)
-  if(inherits(bf_res, "bf_bridge_list")) {
-    log_bf_01 <- bf_res$bf_median_based
+SBC_fit_bridgesampling_to_probs <- function(fit, log.p = FALSE) {
+  # Using median-based BF when multiple bridgesampling iterations were used
+  logmls <- purrr::map_dbl(fit$bridges, \(x) { median(x$logml, na.rm = TRUE)})
+
+  if(any(is.na(logmls))) {
+    print(fit$bridges)
+    stop("Some logml values are NA.")
+  }
+
+  prior_log <- log(fit$prior_probs)
+  log_probs_rel <- logmls + prior_log
+
+  # Softmax to probs
+  log_probs <- log_probs_rel - log_sum_exp(log_probs_rel)
+  if(log.p) {
+    log_probs
   } else {
-    log_bf_01 <- bf_res$bf
+    exp(log_probs)
   }
-  if(is.na(log_bf_01)) {
-    print(fit$bridge_H0)
-    print(fit$bridge_H1)
-    stop("Bayes factor is NA.")
-  }
-  prior_log <- log(fit$prior_prob1) - log1p( -fit$prior_prob1)
-  prob1 <- plogis(-log_bf_01 + prior_log, log.p = log.p)
-  return(prob1)
 }
 
 #' @export
 SBC_fit_to_draws_matrix.SBC_fit_bridgesampling <- function(fit) {
-  draws0 <- posterior::merge_chains(SBC_fit_to_draws_matrix(fit$fit0))
-  draws1 <- posterior::merge_chains(SBC_fit_to_draws_matrix(fit$fit1))
+  all_dms <- purrr::map(fit$fits, SBC_fit_to_draws_matrix)
+  all_draws <- purrr::map(all_dms, posterior::merge_chains)
 
-  if(posterior::ndraws(draws0) != posterior::ndraws(draws1)) {
+  all_ndraws <- purrr::map_int(all_draws, posterior::ndraws)
+  shared_ndraws <- unique(all_ndraws)
+
+  if(length(shared_ndraws) > 1) {
     warning("Unequal number of draws for each bridgesampling fit. Will subset to the smaller number.")
-    if(posterior::ndraws(draws0) > posterior::ndraws(draws1)) {
-      draws0 <- posterior::subset_draws(draws0, draw = 1:posterior::ndraws(draws1))
-    } else {
-      draws1 <- posterior::subset_draws(draws1, draw = 1:posterior::ndraws(draws0))
-    }
+    shared_ndraws <- min(shared_ndraws)
+    all_draws <- purrr::map(all_draws, \(x) {
+      posterior::subset_draws(x, draw = 1:shared_ndraws)
+    })
   }
 
-  prob1 <- SBC_fit_bridgesampling_to_prob1(fit)
+  probs <- SBC_fit_bridgesampling_to_probs(fit)
 
-  total_draws <- posterior::ndraws(draws0)
+  if(length(all_draws) == 2) {
+    # Keeping the old way for 2 models to not invalidate older results
+    model_draws <- rbinom(n = shared_ndraws, size = 1, prob = probs[2])
+  } else {
+    model_draws <- sample(0:(length(all_draws) - 1), size  = shared_ndraws, prob = probs, replace = TRUE)
+    # TODO figure out top_model to have in stats (presumably via the DQ mechanism...)
+  }
 
-  model_draws <- rbinom(n = total_draws, size = 1, prob = prob1)
-
-  combined_draws <- combine_draws_matrix_for_bf(draws0, draws1, model_draws, model_var = fit$model_var)
+  combined_draws <- combine_draws_matrix_for_bf(all_draws, model_draws, model_var = fit$model_var)
 
   return(combined_draws)
 }
 
 #' @export
+SBC_fit_specific_dquants.SBC_fit_bridgesampling <- function(fit) {
+  probs <- SBC_fit_bridgesampling_to_probs(fit)
+  max_index <- which.max(probs)
+  is_var_name <- paste0("is_", fit$model_var, max_index - 1)
+  top_var_name <- paste0("top_", fit$model_var)
+
+  dq_args <- list(rlang::parse_quo(is_var_name, rlang::current_env()))
+  names(dq_args) <- top_var_name
+  dq_args$.var_attributes <- var_attributes_from_list(top_var_name, list(c(
+    binary_var_attribute(), possibly_constant_var_attribute()
+  )))
+  do.call(derived_quantities, dq_args)
+
+}
+
+#' @export
 SBC_posterior_cdf.SBC_fit_bridgesampling <- function(fit, variables) {
   if(fit$model_var %in% names(variables)) {
-    prob1 <- SBC_fit_bridgesampling_to_prob1(fit)
-    return(binary_to_cdf(fit$model_var, prob1, variables[fit$model_var]))
+    probs <- SBC_fit_bridgesampling_to_probs(fit)
+    model_cdf <- discrete_to_cdf(fit$model_var, probs, variables[fit$model_var])
+    if(length(probs) == 2) {
+      return(model_cdf)
+    } else {
+      is_model_cdf_list <- list()
+      for(i in 1:length(probs)) {
+        is_var_name <- paste0("is_", fit$model_var, i - 1)
+        if(is_var_name %in% names(variables)) {
+          is_model_cdf_list[[i]] <- binary_to_cdf(is_var_name, probs[i], variables[is_var_name])
+        } else {
+          is_model_cdf_list[[i]] <- NULL
+        }
+      }
+      is_model_cdf <- do.call(rbind, is_model_cdf_list)
+
+      max_index <- which.max(probs)
+      simulated_value_top <- variables[fit$model_var] == max_index - 1
+      top_prediction_cdf <- binary_to_cdf(paste0("top_", fit$model_var), probs[max_index], simulated_value_top)
+
+      return(rbind(model_cdf, top_prediction_cdf, is_model_cdf))
+    }
   } else {
     return(NULL)
   }
@@ -162,17 +223,23 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
     }
   }
 
-  diags0 <- SBC_fit_to_diagnostics(fit$fit0,
-                                   get_prefixed_lines(hypothesis_output_prefix(0), fit_output),
-                                   get_prefixed_lines(hypothesis_output_prefix(0), fit_messages),
-                                   get_prefixed_lines(hypothesis_output_prefix(0), fit_warnings))
-  diags1 <- SBC_fit_to_diagnostics(fit$fit1,
-                                   get_prefixed_lines(hypothesis_output_prefix(1), fit_output),
-                                   get_prefixed_lines(hypothesis_output_prefix(1), fit_messages),
-                                   get_prefixed_lines(hypothesis_output_prefix(1), fit_warnings))
+  process_diag_single <- function(fit, model_index) {
+    diags <- SBC_fit_to_diagnostics(fit,
+                           get_prefixed_lines(hypothesis_output_prefix(model_index), fit_output),
+                           get_prefixed_lines(hypothesis_output_prefix(model_index), fit_messages),
+                           get_prefixed_lines(hypothesis_output_prefix(model_index), fit_warnings))
+    if(!is.null(diags)) {
+      names(diags) <- paste0(names(diags), "_H", model_index)
+    }
+    diags
+  }
 
-  prob1 <- SBC_fit_bridgesampling_to_prob1(fit)
-  log_prob1 <- SBC_fit_bridgesampling_to_prob1(fit, log.p = TRUE)
+  model_indices <- 0:(length(fit$fits) - 1)
+
+  diags_all <- purrr::map2(fit$fits, model_indices, process_diag_single)
+
+  probs <- SBC_fit_bridgesampling_to_probs(fit)
+  log_probs <- SBC_fit_bridgesampling_to_probs(fit, log.p = TRUE)
 
   get_percentage_error <- function(bridge) {
     errm <- bridgesampling::error_measures(bridge)
@@ -217,24 +284,21 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
     diags
   }
 
-  diags_bs <- cbind(
-    data.frame(prob_H1 = prob1, log_prob_H1 = log_prob1),
-    get_bridge_diagnostics(fit$bridge_H0, 0),
-    get_bridge_diagnostics(fit$bridge_H1, 1)
-  )
+  bridge_diags_all <- purrr::map2(fit$bridges, model_indices, get_bridge_diagnostics)
 
-  if(!is.null(diags0)) {
-    names(diags0) <- paste0(names(diags0), "_H0")
-    diags_bs <- cbind(diags_bs, diags0)
+  if(length(fit$fits) == 2) {
+    probs_df <- data.frame(prob_H1 = probs[2], log_prob_H1 = log_probs[2])
+  } else {
+    probs_diag_vec <- c(probs, log_probs)
+    names(probs_diag_vec) <- c(paste0("prob_H", model_indices), paste0("log_prob_H", model_indices))
+    probs_df <- t(as.data.frame(probs_diag_vec))
+    rownames(probs_df) <- NULL
   }
-
-  if(!is.null(diags1)) {
-    names(diags1) <- paste0(names(diags1), "_H1")
-    diags_bs <- cbind(diags_bs, diags1)
-  }
+  diags_bs <- do.call(cbind, c(list(probs_df),
+                               bridge_diags_all, diags_all))
 
   class(diags_bs) <- c("SBC_bridgesampling_diagnostics", class(diags_bs))
-  attr(diags_bs, "submodel_classes") <- list(H0 = class(diags0), H1 = class(diags1))
+  attr(diags_bs, "submodel_classes") <- purrr::map(diags_all, class)
   return(diags_bs)
 }
 
@@ -242,14 +306,15 @@ SBC_fit_to_diagnostics.SBC_fit_bridgesampling <- function(fit, fit_output, fit_m
 diagnostic_types.SBC_bridgesampling_diagnostics <- function(diags) {
   submodel_classes <- attr(diags, "submodel_classes", exact = TRUE)
   if(is.null(submodel_classes) ||
-     !is.list(submodel_classes) || !identical(names(submodel_classes), c("H0", "H1"))) {
+     !is.list(submodel_classes)) {
     warning(
 r"(The 'submodel_classes' attribute of an SBC_bridgesampling_diagnostics data.frame
 is not set or is in incorrect format.
 Maybe you have modified the $backend_diagnostics element of SBC_results?
 If not, please file an issue at https://github.com/hyunjimoon/SBC/issues/
 )")
-    submodel_diags <- list()
+    submodel_diags_all <- list()
+    n_submodels <- 2 #Typical guess, won't hurt reporting
   } else {
     get_submodel_diags <- function(i) {
       bs_specific_diags <- list()
@@ -269,7 +334,7 @@ If not, please file an issue at https://github.com/hyunjimoon/SBC/issues/
         \(name) gsub(paste0("_H",i,"$"), "", name))
 
 
-      class(H_diags) <- submodel_classes[[paste0("H",i)]]
+      class(H_diags) <- submodel_classes[[i + 1]]
       types_sub <- diagnostic_types(H_diags)
       types_mapped <- purrr::map(types_sub,
                                  \(diag) submodel_diagnostic(paste0("H", i), diag))
@@ -280,20 +345,25 @@ If not, please file an issue at https://github.com/hyunjimoon/SBC/issues/
       )
     }
 
-    submodel_diags <- c(
-      get_submodel_diags(0),
-      get_submodel_diags(1)
-    )
-
+    n_submodels <- length(submodel_classes)
+    submodel_diags_all <- do.call(c,
+                                  purrr::map(0:(n_submodels - 1), get_submodel_diags))
   }
 
-  c(
-    list(
+  if(n_submodels == 2) {
+    prob_diags <- list(
       prob_H1 = numeric_diagnostic("posterior probability of H1", report = "quantiles"),
       log_prob_H1 = skip_diagnostic()
-    ),
-    submodel_diags
-  )
+    )
+  } else {
+    prob_diags <- list()
+    for(i in 0:(n_submodels - 1)) {
+      prob_diags[[paste0("prob_H", i)]] <- numeric_diagnostic(paste0("posterior probability of H",i), report = "quantiles")
+      prob_diags[[paste0("log_prob_H", i)]] <- skip_diagnostic()
+    }
+  }
+
+  c(prob_diags, submodel_diags_all)
 }
 
 #' Custom rbind implementation maintainig information about submodels
@@ -326,7 +396,7 @@ rbind.SBC_bridgesampling_diagnostics <- function(...) {
   res
 }
 
-#' Custom select implementation maintainig information about submodels
+#' Custom select implementation maintaining information about submodels
 #' @exportS3Method dplyr::select
 select.SBC_bridgesampling_diagnostics <- function(diags, ...) {
   selected <- NextMethod()
@@ -337,11 +407,6 @@ select.SBC_bridgesampling_diagnostics <- function(diags, ...) {
 #' @export
 SBC_backend_hash_for_cache.SBC_backend_bridgesampling <- function(backend) {
   backend_for_hash <- backend
-  backend_for_hash$backend_H0 <- SBC_backend_hash_for_cache(backend$backend_H0)
-  backend_for_hash$backend_H1 <- SBC_backend_hash_for_cache(backend$backend_H1)
-  # Keep caches from older versions valid
-  if(!is.null(backend$prior_prob1) && backend$prior_prob1 == 0.5) {
-    backend_for_hash$prior_prob1 <- NULL
-  }
+  backend_for_hash$all_backends <- purrr::map(backend$all_backends, SBC_backend_hash_for_cache)
   rlang::hash(backend_for_hash)
 }

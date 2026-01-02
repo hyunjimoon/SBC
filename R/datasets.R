@@ -357,6 +357,7 @@ draws_rvars_to_standata_single <- function(x) {
   lapply(x, FUN = function(x_rvar) {
     res <- posterior::draws_of(x_rvar, with_chains = FALSE)
     #TODO figure out how to distinguish between scalar and array of size 1
+    #TODO should use var_attributes()!
     if(identical(dim(x_rvar), 1L)) {
       as.numeric(res[1,])
     } else {

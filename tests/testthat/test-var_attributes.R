@@ -42,6 +42,20 @@ test_that("attribute_present_stats", {
   expect_false(attribute_present_stats("submodel(0)", "submodel(1), binary, binary"))
 })
 
+
+test_that("extract_attribute_arguments_stats", {
+  expect_identical(extract_attribute_arguments_stats("submodel", c("binary", "submodel", "submodel(1)", "submodel(2,3,4)")),
+                   c(NA_character_, NA_character_, "1", "2,3,4"))
+  expect_identical(extract_attribute_arguments_stats("submodel", c("binary,allow_na", "notsubmodel(1)", "a,submodel(1)", "binary, submodel(2,3,4)")),
+                   c(NA_character_, NA_character_, "1", "2,3,4"))
+  expect_identical(extract_attribute_arguments_stats("submodel", c("binary", "submodel,questor", "aa,submodel(1), binary(3)", "qqq(a,b),submodel(2,3,4), prot(3,2)")),
+                   c(NA_character_, NA_character_, "1", "2,3,4"))
+  expect_identical(extract_attribute_arguments_stats("submodel", c("binary", "submodel,questor", "aa,submodel(1), binary(3)", "qqq(a,b),submodel(3), prot(3,2),submodel(2,3,4)")),
+                   c(NA_character_, NA_character_, "1", "2,3,4"))
+})
+
+
+
 test_that("var_attributes_to_attributes_column", {
   expect_identical(
     var_attributes_to_attributes_column(list(a = "discrete"), c("a", "b")),

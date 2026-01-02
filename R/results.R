@@ -870,6 +870,11 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
 
   fit_matrix <- SBC_fit_to_draws_matrix(fit)
 
+  dq_fit_specific <- SBC_fit_specific_dquants(fit)
+  if(!is.null(dq_fit_specific)) {
+    dquants <- bind_derived_quantities(dquants, dq_fit_specific)
+  }
+
   if(!is.null(dquants)){
     dquants <- validate_derived_quantities(dquants)
     dq_fit <- compute_dquants(fit_matrix, generated, dquants)
@@ -877,6 +882,8 @@ SBC_statistics_from_single_fit <- function(fit, variables, generated,
 
     dq_variable <- compute_dquants(variables, generated, dquants)
     variables <- posterior::bind_draws(variables, dq_variable, along = "variable")
+
+    var_attributes <- combine_var_attributes(var_attributes, dquants_var_attributes(dquants))
   }
 
   shared_vars <- intersect(posterior::variables(variables),
