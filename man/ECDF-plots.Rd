@@ -16,6 +16,7 @@ plot_ecdf(
   combine_variables = NULL,
   ecdf_alpha = NULL,
   show_hidden = FALSE,
+  facet_args = list(),
   ...,
   parameters = NULL
 )
@@ -31,6 +32,7 @@ plot_ecdf_diff(
   combine_variables = NULL,
   ecdf_alpha = NULL,
   show_hidden = FALSE,
+  facet_args = list(),
   ...,
   parameters = NULL
 )
@@ -50,7 +52,7 @@ the number of ranks or \code{"min"} to choose a lower but still sensible value.}
 
 \item{prob}{the width of the plotted confidence interval for the ECDF.}
 
-\item{size}{size passed to \code{\link[ggplot2:geom_ribbon]{ggplot2::geom_ribbon()}} for the confidence band}
+\item{size}{size (linewidth) passed to \code{\link[ggplot2:geom_ribbon]{ggplot2::geom_ribbon()}} for the confidence band}
 
 \item{alpha}{alpha level of the confidence band}
 
@@ -67,6 +69,8 @@ ECDFs will have reduced alpha.}
 
 \item{show_hidden}{Show variables marked with \code{\link[=hidden_var_attribute]{hidden_var_attribute()}}
 (by default, those are not shown, available only when \code{x} is a data.frame)}
+
+\item{facet_args}{extra arguments for the call to \code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}} when rendering the plot.}
 
 \item{...}{additional arguments passed to \code{\link[=data_for_ecdf_plots]{data_for_ecdf_plots()}}.
 Most notably, if \code{x} is matrix, a \code{max_rank} parameter needs to be given.}

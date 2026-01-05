@@ -4,7 +4,7 @@
 \alias{derived_quantities}
 \title{Create a definition of derived quantities evaluated in R.}
 \usage{
-derived_quantities(..., .var_attributes = var_attributes(), .globals = list())
+derived_quantities(..., .var_attributes = NULL, .globals = list())
 }
 \arguments{
 \item{...}{named expressions representing the quantitites}

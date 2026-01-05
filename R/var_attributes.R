@@ -1,8 +1,13 @@
 #' @export
 #' @rdname variable-attributes
 var_attributes <- function(...) {
-  var_attr <- structure(list(...), class = "var_attributes")
-  return(validate_var_attributes(var_attr))
+  args <- list(...)
+  if(length(args) == 0) {
+    NULL
+  } else {
+    var_attr <- structure(args, class = "var_attributes")
+    return(validate_var_attributes(var_attr))
+  }
 }
 
 var_attributes_from_list <- function(attr_names, attr_list) {
@@ -204,7 +209,7 @@ combine_var_attributes <- function(...) {
 
   res <- purrr::map(all_names, collect_single_name)
   names(res) <- all_names
-  validate_var_attributes(structure(res, class = "var_attributes"))
+  do.call(var_attributes, res)
 }
 
 #' Remove an attribute from a `data.frame` column with attributes.

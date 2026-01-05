@@ -21,7 +21,8 @@ plot_rank_hist(
   prob = 0.95,
   max_rank = x$max_rank,
   show_hidden = FALSE,
-  parameters = NULL
+  parameters = NULL,
+  facet_args = list()
 )
 }
 \arguments{
@@ -35,6 +36,8 @@ it is determined by \code{\link[=guess_rank_hist_bins]{guess_rank_hist_bins()}}.
 \item{prob}{The width of the approximate confidence interval shown.}
 
 \item{show_hidden}{Show variables marked with \code{\link[=hidden_var_attribute]{hidden_var_attribute()}} (by default, those are not shown)}
+
+\item{facet_args}{extra arguments for the call to \code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}} when rendering the plot.}
 }
 \description{
 The expected uniform distribution and an approximate confidence interval

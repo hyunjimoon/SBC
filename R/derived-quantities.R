@@ -26,7 +26,7 @@
 #'                                 .globals = "normal_lpdf" )
 #'
 #' @export
-derived_quantities <- function(..., .var_attributes = var_attributes(), .globals = list()) {
+derived_quantities <- function(..., .var_attributes = NULL, .globals = list()) {
   structure(rlang::enquos(..., .named = TRUE),
             class = "SBC_derived_quantities",
             globals = .globals,

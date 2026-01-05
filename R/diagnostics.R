@@ -48,7 +48,7 @@ get_diagnostic_messages_single.SBC_numeric_diagnostic <- function(diagnostic, va
 
   if(is.null(diagnostic$report)) {
     report <- ""
-  } else if(length(values) == 0) {
+  } else if(length(values[!is.na(values)]) == 0) {
     report <- "No values available"
   } else if(diagnostic$report == "max") {
     report <- paste0("Maximum ", label_for_report, " was ", round(max(values, na.rm = TRUE), digits = diagnostic$digits), unit, ". ")
@@ -114,7 +114,11 @@ get_diagnostic_messages_single.SBC_count_diagnostic <- function(diagnostic, valu
 
   any_above_thresh <- any(values > diagnostic$error_above, na.rm = TRUE)
 
-  report <- paste0("Maximum number of ", diagnostic$label_short, " was ", max(values, na.rm = TRUE), ". ")
+  if(length(values[!is.na(values)]) == 0) {
+    report <- "No values available"
+  } else {
+    report <- paste0("Maximum number of ", diagnostic$label_short, " was ", max(values, na.rm = TRUE), ". ")
+  }
 
   if (diagnostic$error_above == Inf) {
     ok_message <- report

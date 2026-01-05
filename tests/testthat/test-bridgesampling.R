@@ -1,4 +1,5 @@
 test_that("combine_draws_matrix_for_bf", {
+  library(dplyr)
   dm0 <- posterior::draws_matrix("a" = c(1,2,3,4), "b" = c(5,6,7,8))
   dm1 <- posterior::draws_matrix("a" = c(10,20,30,40), "c" = c(50, 60, 70, 80))
   model_draws <- c(0, 1, 0, 1)

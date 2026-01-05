@@ -1,3 +1,14 @@
+test_that("creating combining var_attributes", {
+  expect_identical(validate_var_attributes(NULL), NULL)
+  expect_identical(var_attributes(), NULL)
+  expect_identical(combine_var_attributes(var_attributes(), var_attributes()), NULL)
+
+  t <- var_attributes(a = hidden_var_attribute())
+  expect_identical(combine_var_attributes(t, NULL), t)
+  expect_identical(combine_var_attributes(NULL, var_attributes(), t, NULL), t)
+
+})
+
 test_that("attribute_present", {
   expect_identical(
     attribute_present("binary",

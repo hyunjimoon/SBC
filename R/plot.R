@@ -36,8 +36,9 @@ plot_rank_hist <- function(x, variables = NULL, bins = NULL, prob = 0.95, ..., p
 #' @export
 #' @rdname plot_rank_hist
 #' @param show_hidden Show variables marked with [hidden_var_attribute()] (by default, those are not shown)
+#' @param facet_args extra arguments for the call to [ggplot2::facet_wrap()] when rendering the plot.
 #' @import ggplot2
-plot_rank_hist.data.frame <- function(x, variables = NULL, bins = NULL, prob = 0.95, max_rank = x$max_rank, show_hidden = FALSE, parameters = NULL) {
+plot_rank_hist.data.frame <- function(x, variables = NULL, bins = NULL, prob = 0.95, max_rank = x$max_rank, show_hidden = FALSE, parameters = NULL, facet_args = list()) {
   # Ensuring backwards compatibility
   if("parameter" %in% names(x)) {
     if(!("variable" %in% names(x))) {
@@ -101,19 +102,21 @@ plot_rank_hist.data.frame <- function(x, variables = NULL, bins = NULL, prob = 0
   CI_polygon_x <- c(-0.1*max_rank,0,-0.1*max_rank,1.1 * max_rank,max_rank,1.1 * max_rank,-0.1 * max_rank)
   CI_polygon_y <- c(ci_lower,ci_mean,ci_upper,ci_upper,ci_mean,ci_lower,ci_lower)
 
+  all_facet_args <- c(list(~variable, scales = "free_y"), facet_args)
+
   #The visualisation style taken as well from   https://github.com/seantalts/simulation-based-calibration/blob/master/Rsbc/generate_plots_sbc_inla.R
   ggplot(x, aes(x = rank)) +
           geom_segment(aes(x=0,y=ci_mean,xend=max_rank,yend=ci_mean),colour="grey25") +
           geom_polygon(data=data.frame(x= CI_polygon_x,y= CI_polygon_y),aes(x=x,y=y),fill="skyblue",color="skyblue1",alpha=0.33) +
           geom_histogram(breaks =  seq(0, max_rank, length.out = bins + 1), closed = "left" ,fill="#808080",colour="black") +
           labs(y = "count") +
-          facet_wrap(~variable, scales = "free_y")
+          do.call(facet_wrap, all_facet_args)
 
 }
 
 
 #' @export
-plot_rank_hist.SBC_results <- function(x, variables = NULL, bins = NULL, prob = 0.95, parameters = NULL) {
+plot_rank_hist.SBC_results <- function(x, variables = NULL, bins = NULL, prob = 0.95, parameters = NULL, ...) {
   x <- validate_SBC_results(x)
 
   if(!is.null(parameters)) {
@@ -128,7 +131,7 @@ plot_rank_hist.SBC_results <- function(x, variables = NULL, bins = NULL, prob = 
     stop("Differing max_rank across variables not supported yet.")
   }
 
-  plot_rank_hist(x$stats, variables = variables, bins = bins, prob = prob, max_rank = max_rank)
+  plot_rank_hist(x$stats, variables = variables, bins = bins, prob = prob, max_rank = max_rank, ...)
 }
 
 #' Guess the number of bins for [plot_rank_hist()].
@@ -152,7 +155,7 @@ guess_rank_hist_bins <- function(max_rank, N) {
 #' @param variables optional subset of variables to show in the plot
 #' @param gamma TODO
 #' @param prob the width of the plotted confidence interval for the ECDF.
-#' @param size size passed to [ggplot2::geom_ribbon()] for the confidence band
+#' @param size size (linewidth) passed to [ggplot2::geom_ribbon()] for the confidence band
 #' @param alpha alpha level of the confidence band
 #' @param K number of uniformly spaced evaluation points for the ECDF or ECDFs. Affects
 #'   the granularity of the plot and can significantly speed up the computation
@@ -170,6 +173,7 @@ guess_rank_hist_bins <- function(max_rank, N) {
 #'   ECDFs will have reduced alpha.
 #' @param show_hidden Show variables marked with [hidden_var_attribute()]
 #'    (by default, those are not shown, available only when `x` is a data.frame)
+#' @param facet_args extra arguments for the call to [ggplot2::facet_wrap()] when rendering the plot.
 #' @param ... additional arguments passed to [data_for_ecdf_plots()].
 #' Most notably, if `x` is matrix, a `max_rank` parameter needs to be given.
 #' @param parameters DEPRECATED, use `variables` instead.
@@ -185,6 +189,7 @@ plot_ecdf <- function(x,
                       combine_variables = NULL,
                       ecdf_alpha = NULL,
                       show_hidden = FALSE,
+                      facet_args = list(),
                       ...,
                       parameters = NULL) {
 
@@ -210,13 +215,16 @@ plot_ecdf <- function(x,
   limits_df <- ecdf_data$limits_df
   limits_df$type <- "theoretical CDF"
 
+
+  all_facet_args <- c(list(~group), facet_args)
+
   # construct figure
   ggplot(ecdf_df, aes(color = type, fill = type)) +
     geom_ribbon(
       data = limits_df,
       aes(x = x, ymax = upper, ymin = lower),
       alpha = alpha,
-      size = size) +
+      linewidth = size) +
     geom_step(
       aes(x = z, y = ecdf, group = variable, alpha = alpha)
     ) +
@@ -243,7 +251,7 @@ plot_ecdf <- function(x,
     scale_alpha_identity() +
     xlab(NULL) +
     ylab(NULL) +
-    facet_wrap(~ group)
+    do.call(facet_wrap, all_facet_args)
 }
 
 #' @export
@@ -259,6 +267,7 @@ plot_ecdf_diff <- function(x,
                            combine_variables = NULL,
                            ecdf_alpha = NULL,
                            show_hidden = FALSE,
+                           facet_args = list(),
                            ...,
                            parameters = NULL) {
   if(!is.null(parameters)) {
@@ -291,12 +300,15 @@ plot_ecdf_diff <- function(x,
     ymin = lower - uniform_val,
     type = "theoretical CDF"
   )
+
+  all_facet_args <- c(list(~group, scales = "free_y"), facet_args)
+
   ggplot(ecdf_df, aes(color = type, fill = type)) +
     geom_ribbon(
       data = limits_df_trans,
       aes(x = x, ymax = ymax, ymin = ymin),
       alpha = alpha,
-      size = size) +
+      linewidth = size) +
     geom_step(
       aes(x = z, y = z_diff, group = variable, alpha = alpha)
     ) +
@@ -322,7 +334,7 @@ plot_ecdf_diff <- function(x,
     scale_alpha_identity() +
     xlab(NULL) +
     ylab(NULL) +
-    facet_wrap(~ group, scales = "free_y")
+    do.call(facet_wrap, all_facet_args)
 }
 
 
@@ -759,7 +771,7 @@ plot_sim_estimated.data.frame <- function(x, variables = NULL, estimate = "mean"
   }
 
   ggplot2::ggplot(x, all_aes) +
-    geom_abline(intercept = 0, slope = 1, color = "skyblue1", size = 2) +
+    geom_abline(intercept = 0, slope = 1, color = "skyblue1", linewidth = 2) +
     main_geom +
     labs(y = y_label) +
     facet_wrap(~variable, scales = "free")
@@ -850,7 +862,7 @@ plot_coverage.data.frame <- function(x, variables = NULL, prob = 0.95,
   ggplot2::ggplot(coverage, aes(x = width_represented, y = estimate,
                                 ymin = ci_low, ymax = ci_high)) +
     geom_ribbon(fill = "black", alpha = 0.33) +
-    geom_segment(x = 0, y = 0, xend = 1, yend = 1, color = "skyblue1", size = 2) +
+    geom_segment(x = 0, y = 0, xend = 1, yend = 1, color = "skyblue1", linewidth = 2) +
     geom_line() +
     scale_x_continuous(paste0(interval_type, " interval width"),
                        labels = scales::percent) +
@@ -909,7 +921,7 @@ plot_coverage_diff.data.frame <- function(x, variables = NULL, prob = 0.95,
   ggplot2::ggplot(coverage, aes(x = width_represented, y = diff,
                                 ymin = diff_low, ymax = diff_high)) +
     geom_ribbon(fill = "black", alpha = 0.33) +
-    geom_segment(x = 0, y = 0, xend = 1, yend = 0, color = "skyblue1", size = 2) +
+    geom_segment(x = 0, y = 0, xend = 1, yend = 0, color = "skyblue1", linewidth = 2) +
     geom_line() +
     scale_x_continuous(paste0(interval_type, " interval width"),
                        labels = scales::percent) +
