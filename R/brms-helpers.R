@@ -2,9 +2,6 @@ stanmodel_for_brms <- function(..., out_stan_file = NULL) {
   model_code <- brms::make_stancode(...)
 
   args <- list(...)
-  if(!is.null(args$sample_prior)) {
-    stop("Do not specify `sample_prior`")
-  }
   if(!is.null(args$empty)) {
     stop("Do not specify `empty`")
   }
