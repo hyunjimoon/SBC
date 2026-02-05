@@ -446,6 +446,7 @@ So no problems here, up to the resolution available with `r N_sims` simulations.
 In practice, we would recommend running more simulations for thorough checks,
 but this is just an example that should compute in reasonable time.
 
+
 ## Multiple models
 
 To showcase comparisons of more than two models, we finally add a fixed-effect model as another comparison, the model code is:
@@ -582,14 +583,20 @@ for(bp_var in unique(bp_3$variable)) {
 
 And that data-averaged posterior? Both with t-test and the Gaffke test and for all variables, we see
 no problems and reasonably tight confidence intervals centered at the expected
-value of 0.5.
+value of 0.33. The prior for the `top_model` parameter is not easily derived, so we do a two sample test comparing the simulated prior values to the probabilities.
 
 ```{r}
-for(bp_var in unique(bp_3$variable)) {
+for(bp_var in paste0("is_model", 0:2)) {
   cat("=====", bp_var, "=====\n")
-  print(t.test(bp$prob, mu = 0.5))
-  print(gaffke_test(bp$prob, mu = 0.5))
+  bp_3_selected <- bp_3 |> filter(variable == bp_var)
+  print(t.test(bp_3_selected$prob, mu = 1/3))
+  print(gaffke_test(bp_3_selected$prob, mu = 1/3))
 }
+```
+
+```{r}
+bp_3_top <- bp_3 |> filter(variable == "top_model")
+t.test(bp_3_top$prob, bp_3_top$simulated_value)
 ```
 
 
