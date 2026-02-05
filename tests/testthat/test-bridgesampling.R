@@ -28,6 +28,22 @@ test_that("combine_draws_matrix_for_bf", {
     .m1.c = c(NA, 60, NA, 80))
   expect_identical(res_NA_raw, target_NA_raw)
 
+  empty_dm <- posterior::as_draws_matrix(matrix(nrow = length(model_draws), ncol = 0))
+  res_empty_raw <- combine_draws_matrix_for_bf(list(empty_dm, empty_dm), model_draws, model_var = "model_test")
+  target_emtpy_raw <- posterior::draws_matrix(
+    model_test = model_draws)
+  expect_identical(res_empty_raw, target_emtpy_raw)
+
+  res_empty_raw1 <- combine_draws_matrix_for_bf(list(dm0, empty_dm), model_draws, model_var = "model_test")
+  target_emtpy_raw1 <- posterior::draws_matrix(
+    model_test = model_draws,
+    a = c(1, -Inf, 3, -Inf),
+    b = c(5, -Inf, 7, -Inf),
+    .m0.a = dm0[,"a"],
+    .m0.b = dm0[,"b"]
+  )
+  expect_identical(res_empty_raw1, target_emtpy_raw1)
+
 
   dm2 <- posterior::draws_matrix("a" = c(100,200,300,400), "b" = c(500, 600, 700, 800), "d" = c(900, 1000, 1100, 1200))
   model_draws3 <- c(1, 2, 0, 2)

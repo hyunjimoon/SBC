@@ -156,7 +156,6 @@ SBC_fit_to_draws_matrix.SBC_fit_bridgesampling <- function(fit) {
     model_draws <- rbinom(n = shared_ndraws, size = 1, prob = probs[2])
   } else {
     model_draws <- sample(0:(length(all_draws) - 1), size  = shared_ndraws, prob = probs, replace = TRUE)
-    # TODO figure out top_model to have in stats (presumably via the DQ mechanism...)
   }
 
   combined_draws <- combine_draws_matrix_for_bf(all_draws, model_draws, model_var = fit$model_var)

@@ -14,12 +14,16 @@ combine_draws_matrix_for_bf <- function(dm_list, model_draws, NA_raw_dm = FALSE,
   dm_list <- unname(dm_list)
 
   process_single_dm_raw <- function(dm, index_p1) {
-    dm_raw <- dm
-    if(NA_raw_dm) {
-      dm_raw[model_draws + 1 != index_p1,] <- NA
+    if(posterior::nvariables(dm) == 0) {
+      return(dm)
+    } else {
+      dm_raw <- dm
+      if(NA_raw_dm) {
+        dm_raw[model_draws + 1 != index_p1,] <- NA
+      }
+      posterior::variables(dm_raw) <- paste0(".m", index_p1 - 1, ".",posterior::variables(dm))
+      return(dm_raw)
     }
-    posterior::variables(dm_raw) <- paste0(".m", index_p1 - 1, ".",posterior::variables(dm))
-    dm_raw
   }
   dm_raw_list <- purrr::imap(dm_list, process_single_dm_raw)
 
@@ -38,22 +42,26 @@ combine_draws_matrix_for_bf <- function(dm_list, model_draws, NA_raw_dm = FALSE,
   }
 
   all_variables_names <- unique(do.call(c, purrr::map(dm_list, posterior::variables)))
-  list_all_vars <- list()
+  if(is.null(all_variables_names)) {
+    all_vars <- posterior::as_draws_matrix(matrix(nrow = length(model_draws), ncol = 0))
+  } else {
+    list_all_vars <- list()
 
-  param_not_present <- -Inf
+    param_not_present <- -Inf
 
-  for(v in all_variables_names) {
-    var_matrix <- matrix(nrow = length(model_draws), ncol = length(dm_list))
-    for(m in 1:length(dm_list)) {
-      if(v %in% posterior::variables(dm_list[[m]])) {
-        var_matrix[, m] <- as.numeric(dm_list[[m]][, v])
-      } else {
-        var_matrix[, m] <- param_not_present
+    for(v in all_variables_names) {
+      var_matrix <- matrix(nrow = length(model_draws), ncol = length(dm_list))
+      for(m in 1:length(dm_list)) {
+        if(v %in% posterior::variables(dm_list[[m]])) {
+          var_matrix[, m] <- as.numeric(dm_list[[m]][, v])
+        } else {
+          var_matrix[, m] <- param_not_present
+        }
       }
+      list_all_vars[[v]] <- var_matrix[pairs_index_by_model]
     }
-    list_all_vars[[v]] <- var_matrix[pairs_index_by_model]
+    all_vars <- do.call(posterior::draws_matrix, list_all_vars)
   }
-  all_vars <- do.call(posterior::draws_matrix, list_all_vars)
 
   all_dm <- c(list(dm_model, all_vars), dm_raw_list)
   do.call(posterior::bind_draws, all_dm)
