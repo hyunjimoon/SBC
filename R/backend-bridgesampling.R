@@ -164,32 +164,39 @@ SBC_fit_to_draws_matrix.SBC_fit_bridgesampling <- function(fit) {
 }
 
 #' @export
-SBC_fit_specific_dquants.SBC_fit_bridgesampling <- function(fit) {
-  probs <- SBC_fit_bridgesampling_to_probs(fit)
-  max_index <- which.max(probs)
-  is_var_name <- paste0("is_", fit$model_var, max_index - 1)
-  top_var_name <- paste0("top_", fit$model_var)
+top_model_dquants <- function(probs, model_var) {
+  if(length(probs) > 2) {
+    max_index <- which.max(probs)
+    is_var_name <- paste0("is_", model_var, max_index - 1)
+    top_var_name <- paste0("top_", model_var)
 
-  dq_args <- list(rlang::parse_quo(is_var_name, rlang::current_env()))
-  names(dq_args) <- top_var_name
-  dq_args$.var_attributes <- var_attributes_from_list(top_var_name, list(c(
-    binary_var_attribute(), possibly_constant_var_attribute()
-  )))
-  do.call(derived_quantities, dq_args)
-
+    dq_args <- list(rlang::parse_quo(is_var_name, rlang::current_env()))
+    names(dq_args) <- top_var_name
+    dq_args$.var_attributes <- var_attributes_from_list(top_var_name, list(c(
+      binary_var_attribute(), possibly_constant_var_attribute()
+    )))
+    do.call(derived_quantities, dq_args)
+  } else {
+    NULL
+  }
 }
 
 #' @export
-SBC_posterior_cdf.SBC_fit_bridgesampling <- function(fit, variables) {
-  if(fit$model_var %in% names(variables)) {
-    probs <- SBC_fit_bridgesampling_to_probs(fit)
-    model_cdf <- discrete_to_cdf(fit$model_var, probs, variables[fit$model_var])
+SBC_fit_specific_dquants.SBC_fit_bridgesampling <- function(fit) {
+  probs <- SBC_fit_bridgesampling_to_probs(fit)
+  top_model_dquants(probs, fit$model_var)
+}
+
+#' @export
+posterior_cdf_from_model_probs <- function(probs, model_var, variables) {
+  if(model_var %in% names(variables)) {
+    model_cdf <- discrete_to_cdf(model_var, probs, variables[model_var])
     if(length(probs) == 2) {
       return(model_cdf)
     } else {
       is_model_cdf_list <- list()
       for(i in 1:length(probs)) {
-        is_var_name <- paste0("is_", fit$model_var, i - 1)
+        is_var_name <- paste0("is_", model_var, i - 1)
         if(is_var_name %in% names(variables)) {
           is_model_cdf_list[[i]] <- binary_to_cdf(is_var_name, probs[i], variables[is_var_name])
         } else {
@@ -199,14 +206,20 @@ SBC_posterior_cdf.SBC_fit_bridgesampling <- function(fit, variables) {
       is_model_cdf <- do.call(rbind, is_model_cdf_list)
 
       max_index <- which.max(probs)
-      simulated_value_top <- variables[fit$model_var] == max_index - 1
-      top_prediction_cdf <- binary_to_cdf(paste0("top_", fit$model_var), probs[max_index], simulated_value_top)
+      simulated_value_top <- variables[model_var] == max_index - 1
+      top_prediction_cdf <- binary_to_cdf(paste0("top_", model_var), probs[max_index], simulated_value_top)
 
       return(rbind(model_cdf, top_prediction_cdf, is_model_cdf))
     }
   } else {
     return(NULL)
   }
+}
+
+#' @export
+SBC_posterior_cdf.SBC_fit_bridgesampling <- function(fit, variables) {
+  probs <- SBC_fit_bridgesampling_to_probs(fit)
+  posterior_cdf_from_model_probs(probs, fit$model_var, variables)
 }
 
 #' @export

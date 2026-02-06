@@ -2,10 +2,10 @@
 % Please edit documentation in R/backend-BayesFactor.R
 \name{SBC_backend_extractBF_comparison}
 \alias{SBC_backend_extractBF_comparison}
-\title{A backend for Bayes factor workflow with \link[BayesFactor:extractBF]{BayesFactor::extractBF}.}
+\title{A backend for Bayes factor workflow with \link[BayesFactor:extractBF-methods]{BayesFactor::extractBF}.}
 \usage{
 SBC_backend_extractBF_comparison(backend_H0, backend_H1, model_var = "model")
 }
 \description{
-A backend for Bayes factor workflow with \link[BayesFactor:extractBF]{BayesFactor::extractBF}.
+A backend for Bayes factor workflow with \link[BayesFactor:extractBF-methods]{BayesFactor::extractBF}.
 }
