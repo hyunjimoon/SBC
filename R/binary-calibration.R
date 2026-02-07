@@ -23,11 +23,17 @@ binary_probabilities_from_stats <- function(stats) {
     stop("The range of continous ranks (cdf_low and cdf_high) column must be present in stats.\nIf it is not present, it likely means your backend
          does not implement `SBC_posterior_cdf()`.")
   }
+  if(!("simulated_value" %in% names(stats))) {
+    stop("The simulated_value column is required in stats")
+  }
   if(!all(stats$cdf_low == 0 | stats$cdf_high == 1)) {
     stop("For binary variables either the cdf_low needs to be 0 or the cdf_high needs to be 1")
   }
 
-  stats <- dplyr::mutate(stats, prob = if_else(cdf_low == 0, 1 - cdf_high, 1 - cdf_low))
+  stats <- dplyr::mutate(stats, prob = dplyr::case_when(
+    cdf_low == 0 & cdf_high == 1 ~ simulated_value,
+    cdf_low == 0 ~ 1 - cdf_high,
+    TRUE ~ 1 - cdf_low))
 
   return(stats)
 }
