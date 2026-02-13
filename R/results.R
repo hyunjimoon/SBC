@@ -789,7 +789,7 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
   # have SBC imported.
   result_with_output <- SBC:::capture_all_outputs({
     res <- tryCatch({
-      fit <- SBC_fit(backend, generated, cores = cores)
+      fit <- SBC::SBC_fit(backend, generated, cores = cores)
       c(list(fit = fit, error = NULL))
     }, error = function(e) { list(fit = NULL, error = e) })
   })
@@ -818,6 +818,9 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
 
     if(!is.null(error_stats$result)) {
       res$error <- error_stats$result
+      if(!is.null(progressor)) {
+        progressor(paste0("Error while computing statistics: ", res$error), amount = 0)
+      }
     }
 
     if(!is.null(error_stats$output) && length(error_stats$output > 0)) {
@@ -830,6 +833,9 @@ compute_SBC_single <- function(vars_and_generated, backend, cores,
       res$warnings <- c(res$warnings, "== Warnings from computing statistics ==", error_stats$warnings)
     }
   } else {
+    if(!is.null(progressor)) {
+      progressor(paste0("Error while fitting: ", res$error), amount = 0)
+    }
     res$stats <- NULL
     res$backend_diagnostics <- NULL
   }
