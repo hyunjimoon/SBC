@@ -1,4 +1,4 @@
-#' @title Extract binary probabilities from SBC stats.
+#' Extract binary probabilities from SBC stats.
 #'
 #' @description Takes all variables marked with [binary_var_attribute()] in the
 #' statistics (the `$stats` field of an `SBC_results` object)

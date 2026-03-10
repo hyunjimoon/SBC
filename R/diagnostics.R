@@ -1,8 +1,30 @@
+#' Get diagnostic messages for a single diagnostic.
+#'
+#' @param diagnostic object describing the diagnostic
+#' @param values the values of the diagnostics
+#' @returns a `data.frame` with fields `type` (possible values `bad`, `info`, `ok`) and `message`
+#' @seealso [numeric_diagnostic()], [count_diagnostic()], [logical_diagnostic()]
 #' @export
 get_diagnostic_messages_single <- function(diagnostic, values) {
   UseMethod("get_diagnostic_messages_single")
 }
 
+#' A diagnostic representing numerical values.
+#'
+#' Optionally the message can signal failure if the diagnostic is above/below
+#' a certain threshold or is NA.
+#'
+#' @param label a description of the diagnostic
+#' @param report what value shuld be reported to represent the diagnostic.
+#' Support options are `"min"`, `"max"` and `"quantiles"`
+#' @param error_above signal a problem when the diagnostic is above this value
+#' @param error_below signal a problem when the diagnostic is below this value
+#' @param allow_na if `FALSE`, any NA values are reported as a problem
+#' @param label_short a shorter version of the label (if the original is long) for
+#' cleaner summaries.
+#' @param hint A suggestion what the user can do if problems are signalled
+#' @param digits decimal digits to report
+#' @param unit optional unit to report alongside the values
 #' @export
 numeric_diagnostic <- function(label, report = NULL, error_above = Inf, error_below = -Inf, allow_na = FALSE, label_short = NULL,
                                    hint = "", digits = 2, unit = "") {
@@ -92,7 +114,13 @@ get_diagnostic_messages_single.SBC_numeric_diagnostic <- function(diagnostic, va
   msg
 }
 
-
+#' A diagnostic representing count values.
+#'
+#' @param label a description of the diagnostic
+#' @param error_above a problem is signalled when the diagnostic is above this value
+#' @param label_short optional shorter name for improved messages
+#' @param hint a suggestion to the user to show when the diagnostic is problematic
+#' @param error_only only report the diagnostic if at least one fit has a problematic value
 #' @export
 count_diagnostic <- function(label, error_above = 0, label_short = NULL, hint = "",
                              error_only = FALSE) {
@@ -154,6 +182,13 @@ get_diagnostic_messages_single.SBC_count_diagnostic <- function(diagnostic, valu
   msg
 }
 
+#' A diagnostic representing binary values.
+#'
+#' @param ok_value which value (`TRUE` or `FALSE`) signals a problem with the fit
+#' @param true_label label to use for positive cases
+#' @param false_label label to use for negative cases
+#' @param hint a suggestion to the user to show when the diagnostic is problematic
+#' @param error_only only report the diagnostic if at least one fit has a problematic value
 #' @export
 logical_diagnostic <- function(ok_value, true_label,
                                false_label = paste0("not ", true_label),
@@ -240,7 +275,7 @@ get_diagnostic_messages_single.SBC_default_diagnostic <- function(diagnostic, va
   }
 }
 
-# A diagnostic that is ignored for summaries and messages
+# A diagnostic that is ignored for summaries and messages, just kept in the data.frame.
 #' @export
 skip_diagnostic <- function() {
   structure(list(), class = "SBC_skip_diagnostic")

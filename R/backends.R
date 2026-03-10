@@ -53,6 +53,13 @@ SBC_posterior_cdf.default <- function(fit, variables) {
   NULL
 }
 
+#' A fit object may implement this method to add extra derived quantities
+#' whose computation depend on some values only available in the fit.
+#'
+#' As of 2026-03 the only use case is computing the top model probability
+#' for model selection across multiple models (since model probability is not directly available
+#' in normal derived quantities).
+#'
 #' @return A [derived_quantities()] object or NULL if there are none
 #' @export
 SBC_fit_specific_dquants <- function(fit) {
@@ -114,6 +121,17 @@ SBC_fit_to_diagnostics.default <- function(fit, fit_output, fit_messages, fit_wa
   NULL
 }
 
+#' Get the types of diagnostics supported by a diagnostics data frame.
+#'
+#' A backend may optionally implement this method to provide information
+#' how the diagnostics reported by the backend can be best summarised and
+#' presented to the user. See `vignette("implementing_backends")` for an
+#' example implementation.
+#'
+#' @param diags a `data.frame` with the diagnostics (and an extra class to trigger
+#' the correct S3 method)
+#' @returns A named list where names are columns in the data frame and values
+#' are objects that support the `get_diagnostic_messages_single()` function.
 #' @export
 diagnostic_types <- function(diags) {
   UseMethod("diagnostic_types")
