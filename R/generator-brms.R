@@ -33,6 +33,10 @@ SBC_generator_brms <- function(formula, data, ...,  generate_lp = TRUE,
     }
   }
 
+  if(is.null(args$prior)) {
+    warning("The `prior` argument was not specified and brms defaults will be used. It is unlikely this will produce usable datasets.")
+  }
+
   compiled_model <- stanmodel_for_brms(formula = formula, data = data, out_stan_file = out_stan_file, ...)
 
 
